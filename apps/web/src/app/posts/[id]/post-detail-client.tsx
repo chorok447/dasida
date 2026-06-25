@@ -8,7 +8,7 @@ import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, C
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
-import { campaigns } from "@/data/campaigns";
+import type { Campaign } from "@/data/campaigns";
 
 const sampleComments = [
   { id: 1, name: "초록도시", time: "1시간", text: "이거 어떻게 만드신 거예요? 패턴 공유 가능하실까요?", verified: false },
@@ -16,7 +16,7 @@ const sampleComments = [
   { id: 3, name: "원두모음", time: "어제", text: "오프라인 클래스 같은 거 안 여시나요?", verified: false },
 ];
 
-export default function PostDetailClient({ post }: { post: Post }) {
+export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -32,8 +32,6 @@ export default function PostDetailClient({ post }: { post: Post }) {
   const sy = useSpring(my, { stiffness: 150, damping: 22 });
   const rY = useTransform(sx, [-0.5, 0.5], [-5, 5]);
   const rX = useTransform(sy, [-0.5, 0.5], [4, -4]);
-
-  const linkedCampaign = p.campaignId ? campaigns.find((c) => c.id === p.campaignId) : null;
 
   return (
     <section
