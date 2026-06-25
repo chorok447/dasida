@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Upload, X, Send, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import { fashionPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 
 const sampleImages = [fashionPhotos[0], naturePhotos[1], objectPhotos[0], workshopPhotos[2]];
@@ -29,7 +29,19 @@ export default function PostCreatePage() {
       .catch(() => setCampaigns([]));
   }, []);
 
+  const [submitting, setSubmitting] = useState(false);
   const goBack = () => router.push("/feed");
+  const submit = async () => {
+    if (!text.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await apiPost("/api/posts", { text, images, tags, campaignId: campaign || null });
+      router.push("/feed");
+    } catch {
+      setSubmitting(false);
+      alert("게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  };
   const addTag = () => {
     if (!tagInput.trim()) return;
     const t = tagInput.startsWith("#") ? tagInput : `#${tagInput}`;
@@ -198,11 +210,12 @@ export default function PostCreatePage() {
                 임시저장
               </button>
               <button
-                onClick={goBack}
-                className="flex-1 py-3 rounded-xl font-medium inline-flex items-center justify-center gap-2"
+                onClick={submit}
+                disabled={submitting || !text.trim()}
+                className="flex-1 py-3 rounded-xl font-medium inline-flex items-center justify-center gap-2 disabled:opacity-40"
                 style={{ background: "#7dd3a3", color: "#0f1f22" }}
               >
-                <Send size={14} /> 게시하기
+                <Send size={14} /> {submitting ? "게시 중…" : "게시하기"}
               </button>
             </div>
           </div>

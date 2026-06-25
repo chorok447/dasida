@@ -4,9 +4,14 @@ import com.dasida.api.common.Photos
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 data class Author(val name: String, val verified: Boolean)
 
@@ -68,14 +73,44 @@ object PostSeed {
     )
 }
 
+data class CreatePostRequest(
+    val text: String,
+    val images: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val campaignId: String? = null,
+)
+
 @RestController
 @RequestMapping("/api/posts")
 class PostController {
+    // ponytail: 인메모리 가변 저장소. DB 도입 시 Repository 로 교체.
+    private val store = CopyOnWriteArrayList(PostSeed.posts)
+    private val seq = AtomicInteger(PostSeed.posts.size)
+
     @GetMapping
-    fun list(): List<Post> = PostSeed.posts
+    fun list(): List<Post> = store
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): Post =
-        PostSeed.posts.find { it.id == id }
+        store.find { it.id == id }
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun create(@RequestBody req: CreatePostRequest): Post {
+        if (req.text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
+        val post = Post(
+            id = "p${seq.incrementAndGet()}",
+            author = Author("다시다시", false), // ponytail: 인증 전까지 고정 유저
+            time = "방금 전",
+            text = req.text,
+            tags = req.tags,
+            images = req.images,
+            likes = 0,
+            comments = 0,
+            campaignId = req.campaignId?.ifBlank { null },
+        )
+        store.add(0, post) // 최신글이 위로
+        return post
+    }
 }

@@ -5,9 +5,14 @@ import com.dasida.api.post.Author
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 data class CampaignBody(val heading: String, val paragraphs: List<String>, val images: List<String>)
 
@@ -89,14 +94,54 @@ object CampaignSeed {
     )
 }
 
+data class CreateCampaignRequest(
+    val title: String,
+    val summary: String = "",
+    val body: String = "",
+    val thumb: String = "",
+    val recruitStart: String = "",
+    val recruitEnd: String = "",
+    val runStart: String = "",
+    val runEnd: String = "",
+    val capacity: Int = 0,
+)
+
 @RestController
 @RequestMapping("/api/campaigns")
 class CampaignController {
+    // ponytail: 인메모리 가변 저장소. DB 도입 시 Repository 로 교체.
+    private val store = CopyOnWriteArrayList(CampaignSeed.campaigns)
+    private val seq = AtomicInteger(CampaignSeed.campaigns.size)
+
     @GetMapping
-    fun list(): List<Campaign> = CampaignSeed.campaigns
+    fun list(): List<Campaign> = store
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): Campaign =
-        CampaignSeed.campaigns.find { it.id == id }
+        store.find { it.id == id }
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun create(@RequestBody req: CreateCampaignRequest): Campaign {
+        if (req.title.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
+        val campaign = Campaign(
+            id = "c${seq.incrementAndGet()}",
+            status = "upcoming",
+            title = req.title,
+            summary = req.summary,
+            thumb = req.thumb,
+            recruitStart = req.recruitStart,
+            recruitEnd = req.recruitEnd,
+            runStart = req.runStart,
+            runEnd = req.runEnd,
+            capacity = req.capacity,
+            joined = 0,
+            daysLeftLabel = "모집예정",
+            author = Author("다시다시", false), // ponytail: 인증 전까지 고정 유저
+            body = CampaignBody("캠페인 소개", listOf(req.body).filter { it.isNotBlank() }, emptyList()),
+        )
+        store.add(0, campaign) // 최신 캠페인이 위로
+        return campaign
+    }
 }
