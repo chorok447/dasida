@@ -1,7 +1,20 @@
 package com.dasida.api.post
 
 import com.dasida.api.common.Photos
+import com.dasida.api.security.AuthUser
+import com.fasterxml.jackson.annotation.JsonIgnore
+import jakarta.persistence.Column
+import jakarta.persistence.Embeddable
+import jakarta.persistence.Embedded
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -10,26 +23,33 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.UUID
 
-data class Author(val name: String, val verified: Boolean)
+@Embeddable
+class Author(
+    var name: String = "",
+    var verified: Boolean = false,
+)
 
-data class Post(
-    val id: String,
-    val author: Author,
-    val time: String,
-    val text: String,
-    val tags: List<String>,
-    val images: List<String>,
+@Entity
+@Table(name = "posts")
+class Post(
+    @Id val id: String,
+    @Embedded val author: Author,
+    @Column(name = "time_label") val time: String,
+    @Column(name = "content", columnDefinition = "TEXT") val text: String,
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val tags: List<String>,
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val images: List<String>,
     val likes: Int,
     val comments: Int,
     val campaignId: String? = null,
+    @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
 )
 
+interface PostRepository : JpaRepository<Post, String>
+
 /**
- * 인메모리 시드. apps/web/src/data/posts.ts 와 1:1 미러.
- * DB 도입 시 Repository 로 교체. (ponytail: 인메모리, DB는 실제 영속화 필요할 때)
+ * 초기 적재 시드. apps/web/src/data/posts.ts 와 1:1 미러. SeedRunner 가 비어있을 때만 저장.
  */
 object PostSeed {
     private val workshop = Photos.workshop
@@ -82,35 +102,33 @@ data class CreatePostRequest(
 
 @RestController
 @RequestMapping("/api/posts")
-class PostController {
-    // ponytail: 인메모리 가변 저장소. DB 도입 시 Repository 로 교체.
-    private val store = CopyOnWriteArrayList(PostSeed.posts)
-    private val seq = AtomicInteger(PostSeed.posts.size)
-
+class PostController(private val repo: PostRepository) {
     @GetMapping
-    fun list(): List<Post> = store
+    fun list(): List<Post> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): Post =
-        store.find { it.id == id }
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody req: CreatePostRequest): Post {
+    fun create(@RequestBody req: CreatePostRequest, @AuthenticationPrincipal user: AuthUser): Post {
         if (req.text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
-        val post = Post(
-            id = "p${seq.incrementAndGet()}",
-            author = Author("다시다시", false), // ponytail: 인증 전까지 고정 유저
-            time = "방금 전",
-            text = req.text,
-            tags = req.tags,
-            images = req.images,
-            likes = 0,
-            comments = 0,
-            campaignId = req.campaignId?.ifBlank { null },
+        return repo.save(
+            Post(
+                id = "p-${UUID.randomUUID()}",
+                author = Author(user.name, user.verified),
+                time = "방금 전",
+                text = req.text,
+                tags = req.tags,
+                images = req.images,
+                likes = 0,
+                comments = 0,
+                campaignId = req.campaignId?.ifBlank { null },
+                seq = System.currentTimeMillis(),
+            ),
         )
-        store.add(0, post) // 최신글이 위로
-        return post
     }
 }
