@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion, useMotionValue, animate } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { fashionPhotos, marketPhotos, naturePhotos, peoplePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
@@ -109,11 +110,12 @@ export function Carousel3D() {
                       : "linear-gradient(180deg,#ffffff,#f9f7f2)",
                   }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={it.img}
                     alt={it.title}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    fill
+                    sizes="260px"
+                    className="object-cover"
                     draggable={false}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/90 via-[#0f1f22]/40 to-transparent" />
