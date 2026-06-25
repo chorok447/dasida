@@ -1,22 +1,34 @@
 package com.dasida.api.notification
 
 import com.dasida.api.common.Photos
+import com.fasterxml.jackson.annotation.JsonIgnore
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-data class Notification(
-    val id: String,
+@Entity
+@Table(name = "notifications")
+class Notification(
+    @Id val id: String,
     val kind: String, // "like" | "comment" | "campaign" | "system"
     val title: String,
-    val body: String,
-    val time: String,
+    @Column(columnDefinition = "TEXT") val body: String,
+    @Column(name = "time_label") val time: String,
     val unread: Boolean,
     val thumb: String? = null,
+    @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스
 )
 
+interface NotificationRepository : JpaRepository<Notification, String>
+
 /**
- * 인메모리 시드. apps/web/src/data/notifications.ts 와 1:1 미러. DB 도입 시 Repository 로 교체.
+ * 초기 적재 시드. apps/web/src/data/notifications.ts 와 1:1 미러. SeedRunner 가 비어있을 때만 저장.
  */
 object NotificationSeed {
     private val fashion = Photos.fashion
@@ -38,7 +50,7 @@ object NotificationSeed {
 
 @RestController
 @RequestMapping("/api/notifications")
-class NotificationController {
+class NotificationController(private val repo: NotificationRepository) {
     @GetMapping
-    fun list(): List<Notification> = NotificationSeed.notifications
+    fun list(): List<Notification> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
 }
