@@ -2,8 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Heart, MessageCircle, Bookmark, Share2, Calendar, Users } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, Calendar, Users, Pencil } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { fashionPhotos, naturePhotos, peoplePhotos, objectPhotos, workshopPhotos, marketPhotos } from "@/data/photos";
 import { ME_AVATAR } from "@/data/avatars";
@@ -92,6 +93,16 @@ function ProfileHeader() {
           <span><b style={{ color: "#7dd3a3" }}>312</b> 팔로잉</span>
         </div>
       </div>
+      <Link
+        href="/profile/edit"
+        className="ml-auto self-start mt-2 px-4 py-2 rounded-full text-[13px] flex items-center gap-1.5 transition-colors"
+        style={{
+          border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)"}`,
+          color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)",
+        }}
+      >
+        <Pencil size={13} /> 프로필 수정
+      </Link>
     </div>
   );
 }
