@@ -67,9 +67,9 @@ export default function CampaignCreatePage() {
         capacity: Number(capacity) || 0,
       });
       router.push("/campaigns");
-    } catch {
+    } catch (e) {
       setSubmitting(false);
-      alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      alert(e instanceof Error && e.message.includes("401") ? "로그인이 필요합니다." : "등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
 
