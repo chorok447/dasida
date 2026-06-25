@@ -1,22 +1,24 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 
-// ponytail: 라우팅 미연결 정적 헤더. 다른 페이지 이식 시 next/link로 교체.
-const items = [
-  { id: "home", label: "홈" },
-  { id: "home-feed", label: "피드" },
-  { id: "campaigns", label: "캠페인" },
-  { id: "mypage", label: "마이페이지" },
-  { id: "logos", label: "로고" },
+// href가 있으면 링크, 없으면 아직 미구현 페이지(비활성 표시).
+const items: { label: string; href?: string }[] = [
+  { label: "홈", href: "/" },
+  { label: "피드" },
+  { label: "캠페인" },
+  { label: "마이페이지" },
+  { label: "로고" },
 ];
 
 export function SiteHeader() {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const active = "home";
+  const pathname = usePathname();
 
   return (
     <header
@@ -27,30 +29,30 @@ export function SiteHeader() {
       }}
     >
       <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-        <span
-          className="flex items-center gap-2"
-          style={{ color: dark ? "#7dd3a3" : "#1c4044" }}
-        >
+        <Link href="/" className="flex items-center gap-2" style={{ color: dark ? "#7dd3a3" : "#1c4044" }}>
           <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
           <span className="text-[10px] tracking-[0.3em] opacity-60">UPCYCLE</span>
-        </span>
+        </Link>
         <nav className="hidden md:flex items-center gap-1">
           {items.map((it) => {
-            const isActive = active === it.id;
-            return (
-              <span
-                key={it.id}
-                className="relative px-4 py-2 text-[14px] transition-opacity"
-                style={{ color: dark ? "#f9f7f2" : "#1c4044", opacity: isActive ? 1 : 0.7 }}
-              >
+            const isActive = it.href === pathname;
+            const className = "relative px-4 py-2 text-[14px] transition-opacity";
+            const style = { color: dark ? "#f9f7f2" : "#1c4044", opacity: isActive ? 1 : 0.7 };
+            const dot = isActive && (
+              <motion.div
+                layoutId="navdot"
+                className="absolute left-1/2 -translate-x-1/2 bottom-1 w-1.5 h-1.5 rounded-full"
+                style={{ background: "#7dd3a3" }}
+              />
+            );
+            return it.href ? (
+              <Link key={it.label} href={it.href} className={className} style={style}>
                 {it.label}
-                {isActive && (
-                  <motion.div
-                    layoutId="navdot"
-                    className="absolute left-1/2 -translate-x-1/2 bottom-1 w-1.5 h-1.5 rounded-full"
-                    style={{ background: "#7dd3a3" }}
-                  />
-                )}
+                {dot}
+              </Link>
+            ) : (
+              <span key={it.label} className={`${className} cursor-default`} style={{ ...style, opacity: 0.4 }}>
+                {it.label}
               </span>
             );
           })}
@@ -64,18 +66,20 @@ export function SiteHeader() {
             <Bell size={16} />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#7dd3a3]" />
           </span>
-          <span
+          <Link
+            href="/login"
             className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
             style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
           >
             로그인
-          </span>
-          <span
+          </Link>
+          <Link
+            href="/signup"
             className="text-[13px] px-3 py-1.5 rounded-full font-medium"
             style={{ background: "#7dd3a3", color: "#0f1f22" }}
           >
             회원가입
-          </span>
+          </Link>
         </div>
       </div>
     </header>
