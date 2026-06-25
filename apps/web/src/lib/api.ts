@@ -1,0 +1,16 @@
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
+/** 백엔드 GET 호출. 실패 시 throw. (ponytail: native fetch, 새 의존성 없음) */
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+/** 404 등 not-found는 null, 그 외 오류는 throw. */
+export async function apiGetOrNull<T>(path: string): Promise<T | null> {
+  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
+  return res.json() as Promise<T>;
+}
