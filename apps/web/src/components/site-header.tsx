@@ -58,14 +58,15 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="flex items-center gap-3">
-          <span
+          <Link
+            href="/notifications"
             className="w-9 h-9 rounded-full flex items-center justify-center relative"
             style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
             aria-label="알림"
           >
             <Bell size={16} />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#7dd3a3]" />
-          </span>
+          </Link>
           <Link
             href="/login"
             className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
