@@ -1,20 +1,19 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-
-type Theme = "dark" | "light";
-const Ctx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "dark", toggle: () => {} });
+import { ThemeProvider as NextThemeProvider, useTheme as useNextTheme } from "next-themes";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
   return (
-    <Ctx.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>
+    <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       {children}
-    </Ctx.Provider>
+    </NextThemeProvider>
   );
 }
 
-export const useTheme = () => useContext(Ctx);
+// 기존 컴포넌트 호환 래퍼: { theme, toggle } 시그니처 유지.
+// 마운트 전 resolvedTheme은 undefined → dark로 fallback해 SSR/첫 렌더를 맞춘다.
+export function useTheme() {
+  const { resolvedTheme, setTheme } = useNextTheme();
+  const theme = resolvedTheme === "light" ? "light" : "dark";
+  return { theme, toggle: () => setTheme(theme === "dark" ? "light" : "dark") };
+}
