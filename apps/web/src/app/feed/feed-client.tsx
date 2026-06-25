@@ -8,7 +8,7 @@ import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, T
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
-import { campaigns, statusMeta } from "@/data/campaigns";
+import { statusMeta, type Campaign } from "@/data/campaigns";
 
 const categories = ["전체", "패션", "도시텃밭", "공방", "기증", "음식", "가구"];
 
@@ -97,7 +97,7 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
   );
 }
 
-function SideHot() {
+function SideHot({ campaigns }: { campaigns: Campaign[] }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const hot = campaigns.filter((c) => c.status === "open").slice(0, 3);
@@ -175,7 +175,7 @@ function SideRecommend() {
   );
 }
 
-export default function FeedClient({ posts }: { posts: Post[] }) {
+export default function FeedClient({ posts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -241,7 +241,7 @@ export default function FeedClient({ posts }: { posts: Post[] }) {
 
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-5">
-            <SideHot />
+            <SideHot campaigns={campaigns} />
             <SideRecommend />
           </div>
         </aside>
