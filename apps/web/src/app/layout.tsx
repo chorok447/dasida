@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme-context";
+import { AppFrame } from "@/components/app-frame";
 
 export const metadata: Metadata = {
   title: "다시,다 — 업사이클 플랫폼",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AppFrame>{children}</AppFrame>
+        </ThemeProvider>
       </body>
     </html>
   );
