@@ -115,11 +115,15 @@ export function FieldInput({
   type = "text",
   placeholder,
   error,
+  value,
+  onChange,
 }: {
   icon: React.ReactNode;
   type?: string;
   placeholder: string;
   error?: string;
+  value?: string;
+  onChange?: (v: string) => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -136,6 +140,8 @@ export function FieldInput({
         <input
           type={type}
           placeholder={placeholder}
+          value={value}
+          onChange={onChange ? (e) => onChange(e.target.value) : undefined}
           className="flex-1 bg-transparent outline-none placeholder:opacity-50"
           style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
         />

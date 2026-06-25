@@ -1,3 +1,5 @@
+import { getToken } from "./auth";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 /** 백엔드 GET 호출. 실패 시 throw. (ponytail: native fetch, 새 의존성 없음) */
@@ -15,11 +17,15 @@ export async function apiGetOrNull<T>(path: string): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
-/** 백엔드 POST 호출(JSON). 실패 시 throw. */
+/** 백엔드 POST 호출(JSON). 로그인 토큰이 있으면 Authorization 헤더 부착. 실패 시 throw(메시지에 상태코드). */
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
     cache: "no-store",
   });

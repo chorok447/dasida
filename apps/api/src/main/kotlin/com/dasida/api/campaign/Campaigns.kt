@@ -2,7 +2,19 @@ package com.dasida.api.campaign
 
 import com.dasida.api.common.Photos
 import com.dasida.api.post.Author
+import com.dasida.api.security.AuthUser
+import com.fasterxml.jackson.annotation.JsonIgnore
+import jakarta.persistence.Column
+import jakarta.persistence.Embedded
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -11,30 +23,34 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.UUID
 
 data class CampaignBody(val heading: String, val paragraphs: List<String>, val images: List<String>)
 
-data class Campaign(
-    val id: String,
+@Entity
+@Table(name = "campaigns")
+class Campaign(
+    @Id val id: String,
     val status: String, // "open" | "upcoming" | "closed"
     val title: String,
-    val summary: String,
+    @Column(columnDefinition = "TEXT") val summary: String,
     val thumb: String,
     val recruitStart: String,
     val recruitEnd: String,
     val runStart: String,
     val runEnd: String,
     val capacity: Int,
-    val joined: Int,
+    @Column(name = "joined_count") val joined: Int,
     val daysLeftLabel: String,
-    val author: Author,
-    val body: CampaignBody,
+    @Embedded val author: Author,
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val body: CampaignBody,
+    @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
 )
 
+interface CampaignRepository : JpaRepository<Campaign, String>
+
 /**
- * 인메모리 시드. apps/web/src/data/campaigns.ts 와 1:1 미러. DB 도입 시 Repository 로 교체.
+ * 초기 적재 시드. apps/web/src/data/campaigns.ts 와 1:1 미러. SeedRunner 가 비어있을 때만 저장.
  */
 object CampaignSeed {
     private val fashion = Photos.fashion
@@ -108,40 +124,38 @@ data class CreateCampaignRequest(
 
 @RestController
 @RequestMapping("/api/campaigns")
-class CampaignController {
-    // ponytail: 인메모리 가변 저장소. DB 도입 시 Repository 로 교체.
-    private val store = CopyOnWriteArrayList(CampaignSeed.campaigns)
-    private val seq = AtomicInteger(CampaignSeed.campaigns.size)
-
+class CampaignController(private val repo: CampaignRepository) {
     @GetMapping
-    fun list(): List<Campaign> = store
+    fun list(): List<Campaign> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): Campaign =
-        store.find { it.id == id }
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody req: CreateCampaignRequest): Campaign {
+    fun create(@RequestBody req: CreateCampaignRequest, @AuthenticationPrincipal user: AuthUser): Campaign {
         if (req.title.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
-        val campaign = Campaign(
-            id = "c${seq.incrementAndGet()}",
-            status = "upcoming",
-            title = req.title,
-            summary = req.summary,
-            thumb = req.thumb,
-            recruitStart = req.recruitStart,
-            recruitEnd = req.recruitEnd,
-            runStart = req.runStart,
-            runEnd = req.runEnd,
-            capacity = req.capacity,
-            joined = 0,
-            daysLeftLabel = "모집예정",
-            author = Author("다시다시", false), // ponytail: 인증 전까지 고정 유저
-            body = CampaignBody("캠페인 소개", listOf(req.body).filter { it.isNotBlank() }, emptyList()),
+        return repo.save(
+            Campaign(
+                id = "c-${UUID.randomUUID()}",
+                status = "upcoming",
+                title = req.title,
+                summary = req.summary,
+                thumb = req.thumb,
+                recruitStart = req.recruitStart,
+                recruitEnd = req.recruitEnd,
+                runStart = req.runStart,
+                runEnd = req.runEnd,
+                capacity = req.capacity,
+                joined = 0,
+                daysLeftLabel = "모집예정",
+                author = Author(user.name, user.verified),
+                body = CampaignBody("캠페인 소개", listOf(req.body).filter { it.isNotBlank() }, emptyList()),
+                seq = System.currentTimeMillis(),
+            ),
         )
-        store.add(0, campaign) // 최신 캠페인이 위로
-        return campaign
     }
 }
