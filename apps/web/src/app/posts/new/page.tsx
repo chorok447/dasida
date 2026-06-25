@@ -1,12 +1,12 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, X, Send, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
-import { campaigns } from "@/data/campaigns";
+import { apiGet } from "@/lib/api";
 import { fashionPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 
 const sampleImages = [fashionPhotos[0], naturePhotos[1], objectPhotos[0], workshopPhotos[2]];
@@ -21,6 +21,13 @@ export default function PostCreatePage() {
   const [tagInput, setTagInput] = useState("");
   const [campaign, setCampaign] = useState<string>("");
   const [category, setCategory] = useState("패션");
+  // ponytail: 선택용 드롭다운이라 클라이언트 fetch로 충분(폼 전체 서버분리 불필요).
+  const [campaigns, setCampaigns] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    apiGet<{ id: string; title: string }[]>("/api/campaigns")
+      .then(setCampaigns)
+      .catch(() => setCampaigns([]));
+  }, []);
 
   const goBack = () => router.push("/feed");
   const addTag = () => {
