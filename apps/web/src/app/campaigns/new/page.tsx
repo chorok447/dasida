@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Calendar, Users, FileText, Layers, ArrowLeft, ArrowRight, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { apiPost } from "@/lib/api";
 import { workshopPhotos, naturePhotos, fashionPhotos, objectPhotos, marketPhotos } from "@/data/photos";
 import { statusMeta } from "@/data/campaigns";
 
@@ -52,9 +53,25 @@ export default function CampaignCreatePage() {
   const [runEnd, setRunEnd] = useState("2026-08-30");
   const [capacity, setCapacity] = useState("30");
 
+  const [submitting, setSubmitting] = useState(false);
   const goBack = () => router.push("/campaigns");
   const next = () => setStep((s) => Math.min(3, s + 1));
   const prev = () => setStep((s) => Math.max(0, s - 1));
+  const submit = async () => {
+    if (!title.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await apiPost("/api/campaigns", {
+        title, summary, body, thumb,
+        recruitStart, recruitEnd, runStart, runEnd,
+        capacity: Number(capacity) || 0,
+      });
+      router.push("/campaigns");
+    } catch {
+      setSubmitting(false);
+      alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  };
 
   return (
     <section
@@ -209,11 +226,12 @@ export default function CampaignCreatePage() {
                 </button>
               ) : (
                 <button
-                  onClick={goBack}
-                  className="ml-auto px-5 py-3 rounded-xl font-medium inline-flex items-center gap-2"
+                  onClick={submit}
+                  disabled={submitting || !title.trim()}
+                  className="ml-auto px-5 py-3 rounded-xl font-medium inline-flex items-center gap-2 disabled:opacity-40"
                   style={{ background: "#7dd3a3", color: "#0f1f22" }}
                 >
-                  <Send size={14} /> 캠페인 등록
+                  <Send size={14} /> {submitting ? "등록 중…" : "캠페인 등록"}
                 </button>
               )}
             </div>
