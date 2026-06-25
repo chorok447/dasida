@@ -10,7 +10,7 @@ import { useTheme } from "@/lib/theme-context";
 const items: { label: string; href?: string }[] = [
   { label: "홈", href: "/" },
   { label: "피드" },
-  { label: "캠페인" },
+  { label: "캠페인", href: "/campaigns" },
   { label: "마이페이지" },
   { label: "로고" },
 ];
