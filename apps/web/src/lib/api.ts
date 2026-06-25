@@ -14,3 +14,15 @@ export async function apiGetOrNull<T>(path: string): Promise<T | null> {
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json() as Promise<T>;
 }
+
+/** 백엔드 POST 호출(JSON). 실패 시 throw. */
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
+  return res.json() as Promise<T>;
+}
