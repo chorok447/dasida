@@ -22,5 +22,5 @@ export function useAuthSession() {
   const token = useSyncExternalStore(subscribe, getToken, () => null);
   const name = useSyncExternalStore(subscribe, getName, () => null);
 
-  return { mounted: true, isLoggedIn: !!token, name, logout: clearSession };
+  return { isLoggedIn: !!token, name, logout: clearSession };
 }
