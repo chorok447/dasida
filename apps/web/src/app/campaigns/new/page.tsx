@@ -1,12 +1,13 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Calendar, Users, FileText, Layers, ArrowLeft, ArrowRight, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { apiPost } from "@/lib/api";
+import { apiPost, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { workshopPhotos, naturePhotos, fashionPhotos, objectPhotos, marketPhotos } from "@/data/photos";
 import { statusMeta } from "@/data/campaigns";
 
@@ -53,23 +54,41 @@ export default function CampaignCreatePage() {
   const [runEnd, setRunEnd] = useState("2026-08-30");
   const [capacity, setCapacity] = useState("30");
 
+  // 로그인하지 않았으면 작성 페이지 진입 차단.
+  useEffect(() => {
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+    }
+  }, [router]);
+
+  const parsedCapacity = Number(capacity);
+  const capacityValid = Number.isInteger(parsedCapacity) && parsedCapacity > 0;
+  const datesPresent = !!(recruitStart && recruitEnd && runStart && runEnd);
+  // ISO yyyy-MM-dd 문자열은 사전순=시간순 비교가 성립.
+  const datesOrdered = recruitStart <= recruitEnd && runStart <= runEnd;
+  const canSubmit = !!title.trim() && capacityValid && datesPresent && datesOrdered;
+
   const [submitting, setSubmitting] = useState(false);
   const goBack = () => router.push("/campaigns");
   const next = () => setStep((s) => Math.min(3, s + 1));
   const prev = () => setStep((s) => Math.max(0, s - 1));
   const submit = async () => {
-    if (!title.trim() || submitting) return;
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
     try {
       await apiPost("/api/campaigns", {
-        title, summary, body, thumb,
+        title: title.trim(),
+        summary: summary.trim(),
+        body: body.trim(),
+        thumb,
         recruitStart, recruitEnd, runStart, runEnd,
-        capacity: Number(capacity) || 0,
+        capacity: parsedCapacity,
       });
       router.push("/campaigns");
     } catch (e) {
       setSubmitting(false);
-      alert(e instanceof Error && e.message.includes("401") ? "로그인이 필요합니다." : "등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      alert(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다." : "등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
 
@@ -183,6 +202,11 @@ export default function CampaignCreatePage() {
                 <div>
                   <label className="text-[12px] tracking-[0.2em] uppercase mb-2 block opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 인원</label>
                   <Input value={capacity} onChange={setCapacity} placeholder="숫자" type="number" />
+                  {capacity !== "" && !capacityValid && (
+                    <p className="text-[12px] mt-1.5" style={{ color: "#ed5c48" }}>
+                      모집 인원은 1 이상의 정수여야 합니다.
+                    </p>
+                  )}
                 </div>
                 <p className="text-[13px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
                   모집 인원이 차면 자동으로 모집이 종료됩니다.
@@ -227,7 +251,7 @@ export default function CampaignCreatePage() {
               ) : (
                 <button
                   onClick={submit}
-                  disabled={submitting || !title.trim()}
+                  disabled={submitting || !canSubmit}
                   className="ml-auto px-5 py-3 rounded-xl font-medium inline-flex items-center gap-2 disabled:opacity-40"
                   style={{ background: "#7dd3a3", color: "#0f1f22" }}
                 >

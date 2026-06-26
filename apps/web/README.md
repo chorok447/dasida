@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# apps/web — 다시,다 프론트엔드
 
-## Getting Started
+Next.js (App Router) + TypeScript + Tailwind v4. 모노레포의 프론트엔드 패키지.
 
-First, run the development server:
+## 실행
+
+루트에서 실행하는 것을 권장합니다(워크스페이스 스크립트):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install     # 루트에서 1회
+pnpm dev:web     # = pnpm --filter web dev → http://localhost:3000
+pnpm build:web   # 프로덕션 빌드
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+이 디렉터리에서 직접:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+pnpm build
+pnpm lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 백엔드 연동
 
-## Learn More
+- API 베이스 URL은 `NEXT_PUBLIC_API_URL`(기본 `http://localhost:8080`).
+- 인증 토큰은 `localStorage`에 저장(`src/lib/auth.ts`), `apiPost` 가 `Authorization` 헤더에 부착.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+프로젝트 전체 구조·DB·환경 변수는 루트 [`README.md`](../../README.md) 참고.
