@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { Upload, X, Send, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/auth";
+import { useAuthSession } from "@/lib/use-auth-session";
 import { fashionPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 
 const sampleImages = [fashionPhotos[0], naturePhotos[1], objectPhotos[0], workshopPhotos[2]];
@@ -29,6 +31,16 @@ export default function PostCreatePage() {
       .catch(() => setCampaigns([]));
   }, []);
 
+  // 미리보기 작성자명을 내 이름으로. 로그인하지 않았으면 작성 페이지 진입 차단.
+  const { name } = useAuthSession();
+  const authorName = name ?? "사용자";
+  useEffect(() => {
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+    }
+  }, [router]);
+
   const [submitting, setSubmitting] = useState(false);
   const goBack = () => router.push("/feed");
   const submit = async () => {
@@ -39,7 +51,7 @@ export default function PostCreatePage() {
       router.push("/feed");
     } catch (e) {
       setSubmitting(false);
-      alert(e instanceof Error && e.message.includes("401") ? "로그인이 필요합니다." : "게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      alert(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다." : "게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
   const addTag = () => {
@@ -234,7 +246,7 @@ export default function PostCreatePage() {
               <div className="flex items-center gap-3 p-4">
                 <Avatar name="나" />
                 <div>
-                  <div className="text-[14px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>다시다시</div>
+                  <div className="text-[14px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{authorName}</div>
                   <div className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>방금 전 · {category}</div>
                 </div>
               </div>

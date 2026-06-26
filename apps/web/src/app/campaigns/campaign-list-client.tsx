@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
 import { Search, Users, Calendar } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { progressPercent } from "@/lib/progress";
 import { statusMeta, type Campaign, type CampaignStatus } from "@/data/campaigns";
 
 type Filter = "all" | CampaignStatus;
@@ -25,7 +26,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
 function ProgressBar({ joined, capacity, status }: { joined: number; capacity: number; status: CampaignStatus }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const pct = Math.min(100, (joined / capacity) * 100);
+  const pct = progressPercent(joined, capacity);
   return (
     <div className="w-full">
       <div
@@ -46,7 +47,13 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
         style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}
       >
         <span>
-          <b style={{ color: statusMeta[status].color }}>{joined}</b> / {capacity}명
+          {capacity > 0 ? (
+            <>
+              <b style={{ color: statusMeta[status].color }}>{joined}</b> / {capacity}명
+            </>
+          ) : (
+            "모집 인원 미정"
+          )}
         </span>
         <span>{statusMeta[status].label === "모집중" ? "참여 중" : statusMeta[status].label}</span>
       </div>

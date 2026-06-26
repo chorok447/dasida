@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
+import { useAuthSession } from "@/lib/use-auth-session";
+
+// 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
+const PROTECTED_PREFIXES = ["/posts/new", "/campaigns/new", "/mypage", "/profile/edit"];
 
 // href가 있으면 링크, 없으면 아직 미구현 페이지(비활성 표시).
 const items: { label: string; href?: string }[] = [
@@ -19,6 +23,14 @@ export function SiteHeader() {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const pathname = usePathname();
+  const router = useRouter();
+  const { mounted, isLoggedIn, name, logout } = useAuthSession();
+
+  const onLogout = () => {
+    logout();
+    // 인증이 필요한 페이지에 있었다면 피드로 보내고, 일반 페이지면 그대로 둔다.
+    if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) router.push("/feed");
+  };
 
   return (
     <header
@@ -67,20 +79,38 @@ export function SiteHeader() {
             <Bell size={16} />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#7dd3a3]" />
           </Link>
-          <Link
-            href="/login"
-            className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
-            style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
-          >
-            로그인
-          </Link>
-          <Link
-            href="/signup"
-            className="text-[13px] px-3 py-1.5 rounded-full font-medium"
-            style={{ background: "#7dd3a3", color: "#0f1f22" }}
-          >
-            회원가입
-          </Link>
+          {/* mount 전에는 깜빡임 방지로 인증 영역을 비워둔다. */}
+          {mounted && isLoggedIn ? (
+            <>
+              <span className="text-[13px] px-1" style={{ color: dark ? "#f9f7f2" : "#1c4044" }}>
+                {name ?? "사용자"}
+              </span>
+              <button
+                onClick={onLogout}
+                className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
+                style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
+              >
+                로그아웃
+              </button>
+            </>
+          ) : mounted ? (
+            <>
+              <Link
+                href="/login"
+                className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
+                style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
+              >
+                로그인
+              </Link>
+              <Link
+                href="/signup"
+                className="text-[13px] px-3 py-1.5 rounded-full font-medium"
+                style={{ background: "#7dd3a3", color: "#0f1f22" }}
+              >
+                회원가입
+              </Link>
+            </>
+          ) : null}
         </div>
       </div>
     </header>
