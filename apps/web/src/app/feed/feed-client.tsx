@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, TrendingUp } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { progressPercent } from "@/lib/progress";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
@@ -117,7 +118,7 @@ function SideHot({ campaigns }: { campaigns: Campaign[] }) {
       </div>
       <div className="space-y-3">
         {hot.map((c) => {
-          const pct = Math.round((c.joined / c.capacity) * 100);
+          const pct = progressPercent(c.joined, c.capacity);
           return (
             <div key={c.id} className="flex gap-3 items-center">
               <img src={c.thumb} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />

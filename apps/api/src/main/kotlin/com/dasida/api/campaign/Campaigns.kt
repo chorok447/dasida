@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.util.UUID
 
 data class CampaignBody(val heading: String, val paragraphs: List<String>, val images: List<String>)
@@ -137,25 +139,54 @@ class CampaignController(private val repo: CampaignRepository) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreateCampaignRequest, @AuthenticationPrincipal user: AuthUser): Campaign {
-        if (req.title.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
+        val title = req.title.trim()
+        if (title.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
+        if (req.capacity <= 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive")
+        if (req.capacity > MAX_CAPACITY) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity is too large")
+
+        // 날짜는 ISO yyyy-MM-dd 만 허용. 프론트가 <input type=date> 로 보냄.
+        val recruitStart = parseDateOrBadRequest(req.recruitStart, "recruitStart")
+        val recruitEnd = parseDateOrBadRequest(req.recruitEnd, "recruitEnd")
+        val runStart = parseDateOrBadRequest(req.runStart, "runStart")
+        val runEnd = parseDateOrBadRequest(req.runEnd, "runEnd")
+        if (recruitStart.isAfter(recruitEnd)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "recruitStart must be on or before recruitEnd")
+        }
+        if (runStart.isAfter(runEnd)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "runStart must be on or before runEnd")
+        }
+
         return repo.save(
             Campaign(
                 id = "c-${UUID.randomUUID()}",
                 status = "upcoming",
-                title = req.title,
-                summary = req.summary,
-                thumb = req.thumb,
-                recruitStart = req.recruitStart,
-                recruitEnd = req.recruitEnd,
-                runStart = req.runStart,
-                runEnd = req.runEnd,
+                title = title,
+                summary = req.summary.trim(),
+                thumb = req.thumb.trim(),
+                recruitStart = recruitStart.toString(),
+                recruitEnd = recruitEnd.toString(),
+                runStart = runStart.toString(),
+                runEnd = runEnd.toString(),
                 capacity = req.capacity,
                 joined = 0,
                 daysLeftLabel = "모집예정",
                 author = Author(user.name, user.verified),
-                body = CampaignBody("캠페인 소개", listOf(req.body).filter { it.isNotBlank() }, emptyList()),
+                body = CampaignBody("캠페인 소개", listOf(req.body.trim()).filter { it.isNotBlank() }, emptyList()),
                 seq = System.currentTimeMillis(),
             ),
         )
+    }
+
+    private fun parseDateOrBadRequest(value: String, field: String): LocalDate {
+        if (value.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "$field is required")
+        return try {
+            LocalDate.parse(value.trim())
+        } catch (_: DateTimeParseException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "$field must be yyyy-MM-dd")
+        }
+    }
+
+    companion object {
+        private const val MAX_CAPACITY = 10000
     }
 }

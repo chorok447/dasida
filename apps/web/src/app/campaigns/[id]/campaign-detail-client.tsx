@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { progressPercent } from "@/lib/progress";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 
@@ -52,7 +53,7 @@ function HeaderCard({ c }: { c: Campaign }) {
   const sy = useSpring(my, { stiffness: 150, damping: 22 });
   const rY = useTransform(sx, [-0.5, 0.5], [-6, 6]);
   const rX = useTransform(sy, [-0.5, 0.5], [5, -5]);
-  const pct = Math.min(100, (c.joined / c.capacity) * 100);
+  const pct = progressPercent(c.joined, c.capacity);
 
   return (
     <div style={{ perspective: 1600 }}>
