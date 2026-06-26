@@ -1,18 +1,24 @@
 package com.dasida.api.auth
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class AuthControllerTest(@Autowired val mvc: MockMvc) {
+class AuthControllerTest(
+    @Autowired val mvc: MockMvc,
+    @Autowired val repo: UserRepository,
+) {
 
     @Test
     fun `회원가입하면 201과 토큰을 반환한다`() {
@@ -126,6 +132,22 @@ class AuthControllerTest(@Autowired val mvc: MockMvc) {
                 contentType = MediaType.APPLICATION_JSON
                 content = """{"email":"bad$i@dasida.com","password":"$pw","name":"불가"}"""
             }.andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
+    fun `깨진 Bearer 토큰으로 me 호출하면 401`() {
+        mvc.get("/api/auth/me") {
+            headers { add("Authorization", "Bearer broken-token") }
+        }.andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `같은 이메일 중복 저장은 DB unique 제약으로 막힌다`() {
+        // signup race 의 마지막 방어선: 사전 체크를 통과해도 unique 제약이 INSERT 를 막는다(컨트롤러가 409 로 변환).
+        repo.saveAndFlush(User(email = "race@dasida.com", passwordHash = "h", name = "원본"))
+        assertThrows<DataIntegrityViolationException> {
+            repo.saveAndFlush(User(email = "race@dasida.com", passwordHash = "h", name = "중복"))
         }
     }
 
