@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { apiPost, apiDelete, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
@@ -22,8 +24,36 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const dark = theme === "dark";
   const p = post;
   const [idx, setIdx] = useState(0);
-  const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(p.likes);
+  const [liked, setLiked] = useState(p.likedByMe);
+  const [liking, setLiking] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+
+  const onLike = async () => {
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (liking) return; // 연타 방지
+    setLiking(true);
+    try {
+      const updated = liked
+        ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
+        : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      setLikes(updated.likes);
+      setLiked(updated.likedByMe);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else {
+        alert("좋아요 처리에 실패했습니다.");
+      }
+    } finally {
+      setLiking(false);
+    }
+  };
 
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
@@ -153,14 +183,14 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               <div className="flex items-center gap-2 pt-3 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
                 <motion.button
                   whileTap={{ scale: 0.85 }}
-                  onClick={() => setLiked((v) => !v)}
+                  onClick={onLike}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
                   style={{
                     background: liked ? "rgba(237,92,72,0.15)" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
                     color: liked ? "#ed5c48" : dark ? "#f9f7f2" : "#0f1f22",
                   }}
                 >
-                  <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} /> {p.likes + (liked ? 1 : 0)}
+                  <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} /> {likes}
                 </motion.button>
                 <button className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
                   <MessageCircle size={14} /> {p.comments}

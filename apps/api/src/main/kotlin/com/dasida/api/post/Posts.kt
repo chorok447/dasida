@@ -65,6 +65,7 @@ class PostLike(
 interface PostLikeRepository : JpaRepository<PostLike, String> {
     fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
     fun findByPostIdAndUserId(postId: String, userId: Long): PostLike?
+    fun findByUserIdAndPostIdIn(userId: Long, postIds: Collection<String>): List<PostLike>
 }
 
 /** 게시글 댓글. 오래된 순(seq ASC) 정렬. */
@@ -137,6 +138,20 @@ data class CreatePostRequest(
 
 data class CreateCommentRequest(val text: String)
 
+/** GET/like 응답. Post 필드 + 요청 유저 기준 likedByMe. */
+data class PostResponse(
+    val id: String,
+    val author: Author,
+    val time: String,
+    val text: String,
+    val tags: List<String>,
+    val images: List<String>,
+    val likes: Int,
+    val comments: Int,
+    val campaignId: String?,
+    val likedByMe: Boolean,
+)
+
 @RestController
 @RequestMapping("/api/posts")
 class PostController(
@@ -146,17 +161,28 @@ class PostController(
     private val commentRepo: PostCommentRepository,
 ) {
     @GetMapping
-    fun list(): List<Post> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
+    fun list(@AuthenticationPrincipal user: AuthUser?): List<PostResponse> {
+        val posts = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
+        // N+1 회피: 내가 좋아요한 postId 를 한 번에 조회.
+        val likedIds = if (user == null || posts.isEmpty()) {
+            emptySet()
+        } else {
+            likeRepo.findByUserIdAndPostIdIn(user.id, posts.map { it.id }).map { it.postId }.toSet()
+        }
+        return posts.map { it.toResponse(it.id in likedIds) }
+    }
 
     @GetMapping("/{id}")
-    fun get(@PathVariable id: String): Post =
-        repo.findById(id).orElseThrow {
+    fun get(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?): PostResponse {
+        val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
+        return post.toResponse(user != null && likeRepo.existsByPostIdAndUserId(id, user.id))
+    }
 
     /** 좋아요. 이미 누른 경우 idempotent(200, 증가 없음). */
     @PostMapping("/{id}/like")
-    fun like(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Post {
+    fun like(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): PostResponse {
         val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
@@ -170,13 +196,13 @@ class PostController(
                 // 동시 요청으로 이미 좋아요 row 가 들어간 경우. idempotent 200, 중복 증가 없음.
             }
         }
-        return post
+        return post.toResponse(likedByMe = true)
     }
 
     /** 좋아요 취소. 누르지 않은 경우 idempotent(200). likes 는 0 미만으로 내려가지 않음. */
     @DeleteMapping("/{id}/like")
     @Transactional
-    fun unlike(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Post {
+    fun unlike(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): PostResponse {
         val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
@@ -184,8 +210,13 @@ class PostController(
             likeRepo.delete(it)
             post.likes = maxOf(0, post.likes - 1)
         }
-        return post
+        return post.toResponse(likedByMe = false)
     }
+
+    private fun Post.toResponse(likedByMe: Boolean = false) = PostResponse(
+        id = id, author = author, time = time, text = text, tags = tags, images = images,
+        likes = likes, comments = comments, campaignId = campaignId, likedByMe = likedByMe,
+    )
 
     @GetMapping("/{id}/comments")
     fun comments(@PathVariable id: String): List<PostComment> {
@@ -223,7 +254,7 @@ class PostController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody req: CreatePostRequest, @AuthenticationPrincipal user: AuthUser): Post {
+    fun create(@RequestBody req: CreatePostRequest, @AuthenticationPrincipal user: AuthUser): PostResponse {
         val text = req.text.trim()
         if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
         if (text.length > MAX_TEXT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
@@ -246,7 +277,7 @@ class PostController(
                 campaignId = campaignId,
                 seq = System.currentTimeMillis(),
             ),
-        )
+        ).toResponse(likedByMe = false)
     }
 
     private fun normalizeTags(tags: List<String>): List<String> {

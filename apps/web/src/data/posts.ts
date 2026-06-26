@@ -9,4 +9,5 @@ export type Post = {
   likes: number;
   comments: number;
   campaignId?: string;
+  likedByMe: boolean;
 };

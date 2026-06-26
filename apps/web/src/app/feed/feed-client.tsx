@@ -7,7 +7,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, TrendingUp, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
-import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
@@ -32,7 +32,8 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
 
   const router = useRouter();
   const [likes, setLikes] = useState(p.likes);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(p.likedByMe);
+  const [liking, setLiking] = useState(false);
   const [commentCount, setCommentCount] = useState(p.comments);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -48,14 +49,19 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
 
   const onLike = async () => {
     if (!getToken()) return requireLogin();
-    if (liked) return; // unlike 미구현(MVP): 한 번만 호출
+    if (liking) return; // 연타 방지
+    setLiking(true);
     try {
-      const updated = await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      const updated = liked
+        ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
+        : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
       setLikes(updated.likes);
-      setLiked(true);
+      setLiked(updated.likedByMe);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) requireLogin();
       else alert("좋아요 처리에 실패했습니다.");
+    } finally {
+      setLiking(false);
     }
   };
 

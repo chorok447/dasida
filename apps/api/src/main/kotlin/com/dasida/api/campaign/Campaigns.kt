@@ -67,6 +67,7 @@ class CampaignParticipant(
 
 interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, String> {
     fun existsByCampaignIdAndUserId(campaignId: String, userId: Long): Boolean
+    fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
 }
 
 /**
@@ -142,6 +143,25 @@ data class CreateCampaignRequest(
     val capacity: Int = 0,
 )
 
+/** GET/join 응답. Campaign 필드 + 요청 유저 기준 joinedByMe. */
+data class CampaignResponse(
+    val id: String,
+    val status: String,
+    val title: String,
+    val summary: String,
+    val thumb: String,
+    val recruitStart: String,
+    val recruitEnd: String,
+    val runStart: String,
+    val runEnd: String,
+    val capacity: Int,
+    val joined: Int,
+    val daysLeftLabel: String,
+    val author: Author,
+    val body: CampaignBody,
+    val joinedByMe: Boolean,
+)
+
 @RestController
 @RequestMapping("/api/campaigns")
 class CampaignController(
@@ -149,24 +169,35 @@ class CampaignController(
     private val participants: CampaignParticipantRepository,
 ) {
     @GetMapping
-    fun list(): List<Campaign> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
+    fun list(@AuthenticationPrincipal user: AuthUser?): List<CampaignResponse> {
+        val campaigns = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
+        // N+1 회피: 내가 참여한 campaignId 를 한 번에 조회.
+        val joinedIds = if (user == null || campaigns.isEmpty()) {
+            emptySet()
+        } else {
+            participants.findByUserIdAndCampaignIdIn(user.id, campaigns.map { it.id }).map { it.campaignId }.toSet()
+        }
+        return campaigns.map { it.toResponse(it.id in joinedIds) }
+    }
 
     @GetMapping("/{id}")
-    fun get(@PathVariable id: String): Campaign =
-        repo.findById(id).orElseThrow {
+    fun get(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?): CampaignResponse {
+        val campaign = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         }
+        return campaign.toResponse(user != null && participants.existsByCampaignIdAndUserId(id, user.id))
+    }
 
     /**
      * 캠페인 참여. 인증 필요. open 이 아니면 400, 정원 초과면 409.
      * 이미 참여한 유저는 idempotent(200, 증가 없음). unique 제약이 동시 중복 참여를 막는다.
      */
     @PostMapping("/{id}/join")
-    fun join(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Campaign {
+    fun join(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): CampaignResponse {
         val campaign = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         }
-        if (participants.existsByCampaignIdAndUserId(id, user.id)) return campaign // idempotent
+        if (participants.existsByCampaignIdAndUserId(id, user.id)) return campaign.toResponse(joinedByMe = true)
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign is not open")
         }
@@ -181,12 +212,19 @@ class CampaignController(
         } catch (_: DataIntegrityViolationException) {
             // 동시 요청으로 이미 참여 row 가 들어간 경우. idempotent 200, 중복 증가 없음.
         }
-        return campaign
+        return campaign.toResponse(joinedByMe = true)
     }
+
+    private fun Campaign.toResponse(joinedByMe: Boolean = false) = CampaignResponse(
+        id = id, status = status, title = title, summary = summary, thumb = thumb,
+        recruitStart = recruitStart, recruitEnd = recruitEnd, runStart = runStart, runEnd = runEnd,
+        capacity = capacity, joined = joined, daysLeftLabel = daysLeftLabel,
+        author = author, body = body, joinedByMe = joinedByMe,
+    )
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody req: CreateCampaignRequest, @AuthenticationPrincipal user: AuthUser): Campaign {
+    fun create(@RequestBody req: CreateCampaignRequest, @AuthenticationPrincipal user: AuthUser): CampaignResponse {
         val title = req.title.trim()
         if (title.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
         if (req.capacity <= 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive")
@@ -222,7 +260,7 @@ class CampaignController(
                 body = CampaignBody("캠페인 소개", listOf(req.body.trim()).filter { it.isNotBlank() }, emptyList()),
                 seq = System.currentTimeMillis(),
             ),
-        )
+        ).toResponse(joinedByMe = false)
     }
 
     private fun parseDateOrBadRequest(value: String, field: String): LocalDate {

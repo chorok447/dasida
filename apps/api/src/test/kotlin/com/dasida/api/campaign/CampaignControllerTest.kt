@@ -3,6 +3,7 @@ package com.dasida.api.campaign
 import com.dasida.api.auth.User
 import com.dasida.api.post.Author
 import com.dasida.api.security.JwtService
+import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -193,6 +194,51 @@ class CampaignControllerTest(
         join(id).andExpect {
             status { isOk() }
             jsonPath("$.joined") { value(2) }
+        }
+    }
+
+    // ---- joinedByMe ----
+
+    @Test
+    fun `비로그인 단건은 joinedByMe false`() {
+        mvc.get("/api/campaigns/${saveCampaign()}").andExpect {
+            status { isOk() }
+            jsonPath("$.joinedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `내가 참여한 campaign 은 joinedByMe true`() {
+        val id = saveCampaign()
+        participantRepo.saveAndFlush(CampaignParticipant("cp-me", id, 1))
+        mvc.get("/api/campaigns/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.joinedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `참여하지 않은 campaign 은 로그인해도 joinedByMe false`() {
+        mvc.get("/api/campaigns/${saveCampaign()}") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            jsonPath("$.joinedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `join 응답은 joinedByMe true`() {
+        join(saveCampaign(capacity = 10, joined = 0)).andExpect {
+            status { isOk() }
+            jsonPath("$.joinedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `list 에서 내가 참여한 campaign 만 joinedByMe true`() {
+        val id = saveCampaign()
+        participantRepo.saveAndFlush(CampaignParticipant("cp-list", id, 1))
+        mvc.get("/api/campaigns") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].joinedByMe") { value(Matchers.hasItem(true)) }
         }
     }
 }
