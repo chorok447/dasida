@@ -13,6 +13,7 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
@@ -155,14 +156,19 @@ class PostController(
 
     /** 좋아요. 이미 누른 경우 idempotent(200, 증가 없음). */
     @PostMapping("/{id}/like")
-    @Transactional
     fun like(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Post {
         val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
         if (!likeRepo.existsByPostIdAndUserId(id, user.id)) {
-            likeRepo.save(PostLike("plk-${UUID.randomUUID()}", id, user.id))
-            post.likes += 1
+            try {
+                // saveAndFlush 로 unique 위반을 즉시 표출. (controller 는 비-tx 라 catch 후 정상 200 반환)
+                likeRepo.saveAndFlush(PostLike("plk-${UUID.randomUUID()}", id, user.id))
+                post.likes += 1
+                repo.save(post)
+            } catch (_: DataIntegrityViolationException) {
+                // 동시 요청으로 이미 좋아요 row 가 들어간 경우. idempotent 200, 중복 증가 없음.
+            }
         }
         return post
     }

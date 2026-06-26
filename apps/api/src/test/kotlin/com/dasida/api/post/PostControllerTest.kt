@@ -21,6 +21,7 @@ class PostControllerTest(
     @Autowired val mvc: MockMvc,
     @Autowired val jwt: JwtService,
     @Autowired val posts: PostRepository,
+    @Autowired val likeRepo: PostLikeRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
 
@@ -220,6 +221,37 @@ class PostControllerTest(
             .andExpect {
                 status { isOk() }
                 jsonPath("$.likes") { value(0) }
+            }
+    }
+
+    @Test
+    fun `이미 좋아요 row 가 있으면 like 는 idempotent 하게 200이고 중복 증가하지 않는다`() {
+        val id = savePost(likes = 3)
+        likeRepo.saveAndFlush(PostLike("plk-pre", id, 1)) // 토큰 유저 id=1 이 이미 좋아요한 상태
+        mvc.post("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.likes") { value(3) }
+            }
+    }
+
+    @Test
+    fun `좋아요하지 않은 상태에서 unlike 는 idempotent 하게 200이고 0 유지`() {
+        val id = savePost(likes = 0)
+        mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.likes") { value(0) }
+            }
+    }
+
+    @Test
+    fun `like row 가 없으면 unlike 는 likes 를 감소시키지 않는다`() {
+        val id = savePost(likes = 5)
+        mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.likes") { value(5) }
             }
     }
 
