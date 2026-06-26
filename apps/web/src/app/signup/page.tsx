@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, User, IdCard, Check, ArrowRight } from "lucide-react";
 import { AuthShell, FieldInput } from "@/components/auth-shell";
 import { useTheme } from "@/lib/theme-context";
-import { apiPost } from "@/lib/api";
+import { apiPost, ApiError } from "@/lib/api";
 import { setSession } from "@/lib/auth";
 
 type AuthResponse = { token: string; name: string; verified: boolean };
@@ -51,7 +51,7 @@ export default function SignupPage() {
       router.push("/feed");
     } catch (e) {
       setSubmitting(false);
-      setError(e instanceof Error && e.message.includes("409") ? "이미 사용 중인 이메일입니다." : "회원가입에 실패했습니다.");
+      setError(e instanceof ApiError && e.status === 409 ? "이미 사용 중인 이메일입니다." : "회원가입에 실패했습니다.");
     }
   };
 
