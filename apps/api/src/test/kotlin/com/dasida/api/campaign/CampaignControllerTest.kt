@@ -21,6 +21,7 @@ class CampaignControllerTest(
     @Autowired val mvc: MockMvc,
     @Autowired val jwt: JwtService,
     @Autowired val campaignRepo: CampaignRepository,
+    @Autowired val participantRepo: CampaignParticipantRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
 
@@ -183,5 +184,15 @@ class CampaignControllerTest(
     @Test
     fun `정원이 꽉 찬 campaign 참여는 409`() {
         join(saveCampaign(capacity = 5, joined = 5)).andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `이미 참여 row 가 있으면 join 은 idempotent 하게 200이고 중복 증가하지 않는다`() {
+        val id = saveCampaign(capacity = 10, joined = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-pre", id, 1)) // 토큰 유저 id=1 이 이미 참여
+        join(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(2) }
+        }
     }
 }
