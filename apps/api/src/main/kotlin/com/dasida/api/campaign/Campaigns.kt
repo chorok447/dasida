@@ -12,11 +12,11 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -162,7 +162,6 @@ class CampaignController(
      * 이미 참여한 유저는 idempotent(200, 증가 없음). unique 제약이 동시 중복 참여를 막는다.
      */
     @PostMapping("/{id}/join")
-    @Transactional
     fun join(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Campaign {
         val campaign = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
@@ -174,8 +173,14 @@ class CampaignController(
         if (campaign.joined >= campaign.capacity) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is full")
         }
-        participants.save(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
-        campaign.joined += 1
+        try {
+            // saveAndFlush 로 unique 위반을 즉시 표출. (controller 는 비-tx 라 catch 후 정상 200 반환)
+            participants.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
+            campaign.joined += 1
+            repo.save(campaign)
+        } catch (_: DataIntegrityViolationException) {
+            // 동시 요청으로 이미 참여 row 가 들어간 경우. idempotent 200, 중복 증가 없음.
+        }
         return campaign
     }
 
