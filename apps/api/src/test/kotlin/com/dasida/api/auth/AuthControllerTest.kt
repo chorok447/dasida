@@ -65,6 +65,34 @@ class AuthControllerTest(@Autowired val mvc: MockMvc) {
     }
 
     @Test
+    fun `이메일은 대소문자 무시 - 대문자로 가입하고 소문자로 로그인된다`() {
+        mvc.post("/api/auth/signup") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"Case@Dasida.com","password":"password1","name":"케이스"}"""
+        }.andExpect { status { isCreated() } }
+
+        // 다른 케이스로 재가입 시도 → 중복 409
+        mvc.post("/api/auth/signup") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"CASE@dasida.com","password":"password1","name":"중복"}"""
+        }.andExpect { status { isConflict() } }
+
+        // 다른 케이스로 로그인 → 성공
+        mvc.post("/api/auth/login") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"case@DASIDA.com","password":"password1"}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `이메일 형식이 아니면 400`() {
+        mvc.post("/api/auth/signup") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"not-an-email","password":"password1","name":"형식"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
     fun `틀린 비밀번호는 401`() {
         mvc.post("/api/auth/signup") {
             contentType = MediaType.APPLICATION_JSON
