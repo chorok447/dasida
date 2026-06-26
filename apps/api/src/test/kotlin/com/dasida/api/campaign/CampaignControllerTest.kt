@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.auth.User
+import com.dasida.api.post.Author
 import com.dasida.api.security.JwtService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -11,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -18,8 +20,23 @@ import org.springframework.transaction.annotation.Transactional
 class CampaignControllerTest(
     @Autowired val mvc: MockMvc,
     @Autowired val jwt: JwtService,
+    @Autowired val campaignRepo: CampaignRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
+
+    // 시드 상태에 의존하지 않도록 테스트용 캠페인을 직접 저장.
+    private fun saveCampaign(status: String = "open", capacity: Int = 10, joined: Int = 0): String {
+        val id = "itc-${UUID.randomUUID()}"
+        campaignRepo.save(
+            Campaign(
+                id, status, "테스트 캠페인", "요약", "https://x/y.png",
+                "2026-07-01", "2026-07-31", "2026-08-05", "2026-08-30",
+                capacity, joined, "라벨", Author("개설자", false),
+                CampaignBody("소개", emptyList(), emptyList()),
+            ),
+        )
+        return id
+    }
 
     @Test
     fun `목록은 시드 전체를 반환한다`() {
@@ -125,5 +142,46 @@ class CampaignControllerTest(
             """{"title":"순서","capacity":10,"recruitStart":"2026-07-01",
                "recruitEnd":"2026-07-31","runStart":"2026-08-30","runEnd":"2026-08-05"}""",
         ).andExpect { status { isBadRequest() } }
+    }
+
+    // ---- 참여(join) ----
+
+    private fun join(id: String) = mvc.post("/api/campaigns/$id/join") {
+        headers { add("Authorization", "Bearer $token") }
+    }
+
+    @Test
+    fun `참여는 인증 없으면 401`() {
+        mvc.post("/api/campaigns/${saveCampaign()}/join").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `없는 campaign 참여는 404`() {
+        join("nope").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `open 이 아닌 campaign 참여는 400`() {
+        join(saveCampaign(status = "upcoming")).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `정상 참여는 joined 가 1 증가`() {
+        join(saveCampaign(capacity = 10, joined = 0)).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(1) }
+        }
+    }
+
+    @Test
+    fun `같은 유저가 두 번 참여해도 중복 증가하지 않는다`() {
+        val id = saveCampaign(capacity = 10, joined = 0)
+        repeat(2) { join(id).andExpect { status { isOk() } } }
+        mvc.get("/api/campaigns/$id").andExpect { jsonPath("$.joined") { value(1) } }
+    }
+
+    @Test
+    fun `정원이 꽉 찬 campaign 참여는 409`() {
+        join(saveCampaign(capacity = 5, joined = 5)).andExpect { status { isConflict() } }
     }
 }
