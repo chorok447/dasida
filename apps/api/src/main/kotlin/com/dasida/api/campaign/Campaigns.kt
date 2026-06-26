@@ -9,12 +9,14 @@ import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -42,7 +44,7 @@ class Campaign(
     val runStart: String,
     val runEnd: String,
     val capacity: Int,
-    @Column(name = "joined_count") val joined: Int,
+    @Column(name = "joined_count") var joined: Int,
     val daysLeftLabel: String,
     @Embedded val author: Author,
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val body: CampaignBody,
@@ -50,6 +52,22 @@ class Campaign(
 )
 
 interface CampaignRepository : JpaRepository<Campaign, String>
+
+/** 캠페인 참여자. (campaign_id, user_id) unique 로 중복 참여를 막는다. */
+@Entity
+@Table(
+    name = "campaign_participants",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["campaign_id", "user_id"])],
+)
+class CampaignParticipant(
+    @Id val id: String,
+    @Column(name = "campaign_id") val campaignId: String,
+    @Column(name = "user_id") val userId: Long,
+)
+
+interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, String> {
+    fun existsByCampaignIdAndUserId(campaignId: String, userId: Long): Boolean
+}
 
 /**
  * 초기 적재 시드. apps/web/src/data/campaigns.ts 와 1:1 미러. SeedRunner 가 비어있을 때만 저장.
@@ -126,7 +144,10 @@ data class CreateCampaignRequest(
 
 @RestController
 @RequestMapping("/api/campaigns")
-class CampaignController(private val repo: CampaignRepository) {
+class CampaignController(
+    private val repo: CampaignRepository,
+    private val participants: CampaignParticipantRepository,
+) {
     @GetMapping
     fun list(): List<Campaign> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
 
@@ -135,6 +156,28 @@ class CampaignController(private val repo: CampaignRepository) {
         repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         }
+
+    /**
+     * 캠페인 참여. 인증 필요. open 이 아니면 400, 정원 초과면 409.
+     * 이미 참여한 유저는 idempotent(200, 증가 없음). unique 제약이 동시 중복 참여를 막는다.
+     */
+    @PostMapping("/{id}/join")
+    @Transactional
+    fun join(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Campaign {
+        val campaign = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        }
+        if (participants.existsByCampaignIdAndUserId(id, user.id)) return campaign // idempotent
+        if (campaign.status != "open") {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign is not open")
+        }
+        if (campaign.joined >= campaign.capacity) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is full")
+        }
+        participants.save(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
+        campaign.joined += 1
+        return campaign
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

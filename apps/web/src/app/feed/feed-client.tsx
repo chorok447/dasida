@@ -1,15 +1,21 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, TrendingUp } from "lucide-react";
+import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, TrendingUp, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
+
+const MAX_COMMENT_LENGTH = 500;
+
+type Comment = { id: string; author: { name: string; verified: boolean }; text: string; time: string };
 
 const categories = ["전체", "패션", "도시텃밭", "공방", "기증", "음식", "가구"];
 
@@ -23,6 +29,67 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
   const sy = useSpring(my, { stiffness: 220, damping: 22 });
   const rY = useTransform(sx, [-0.5, 0.5], [-6, 6]);
   const rX = useTransform(sy, [-0.5, 0.5], [5, -5]);
+
+  const router = useRouter();
+  const [likes, setLikes] = useState(p.likes);
+  const [liked, setLiked] = useState(false);
+  const [commentCount, setCommentCount] = useState(p.comments);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const requireLogin = () => {
+    alert("로그인이 필요합니다.");
+    router.push("/login");
+  };
+
+  const onLike = async () => {
+    if (!getToken()) return requireLogin();
+    if (liked) return; // unlike 미구현(MVP): 한 번만 호출
+    try {
+      const updated = await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      setLikes(updated.likes);
+      setLiked(true);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) requireLogin();
+    }
+  };
+
+  const toggleComments = async () => {
+    const next = !showComments;
+    setShowComments(next);
+    if (next && !commentsLoaded) {
+      try {
+        setComments(await apiGet<Comment[]>(`/api/posts/${p.id}/comments`));
+      } catch {
+        setComments([]);
+      } finally {
+        setCommentsLoaded(true);
+      }
+    }
+  };
+
+  const submitComment = async () => {
+    const text = commentText.trim();
+    if (!text || busy) return;
+    if (text.length > MAX_COMMENT_LENGTH) return alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
+    if (!getToken()) return requireLogin();
+    setBusy(true);
+    try {
+      const created = await apiPost<Comment>(`/api/posts/${p.id}/comments`, { text });
+      setComments((cs) => [...cs, created]);
+      setCommentCount((c) => c + 1);
+      setCommentText("");
+    } catch (e) {
+      setBusy(false);
+      if (e instanceof ApiError && e.status === 401) requireLogin();
+      else alert("댓글 작성에 실패했습니다.");
+      return;
+    }
+    setBusy(false);
+  };
 
   return (
     <div style={{ perspective: 1200 }}>
@@ -78,11 +145,11 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
             <div className="flex gap-4 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              <button className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors">
-                <Heart size={14} /> {p.likes}
+              <button onClick={onLike} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors" style={liked ? { color: "#ed5c48" } : undefined}>
+                <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
               </button>
-              <button className="flex items-center gap-1">
-                <MessageCircle size={14} /> {p.comments}
+              <button onClick={toggleComments} className="flex items-center gap-1">
+                <MessageCircle size={14} /> {commentCount}
               </button>
               <button className="flex items-center gap-1">
                 <Share2 size={14} />
@@ -92,6 +159,42 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
               <Bookmark size={14} />
             </button>
           </div>
+
+          {showComments && (
+            <div className="pt-3 border-t space-y-3" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
+              {comments.length === 0 ? (
+                <p className="text-[12px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                  {commentsLoaded ? "첫 댓글을 남겨보세요." : "댓글을 불러오는 중…"}
+                </p>
+              ) : (
+                comments.slice(0, 5).map((c) => (
+                  <div key={c.id} className="flex gap-2 items-start">
+                    <Avatar name={c.author.name} verified={c.author.verified} size={28} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                        {c.author.name} <span className="opacity-50">· {c.time}</span>
+                      </div>
+                      <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}>{c.text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
+                  placeholder="댓글 달기…"
+                  maxLength={MAX_COMMENT_LENGTH}
+                  className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
+                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                />
+                <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
+                  <Send size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </motion.article>
     </div>
