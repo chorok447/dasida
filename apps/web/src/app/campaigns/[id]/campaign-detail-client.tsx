@@ -7,6 +7,8 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
+import { apiPost, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 
@@ -168,16 +170,18 @@ function HeaderCard({ c }: { c: Campaign }) {
   );
 }
 
-function CTABar({ c }: { c: Campaign }) {
+function CTABar({ c, onJoin, joining }: { c: Campaign; onJoin: () => void; joining: boolean }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   if (c.status === "open") {
     return (
       <button
-        className="w-full py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)]"
+        onClick={onJoin}
+        disabled={joining}
+        className="w-full py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50"
         style={{ background: "#7dd3a3", color: "#0f1f22", fontSize: 17 }}
       >
-        캠페인 참여하기
+        {joining ? "참여 처리 중…" : "캠페인 참여하기"}
       </button>
     );
   }
@@ -191,6 +195,7 @@ function CTABar({ c }: { c: Campaign }) {
           {c.recruitStart} 00:00 모집을 시작합니다
         </div>
         <button
+          onClick={() => alert("알림 신청은 준비 중입니다.")}
           className="py-5 px-6 rounded-2xl font-medium flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-transform"
           style={{ background: "#0d7479", color: "#ffffff" }}
         >
@@ -313,7 +318,31 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [tab, setTab] = useState<Tab>("content");
-  const c = campaign;
+  const [c, setC] = useState(campaign);
+  const [joining, setJoining] = useState(false);
+
+  const join = async () => {
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    setJoining(true);
+    try {
+      setC(await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {}));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (e instanceof ApiError && e.status === 409) {
+        alert("모집 정원이 가득 찼습니다.");
+      } else {
+        alert("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      setJoining(false);
+    }
+  };
 
   return (
     <section
@@ -341,7 +370,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         <HeaderCard c={c} />
 
         <div className="mt-8 sticky top-20 z-10">
-          <CTABar c={c} />
+          <CTABar c={c} onJoin={join} joining={joining} />
         </div>
 
         <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>

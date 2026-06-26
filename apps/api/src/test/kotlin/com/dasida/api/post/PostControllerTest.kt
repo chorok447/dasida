@@ -8,9 +8,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -18,8 +20,16 @@ import org.springframework.transaction.annotation.Transactional
 class PostControllerTest(
     @Autowired val mvc: MockMvc,
     @Autowired val jwt: JwtService,
+    @Autowired val posts: PostRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
+
+    // 시드 상태에 의존하지 않도록 테스트용 게시글을 직접 저장.
+    private fun savePost(likes: Int = 0, comments: Int = 0): String {
+        val id = "itp-${UUID.randomUUID()}"
+        posts.save(Post(id, Author("작성자", false), "방금", "본문", emptyList(), emptyList(), likes, comments))
+        return id
+    }
 
     @Test
     fun `목록은 시드 전체를 반환한다`() {
@@ -167,5 +177,116 @@ class PostControllerTest(
             status { isCreated() }
             jsonPath("$.campaignId") { value(null) }
         }
+    }
+
+    // ---- 좋아요 ----
+
+    @Test
+    fun `좋아요는 인증 없으면 401`() {
+        mvc.post("/api/posts/${savePost()}/like").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `없는 post 좋아요는 404`() {
+        mvc.post("/api/posts/nope/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `정상 좋아요는 likes 가 1 증가`() {
+        val id = savePost(likes = 0)
+        mvc.post("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.likes") { value(1) }
+            }
+    }
+
+    @Test
+    fun `같은 유저가 두 번 좋아요해도 중복 증가하지 않는다`() {
+        val id = savePost(likes = 0)
+        repeat(2) {
+            mvc.post("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+                .andExpect { status { isOk() } }
+        }
+        mvc.get("/api/posts/$id").andExpect { jsonPath("$.likes") { value(1) } }
+    }
+
+    @Test
+    fun `좋아요 취소는 likes 를 되돌린다`() {
+        val id = savePost(likes = 0)
+        mvc.post("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+        mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.likes") { value(0) }
+            }
+    }
+
+    // ---- 댓글 ----
+
+    @Test
+    fun `댓글 목록은 public 이고 배열을 반환한다`() {
+        val id = savePost()
+        mvc.get("/api/posts/$id/comments").andExpect {
+            status { isOk() }
+            jsonPath("$") { isArray() }
+        }
+    }
+
+    @Test
+    fun `없는 post 댓글 목록은 404`() {
+        mvc.get("/api/posts/nope/comments").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `댓글 작성은 인증 없으면 401`() {
+        mvc.post("/api/posts/${savePost()}/comments") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"무명 댓글"}"""
+        }.andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `blank 댓글은 400`() {
+        mvc.post("/api/posts/${savePost()}/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"   "}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `500자 초과 댓글은 400`() {
+        val long = "가".repeat(501)
+        mvc.post("/api/posts/${savePost()}/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"$long"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `정상 댓글 작성은 201이고 post comments 가 1 증가`() {
+        val id = savePost(comments = 0)
+        mvc.post("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"  좋은 글이네요  "}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.text") { value("좋은 글이네요") }
+            jsonPath("$.author.name") { value("테스터") }
+        }
+        mvc.get("/api/posts/$id").andExpect { jsonPath("$.comments") { value(1) } }
+    }
+
+    @Test
+    fun `없는 post 댓글 작성은 404`() {
+        mvc.post("/api/posts/nope/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"댓글"}"""
+        }.andExpect { status { isNotFound() } }
     }
 }
