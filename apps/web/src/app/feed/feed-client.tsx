@@ -37,6 +37,7 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentsError, setCommentsError] = useState("");
   const [commentText, setCommentText] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -54,6 +55,7 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
       setLiked(true);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) requireLogin();
+      else alert("좋아요 처리에 실패했습니다.");
     }
   };
 
@@ -63,8 +65,10 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
     if (next && !commentsLoaded) {
       try {
         setComments(await apiGet<Comment[]>(`/api/posts/${p.id}/comments`));
+        setCommentsError("");
       } catch {
         setComments([]);
+        setCommentsError("댓글을 불러오지 못했습니다.");
       } finally {
         setCommentsLoaded(true);
       }
@@ -162,7 +166,9 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
 
           {showComments && (
             <div className="pt-3 border-t space-y-3" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-              {comments.length === 0 ? (
+              {commentsError ? (
+                <p className="text-[12px]" style={{ color: "#ed5c48" }}>{commentsError}</p>
+              ) : comments.length === 0 ? (
                 <p className="text-[12px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
                   {commentsLoaded ? "첫 댓글을 남겨보세요." : "댓글을 불러오는 중…"}
                 </p>

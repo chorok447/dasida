@@ -4,7 +4,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Send } from "lucide-react";
+import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, ApiError } from "@/lib/api";
@@ -13,25 +13,6 @@ import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 
 type Tab = "content" | "comments";
-
-const comments = [
-  {
-    id: 1,
-    name: "금잔디 명예소방관",
-    time: "3시간",
-    text: "캠페인 관련해서 궁금한게 있어서 댓글 남깁니다. 캠페인 이후 기부가 어떻게 진행되는지 자세하게 알려주실 수 있나요?",
-    replies: [] as { id: number; name: string; verified?: boolean; text: string }[],
-  },
-  {
-    id: 2,
-    name: "익명의 고슴도치",
-    time: "2일",
-    text: "혹시 판매하실 의향도 있으신가요?",
-    replies: [
-      { id: 3, name: "김다시", verified: true, text: "원하시는 분들이 많아서 판매 열어보려고 합니다! 자세한건 나중에 공지 할게요!" },
-    ],
-  },
-];
 
 function StatusBadge({ c }: { c: Campaign }) {
   const m = statusMeta[c.status];
@@ -247,68 +228,22 @@ function ContentTab({ c }: { c: Campaign }) {
 function CommentsTab() {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  // 캠페인 댓글 API 는 아직 없음 → 실제 기능처럼 보이지 않게 준비 중 안내만 표시.
   return (
     <div
-      className="rounded-3xl border p-10"
+      className="rounded-3xl border p-10 text-center"
       style={{
         background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
         borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
       }}
     >
-      <div
-        className="flex items-center gap-3 p-3 rounded-2xl mb-8"
-        style={{
-          background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)",
-          border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)"}`,
-        }}
-      >
-        <Avatar name="나" />
-        <input
-          placeholder="댓글 달기..."
-          className="flex-1 bg-transparent outline-none text-[14px] placeholder:opacity-50"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-        />
-        <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
-          <Send size={14} />
-        </button>
-      </div>
-
-      <div className="space-y-7">
-        {comments.map((cm) => (
-          <div key={cm.id} className="flex gap-3">
-            <Avatar name={cm.name} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-[13px]">
-                <span style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{cm.name}</span>
-                <span className="opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>· {cm.time}</span>
-              </div>
-              <p className="mt-1 text-[14px]" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
-                {cm.text}
-              </p>
-              <button className="mt-1.5 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                답글 달기
-              </button>
-              {cm.replies.length > 0 && (
-                <div className="mt-4 space-y-4 pl-4 border-l-2" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
-                  {cm.replies.map((r) => (
-                    <div key={r.id} className="flex gap-3">
-                      <Avatar name={r.name} verified={r.verified} />
-                      <div>
-                        <div className="text-[13px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                          {r.name}
-                        </div>
-                        <p className="mt-0.5 text-[14px]" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
-                          {r.text}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <MessageCircle size={28} className="mx-auto mb-4" style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} />
+      <p className="text-[15px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+        캠페인 댓글 기능은 준비 중입니다.
+      </p>
+      <p className="mt-2 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+        궁금한 점은 추후 문의 기능을 통해 남길 수 있어요.
+      </p>
     </div>
   );
 }
@@ -336,6 +271,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 409) {
         alert("모집 정원이 가득 찼습니다.");
+      } else if (e instanceof ApiError && e.status === 400) {
+        alert("현재 참여할 수 없는 캠페인입니다.");
       } else {
         alert("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
@@ -376,7 +313,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
           {([
             { id: "content", label: "캠페인 내용", icon: <FileText size={14} /> },
-            { id: "comments", label: "댓글보기", icon: <MessageCircle size={14} /> },
+            { id: "comments", label: "문의", icon: <MessageCircle size={14} /> },
           ] as { id: Tab; label: string; icon: React.ReactNode }[]).map((t) => {
             const active = tab === t.id;
             return (
