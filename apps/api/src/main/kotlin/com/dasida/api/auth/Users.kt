@@ -54,20 +54,24 @@ class AuthController(
     @ResponseStatus(HttpStatus.CREATED)
     fun signup(@RequestBody req: SignupRequest): AuthResponse {
         val email = req.email.trim().lowercase()
-        if (email.isBlank() || req.name.isBlank()) {
+        val name = req.name.trim()
+        if (email.isBlank() || name.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "email and name are required")
         }
         if (!email.matches(EMAIL_RE)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid email format")
         }
-        if (req.password.length < 8) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "password must be at least 8 characters")
+        if (!req.password.matches(PASSWORD_RE)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "password must be 8-15 chars with letters, digits and a special character",
+            )
         }
         if (repo.existsByEmail(email)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
         }
         val user = repo.save(
-            User(email = email, passwordHash = encoder.encode(req.password), name = req.name),
+            User(email = email, passwordHash = encoder.encode(req.password), name = name),
         )
         return AuthResponse(jwt.issue(user), user.name, user.verified)
     }
@@ -93,5 +97,8 @@ class AuthController(
     companion object {
         // ponytail: 형식 sanity 체크만(RFC 5322 아님). local@domain.tld 수준이면 통과.
         private val EMAIL_RE = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+
+        // 프론트 회원가입 정책과 일치: 영문/숫자/특수문자 각 1개 이상, 8~15자.
+        private val PASSWORD_RE = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,15}$")
     }
 }
