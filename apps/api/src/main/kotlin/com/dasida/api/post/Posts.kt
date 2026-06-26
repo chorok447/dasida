@@ -1,5 +1,6 @@
 package com.dasida.api.post
 
+import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.Photos
 import com.dasida.api.security.AuthUser
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -102,7 +103,10 @@ data class CreatePostRequest(
 
 @RestController
 @RequestMapping("/api/posts")
-class PostController(private val repo: PostRepository) {
+class PostController(
+    private val repo: PostRepository,
+    private val campaigns: CampaignRepository,
+) {
     @GetMapping
     fun list(): List<Post> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
 
@@ -115,20 +119,58 @@ class PostController(private val repo: PostRepository) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreatePostRequest, @AuthenticationPrincipal user: AuthUser): Post {
-        if (req.text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
+        val text = req.text.trim()
+        if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
+        if (text.length > MAX_TEXT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
+
+        val campaignId = req.campaignId?.trim()?.ifBlank { null }
+        if (campaignId != null && !campaigns.existsById(campaignId)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign not found")
+        }
+
         return repo.save(
             Post(
                 id = "p-${UUID.randomUUID()}",
                 author = Author(user.name, user.verified),
                 time = "방금 전",
-                text = req.text,
-                tags = req.tags,
-                images = req.images,
+                text = text,
+                tags = normalizeTags(req.tags),
+                images = normalizeImages(req.images),
                 likes = 0,
                 comments = 0,
-                campaignId = req.campaignId?.ifBlank { null },
+                campaignId = campaignId,
                 seq = System.currentTimeMillis(),
             ),
         )
+    }
+
+    private fun normalizeTags(tags: List<String>): List<String> {
+        val normalized = tags
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map { if (it.startsWith("#")) it else "#$it" }
+            .distinct()
+        if (normalized.size > MAX_TAGS) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "too many tags")
+        if (normalized.any { it.length > MAX_TAG_LENGTH }) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "tag is too long")
+        }
+        return normalized
+    }
+
+    private fun normalizeImages(images: List<String>): List<String> {
+        val normalized = images.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (normalized.size > MAX_IMAGES) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "too many images")
+        // 서버가 이미지를 fetch 하지 않으므로 SSRF 방어는 범위 밖. http(s) 형식만 최소 검증.
+        if (normalized.any { !(it.startsWith("http://") || it.startsWith("https://")) }) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "image must be http(s) url")
+        }
+        return normalized
+    }
+
+    companion object {
+        private const val MAX_TEXT_LENGTH = 1000
+        private const val MAX_TAGS = 10
+        private const val MAX_TAG_LENGTH = 30
+        private const val MAX_IMAGES = 4
     }
 }

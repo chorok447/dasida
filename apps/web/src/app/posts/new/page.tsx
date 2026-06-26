@@ -13,6 +13,22 @@ import { fashionPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/dat
 
 const sampleImages = [fashionPhotos[0], naturePhotos[1], objectPhotos[0], workshopPhotos[2]];
 
+// 서버 제한과 동일하게 맞춤.
+const MAX_TEXT_LENGTH = 1000;
+const MAX_TAGS = 10;
+const MAX_IMAGES = 4;
+
+function normalizeTags(tags: string[]) {
+  return Array.from(
+    new Set(
+      tags
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .map((t) => (t.startsWith("#") ? t : `#${t}`)),
+    ),
+  );
+}
+
 export default function PostCreatePage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -44,10 +60,21 @@ export default function PostCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const goBack = () => router.push("/feed");
   const submit = async () => {
-    if (!text.trim() || submitting) return;
+    const trimmedText = text.trim();
+    if (!trimmedText || submitting) return;
+    const normalizedTags = normalizeTags(tags);
+    const normalizedImages = Array.from(new Set(images.map((i) => i.trim()).filter(Boolean)));
+    if (trimmedText.length > MAX_TEXT_LENGTH) return alert(`내용은 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
+    if (normalizedTags.length > MAX_TAGS) return alert(`태그는 최대 ${MAX_TAGS}개까지 가능합니다.`);
+    if (normalizedImages.length > MAX_IMAGES) return alert(`이미지는 최대 ${MAX_IMAGES}개까지 가능합니다.`);
     setSubmitting(true);
     try {
-      await apiPost("/api/posts", { text, images, tags, campaignId: campaign || null });
+      await apiPost("/api/posts", {
+        text: trimmedText,
+        images: normalizedImages,
+        tags: normalizedTags,
+        campaignId: campaign.trim() || null,
+      });
       router.push("/feed");
     } catch (e) {
       setSubmitting(false);

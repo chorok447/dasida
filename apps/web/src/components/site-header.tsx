@@ -24,7 +24,7 @@ export function SiteHeader() {
   const dark = theme === "dark";
   const pathname = usePathname();
   const router = useRouter();
-  const { mounted, isLoggedIn, name, logout } = useAuthSession();
+  const { isLoggedIn, name, logout } = useAuthSession();
 
   const onLogout = () => {
     logout();
@@ -79,8 +79,8 @@ export function SiteHeader() {
             <Bell size={16} />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#7dd3a3]" />
           </Link>
-          {/* mount 전에는 깜빡임 방지로 인증 영역을 비워둔다. */}
-          {mounted && isLoggedIn ? (
+          {/* 서버 스냅샷은 항상 로그아웃 상태 → 비로그인 뷰로 hydration, 이후 클라이언트에서 갱신. */}
+          {isLoggedIn ? (
             <>
               <span className="text-[13px] px-1" style={{ color: dark ? "#f9f7f2" : "#1c4044" }}>
                 {name ?? "사용자"}
@@ -93,7 +93,7 @@ export function SiteHeader() {
                 로그아웃
               </button>
             </>
-          ) : mounted ? (
+          ) : (
             <>
               <Link
                 href="/login"
@@ -110,7 +110,7 @@ export function SiteHeader() {
                 회원가입
               </Link>
             </>
-          ) : null}
+          )}
         </div>
       </div>
     </header>
