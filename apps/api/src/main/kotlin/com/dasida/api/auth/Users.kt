@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -67,12 +68,16 @@ class AuthController(
                 "password must be 8-15 chars with letters, digits and a special character",
             )
         }
+        // 빠른 실패용 사전 체크. 동시 가입 경쟁은 아래 unique 제약 위반 catch 로 처리.
         if (repo.existsByEmail(email)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
         }
-        val user = repo.save(
-            User(email = email, passwordHash = encoder.encode(req.password), name = name),
-        )
+        val user = try {
+            repo.save(User(email = email, passwordHash = encoder.encode(req.password), name = name))
+        } catch (e: DataIntegrityViolationException) {
+            // 동시 요청이 사전 체크를 둘 다 통과한 경우 → unique 제약 위반을 409 로 변환(500 방지)
+            throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
+        }
         return AuthResponse(jwt.issue(user), user.name, user.verified)
     }
 

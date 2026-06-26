@@ -52,6 +52,15 @@ class PostControllerTest(
     }
 
     @Test
+    fun `깨진 토큰으로 생성하면 401`() {
+        mvc.post("/api/posts") {
+            headers { add("Authorization", "Bearer broken-token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"무명 글"}"""
+        }.andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
     fun `토큰으로 생성하면 201과 함께 저장된다`() {
         mvc.post("/api/posts") {
             headers { add("Authorization", "Bearer $token") }

@@ -45,7 +45,7 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .authorizeHttpRequests {
-                it.requestMatchers("/actuator/**").permitAll()
+                it.requestMatchers("/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
