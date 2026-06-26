@@ -10,12 +10,15 @@ import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -41,13 +44,43 @@ class Post(
     @Column(name = "content", columnDefinition = "TEXT") val text: String,
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val tags: List<String>,
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val images: List<String>,
-    val likes: Int,
-    val comments: Int,
+    var likes: Int,
+    var comments: Int,
     val campaignId: String? = null,
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
 )
 
 interface PostRepository : JpaRepository<Post, String>
+
+/** 사용자별 좋아요. (post_id, user_id) unique 로 중복 좋아요를 막는다. */
+@Entity
+@Table(name = "post_likes", uniqueConstraints = [UniqueConstraint(columnNames = ["post_id", "user_id"])])
+class PostLike(
+    @Id val id: String,
+    @Column(name = "post_id") val postId: String,
+    @Column(name = "user_id") val userId: Long,
+)
+
+interface PostLikeRepository : JpaRepository<PostLike, String> {
+    fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
+    fun findByPostIdAndUserId(postId: String, userId: Long): PostLike?
+}
+
+/** 게시글 댓글. 오래된 순(seq ASC) 정렬. */
+@Entity
+@Table(name = "post_comments")
+class PostComment(
+    @Id val id: String,
+    @Column(name = "post_id") val postId: String,
+    @Embedded val author: Author,
+    @Column(columnDefinition = "TEXT") val text: String,
+    @Column(name = "time_label") val time: String,
+    @JsonIgnore var seq: Long = 0,
+)
+
+interface PostCommentRepository : JpaRepository<PostComment, String> {
+    fun findByPostIdOrderBySeqAsc(postId: String): List<PostComment>
+}
 
 /**
  * 초기 적재 시드. apps/web/src/data/posts.ts 와 1:1 미러. SeedRunner 가 비어있을 때만 저장.
@@ -101,11 +134,15 @@ data class CreatePostRequest(
     val campaignId: String? = null,
 )
 
+data class CreateCommentRequest(val text: String)
+
 @RestController
 @RequestMapping("/api/posts")
 class PostController(
     private val repo: PostRepository,
     private val campaigns: CampaignRepository,
+    private val likeRepo: PostLikeRepository,
+    private val commentRepo: PostCommentRepository,
 ) {
     @GetMapping
     fun list(): List<Post> = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
@@ -115,6 +152,68 @@ class PostController(
         repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
+
+    /** 좋아요. 이미 누른 경우 idempotent(200, 증가 없음). */
+    @PostMapping("/{id}/like")
+    @Transactional
+    fun like(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Post {
+        val post = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        if (!likeRepo.existsByPostIdAndUserId(id, user.id)) {
+            likeRepo.save(PostLike("plk-${UUID.randomUUID()}", id, user.id))
+            post.likes += 1
+        }
+        return post
+    }
+
+    /** 좋아요 취소. 누르지 않은 경우 idempotent(200). likes 는 0 미만으로 내려가지 않음. */
+    @DeleteMapping("/{id}/like")
+    @Transactional
+    fun unlike(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): Post {
+        val post = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        likeRepo.findByPostIdAndUserId(id, user.id)?.let {
+            likeRepo.delete(it)
+            post.likes = maxOf(0, post.likes - 1)
+        }
+        return post
+    }
+
+    @GetMapping("/{id}/comments")
+    fun comments(@PathVariable id: String): List<PostComment> {
+        if (!repo.existsById(id)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        return commentRepo.findByPostIdOrderBySeqAsc(id)
+    }
+
+    @PostMapping("/{id}/comments")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    fun addComment(
+        @PathVariable id: String,
+        @RequestBody req: CreateCommentRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PostComment {
+        val post = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        val text = req.text.trim()
+        if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is required")
+        if (text.length > MAX_COMMENT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is too long")
+        val comment = commentRepo.save(
+            PostComment(
+                id = "pc-${UUID.randomUUID()}",
+                postId = id,
+                author = Author(user.name, user.verified),
+                text = text,
+                time = "방금 전",
+                seq = System.currentTimeMillis(),
+            ),
+        )
+        post.comments += 1
+        return comment
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -172,5 +271,6 @@ class PostController(
         private const val MAX_TAGS = 10
         private const val MAX_TAG_LENGTH = 30
         private const val MAX_IMAGES = 4
+        private const val MAX_COMMENT_LENGTH = 500
     }
 }
