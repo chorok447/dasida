@@ -154,6 +154,16 @@ function HeaderCard({ c }: { c: Campaign }) {
 function CTABar({ c, onJoin, joining }: { c: Campaign; onJoin: () => void; joining: boolean }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  if (c.joinedByMe) {
+    return (
+      <div
+        className="w-full py-5 rounded-2xl text-center font-medium"
+        style={{ background: "rgba(125,211,163,0.18)", color: dark ? "#7dd3a3" : "#1c4044", fontSize: 16 }}
+      >
+        이미 참여한 캠페인입니다
+      </div>
+    );
+  }
   if (c.status === "open") {
     return (
       <button
