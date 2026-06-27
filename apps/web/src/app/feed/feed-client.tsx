@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
@@ -291,10 +292,13 @@ function SideRecommend() {
   );
 }
 
-export default function FeedClient({ posts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
+export default function FeedClient({ posts: initialPosts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
+  // 새로고침 후 토큰 포함 재조회로 likedByMe 복원.
+  const [posts, setPosts] = useState(initialPosts);
+  useAuthedRefresh<Post[]>("/api/posts", setPosts);
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
@@ -350,7 +354,8 @@ export default function FeedClient({ posts, campaigns }: { posts: Post[]; campai
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {posts.map((p) => (
-              <PostCard key={p.id} p={p} onOpen={() => router.push(`/posts/${p.id}`)} />
+              // key에 likedByMe/likes 포함 → 재조회로 값이 바뀌면 카드를 리마운트해 초기 상태를 갱신.
+              <PostCard key={`${p.id}-${p.likedByMe}-${p.likes}`} p={p} onOpen={() => router.push(`/posts/${p.id}`)} />
             ))}
           </div>
         </main>

@@ -8,6 +8,7 @@ import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, C
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
@@ -28,6 +29,12 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+
+  // 새로고침 후 likedByMe·likes 사용자별 상태 복원.
+  useAuthedRefresh<Post>(`/api/posts/${p.id}`, (u) => {
+    setLikes(u.likes);
+    setLiked(u.likedByMe);
+  });
 
   const onLike = async () => {
     if (!getToken()) {
