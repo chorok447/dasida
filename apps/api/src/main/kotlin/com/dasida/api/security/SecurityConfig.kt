@@ -47,6 +47,7 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers("/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+                it.requestMatchers(HttpMethod.GET, "/api/posts/bookmarks").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
             }
