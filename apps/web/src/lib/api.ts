@@ -80,3 +80,13 @@ export async function apiDelete<T>(path: string): Promise<T> {
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
   return res.json() as Promise<T>;
 }
+
+/** 본문 없는 DELETE(204). apiDelete<T>는 JSON 파싱을 기대하므로 204 응답엔 이 헬퍼를 쓴다. */
+export async function apiDeleteVoid(path: string): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
+}
