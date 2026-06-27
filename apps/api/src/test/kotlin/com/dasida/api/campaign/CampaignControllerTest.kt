@@ -175,6 +175,197 @@ class CampaignControllerTest(
         ).andExpect { status { isBadRequest() } }
     }
 
+    // ---- 캠페인 수정 ----
+
+    private fun validUpdateBody(
+        title: String = "수정 캠페인",
+        summary: String = "수정 요약",
+        body: String = "수정 본문",
+        thumb: String = "https://x/updated.png",
+        recruitStart: String = "2026-09-01",
+        recruitEnd: String = "2026-09-30",
+        runStart: String = "2026-10-05",
+        runEnd: String = "2026-10-31",
+        capacity: Int = 30,
+    ) = """{"title":"$title","summary":"$summary","body":"$body","thumb":"$thumb",
+        "recruitStart":"$recruitStart","recruitEnd":"$recruitEnd",
+        "runStart":"$runStart","runEnd":"$runEnd","capacity":$capacity}"""
+
+    private fun updateCampaign(id: String, body: String = validUpdateBody(), bearer: String? = token) =
+        mvc.put("/api/campaigns/$id") {
+            if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+            contentType = MediaType.APPLICATION_JSON
+            content = body
+        }
+
+    @Test
+    fun `캠페인 수정은 인증 없으면 401`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(id, bearer = null).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `개설자는 upcoming 캠페인을 수정할 수 있고 DB에 저장된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+
+        updateCampaign(id).andExpect {
+            status { isOk() }
+            jsonPath("$.title") { value("수정 캠페인") }
+            jsonPath("$.summary") { value("수정 요약") }
+            jsonPath("$.thumb") { value("https://x/updated.png") }
+            jsonPath("$.recruitStart") { value("2026-09-01") }
+            jsonPath("$.recruitEnd") { value("2026-09-30") }
+            jsonPath("$.runStart") { value("2026-10-05") }
+            jsonPath("$.runEnd") { value("2026-10-31") }
+            jsonPath("$.capacity") { value(30) }
+            jsonPath("$.body.paragraphs[0]") { value("수정 본문") }
+        }
+
+        val saved = campaignRepo.findById(id).get()
+        assertThat(saved.title).isEqualTo("수정 캠페인")
+        assertThat(saved.summary).isEqualTo("수정 요약")
+        assertThat(saved.body.paragraphs).containsExactly("수정 본문")
+        assertThat(saved.capacity).isEqualTo(30)
+    }
+
+    @Test
+    fun `다른 사용자는 캠페인을 수정할 수 없다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(id, bearer = otherToken).andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `authorUserId가 null인 캠페인은 수정할 수 없다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = null)
+        updateCampaign(id).andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `없는 캠페인 수정은 404`() {
+        updateCampaign("nope").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `open 캠페인 수정은 409`() {
+        val id = saveCampaign(status = "open", authorUserId = 1)
+        updateCampaign(id).andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `closed 캠페인 수정은 409`() {
+        val id = saveCampaign(status = "closed", authorUserId = 1)
+        updateCampaign(id).andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `수정 제목은 trim 되어 저장된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(id, validUpdateBody(title = "  제목 정규화  ")).andExpect {
+            status { isOk() }
+            jsonPath("$.title") { value("제목 정규화") }
+        }
+    }
+
+    @Test
+    fun `수정 제목이 blank면 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(id, validUpdateBody(title = "  ")).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정 정원이 0이거나 음수면 400`() {
+        listOf(0, -1).forEach { capacity ->
+            val id = saveCampaign(status = "upcoming", authorUserId = 1)
+            updateCampaign(id, validUpdateBody(capacity = capacity)).andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
+    fun `수정 정원이 상한을 넘으면 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(id, validUpdateBody(capacity = 10001)).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정 날짜 형식이 잘못되면 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(id, validUpdateBody(recruitStart = "2026/09/01")).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정 모집 시작일이 종료일보다 늦으면 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(
+            id,
+            validUpdateBody(recruitStart = "2026-09-30", recruitEnd = "2026-09-01"),
+        ).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정 진행 시작일이 종료일보다 늦으면 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(
+            id,
+            validUpdateBody(runStart = "2026-10-31", runEnd = "2026-10-05"),
+        ).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정 요약 본문 썸네일은 trim 되어 저장된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(
+            id,
+            validUpdateBody(summary = "  요약  ", body = "  본문  ", thumb = "  https://x/trim.png  "),
+        ).andExpect {
+            status { isOk() }
+            jsonPath("$.summary") { value("요약") }
+            jsonPath("$.body.paragraphs[0]") { value("본문") }
+            jsonPath("$.thumb") { value("https://x/trim.png") }
+        }
+    }
+
+    @Test
+    fun `수정해도 불변 필드는 유지된다`() {
+        val id = saveCampaign(
+            status = "upcoming",
+            joined = 2,
+            seq = 12345,
+            authorUserId = 1,
+            authorName = "원래 작성자",
+        )
+        val before = campaignRepo.findById(id).get()
+        val originalStatus = before.status
+        val originalJoined = before.joined
+        val originalDaysLeftLabel = before.daysLeftLabel
+        val originalAuthor = before.author
+        val originalAuthorUserId = before.authorUserId
+        val originalSeq = before.seq
+
+        updateCampaign(id).andExpect { status { isOk() } }
+
+        val saved = campaignRepo.findById(id).get()
+        assertThat(saved.id).isEqualTo(id)
+        assertThat(saved.status).isEqualTo(originalStatus)
+        assertThat(saved.joined).isEqualTo(originalJoined)
+        assertThat(saved.daysLeftLabel).isEqualTo(originalDaysLeftLabel)
+        assertThat(saved.author).isEqualTo(originalAuthor)
+        assertThat(saved.authorUserId).isEqualTo(originalAuthorUserId)
+        assertThat(saved.seq).isEqualTo(originalSeq)
+    }
+
+    @Test
+    fun `수정 응답은 실제 소유와 참여 상태를 반환하고 authorUserId를 노출하지 않는다`() {
+        val id = saveCampaign(status = "upcoming", joined = 1, authorUserId = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-edit-owner", id, 1))
+
+        updateCampaign(id).andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.joinedByMe") { value(true) }
+            jsonPath("$.authorUserId") { doesNotExist() }
+        }
+    }
+
     // ---- ownedByMe ----
 
     @Test
