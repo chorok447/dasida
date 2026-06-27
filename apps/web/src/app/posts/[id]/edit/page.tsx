@@ -65,7 +65,9 @@ export default function PostEditPage() {
   useEffect(() => {
     // 게시글 GET 은 public 이라 비로그인도 200(ownedByMe=false)이 온다.
     // 권한 없음이 아니라 로그인이 필요한 상황이므로 조회 전에 로그인으로 보낸다.
-    if (!token) {
+    // useAuthSession 의 token 은 hydration 시 서버 스냅샷(null)을 먼저 주므로,
+    // 로그인 사용자가 잘못 리다이렉트되지 않도록 실제 저장소(getToken)를 직접 확인한다.
+    if (!getToken()) {
       router.replace("/login");
       return;
     }
