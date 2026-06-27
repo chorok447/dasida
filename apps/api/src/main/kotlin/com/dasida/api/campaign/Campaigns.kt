@@ -2,6 +2,7 @@ package com.dasida.api.campaign
 
 import com.dasida.api.common.Photos
 import com.dasida.api.post.Author
+import com.dasida.api.post.PostRepository
 import com.dasida.api.security.AuthUser
 import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.Column
@@ -21,6 +22,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -212,6 +214,7 @@ data class CampaignResponse(
 class CampaignController(
     private val repo: CampaignRepository,
     private val participants: CampaignParticipantRepository,
+    private val posts: PostRepository,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<CampaignResponse> {
@@ -367,6 +370,36 @@ class CampaignController(
             viewerId = user.id,
             joinedByMe = participants.existsByCampaignIdAndUserId(id, user.id),
         )
+    }
+
+    /**
+     * 모집 예정 캠페인 삭제. 개설자만, status=upcoming 이고 참여자·연결 게시글이 없을 때만 허용한다.
+     *
+     * 잠금 순서는 다른 캠페인 변경 API(join/status/update)와 같이 campaign row lock 을 가장 먼저 잡아
+     * 같은 캠페인의 삭제·참여·수정·모집시작을 직렬화한다. 연결 게시글 존재 확인도 이 lock 안에서 하므로,
+     * 게시글 생성(campaign write lock 보유)과 동시에 실행돼도 둘 중 하나만 통과해 orphan campaignId 가 남지 않는다.
+     * soft delete 미도입 → 이미 지워진 캠페인을 다시 삭제하면 404.
+     */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    fun delete(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser) {
+        val campaign = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        if (campaign.authorUserId == null || campaign.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
+        }
+        if (campaign.status != "upcoming") {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "only upcoming campaigns can be deleted")
+        }
+        // 참여 카운터와 participant row 가 불일치해도 둘 중 하나라도 0 이 아니면 삭제를 거부한다.
+        if (campaign.joined != 0 || participants.countByCampaignId(id) != 0L) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign has participants")
+        }
+        if (posts.existsByCampaignId(id)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign has linked posts")
+        }
+        repo.delete(campaign)
     }
 
     private fun Campaign.toResponse(
