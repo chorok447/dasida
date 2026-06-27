@@ -22,13 +22,22 @@ export type AuthedRefresh = {
  * - 최초 마운트 + 비로그인 → 서버 렌더가 이미 public 이라 재조회 생략.
  * - seq(generation) ref 로 최신 요청만 apply, unmount/변경 후 도착분은 무시.
  * - 실패해도 서버 렌더 데이터를 fallback 으로 두고 loading 을 풀어준다.
+ *
+ * @param neutralize identity(token) 변경 시 재조회 전에 호출. 사용자별 상태(likedByMe/joinedByMe)를
+ *   즉시 neutral 로 되돌려, 이후 GET 이 실패해도 이전 사용자 상태가 남지 않게 한다. likes/joined 숫자는 유지.
  */
-export function useAuthedRefresh<T>(path: string, apply: (data: T) => void): AuthedRefresh {
+export function useAuthedRefresh<T>(
+  path: string,
+  apply: (data: T) => void,
+  neutralize?: () => void,
+): AuthedRefresh {
   const { token } = useAuthSession();
-  // apply 를 deps 에 넣지 않기 위해 ref 로 안정화. ref 쓰기는 렌더 밖(effect)에서만.
+  // apply/neutralize 를 deps 에 넣지 않기 위해 ref 로 안정화. ref 쓰기는 렌더 밖(effect)에서만.
   const applyRef = useRef(apply);
+  const neutralizeRef = useRef(neutralize);
   useEffect(() => {
     applyRef.current = apply;
+    neutralizeRef.current = neutralize;
   });
 
   // seq(generation): invalidatePending 과 effect 가 공유하는 "최신 요청" 토큰.
@@ -46,6 +55,10 @@ export function useAuthedRefresh<T>(path: string, apply: (data: T) => void): Aut
     firstRef.current = false;
     // 최초 마운트면서 비로그인: 서버 렌더 public 데이터 그대로 사용.
     if (wasFirst && !token) return;
+
+    // identity 변경(로그아웃·토큰교체·로그인)이면 재조회 전에 사용자별 상태를 즉시 neutral 로.
+    // GET 이 실패해도 이전 사용자 상태가 남지 않는다. 최초 마운트는 서버 렌더가 이미 neutral 이라 제외.
+    if (!wasFirst) neutralizeRef.current?.();
 
     let cancelled = false; // path/token 변경·unmount 시 이 요청을 무효화(로컬 플래그)
     const seq = ++seqRef.current;
