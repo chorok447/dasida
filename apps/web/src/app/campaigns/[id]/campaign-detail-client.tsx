@@ -5,10 +5,10 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil } from "lucide-react";
+import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil, Trash2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
-import { apiPost, apiPut, ApiError } from "@/lib/api";
+import { apiPost, apiPut, apiDeleteVoid, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -163,14 +163,19 @@ function CampaignStatusManagement({
   c,
   ownershipConfirmed,
   updating,
+  deleting,
   disabled,
   onChange,
+  onDelete,
 }: {
   c: Campaign;
   ownershipConfirmed: boolean;
   updating: boolean;
+  deleting: boolean;
+  // 상태 변경·삭제·재조회 중 하나라도 진행 중이면 true. 두 mutation 의 동시 실행을 막는다.
   disabled: boolean;
   onChange: (status: "open" | "closed") => void;
+  onDelete: () => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -197,7 +202,11 @@ function CampaignStatusManagement({
           <Link
             href={`/campaigns/${c.id}/edit`}
             aria-label="캠페인 수정"
-            className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-medium"
+            aria-disabled={disabled}
+            tabIndex={disabled ? -1 : undefined}
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-medium ${
+              disabled ? "pointer-events-none opacity-45" : ""
+            }`}
             style={{
               background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
               color: dark ? "#f9f7f2" : "#1c4044",
@@ -219,6 +228,18 @@ function CampaignStatusManagement({
         >
           {updating ? "처리 중…" : label}
         </button>
+        {c.status === "upcoming" ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={disabled}
+            aria-label="캠페인 삭제"
+            className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
+            style={{ background: "rgba(237,92,72,0.16)", color: "#ed5c48" }}
+          >
+            <Trash2 size={14} /> {deleting ? "삭제 중…" : "캠페인 삭제"}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -342,6 +363,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [joining, setJoining] = useState(false);
   const statusUpdatingRef = useRef(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const deletingRef = useRef(false);
+  const [deleting, setDeleting] = useState(false);
 
   // 새로고침·로그인/로그아웃 시 참여·소유 상태를 함께 동기화한다.
   // identity 변경 시 사용자별 상태만 즉시 neutral(false), joined 숫자는 유지한다.
@@ -393,7 +416,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   };
 
   const updateStatus = async (target: "open" | "closed") => {
-    if (statusUpdatingRef.current) return;
+    if (statusUpdatingRef.current || deletingRef.current) return; // 삭제와 동시 실행 금지
     if (!getToken()) {
       alert("로그인이 필요합니다.");
       router.push("/login");
@@ -435,6 +458,47 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     }
   };
 
+  const deleteCampaign = async () => {
+    if (statusUpdatingRef.current || deletingRef.current) return; // 모집 시작과 동시 실행 금지
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (!confirm("이 캠페인을 삭제할까요?\n삭제한 캠페인은 복구할 수 없습니다.")) return;
+
+    const requestToken = getToken();
+    if (!requestToken) return;
+    deletingRef.current = true;
+    setDeleting(true);
+    invalidatePending(); // 진행 중 재조회 결과가 삭제 동작과 경합하지 않게
+    try {
+      await apiDeleteVoid(`/api/campaigns/${c.id}`);
+      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      // 삭제된 상세가 history 에 남지 않도록 replace 로 이동. 다른 state 는 갱신하지 않는다.
+      router.replace("/mypage");
+    } catch (e) {
+      if (getToken() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) {
+        clearSession();
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (e instanceof ApiError && e.status === 403) {
+        alert("캠페인 삭제 권한이 없습니다.");
+      } else if (e instanceof ApiError && e.status === 404) {
+        alert("이미 삭제되었거나 존재하지 않는 캠페인입니다.");
+        router.push("/campaigns");
+      } else if (e instanceof ApiError && e.status === 409) {
+        alert("모집을 시작했거나 참여자 또는 연결 게시글이 있어 삭제할 수 없습니다.");
+      } else {
+        alert("캠페인 삭제에 실패했습니다.");
+      }
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
+  };
+
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
@@ -464,8 +528,10 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
           c={c}
           ownershipConfirmed={ownershipConfirmed}
           updating={statusUpdating}
-          disabled={statusUpdating || refreshing}
+          deleting={deleting}
+          disabled={statusUpdating || deleting || refreshing}
           onChange={updateStatus}
+          onDelete={deleteCampaign}
         />
 
         <div className="mt-8 sticky top-20 z-10">
