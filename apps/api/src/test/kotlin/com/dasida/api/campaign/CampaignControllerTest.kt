@@ -2,6 +2,8 @@ package com.dasida.api.campaign
 
 import com.dasida.api.auth.User
 import com.dasida.api.post.Author
+import com.dasida.api.post.Post
+import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
@@ -11,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -25,6 +28,7 @@ class CampaignControllerTest(
     @Autowired val jwt: JwtService,
     @Autowired val campaignRepo: CampaignRepository,
     @Autowired val participantRepo: CampaignParticipantRepository,
+    @Autowired val postRepo: PostRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
@@ -854,5 +858,121 @@ class CampaignControllerTest(
             jsonPath("$[?(@.id == '$joinedId')].joinedByMe") { value(Matchers.hasItem(true)) }
             jsonPath("$[?(@.id == '$notJoinedId')].joinedByMe") { value(Matchers.hasItem(false)) }
         }
+    }
+
+    // ---- 삭제(DELETE) ----
+
+    private fun deleteCampaign(id: String, bearer: String? = token) =
+        mvc.delete("/api/campaigns/$id") {
+            if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        }
+
+    private fun savePostLinkedTo(campaignId: String, authorUserId: Long = 1): String {
+        val id = "p-${UUID.randomUUID()}"
+        postRepo.saveAndFlush(
+            Post(
+                id, Author("작성자", false), "방금", "연결 본문",
+                emptyList(), emptyList(), 0, 0, campaignId, System.nanoTime(), authorUserId,
+            ),
+        )
+        return id
+    }
+
+    @Test
+    fun `개설자는 upcoming 캠페인을 삭제하면 204이고 row가 사라진다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        deleteCampaign(id).andExpect { status { isNoContent() } }
+        assertThat(campaignRepo.existsById(id)).isFalse()
+    }
+
+    @Test
+    fun `삭제한 캠페인은 mine 목록에서 제외된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        deleteCampaign(id).andExpect { status { isNoContent() } }
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')]") { value(Matchers.empty<Any>()) }
+        }
+    }
+
+    @Test
+    fun `삭제 성공 후 재삭제는 404`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        deleteCampaign(id).andExpect { status { isNoContent() } }
+        deleteCampaign(id).andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `비로그인 삭제는 401`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        deleteCampaign(id, bearer = null).andExpect { status { isUnauthorized() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `다른 사용자 삭제는 403이고 캠페인은 유지된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        deleteCampaign(id, bearer = otherToken).andExpect { status { isForbidden() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `authorUserId가 null인 캠페인 삭제는 403`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = null)
+        deleteCampaign(id).andExpect { status { isForbidden() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `없는 캠페인 삭제는 404`() {
+        deleteCampaign("nope").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `open 캠페인 삭제는 409이고 DB에 유지된다`() {
+        val id = saveCampaign(status = "open", authorUserId = 1)
+        deleteCampaign(id).andExpect { status { isConflict() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `closed 캠페인 삭제는 409이고 DB에 유지된다`() {
+        val id = saveCampaign(status = "closed", authorUserId = 1)
+        deleteCampaign(id).andExpect { status { isConflict() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `joined가 1 이상이면 409`() {
+        val id = saveCampaign(status = "upcoming", joined = 1, authorUserId = 1)
+        deleteCampaign(id).andExpect { status { isConflict() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `participant row가 있으면 joined가 0이어도 409이고 데이터가 유지된다`() {
+        val id = saveCampaign(status = "upcoming", joined = 0, authorUserId = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-del-guard", id, 999))
+        deleteCampaign(id).andExpect { status { isConflict() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+        assertThat(participantRepo.countByCampaignId(id)).isEqualTo(1)
+    }
+
+    @Test
+    fun `연결 게시글이 있으면 409이고 게시글과 캠페인이 유지된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        val postId = savePostLinkedTo(id)
+        deleteCampaign(id).andExpect { status { isConflict() } }
+        assertThat(campaignRepo.existsById(id)).isTrue()
+        assertThat(postRepo.existsById(postId)).isTrue()
+    }
+
+    @Test
+    fun `다른 캠페인의 게시글은 삭제를 막지 않는다`() {
+        val target = saveCampaign(status = "upcoming", authorUserId = 1)
+        val other = saveCampaign(status = "upcoming", authorUserId = 1)
+        savePostLinkedTo(other) // 다른 캠페인에만 연결된 게시글
+        deleteCampaign(target).andExpect { status { isNoContent() } }
+        assertThat(campaignRepo.existsById(target)).isFalse()
     }
 }
