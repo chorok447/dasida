@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { CalendarDays, CheckCircle2, FileText, LogIn, Pencil, RefreshCw } from "lucide-react";
+import { CheckCircle2, FileText, LogIn, Pencil, RefreshCw } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import type { UserProfile } from "@/data/users";
 import { SavedPostsGrid } from "./saved-posts-grid";
+import { JoinedCampaignsList } from "./joined-campaigns-list";
 
 type Tab = "posts" | "campaigns" | "saved";
 
@@ -138,13 +139,12 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (tab: Tab) => void }) {
   );
 }
 
-function ComingSoon({ type }: { type: "posts" | "campaigns" }) {
-  const isPosts = type === "posts";
+function ComingSoon() {
   return (
     <PageState>
-      {isPosts ? <FileText size={30} className="text-[#7dd3a3]" /> : <CalendarDays size={30} className="text-[#7dd3a3]" />}
+      <FileText size={30} className="text-[#7dd3a3]" />
       <div>
-        <p>{isPosts ? "내 게시글 목록은 준비 중입니다." : "참여 캠페인 목록은 준비 중입니다."}</p>
+        <p>내 게시글 목록은 준비 중입니다.</p>
         <p className="mt-2 text-[13px] opacity-60">연동 API가 준비되면 실제 활동을 표시합니다.</p>
       </div>
     </PageState>
@@ -202,8 +202,8 @@ export default function MyPage() {
             <ProfileHeader profile={profile} />
             <Tabs tab={tab} setTab={setTab} />
             <div className="mx-auto max-w-5xl px-6 py-10 sm:px-8">
-              {tab === "posts" ? <ComingSoon type="posts" /> : null}
-              {tab === "campaigns" ? <ComingSoon type="campaigns" /> : null}
+              {tab === "posts" ? <ComingSoon /> : null}
+              {tab === "campaigns" ? <JoinedCampaignsList /> : null}
               {tab === "saved" ? <SavedPostsGrid /> : null}
             </div>
           </>

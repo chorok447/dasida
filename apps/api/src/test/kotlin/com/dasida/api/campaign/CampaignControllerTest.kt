@@ -27,7 +27,7 @@ class CampaignControllerTest(
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
 
     // 시드 상태에 의존하지 않도록 테스트용 캠페인을 직접 저장.
-    private fun saveCampaign(status: String = "open", capacity: Int = 10, joined: Int = 0): String {
+    private fun saveCampaign(status: String = "open", capacity: Int = 10, joined: Int = 0, seq: Long = System.nanoTime()): String {
         val id = "itc-${UUID.randomUUID()}"
         campaignRepo.save(
             Campaign(
@@ -35,6 +35,7 @@ class CampaignControllerTest(
                 "2026-07-01", "2026-07-31", "2026-08-05", "2026-08-30",
                 capacity, joined, "라벨", Author("개설자", false),
                 CampaignBody("소개", emptyList(), emptyList()),
+                seq = seq,
             ),
         )
         return id
@@ -239,6 +240,109 @@ class CampaignControllerTest(
         mvc.get("/api/campaigns") { headers { add("Authorization", "Bearer $token") } }.andExpect {
             status { isOk() }
             jsonPath("$[?(@.id == '$id')].joinedByMe") { value(Matchers.hasItem(true)) }
+        }
+    }
+
+    // ---- 참여 캠페인 목록(joined) ----
+
+    private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
+
+    @Test
+    fun `비로그인 GET joined는 401`() {
+        mvc.get("/api/campaigns/joined").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `참여 내역 없으면 빈 배열`() {
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `현재 사용자가 참여한 캠페인만 반환`() {
+        val id1 = saveCampaign(seq = 100)
+        @Suppress("UNUSED_VARIABLE") val id2 = saveCampaign(seq = 200) // 참여하지 않은 캠페인
+        participantRepo.saveAndFlush(CampaignParticipant("cp-j1", id1, 1))
+        // id2 는 참여하지 않음
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].id") { value(id1) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자의 참여 캠페인은 제외`() {
+        val id = saveCampaign(seq = 100)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-j-other", id, 2)) // 다른 유저(id=2)
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `여러 캠페인은 seq DESC로 정렬`() {
+        val id1 = saveCampaign(seq = 100) // 오래된 것
+        val id2 = saveCampaign(seq = 300) // 최신
+        val id3 = saveCampaign(seq = 200) // 중간
+        participantRepo.saveAndFlush(CampaignParticipant("cp-s1", id1, 1))
+        participantRepo.saveAndFlush(CampaignParticipant("cp-s2", id2, 1))
+        participantRepo.saveAndFlush(CampaignParticipant("cp-s3", id3, 1))
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(3) }
+            jsonPath("$[0].id") { value(id2) }
+            jsonPath("$[1].id") { value(id3) }
+            jsonPath("$[2].id") { value(id1) }
+        }
+    }
+
+    @Test
+    fun `모든 결과의 joinedByMe가 true`() {
+        val id = saveCampaign(seq = 100)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-jbm", id, 1))
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].joinedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `같은 캠페인에 반복 join해도 목록에는 한 번만 반환`() {
+        val id = saveCampaign(seq = 100, capacity = 10, joined = 0)
+        // join API로 두 번 참여 (idempotent)
+        repeat(2) { join(id).andExpect { status { isOk() } } }
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+        }
+    }
+
+    @Test
+    fun `삭제된 campaignId participant는 결과에서 제외`() {
+        participantRepo.saveAndFlush(CampaignParticipant("cp-orphan", "no-such-campaign", 1))
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `기존 public GET campaigns와 단건 조회는 정상 동작`() {
+        val id = saveCampaign(seq = 100)
+        mvc.get("/api/campaigns").andExpect { status { isOk() } }
+        mvc.get("/api/campaigns/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.id") { value(id) }
         }
     }
 }
