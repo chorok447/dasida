@@ -2,12 +2,13 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { apiGet, apiPost, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
+import { getToken, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
 import type { Post, PostComment } from "@/data/posts";
@@ -26,8 +27,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [liking, setLiking] = useState(false);
   const [bookmarked, setBookmarked] = useState(p.bookmarkedByMe);
   const [bookmarking, setBookmarking] = useState(false);
+  // 작성자 여부. 서버 렌더(public)는 항상 false → 인증된 client refresh 결과를 반영한다.
+  const [owned, setOwned] = useState(p.ownedByMe);
+  const [deleting, setDeleting] = useState(false);
 
-  // 새로고침·로그인/로그아웃 시 좋아요·북마크 상태와 likes를 동기화한다.
+  // 새로고침·로그인/로그아웃 시 좋아요·북마크·소유 상태와 likes를 동기화한다.
   // identity 변경 시 사용자별 상태만 즉시 neutral(false), likes 숫자는 유지한다.
   const { refreshing, invalidatePending } = useAuthedRefresh<Post>(
     `/api/posts/${p.id}`,
@@ -35,12 +39,43 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       setLikes(u.likes);
       setLiked(u.likedByMe);
       setBookmarked(u.bookmarkedByMe);
+      setOwned(u.ownedByMe);
     },
     () => {
       setLiked(false);
       setBookmarked(false);
+      setOwned(false); // 로그아웃/토큰교체 시 이전 사용자의 작성자 UI가 남지 않게
     },
   );
+
+  const onDelete = async () => {
+    if (deleting) return;
+    const requestToken = getToken();
+    if (!requestToken) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (!confirm("이 게시글을 삭제할까요? 되돌릴 수 없습니다.")) return;
+    setDeleting(true);
+    try {
+      await apiDeleteVoid(`/api/posts/${p.id}`);
+      if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 이동 취소
+      router.push("/mypage");
+    } catch (e) {
+      if (getToken() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
+      setDeleting(false);
+      if (e instanceof ApiError && e.status === 401) {
+        clearSession();
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (e instanceof ApiError && e.status === 403) {
+        alert("삭제 권한이 없습니다.");
+      } else {
+        alert("게시글 삭제에 실패했습니다.");
+      }
+    }
+  };
 
   // ---- 댓글 ----
   const [comments, setComments] = useState<PostComment[]>([]);
@@ -196,13 +231,35 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       </div>
 
       <div className="max-w-5xl mx-auto relative">
-        <button
-          onClick={() => router.push("/feed")}
-          className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 hover:opacity-100"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-        >
-          <ArrowLeft size={14} /> 피드로 돌아가기
-        </button>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <button
+            onClick={() => router.push("/feed")}
+            className="inline-flex items-center gap-2 text-[13px] opacity-70 hover:opacity-100"
+            style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          >
+            <ArrowLeft size={14} /> 피드로 돌아가기
+          </button>
+
+          {owned && (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/posts/${p.id}/edit`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
+                style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+              >
+                <Pencil size={13} /> 수정
+              </Link>
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
+                style={{ background: "rgba(237,92,72,0.15)", color: "#ed5c48" }}
+              >
+                <Trash2 size={13} /> {deleting ? "삭제 중…" : "삭제"}
+              </button>
+            </div>
+          )}
+        </div>
 
         <div style={{ perspective: 1400 }}>
           <motion.div

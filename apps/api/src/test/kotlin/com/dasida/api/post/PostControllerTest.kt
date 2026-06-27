@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -25,8 +26,11 @@ class PostControllerTest(
     @Autowired val posts: PostRepository,
     @Autowired val likeRepo: PostLikeRepository,
     @Autowired val bookmarkRepo: PostBookmarkRepository,
+    @Autowired val commentRepo: PostCommentRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
+    // 다른 사용자(authorUserId=2) 권한 테스트용 토큰.
+    private val token2 = jwt.issue(User(id = 2, email = "u2@t.com", passwordHash = "x", name = "다른이", verified = false))
 
     // 시드 상태에 의존하지 않도록 테스트용 게시글을 직접 저장.
     private fun savePost(
@@ -692,5 +696,206 @@ class PostControllerTest(
             contentType = MediaType.APPLICATION_JSON
             content = """{"text":"댓글"}"""
         }.andExpect { status { isNotFound() } }
+    }
+
+    // ---- ownedByMe ----
+
+    @Test
+    fun `비로그인 단건은 ownedByMe false`() {
+        val id = savePost(authorUserId = 1)
+        mvc.get("/api/posts/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `작성자 로그인 단건은 ownedByMe true`() {
+        val id = savePost(authorUserId = 1)
+        mvc.get("/api/posts/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자 단건은 ownedByMe false`() {
+        val id = savePost(authorUserId = 2)
+        mvc.get("/api/posts/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `authorUserId가 null인 기존 글은 ownedByMe false`() {
+        val id = savePost(authorUserId = null, authorName = "테스터")
+        mvc.get("/api/posts/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `내 게시글 목록은 ownedByMe true`() {
+        savePost(authorUserId = 1)
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].ownedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `생성 응답은 ownedByMe true`() {
+        postPost("""{"text":"내 글"}""").andExpect {
+            status { isCreated() }
+            jsonPath("$.ownedByMe") { value(true) }
+        }
+    }
+
+    // ---- 수정(PUT) ----
+
+    private fun putPost(id: String, body: String, bearer: String? = token) = mvc.put("/api/posts/$id") {
+        if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        contentType = MediaType.APPLICATION_JSON
+        content = body
+    }
+
+    @Test
+    fun `작성자는 게시글을 수정할 수 있다`() {
+        val id = savePost(authorUserId = 1)
+        putPost(id, """{"text":"수정된 본문","tags":["#수정"],"images":[]}""").andExpect {
+            status { isOk() }
+            jsonPath("$.text") { value("수정된 본문") }
+            jsonPath("$.tags[0]") { value("#수정") }
+            jsonPath("$.ownedByMe") { value(true) }
+        }
+        mvc.get("/api/posts/$id").andExpect { jsonPath("$.text") { value("수정된 본문") } }
+    }
+
+    @Test
+    fun `수정값은 trim 및 normalize 되어 저장된다`() {
+        val id = savePost(authorUserId = 1)
+        putPost(id, """{"text":"  공백 본문  ","tags":[" 테스트 ","#테스트","업사이클"],"images":[]}""").andExpect {
+            status { isOk() }
+            jsonPath("$.text") { value("공백 본문") }
+            jsonPath("$.tags.length()") { value(2) }
+            jsonPath("$.tags") { value(Matchers.hasItem("#테스트")) }
+            jsonPath("$.tags") { value(Matchers.hasItem("#업사이클")) }
+        }
+    }
+
+    @Test
+    fun `비로그인 수정은 401`() {
+        val id = savePost(authorUserId = 1)
+        putPost(id, """{"text":"x"}""", bearer = null).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `다른 사용자 수정은 403`() {
+        val id = savePost(authorUserId = 1)
+        putPost(id, """{"text":"침입"}""", bearer = token2).andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `authorUserId가 null인 기존 글 수정은 403`() {
+        val id = savePost(authorUserId = null, authorName = "테스터")
+        putPost(id, """{"text":"x"}""").andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `없는 게시글 수정은 404`() {
+        putPost("nope", """{"text":"x"}""").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `빈 내용 수정은 400`() {
+        val id = savePost(authorUserId = 1)
+        putPost(id, """{"text":"   "}""").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정해도 author time likes comments seq는 변경되지 않는다`() {
+        val id = savePost(likes = 7, comments = 3, seq = 555, authorUserId = 1, authorName = "원작성자")
+        putPost(id, """{"text":"내용만 변경","tags":[],"images":[]}""").andExpect {
+            status { isOk() }
+            jsonPath("$.author.name") { value("원작성자") }
+            jsonPath("$.time") { value("방금") }
+            jsonPath("$.likes") { value(7) }
+            jsonPath("$.comments") { value(3) }
+        }
+        // seq 불변 → 정렬 위치 유지. authorUserId 미노출.
+        val saved = posts.findById(id).get()
+        assertThat(saved.seq).isEqualTo(555)
+        assertThat(saved.authorUserId).isEqualTo(1)
+    }
+
+    @Test
+    fun `수정 응답의 likedByMe와 bookmarkedByMe는 실제 상태를 반영한다`() {
+        val id = savePost(authorUserId = 1)
+        likeRepo.saveAndFlush(PostLike("plk-upd", id, 1))
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-upd", id, 1))
+        putPost(id, """{"text":"갱신"}""").andExpect {
+            status { isOk() }
+            jsonPath("$.likedByMe") { value(true) }
+            jsonPath("$.bookmarkedByMe") { value(true) }
+        }
+    }
+
+    // ---- 삭제(DELETE) ----
+
+    private fun deletePost(id: String, bearer: String? = token) = mvc.delete("/api/posts/$id") {
+        if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+    }
+
+    @Test
+    fun `작성자가 삭제하면 204이고 이후 조회는 404`() {
+        val id = savePost(authorUserId = 1)
+        deletePost(id).andExpect { status { isNoContent() } }
+        mvc.get("/api/posts/$id").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `삭제하면 좋아요 북마크 댓글 row도 함께 삭제된다`() {
+        val id = savePost(authorUserId = 1)
+        likeRepo.saveAndFlush(PostLike("plk-del", id, 2))
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-del", id, 2))
+        commentRepo.saveAndFlush(PostComment("pc-del", id, Author("누군가", false), "댓글", "방금", 1))
+        deletePost(id).andExpect { status { isNoContent() } }
+        assertThat(likeRepo.countByPostId(id)).isEqualTo(0)
+        assertThat(bookmarkRepo.countByPostId(id)).isEqualTo(0)
+        assertThat(commentRepo.countByPostId(id)).isEqualTo(0)
+    }
+
+    @Test
+    fun `비로그인 삭제는 401`() {
+        val id = savePost(authorUserId = 1)
+        deletePost(id, bearer = null).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `다른 사용자 삭제는 403이고 게시글은 유지된다`() {
+        val id = savePost(authorUserId = 1)
+        deletePost(id, bearer = token2).andExpect { status { isForbidden() } }
+        assertThat(posts.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `authorUserId가 null인 게시글 삭제는 403`() {
+        val id = savePost(authorUserId = null)
+        deletePost(id).andExpect { status { isForbidden() } }
+        assertThat(posts.existsById(id)).isTrue()
+    }
+
+    @Test
+    fun `없는 게시글 삭제는 404`() {
+        deletePost("nope").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `같은 게시글을 다시 삭제하면 404`() {
+        val id = savePost(authorUserId = 1)
+        deletePost(id).andExpect { status { isNoContent() } }
+        deletePost(id).andExpect { status { isNotFound() } }
     }
 }
