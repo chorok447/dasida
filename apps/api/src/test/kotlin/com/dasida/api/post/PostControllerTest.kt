@@ -39,12 +39,14 @@ class PostControllerTest(
         seq: Long = 0,
         authorUserId: Long? = null,
         authorName: String = "작성자",
+        text: String = "본문",
+        campaignId: String? = null,
     ): String {
         val id = "itp-${UUID.randomUUID()}"
         posts.save(
             Post(
-                id, Author(authorName, false), "방금", "본문", emptyList(), emptyList(), likes, comments,
-                seq = seq, authorUserId = authorUserId,
+                id, Author(authorName, false), "방금", text, emptyList(), emptyList(), likes, comments,
+                campaignId = campaignId, seq = seq, authorUserId = authorUserId,
             ),
         )
         return id
@@ -1018,6 +1020,37 @@ class PostControllerTest(
             jsonPath("$.likedByMe") { value(true) }
             jsonPath("$.bookmarkedByMe") { value(true) }
         }
+    }
+
+    // ---- 수정 시 campaignId 연결 검증 (캠페인 삭제 경합 방어로 lock 기반 검증) ----
+
+    @Test
+    fun `존재하는 campaignId 로 수정하면 200 이고 연결된다`() {
+        val id = savePost(authorUserId = 1)
+        putPost(id, """{"text":"연결 수정","campaignId":"c1"}""").andExpect {
+            status { isOk() }
+            jsonPath("$.campaignId") { value("c1") }
+        }
+        assertThat(posts.findById(id).get().campaignId).isEqualTo("c1")
+    }
+
+    @Test
+    fun `없는 campaignId 로 수정하면 400 이고 기존 campaignId 와 본문이 유지된다`() {
+        val id = savePost(authorUserId = 1, text = "원래 본문", campaignId = "c1")
+        putPost(id, """{"text":"바뀌면 안 됨","campaignId":"nope"}""").andExpect { status { isBadRequest() } }
+        val saved = posts.findById(id).get()
+        assertThat(saved.campaignId).isEqualTo("c1")
+        assertThat(saved.text).isEqualTo("원래 본문")
+    }
+
+    @Test
+    fun `campaignId 가 null 이면 수정은 정상 동작하고 연결이 해제된다`() {
+        val id = savePost(authorUserId = 1, campaignId = "c1")
+        putPost(id, """{"text":"연결 해제"}""").andExpect {
+            status { isOk() }
+            jsonPath("$.campaignId") { value(null) }
+        }
+        assertThat(posts.findById(id).get().campaignId).isNull()
     }
 
     // ---- 삭제(DELETE) ----

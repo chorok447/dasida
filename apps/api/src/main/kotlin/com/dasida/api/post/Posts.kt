@@ -46,6 +46,8 @@ class Author(
     name = "posts",
     indexes = [
         Index(name = "idx_posts_author_user_id", columnList = "author_user_id"),
+        // 캠페인 삭제 시 연결 게시글 존재 확인(existsByCampaignId)을 위한 조회용 인덱스.
+        Index(name = "idx_posts_campaign_id", columnList = "campaign_id"),
     ],
 )
 class Post(
@@ -74,6 +76,9 @@ interface PostRepository : JpaRepository<Post, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Post p where p.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Post?
+
+    /** 캠페인 삭제 시 연결 게시글 존재 확인용. campaign_id 인덱스를 탄다. */
+    fun existsByCampaignId(campaignId: String): Boolean
 }
 
 /** 사용자별 좋아요. (post_id, user_id) unique 로 중복 좋아요를 막는다. */
@@ -466,7 +471,10 @@ class PostController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun create(@RequestBody req: CreatePostRequest, @AuthenticationPrincipal user: AuthUser): PostResponse {
+        // @Transactional 로 묶어 normalizeFields 의 campaign write lock 을 게시글 저장 commit 까지 유지한다.
+        // 캠페인 삭제와 동시에 실행돼도 둘 중 하나만 통과해 orphan campaignId 가 남지 않는다.
         val fields = normalizeFields(req.text, req.tags, req.images, req.campaignId)
         return repo.save(
             Post(
@@ -544,7 +552,10 @@ class PostController(
         if (trimmed.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
         if (trimmed.length > MAX_TEXT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
         val cid = campaignId?.trim()?.ifBlank { null }
-        if (cid != null && !campaigns.existsById(cid)) {
+        // 단순 existsById 면 확인과 저장 사이에 캠페인이 삭제돼 orphan campaignId 가 생길 수 있다.
+        // write lock 으로 캠페인을 잡아 두면 삭제가 게시글 commit 까지 직렬화돼 orphan 을 막는다.
+        // create/update 모두 @Transactional 이라 lock 이 트랜잭션 종료까지 유지된다.
+        if (cid != null && campaigns.findByIdForUpdate(cid) == null) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign not found")
         }
         return NormalizedFields(trimmed, normalizeTags(tags), normalizeImages(images), cid)
