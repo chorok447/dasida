@@ -9,9 +9,9 @@ import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import type { UserProfile } from "@/data/users";
 import { MyPostsGrid } from "./my-posts-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
-import { JoinedCampaignsList } from "./joined-campaigns-list";
+import { UserCampaignsList } from "./joined-campaigns-list";
 
-type Tab = "posts" | "campaigns" | "saved";
+type Tab = "posts" | "campaigns" | "created" | "saved";
 
 function PageState({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
@@ -103,6 +103,7 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (tab: Tab) => void }) {
   const items: { id: Tab; label: string }[] = [
     { id: "posts", label: "내 게시글" },
     { id: "campaigns", label: "참여 캠페인" },
+    { id: "created", label: "개설 캠페인" },
     { id: "saved", label: "저장됨" },
   ];
 
@@ -192,7 +193,8 @@ export default function MyPage() {
             <Tabs tab={tab} setTab={setTab} />
             <div className="mx-auto max-w-5xl px-6 py-10 sm:px-8">
               {tab === "posts" ? <MyPostsGrid /> : null}
-              {tab === "campaigns" ? <JoinedCampaignsList /> : null}
+              {tab === "campaigns" ? <UserCampaignsList mode="joined" /> : null}
+              {tab === "created" ? <UserCampaignsList mode="created" /> : null}
               {tab === "saved" ? <SavedPostsGrid /> : null}
             </div>
           </>

@@ -13,12 +13,43 @@ import { progressPercent } from "@/lib/progress";
 import { statusMeta, type Campaign, type CampaignStatus } from "@/data/campaigns";
 
 type LoadStatus = "idle" | "loading" | "success" | "error";
+export type CampaignListMode = "joined" | "created";
 
 type ListState = {
   identity: string | null;
+  mode: CampaignListMode;
   status: LoadStatus;
   campaigns: Campaign[];
   error: string;
+};
+
+const LIST_META: Record<
+  CampaignListMode,
+  {
+    endpoint: string;
+    loading: string;
+    error: string;
+    empty: string;
+    ctaHref: string;
+    ctaLabel: string;
+  }
+> = {
+  joined: {
+    endpoint: "/api/campaigns/joined",
+    loading: "참여 캠페인을 불러오는 중입니다.",
+    error: "참여 캠페인을 불러오지 못했습니다.",
+    empty: "참여한 캠페인이 없습니다.",
+    ctaHref: "/campaigns",
+    ctaLabel: "캠페인 둘러보기",
+  },
+  created: {
+    endpoint: "/api/campaigns/mine",
+    loading: "개설 캠페인을 불러오는 중입니다.",
+    error: "개설 캠페인을 불러오지 못했습니다.",
+    empty: "개설한 캠페인이 없습니다.",
+    ctaHref: "/campaigns/new",
+    ctaLabel: "캠페인 개설하기",
+  },
 };
 
 function StatePanel({ children }: { children: React.ReactNode }) {
@@ -88,7 +119,7 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
   );
 }
 
-function JoinedCampaignCard({ campaign }: { campaign: Campaign }) {
+function CampaignCard({ campaign }: { campaign: Campaign }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
 
@@ -150,21 +181,24 @@ function JoinedCampaignCard({ campaign }: { campaign: Campaign }) {
   );
 }
 
-export function JoinedCampaignsList() {
+export function UserCampaignsList({ mode }: { mode: CampaignListMode }) {
   const { token } = useAuthSession();
+  const meta = LIST_META[mode];
   const [reloadTick, setReloadTick] = useState(0);
   const [state, setState] = useState<ListState>(() => ({
     identity: token,
+    mode,
     status: token ? "loading" : "idle",
     campaigns: [],
     error: "",
   }));
   const generationRef = useRef(0);
 
-  // token 교체 시 이전 사용자 목록을 네트워크 응답보다 먼저 제거
-  if (state.identity !== token) {
+  // token 또는 목록 종류가 바뀌면 이전 목록을 네트워크 응답보다 먼저 제거한다.
+  if (state.identity !== token || state.mode !== mode) {
     setState({
       identity: token,
+      mode,
       status: token ? "loading" : "idle",
       campaigns: [],
       error: "",
@@ -180,11 +214,11 @@ export function JoinedCampaignsList() {
     const isCurrent = () =>
       !cancelled && generation === generationRef.current && getToken() === requestToken;
 
-    apiGet<Campaign[]>("/api/campaigns/joined")
+    apiGet<Campaign[]>(LIST_META[mode].endpoint)
       .then((campaigns) => {
         if (!isCurrent()) return;
         setState((current) =>
-          current.identity === requestToken
+          current.identity === requestToken && current.mode === mode
             ? { ...current, status: "success", campaigns, error: "" }
             : current,
         );
@@ -196,12 +230,12 @@ export function JoinedCampaignsList() {
           return;
         }
         setState((current) =>
-          current.identity === requestToken
+          current.identity === requestToken && current.mode === mode
             ? {
                 ...current,
                 status: "error",
                 campaigns: [],
-                error: "참여 캠페인을 불러오지 못했습니다.",
+                error: LIST_META[mode].error,
               }
             : current,
         );
@@ -210,7 +244,7 @@ export function JoinedCampaignsList() {
     return () => {
       cancelled = true;
     };
-  }, [reloadTick, token]);
+  }, [mode, reloadTick, token]);
 
   const retry = () => {
     setState((current) => ({ ...current, status: "loading", error: "" }));
@@ -221,7 +255,7 @@ export function JoinedCampaignsList() {
     return (
       <StatePanel>
         <RefreshCw size={26} className="animate-spin text-[#7dd3a3]" />
-        <p>참여 캠페인을 불러오는 중입니다.</p>
+        <p>{meta.loading}</p>
       </StatePanel>
     );
   }
@@ -241,9 +275,9 @@ export function JoinedCampaignsList() {
     return (
       <StatePanel>
         <CalendarDays size={28} className="text-[#7dd3a3]" />
-        <p>참여한 캠페인이 없습니다.</p>
-        <Link href="/campaigns" className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
-          캠페인 둘러보기
+        <p>{meta.empty}</p>
+        <Link href={meta.ctaHref} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
+          {meta.ctaLabel}
         </Link>
       </StatePanel>
     );
@@ -252,7 +286,7 @@ export function JoinedCampaignsList() {
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {state.campaigns.map((campaign) => (
-        <JoinedCampaignCard key={campaign.id} campaign={campaign} />
+        <CampaignCard key={campaign.id} campaign={campaign} />
       ))}
     </div>
   );

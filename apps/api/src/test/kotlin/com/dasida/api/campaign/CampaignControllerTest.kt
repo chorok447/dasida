@@ -3,6 +3,7 @@ package com.dasida.api.campaign
 import com.dasida.api.auth.User
 import com.dasida.api.post.Author
 import com.dasida.api.security.JwtService
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,17 +26,26 @@ class CampaignControllerTest(
     @Autowired val participantRepo: CampaignParticipantRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
+    private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
 
     // 시드 상태에 의존하지 않도록 테스트용 캠페인을 직접 저장.
-    private fun saveCampaign(status: String = "open", capacity: Int = 10, joined: Int = 0, seq: Long = System.nanoTime()): String {
+    private fun saveCampaign(
+        status: String = "open",
+        capacity: Int = 10,
+        joined: Int = 0,
+        seq: Long = System.nanoTime(),
+        authorUserId: Long? = null,
+        authorName: String = "개설자",
+    ): String {
         val id = "itc-${UUID.randomUUID()}"
         campaignRepo.save(
             Campaign(
                 id, status, "테스트 캠페인", "요약", "https://x/y.png",
                 "2026-07-01", "2026-07-31", "2026-08-05", "2026-08-30",
-                capacity, joined, "라벨", Author("개설자", false),
+                capacity, joined, "라벨", Author(authorName, false),
                 CampaignBody("소개", emptyList(), emptyList()),
                 seq = seq,
+                authorUserId = authorUserId,
             ),
         )
         return id
@@ -92,6 +102,23 @@ class CampaignControllerTest(
             jsonPath("$.status") { value("upcoming") }
             jsonPath("$.joined") { value(0) }
             jsonPath("$.author.name") { value("테스터") }
+            jsonPath("$.ownedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `생성된 캠페인에 사용자 ID가 저장된다`() {
+        postCampaign(validBody(title = "소유자 저장 검증")).andExpect { status { isCreated() } }
+
+        val saved = campaignRepo.findAll().single { it.title == "소유자 저장 검증" }
+        assertThat(saved.authorUserId).isEqualTo(1)
+    }
+
+    @Test
+    fun `캠페인 응답에 authorUserId는 노출되지 않는다`() {
+        postCampaign(validBody(title = "소유자 미노출 검증")).andExpect {
+            status { isCreated() }
+            jsonPath("$.authorUserId") { doesNotExist() }
         }
     }
 
@@ -145,6 +172,48 @@ class CampaignControllerTest(
             """{"title":"순서","capacity":10,"recruitStart":"2026-07-01",
                "recruitEnd":"2026-07-31","runStart":"2026-08-30","runEnd":"2026-08-05"}""",
         ).andExpect { status { isBadRequest() } }
+    }
+
+    // ---- ownedByMe ----
+
+    @Test
+    fun `비로그인 목록과 상세는 ownedByMe false`() {
+        val id = saveCampaign(authorUserId = 1)
+        mvc.get("/api/campaigns").andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].ownedByMe") { value(Matchers.hasItem(false)) }
+        }
+        mvc.get("/api/campaigns/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `작성자 로그인 상세는 ownedByMe true`() {
+        val id = saveCampaign(authorUserId = 1)
+        mvc.get("/api/campaigns/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자 상세는 ownedByMe false`() {
+        val id = saveCampaign(authorUserId = 1)
+        mvc.get("/api/campaigns/$id") { headers { add("Authorization", "Bearer $otherToken") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `authorUserId가 null인 기존 캠페인은 ownedByMe false`() {
+        val id = saveCampaign(authorUserId = null, authorName = "테스터")
+        mvc.get("/api/campaigns/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
     }
 
     // ---- 참여(join) ----
@@ -234,6 +303,21 @@ class CampaignControllerTest(
     }
 
     @Test
+    fun `join 응답은 실제 캠페인 소유 여부를 반영한다`() {
+        val ownedId = saveCampaign(authorUserId = 1)
+        val otherId = saveCampaign(authorUserId = 2)
+
+        join(ownedId).andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(true) }
+        }
+        join(otherId).andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
     fun `list 에서 내가 참여한 campaign 만 joinedByMe true`() {
         val id = saveCampaign()
         participantRepo.saveAndFlush(CampaignParticipant("cp-list", id, 1))
@@ -244,8 +328,6 @@ class CampaignControllerTest(
     }
 
     // ---- 참여 캠페인 목록(joined) ----
-
-    private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
 
     @Test
     fun `비로그인 GET joined는 401`() {
@@ -315,6 +397,20 @@ class CampaignControllerTest(
     }
 
     @Test
+    fun `joined 목록은 실제 캠페인 소유 여부를 반영한다`() {
+        val ownedId = saveCampaign(authorUserId = 1)
+        val otherId = saveCampaign(authorUserId = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-owned-list", ownedId, 1))
+        participantRepo.saveAndFlush(CampaignParticipant("cp-other-list", otherId, 1))
+
+        mvc.get("/api/campaigns/joined") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$ownedId')].ownedByMe") { value(Matchers.hasItem(true)) }
+            jsonPath("$[?(@.id == '$otherId')].ownedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
     fun `같은 캠페인에 반복 join해도 목록에는 한 번만 반환`() {
         val id = saveCampaign(seq = 100, capacity = 10, joined = 0)
         // join API로 두 번 참여 (idempotent)
@@ -343,6 +439,92 @@ class CampaignControllerTest(
         mvc.get("/api/campaigns/$id").andExpect {
             status { isOk() }
             jsonPath("$.id") { value(id) }
+        }
+    }
+
+    // ---- 개설 캠페인 목록(mine) ----
+
+    @Test
+    fun `비로그인 GET mine은 401`() {
+        mvc.get("/api/campaigns/mine").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `개설한 캠페인이 없으면 빈 배열`() {
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `현재 사용자가 개설한 캠페인만 반환한다`() {
+        val mine = saveCampaign(authorUserId = 1)
+        saveCampaign(authorUserId = 2)
+        saveCampaign(authorUserId = null)
+
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].id") { value(mine) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자가 개설한 캠페인은 mine에서 제외한다`() {
+        saveCampaign(authorUserId = 2)
+
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `authorUserId가 null인 캠페인은 mine에서 제외한다`() {
+        saveCampaign(authorUserId = null, authorName = "테스터")
+
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `mine 캠페인은 seq DESC로 정렬한다`() {
+        val oldest = saveCampaign(seq = 100, authorUserId = 1)
+        val newest = saveCampaign(seq = 300, authorUserId = 1)
+        val middle = saveCampaign(seq = 200, authorUserId = 1)
+
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].id") { value(newest) }
+            jsonPath("$[1].id") { value(middle) }
+            jsonPath("$[2].id") { value(oldest) }
+        }
+    }
+
+    @Test
+    fun `mine 응답은 ownedByMe true`() {
+        saveCampaign(authorUserId = 1)
+        saveCampaign(authorUserId = 1)
+
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[*].ownedByMe") { value(Matchers.everyItem(Matchers.equalTo(true))) }
+        }
+    }
+
+    @Test
+    fun `mine 응답은 실제 참여 여부를 반영한다`() {
+        val joinedId = saveCampaign(authorUserId = 1)
+        val notJoinedId = saveCampaign(authorUserId = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-mine-joined", joinedId, 1))
+
+        mvc.get("/api/campaigns/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$joinedId')].joinedByMe") { value(Matchers.hasItem(true)) }
+            jsonPath("$[?(@.id == '$notJoinedId')].joinedByMe") { value(Matchers.hasItem(false)) }
         }
     }
 }
