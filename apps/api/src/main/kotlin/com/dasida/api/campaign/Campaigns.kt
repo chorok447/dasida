@@ -1,5 +1,6 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.Photos
 import com.dasida.api.post.Author
 import com.dasida.api.post.PostRepository
@@ -15,6 +16,9 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
@@ -29,6 +33,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.transaction.annotation.Transactional
@@ -95,6 +100,7 @@ interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, Str
     fun findByCampaignIdAndUserId(campaignId: String, userId: Long): CampaignParticipant?
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
     fun findByUserId(userId: Long): List<CampaignParticipant>
+    fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignParticipant>
     fun countByCampaignId(campaignId: String): Long
 
     @Transactional
@@ -190,6 +196,25 @@ data class UpdateCampaignStatusRequest(
     val status: String,
 )
 
+data class CampaignParticipantResponse(
+    val participantId: String,
+    val name: String,
+    val verified: Boolean,
+)
+
+data class CampaignParticipantsResponse(
+    val campaignId: String,
+    val title: String,
+    val status: String,
+    val capacity: Int,
+    val joined: Int,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    val participants: List<CampaignParticipantResponse>,
+)
+
 /** Campaign 응답. 참여·소유 상태는 현재 요청 사용자 기준이며 authorUserId 자체는 노출하지 않는다. */
 data class CampaignResponse(
     val id: String,
@@ -216,6 +241,7 @@ class CampaignController(
     private val repo: CampaignRepository,
     private val participants: CampaignParticipantRepository,
     private val posts: PostRepository,
+    private val users: UserRepository,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<CampaignResponse> {
@@ -265,6 +291,59 @@ class CampaignController(
         return campaign.toResponse(
             viewerId = user?.id,
             joinedByMe = user != null && participants.existsByCampaignIdAndUserId(id, user.id),
+        )
+    }
+
+    /** 개설자용 참가자 목록. 참가자 page와 사용자 bulk 조회만 수행하며 campaign row lock은 사용하지 않는다. */
+    @GetMapping("/{id}/participants")
+    @Transactional(readOnly = true)
+    fun participants(
+        @PathVariable id: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignParticipantsResponse {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size < 1 || size > MAX_PARTICIPANT_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PARTICIPANT_PAGE_SIZE")
+        }
+
+        val campaign = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        }
+        if (campaign.authorUserId == null || campaign.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
+        }
+
+        val participantPage = participants.findByCampaignId(
+            id,
+            PageRequest.of(page, size, Sort.by("userId").ascending().and(Sort.by("id").ascending())),
+        )
+        val userIds = participantPage.content.map { it.userId }.distinct()
+        val usersById = if (userIds.isEmpty()) {
+            emptyMap()
+        } else {
+            users.findAllById(userIds).associateBy { requireNotNull(it.id) }
+        }
+
+        return CampaignParticipantsResponse(
+            campaignId = campaign.id,
+            title = campaign.title,
+            status = campaign.status,
+            capacity = campaign.capacity,
+            joined = campaign.joined,
+            page = participantPage.number,
+            size = participantPage.size,
+            totalElements = participantPage.totalElements,
+            totalPages = participantPage.totalPages,
+            participants = participantPage.content.map { participant ->
+                val participantUser = usersById[participant.userId]
+                CampaignParticipantResponse(
+                    participantId = participant.id,
+                    name = participantUser?.name ?: "탈퇴한 사용자",
+                    verified = participantUser?.verified ?: false,
+                )
+            },
         )
     }
 
@@ -561,5 +640,6 @@ class CampaignController(
 
     companion object {
         private const val MAX_CAPACITY = 10000
+        private const val MAX_PARTICIPANT_PAGE_SIZE = 100
     }
 }

@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil, Trash2, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
@@ -198,6 +198,21 @@ function CampaignStatusManagement({
         <p className="mt-0.5 text-[12px] opacity-60">캠페인 개설자만 모집을 시작하거나 마감할 수 있습니다.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href={`/campaigns/${c.id}/participants`}
+          aria-label="참가자 관리"
+          aria-disabled={disabled}
+          tabIndex={disabled ? -1 : undefined}
+          className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-medium ${
+            disabled ? "pointer-events-none opacity-45" : ""
+          }`}
+          style={{
+            background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+            color: dark ? "#f9f7f2" : "#1c4044",
+          }}
+        >
+          <Users size={14} /> 참가자 관리
+        </Link>
         {c.status === "upcoming" ? (
           <Link
             href={`/campaigns/${c.id}/edit`}
