@@ -31,10 +31,15 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [bookmarked, setBookmarked] = useState(false);
 
   // 새로고침·로그인/로그아웃 시 likedByMe·likes 동기화.
-  const { refreshing, invalidatePending } = useAuthedRefresh<Post>(`/api/posts/${p.id}`, (u) => {
-    setLikes(u.likes);
-    setLiked(u.likedByMe);
-  });
+  // identity 변경 시 liked만 즉시 neutral(false), likes 숫자는 유지.
+  const { refreshing, invalidatePending } = useAuthedRefresh<Post>(
+    `/api/posts/${p.id}`,
+    (u) => {
+      setLikes(u.likes);
+      setLiked(u.likedByMe);
+    },
+    () => setLiked(false),
+  );
 
   const onLike = async () => {
     if (!getToken()) {

@@ -268,7 +268,12 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [joining, setJoining] = useState(false);
 
   // 새로고침·로그인/로그아웃 시 joinedByMe 등 사용자별 상태 동기화.
-  const { refreshing, invalidatePending } = useAuthedRefresh<Campaign>(`/api/campaigns/${campaign.id}`, setC);
+  // identity 변경 시 joinedByMe만 즉시 neutral(false), joined 숫자는 유지.
+  const { refreshing, invalidatePending } = useAuthedRefresh<Campaign>(
+    `/api/campaigns/${campaign.id}`,
+    setC,
+    () => setC((cur) => (cur.joinedByMe ? { ...cur, joinedByMe: false } : cur)),
+  );
 
   const join = async () => {
     if (!getToken()) {

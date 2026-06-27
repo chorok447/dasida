@@ -305,8 +305,11 @@ export default function FeedClient({ posts: initialPosts, campaigns }: { posts: 
   const { theme } = useTheme();
   const dark = theme === "dark";
   // 새로고침·로그인/로그아웃 시 토큰 포함 재조회로 likedByMe 동기화.
+  // identity 변경 시 각 글의 likedByMe만 즉시 neutral(false), likes 숫자는 유지.
   const [posts, setPosts] = useState(initialPosts);
-  const { refreshing } = useAuthedRefresh<Post[]>("/api/posts", setPosts);
+  const { refreshing } = useAuthedRefresh<Post[]>("/api/posts", setPosts, () =>
+    setPosts((cur) => cur.map((p) => (p.likedByMe ? { ...p, likedByMe: false } : p))),
+  );
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
