@@ -8,13 +8,16 @@ import jakarta.persistence.Column
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.LockModeType
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -51,7 +55,12 @@ class Campaign(
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
 )
 
-interface CampaignRepository : JpaRepository<Campaign, String>
+interface CampaignRepository : JpaRepository<Campaign, String> {
+    /** 정원 동시성 방어용 write lock 조회. join 트랜잭션에서 가장 먼저 호출해 캠페인별로 직렬화. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Campaign c where c.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Campaign?
+}
 
 /** 캠페인 참여자. (campaign_id, user_id) unique 로 중복 참여를 막는다. */
 @Entity
@@ -68,6 +77,10 @@ class CampaignParticipant(
 interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, String> {
     fun existsByCampaignIdAndUserId(campaignId: String, userId: Long): Boolean
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
+    fun countByCampaignId(campaignId: String): Long
+
+    @Transactional
+    fun deleteByCampaignId(campaignId: String)
 }
 
 /**
@@ -189,14 +202,19 @@ class CampaignController(
     }
 
     /**
-     * 캠페인 참여. 인증 필요. open 이 아니면 400, 정원 초과면 409.
-     * 이미 참여한 유저는 idempotent(200, 증가 없음). unique 제약이 동시 중복 참여를 막는다.
+     * 캠페인 참여. 인증 필요. open 이 아니면 400, 정원 초과면 409, 이미 참여한 유저는 idempotent(200, 증가 없음).
+     *
+     * 동시성: 트랜잭션 안에서 캠페인 row 를 가장 먼저 write lock 으로 잡아, 같은 캠페인에 대한 요청을 직렬화한다.
+     * 이렇게 하면 (1) 서로 다른 유저가 마지막 자리에 동시에 들어와도 capacity 를 넘지 않고,
+     * (2) 같은 유저의 동시 요청도 lock 보유 중 existsBy 재확인으로 idempotent 하게 처리된다.
+     * unique 제약은 최종 방어선으로 유지(rollback-only 예외를 삼켜 200 으로 위장하지 않는다).
      */
     @PostMapping("/{id}/join")
+    @Transactional
     fun join(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): CampaignResponse {
-        val campaign = repo.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
-        }
+        val campaign = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        // lock 보유 상태에서 재확인 → 같은 유저 동시 요청도 직렬화되어 idempotent.
         if (participants.existsByCampaignIdAndUserId(id, user.id)) return campaign.toResponse(joinedByMe = true)
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign is not open")
@@ -204,14 +222,9 @@ class CampaignController(
         if (campaign.joined >= campaign.capacity) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is full")
         }
-        try {
-            // saveAndFlush 로 unique 위반을 즉시 표출. (controller 는 비-tx 라 catch 후 정상 200 반환)
-            participants.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
-            campaign.joined += 1
-            repo.save(campaign)
-        } catch (_: DataIntegrityViolationException) {
-            // 동시 요청으로 이미 참여 row 가 들어간 경우. idempotent 200, 중복 증가 없음.
-        }
+        participants.save(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
+        campaign.joined += 1
+        repo.save(campaign)
         return campaign.toResponse(joinedByMe = true)
     }
 
