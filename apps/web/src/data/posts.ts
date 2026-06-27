@@ -10,6 +10,7 @@ export type Post = {
   comments: number;
   campaignId?: string;
   likedByMe: boolean;
+  bookmarkedByMe: boolean;
 };
 
 // 게시글 댓글. 백엔드 GET/POST /api/posts/{id}/comments 응답과 1:1.

@@ -55,7 +55,7 @@ class Post(
 )
 
 interface PostRepository : JpaRepository<Post, String> {
-    /** 카운터 동시성 방어용 write lock 조회. like/unlike/comment 트랜잭션에서 가장 먼저 호출해 게시글별로 직렬화. */
+    /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Post p where p.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Post?
@@ -74,6 +74,25 @@ interface PostLikeRepository : JpaRepository<PostLike, String> {
     fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
     fun findByPostIdAndUserId(postId: String, userId: Long): PostLike?
     fun findByUserIdAndPostIdIn(userId: Long, postIds: Collection<String>): List<PostLike>
+    fun countByPostId(postId: String): Long
+
+    @Transactional
+    fun deleteByPostId(postId: String)
+}
+
+/** 사용자별 북마크. (post_id, user_id) unique 로 중복 북마크를 막는다. */
+@Entity
+@Table(name = "post_bookmarks", uniqueConstraints = [UniqueConstraint(columnNames = ["post_id", "user_id"])])
+class PostBookmark(
+    @Id val id: String,
+    @Column(name = "post_id") val postId: String,
+    @Column(name = "user_id") val userId: Long,
+)
+
+interface PostBookmarkRepository : JpaRepository<PostBookmark, String> {
+    fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
+    fun findByPostIdAndUserId(postId: String, userId: Long): PostBookmark?
+    fun findByUserIdAndPostIdIn(userId: Long, postIds: Collection<String>): List<PostBookmark>
     fun countByPostId(postId: String): Long
 
     @Transactional
@@ -154,7 +173,7 @@ data class CreatePostRequest(
 
 data class CreateCommentRequest(val text: String)
 
-/** GET/like 응답. Post 필드 + 요청 유저 기준 likedByMe. */
+/** 게시글 응답. Post 필드 + 요청 유저 기준 좋아요/북마크 상태. */
 data class PostResponse(
     val id: String,
     val author: Author,
@@ -166,6 +185,7 @@ data class PostResponse(
     val comments: Int,
     val campaignId: String?,
     val likedByMe: Boolean,
+    val bookmarkedByMe: Boolean,
 )
 
 @RestController
@@ -174,6 +194,7 @@ class PostController(
     private val repo: PostRepository,
     private val campaigns: CampaignRepository,
     private val likeRepo: PostLikeRepository,
+    private val bookmarkRepo: PostBookmarkRepository,
     private val commentRepo: PostCommentRepository,
 ) {
     @GetMapping
@@ -185,7 +206,15 @@ class PostController(
         } else {
             likeRepo.findByUserIdAndPostIdIn(user.id, posts.map { it.id }).map { it.postId }.toSet()
         }
-        return posts.map { it.toResponse(it.id in likedIds) }
+        // N+1 회피: 내가 북마크한 postId 도 한 번에 조회.
+        val bookmarkedIds = if (user == null || posts.isEmpty()) {
+            emptySet()
+        } else {
+            bookmarkRepo.findByUserIdAndPostIdIn(user.id, posts.map { it.id }).map { it.postId }.toSet()
+        }
+        return posts.map {
+            it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+        }
     }
 
     @GetMapping("/{id}")
@@ -193,7 +222,10 @@ class PostController(
         val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
-        return post.toResponse(user != null && likeRepo.existsByPostIdAndUserId(id, user.id))
+        return post.toResponse(
+            likedByMe = user != null && likeRepo.existsByPostIdAndUserId(id, user.id),
+            bookmarkedByMe = user != null && bookmarkRepo.existsByPostIdAndUserId(id, user.id),
+        )
     }
 
     /**
@@ -213,7 +245,10 @@ class PostController(
             post.likes += 1
             repo.save(post)
         }
-        return post.toResponse(likedByMe = true)
+        return post.toResponse(
+            likedByMe = true,
+            bookmarkedByMe = bookmarkRepo.existsByPostIdAndUserId(id, user.id),
+        )
     }
 
     /** 좋아요 취소. 누르지 않은 경우 idempotent(200). likes 는 0 미만으로 내려가지 않음. */
@@ -227,12 +262,48 @@ class PostController(
             likeRepo.delete(it)
             post.likes = maxOf(0, post.likes - 1)
         }
-        return post.toResponse(likedByMe = false)
+        return post.toResponse(
+            likedByMe = false,
+            bookmarkedByMe = bookmarkRepo.existsByPostIdAndUserId(id, user.id),
+        )
     }
 
-    private fun Post.toResponse(likedByMe: Boolean = false) = PostResponse(
+    /** 북마크. 이미 저장된 경우에도 idempotent(200). */
+    @PostMapping("/{id}/bookmark")
+    @Transactional
+    fun bookmark(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): PostResponse {
+        // post row lock 뒤 존재 여부를 재확인해 같은 사용자의 동시 요청을 직렬화한다.
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        if (!bookmarkRepo.existsByPostIdAndUserId(id, user.id)) {
+            bookmarkRepo.save(PostBookmark("pbk-${UUID.randomUUID()}", id, user.id))
+        }
+        return post.toResponse(
+            likedByMe = likeRepo.existsByPostIdAndUserId(id, user.id),
+            bookmarkedByMe = true,
+        )
+    }
+
+    /** 북마크 취소. 저장되지 않은 경우에도 idempotent(200). */
+    @DeleteMapping("/{id}/bookmark")
+    @Transactional
+    fun unbookmark(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): PostResponse {
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        bookmarkRepo.findByPostIdAndUserId(id, user.id)?.let(bookmarkRepo::delete)
+        return post.toResponse(
+            likedByMe = likeRepo.existsByPostIdAndUserId(id, user.id),
+            bookmarkedByMe = false,
+        )
+    }
+
+    private fun Post.toResponse(
+        likedByMe: Boolean = false,
+        bookmarkedByMe: Boolean = false,
+    ) = PostResponse(
         id = id, author = author, time = time, text = text, tags = tags, images = images,
         likes = likes, comments = comments, campaignId = campaignId, likedByMe = likedByMe,
+        bookmarkedByMe = bookmarkedByMe,
     )
 
     @GetMapping("/{id}/comments")
@@ -294,7 +365,7 @@ class PostController(
                 campaignId = campaignId,
                 seq = System.currentTimeMillis(),
             ),
-        ).toResponse(likedByMe = false)
+        ).toResponse(likedByMe = false, bookmarkedByMe = false)
     }
 
     private fun normalizeTags(tags: List<String>): List<String> {

@@ -2,6 +2,7 @@ package com.dasida.api.post
 
 import com.dasida.api.auth.User
 import com.dasida.api.security.JwtService
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,6 +24,7 @@ class PostControllerTest(
     @Autowired val jwt: JwtService,
     @Autowired val posts: PostRepository,
     @Autowired val likeRepo: PostLikeRepository,
+    @Autowired val bookmarkRepo: PostBookmarkRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
 
@@ -83,6 +85,8 @@ class PostControllerTest(
             jsonPath("$.id") { exists() }
             jsonPath("$.text") { value("새 업사이클 글") }
             jsonPath("$.author.name") { value("테스터") }
+            jsonPath("$.likedByMe") { value(false) }
+            jsonPath("$.bookmarkedByMe") { value(false) }
         }
     }
 
@@ -300,6 +304,113 @@ class PostControllerTest(
             status { isOk() }
             jsonPath("$[?(@.id == '$id')].likedByMe") { value(Matchers.hasItem(true)) }
         }
+    }
+
+    // ---- 북마크 ----
+
+    @Test
+    fun `북마크 추가와 삭제는 인증 없으면 401`() {
+        val id = savePost()
+        mvc.post("/api/posts/$id/bookmark").andExpect { status { isUnauthorized() } }
+        mvc.delete("/api/posts/$id/bookmark").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `없는 post 북마크 추가와 삭제는 404`() {
+        mvc.post("/api/posts/nope/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { status { isNotFound() } }
+        mvc.delete("/api/posts/nope/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `북마크 POST 응답은 bookmarkedByMe true`() {
+        val id = savePost()
+        mvc.post("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarkedByMe") { value(true) }
+            }
+    }
+
+    @Test
+    fun `같은 북마크 POST를 반복해도 row는 하나이고 모두 200`() {
+        val id = savePost()
+        repeat(2) {
+            mvc.post("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+                .andExpect { status { isOk() } }
+        }
+        assertThat(bookmarkRepo.countByPostId(id)).isEqualTo(1)
+    }
+
+    @Test
+    fun `북마크 DELETE 응답은 bookmarkedByMe false`() {
+        val id = savePost()
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-delete", id, 1))
+        mvc.delete("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarkedByMe") { value(false) }
+            }
+        assertThat(bookmarkRepo.countByPostId(id)).isZero()
+    }
+
+    @Test
+    fun `북마크하지 않은 DELETE도 idempotent 200`() {
+        val id = savePost()
+        mvc.delete("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarkedByMe") { value(false) }
+            }
+    }
+
+    @Test
+    fun `비로그인 GET은 bookmarkedByMe false`() {
+        val id = savePost()
+        mvc.get("/api/posts/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.bookmarkedByMe") { value(false) }
+        }
+        mvc.get("/api/posts").andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].bookmarkedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
+    fun `로그인 사용자가 북마크한 단건과 목록은 bookmarkedByMe true`() {
+        val id = savePost()
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-get", id, 1))
+        mvc.get("/api/posts/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.bookmarkedByMe") { value(true) }
+        }
+        mvc.get("/api/posts") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].bookmarkedByMe") { value(Matchers.hasItem(true)) }
+        }
+    }
+
+    @Test
+    fun `북마크 응답의 likedByMe는 실제 좋아요 상태와 일치한다`() {
+        val id = savePost(likes = 1)
+        likeRepo.saveAndFlush(PostLike("plk-bookmark-response", id, 1))
+        mvc.post("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { jsonPath("$.likedByMe") { value(true) } }
+        likeRepo.deleteById("plk-bookmark-response")
+        mvc.delete("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { jsonPath("$.likedByMe") { value(false) } }
+    }
+
+    @Test
+    fun `좋아요 응답의 bookmarkedByMe는 실제 북마크 상태와 일치한다`() {
+        val id = savePost()
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-like-response", id, 1))
+        mvc.post("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { jsonPath("$.bookmarkedByMe") { value(true) } }
+        mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { jsonPath("$.bookmarkedByMe") { value(true) } }
     }
 
     // ---- 댓글 ----
