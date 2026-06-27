@@ -7,8 +7,8 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
-import { apiPost, ApiError } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { apiPost, apiPut, ApiError } from "@/lib/api";
+import { clearSession, getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
@@ -157,6 +157,54 @@ function HeaderCard({ c }: { c: Campaign }) {
   );
 }
 
+function CampaignStatusManagement({
+  c,
+  updating,
+  disabled,
+  onChange,
+}: {
+  c: Campaign;
+  updating: boolean;
+  disabled: boolean;
+  onChange: (status: "open" | "closed") => void;
+}) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+  if (!c.ownedByMe) return null;
+
+  const target = c.status === "upcoming" ? "open" : c.status === "open" ? "closed" : null;
+  const label = target === "open" ? "모집 시작" : target === "closed" ? "모집 마감" : "모집 마감됨";
+
+  return (
+    <div
+      className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4"
+      style={{
+        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.7)",
+        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        color: dark ? "#f9f7f2" : "#0f1f22",
+      }}
+    >
+      <div>
+        <p className="text-[13px] font-medium">모집 상태 관리</p>
+        <p className="mt-0.5 text-[12px] opacity-60">캠페인 개설자만 모집을 시작하거나 마감할 수 있습니다.</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => target && onChange(target)}
+        disabled={disabled || target === null}
+        aria-label={label}
+        className="rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
+        style={{
+          background: target === "closed" ? "rgba(237,92,72,0.16)" : "#7dd3a3",
+          color: target === "closed" ? "#ed5c48" : "#0f1f22",
+        }}
+      >
+        {updating ? "처리 중…" : label}
+      </button>
+    </div>
+  );
+}
+
 function CTABar({ c, onJoin, joining, disabled }: { c: Campaign; onJoin: () => void; joining: boolean; disabled: boolean }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -271,6 +319,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [tab, setTab] = useState<Tab>("content");
   const [c, setC] = useState(campaign);
   const [joining, setJoining] = useState(false);
+  const statusUpdatingRef = useRef(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   // 새로고침·로그인/로그아웃 시 참여·소유 상태를 함께 동기화한다.
   // identity 변경 시 사용자별 상태만 즉시 neutral(false), joined 숫자는 유지한다.
@@ -314,6 +364,49 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     }
   };
 
+  const updateStatus = async (target: "open" | "closed") => {
+    if (statusUpdatingRef.current) return;
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+
+    const confirmed = target === "open"
+      ? confirm("캠페인 모집을 시작할까요?")
+      : confirm("모집을 마감할까요? 다시 시작할 수 없습니다.");
+    if (!confirmed) return;
+
+    const requestToken = getToken();
+    if (!requestToken) return;
+    statusUpdatingRef.current = true;
+    setStatusUpdating(true);
+    invalidatePending();
+    try {
+      const updated = await apiPut<Campaign>(`/api/campaigns/${c.id}/status`, { status: target });
+      if (getToken() !== requestToken) return;
+      setC(updated);
+    } catch (e) {
+      if (getToken() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) {
+        clearSession();
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (e instanceof ApiError && e.status === 403) {
+        alert("캠페인 관리 권한이 없습니다.");
+      } else if (e instanceof ApiError && e.status === 400) {
+        alert("요청한 모집 상태가 올바르지 않습니다.");
+      } else if (e instanceof ApiError && e.status === 409) {
+        alert("현재 상태에서는 모집 상태를 변경할 수 없습니다.");
+      } else {
+        alert("캠페인 상태 변경에 실패했습니다.");
+      }
+    } finally {
+      statusUpdatingRef.current = false;
+      setStatusUpdating(false);
+    }
+  };
+
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
@@ -338,6 +431,13 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         </button>
 
         <HeaderCard c={c} />
+
+        <CampaignStatusManagement
+          c={c}
+          updating={statusUpdating}
+          disabled={statusUpdating || refreshing}
+          onChange={updateStatus}
+        />
 
         <div className="mt-8 sticky top-20 z-10">
           <CTABar c={c} onJoin={join} joining={joining} disabled={joining || refreshing} />
