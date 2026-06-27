@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { useAuthSession } from "@/lib/use-auth-session";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
 import type { Post, PostComment } from "@/data/posts";
@@ -18,7 +19,17 @@ const MAX_COMMENT_LENGTH = 500;
 
 const categories = ["전체", "패션", "도시텃밭", "공방", "기증", "음식", "가구"];
 
-function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onOpen: () => void }) {
+function PostCard({
+  p,
+  refreshing,
+  identity,
+  onOpen,
+}: {
+  p: Post;
+  refreshing: boolean;
+  identity: string | null;
+  onOpen: () => void;
+}) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
@@ -33,13 +44,17 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
-  // 재조회로 p가 바뀌면(likedByMe/likes) 로컬 상태를 맞춘다. 리마운트 없이 동기화 → 댓글 입력 보존.
-  // 사용자의 좋아요 클릭은 p를 바꾸지 않으므로 낙관적 상태를 덮어쓰지 않는다.
-  const [synced, setSynced] = useState({ likes: p.likes, liked: p.likedByMe });
-  if (synced.likes !== p.likes || synced.liked !== p.likedByMe) {
-    setSynced({ likes: p.likes, liked: p.likedByMe });
+  const [bookmarked, setBookmarked] = useState(p.bookmarkedByMe);
+  const [bookmarking, setBookmarking] = useState(false);
+  // 인증 재조회로 새 p가 오면 서버 상태를 반영한다. identity 변경 직후에는 사용자별 상태를 즉시 중립화한다.
+  // 카드를 리마운트하지 않아 작성 중인 댓글 입력은 보존한다.
+  const [synced, setSynced] = useState({ post: p, identity });
+  if (synced.post !== p || synced.identity !== identity) {
+    const identityChanged = synced.identity !== identity;
+    setSynced({ post: p, identity });
     setLikes(p.likes);
-    setLiked(p.likedByMe);
+    setLiked(identityChanged ? false : p.likedByMe);
+    setBookmarked(identityChanged ? false : p.bookmarkedByMe);
   }
   const [commentCount, setCommentCount] = useState(p.comments);
   const [showComments, setShowComments] = useState(false);
@@ -72,6 +87,26 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
       else alert("좋아요 처리에 실패했습니다.");
     } finally {
       setLiking(false);
+    }
+  };
+
+  const onBookmark = async () => {
+    const requestToken = getToken();
+    if (!requestToken) return requireLogin();
+    if (bookmarking || refreshing) return;
+    setBookmarking(true);
+    try {
+      const updated = bookmarked
+        ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
+        : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
+      if (getToken() !== requestToken) return;
+      setBookmarked(updated.bookmarkedByMe);
+    } catch (e) {
+      if (getToken() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) requireLogin();
+      else alert("북마크 처리에 실패했습니다.");
+    } finally {
+      setBookmarking(false);
     }
   };
 
@@ -175,8 +210,14 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
                 <Share2 size={14} />
               </button>
             </div>
-            <button style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              <Bookmark size={14} />
+            <button
+              onClick={onBookmark}
+              disabled={bookmarking || refreshing}
+              aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
+              className="transition-colors disabled:opacity-50"
+              style={{ color: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
+            >
+              <Bookmark size={14} fill={bookmarked ? "#7dd3a3" : "transparent"} />
             </button>
           </div>
 
@@ -304,12 +345,17 @@ function SideRecommend() {
 export default function FeedClient({ posts: initialPosts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
   const router = useRouter();
   const { theme } = useTheme();
+  const { token } = useAuthSession();
   const dark = theme === "dark";
-  // 새로고침·로그인/로그아웃 시 토큰 포함 재조회로 likedByMe 동기화.
-  // identity 변경 시 각 글의 likedByMe만 즉시 neutral(false), likes 숫자는 유지.
+  // 새로고침·로그인/로그아웃 시 토큰 포함 재조회로 사용자별 상태를 동기화한다.
+  // identity 변경 시 좋아요/북마크만 즉시 neutral(false), likes 숫자는 유지한다.
   const [posts, setPosts] = useState(initialPosts);
   const { refreshing } = useAuthedRefresh<Post[]>("/api/posts", setPosts, () =>
-    setPosts((cur) => cur.map((p) => (p.likedByMe ? { ...p, likedByMe: false } : p))),
+    setPosts((cur) =>
+      cur.map((p) =>
+        p.likedByMe || p.bookmarkedByMe ? { ...p, likedByMe: false, bookmarkedByMe: false } : p,
+      ),
+    ),
   );
   return (
     <section
@@ -366,7 +412,13 @@ export default function FeedClient({ posts: initialPosts, campaigns }: { posts: 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {posts.map((p) => (
-              <PostCard key={p.id} p={p} refreshing={refreshing} onOpen={() => router.push(`/posts/${p.id}`)} />
+              <PostCard
+                key={p.id}
+                p={p}
+                refreshing={refreshing}
+                identity={token}
+                onOpen={() => router.push(`/posts/${p.id}`)}
+              />
             ))}
           </div>
         </main>
