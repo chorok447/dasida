@@ -64,7 +64,6 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       router.push("/mypage");
     } catch (e) {
       if (getToken() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
-      setDeleting(false);
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         alert("로그인이 필요합니다.");
@@ -74,6 +73,9 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       } else {
         alert("게시글 삭제에 실패했습니다.");
       }
+    } finally {
+      // 토큰 변경으로 무시한 경우에도 버튼이 영구 비활성화되지 않게 정리.
+      setDeleting(false);
     }
   };
 
