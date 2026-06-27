@@ -235,10 +235,19 @@ data class CampaignResponse(
     val ownedByMe: Boolean,
 )
 
+data class CampaignSearchResponse(
+    val content: List<CampaignResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
 @RestController
 @RequestMapping("/api/campaigns")
 class CampaignController(
     private val repo: CampaignRepository,
+    private val campaignSearch: CampaignSearchRepository,
     private val participants: CampaignParticipantRepository,
     private val posts: PostRepository,
     private val users: UserRepository,
@@ -253,6 +262,68 @@ class CampaignController(
             participants.findByUserIdAndCampaignIdIn(user.id, campaigns.map { it.id }).map { it.campaignId }.toSet()
         }
         return campaigns.map { it.toResponse(viewerId = user?.id, joinedByMe = it.id in joinedIds) }
+    }
+
+    /** 공개 검색. content/count는 Querydsl로 분리하고 현재 page의 참여 상태만 bulk 조회한다. */
+    @GetMapping("/search")
+    @Transactional(readOnly = true)
+    fun search(
+        @RequestParam(name = "q", required = false) q: String?,
+        @RequestParam(required = false) status: String?,
+        @RequestParam(defaultValue = "false") availableOnly: Boolean,
+        @RequestParam(defaultValue = "latest") sort: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "9") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): CampaignSearchResponse {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size < 1 || size > MAX_SEARCH_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
+        }
+
+        val query = q?.trim()?.takeIf { it.isNotEmpty() }
+        if (query != null && query.length > MAX_SEARCH_QUERY_LENGTH) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "q must not exceed $MAX_SEARCH_QUERY_LENGTH characters",
+            )
+        }
+        if (status != null && status !in CAMPAIGN_STATUSES) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign status")
+        }
+        val searchSort = when (sort) {
+            "latest" -> CampaignSearchSort.LATEST
+            "popular" -> CampaignSearchSort.POPULAR
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign sort")
+        }
+
+        val result = campaignSearch.search(
+            CampaignSearchCondition(
+                query = query,
+                status = status,
+                availableOnly = availableOnly,
+                sort = searchSort,
+                page = page,
+                size = size,
+            ),
+        )
+        val joinedIds = if (user == null || result.content.isEmpty()) {
+            emptySet()
+        } else {
+            participants.findByUserIdAndCampaignIdIn(user.id, result.content.map { it.id })
+                .map { it.campaignId }
+                .toSet()
+        }
+
+        return CampaignSearchResponse(
+            content = result.content.map {
+                it.toResponse(viewerId = user?.id, joinedByMe = it.id in joinedIds)
+            },
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
     }
 
     /**
@@ -639,7 +710,13 @@ class CampaignController(
     }
 
     companion object {
+        private val CAMPAIGN_STATUSES = setOf("open", "upcoming", "closed")
         private const val MAX_CAPACITY = 10000
         private const val MAX_PARTICIPANT_PAGE_SIZE = 100
+        private const val MAX_SEARCH_PAGE_SIZE = 50
+        private const val MAX_SEARCH_QUERY_LENGTH = 100
+
+        private fun totalPages(totalElements: Long, size: Int): Int =
+            if (totalElements == 0L) 0 else ((totalElements - 1) / size + 1).toInt()
     }
 }

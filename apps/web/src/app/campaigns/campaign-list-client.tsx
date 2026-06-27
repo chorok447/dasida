@@ -1,24 +1,52 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
-import { Search, Users, Calendar } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Search, Users } from "lucide-react";
+import {
+  statusMeta,
+  type Campaign,
+  type CampaignSearchResponse,
+  type CampaignSearchSort,
+  type CampaignStatus,
+} from "@/data/campaigns";
+import { clearSession, getToken } from "@/lib/auth";
+import { ApiError, apiGet } from "@/lib/api";
+import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
-import { statusMeta, type Campaign, type CampaignStatus } from "@/data/campaigns";
 
 type Filter = "all" | CampaignStatus;
+type SearchState = {
+  identity: string;
+  status: "loading" | "success" | "error";
+  response: CampaignSearchResponse | null;
+};
+type UrlState = {
+  query: string;
+  filter: Filter;
+  availableOnly: boolean;
+  sort: CampaignSearchSort;
+  page: number;
+};
+
+const FILTER_ITEMS: { id: Filter; label: string }[] = [
+  { id: "all", label: "전체" },
+  { id: "open", label: "모집중" },
+  { id: "upcoming", label: "모집예정" },
+  { id: "closed", label: "모집마감" },
+];
 
 function StatusBadge({ status }: { status: CampaignStatus }) {
-  const m = statusMeta[status];
+  const meta = statusMeta[status];
   return (
     <span
-      className="text-[11px] tracking-[0.2em] px-2.5 py-1 rounded-full"
-      style={{ background: m.color, color: m.fg }}
+      className="rounded-full px-2.5 py-1 text-[11px] tracking-[0.2em]"
+      style={{ background: meta.color, color: meta.fg }}
     >
-      {m.label}
+      {meta.label}
     </span>
   );
 }
@@ -30,7 +58,7 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
   return (
     <div className="w-full">
       <div
-        className="h-1.5 w-full rounded-full overflow-hidden"
+        className="h-1.5 w-full overflow-hidden rounded-full"
         style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}
       >
         <motion.div
@@ -43,7 +71,7 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
         />
       </div>
       <div
-        className="flex justify-between text-[11px] mt-1.5"
+        className="mt-1.5 flex justify-between text-[11px]"
         style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}
       >
         <span>
@@ -61,34 +89,35 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
   );
 }
 
-function CampaignCard({ c, onOpen }: { c: Campaign; onOpen: () => void }) {
+function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => void }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const ref = useRef<HTMLDivElement>(null);
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 200, damping: 22 });
-  const sy = useSpring(my, { stiffness: 200, damping: 22 });
-  const rY = useTransform(sx, [-0.5, 0.5], [-12, 12]);
-  const rX = useTransform(sy, [-0.5, 0.5], [10, -10]);
+  const ref = useRef<HTMLButtonElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springX = useSpring(mouseX, { stiffness: 200, damping: 22 });
+  const springY = useSpring(mouseY, { stiffness: 200, damping: 22 });
+  const rotateY = useTransform(springX, [-0.5, 0.5], [-12, 12]);
+  const rotateX = useTransform(springY, [-0.5, 0.5], [10, -10]);
 
   return (
     <div style={{ perspective: 1000 }}>
-      <motion.div
+      <motion.button
+        type="button"
         ref={ref}
-        onMouseMove={(e) => {
-          const r = ref.current?.getBoundingClientRect();
-          if (!r) return;
-          mx.set((e.clientX - r.left) / r.width - 0.5);
-          my.set((e.clientY - r.top) / r.height - 0.5);
+        onMouseMove={(event) => {
+          const rect = ref.current?.getBoundingClientRect();
+          if (!rect) return;
+          mouseX.set((event.clientX - rect.left) / rect.width - 0.5);
+          mouseY.set((event.clientY - rect.top) / rect.height - 0.5);
         }}
         onMouseLeave={() => {
-          mx.set(0);
-          my.set(0);
+          mouseX.set(0);
+          mouseY.set(0);
         }}
         onClick={onOpen}
-        style={{ rotateX: rX, rotateY: rY, transformStyle: "preserve-3d" }}
-        className="cursor-pointer rounded-2xl overflow-hidden border shadow-[0_20px_50px_-25px_rgba(0,0,0,0.5)]"
+        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        className="w-full cursor-pointer overflow-hidden rounded-2xl border text-left shadow-[0_20px_50px_-25px_rgba(0,0,0,0.5)]"
       >
         <div
           style={{
@@ -98,17 +127,17 @@ function CampaignCard({ c, onOpen }: { c: Campaign; onOpen: () => void }) {
           className="border-0"
         >
           <div className="relative aspect-[4/3] overflow-hidden">
-            <img src={c.thumb} alt={c.title} className="w-full h-full object-cover" />
+            <img src={campaign.thumb} alt={campaign.title} className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
-            <div className="absolute top-3 right-3" style={{ transform: "translateZ(40px)" }}>
-              <StatusBadge status={c.status} />
+            <div className="absolute right-3 top-3" style={{ transform: "translateZ(40px)" }}>
+              <StatusBadge status={campaign.status} />
             </div>
-            <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-white/90 text-[12px]">
+            <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-[12px] text-white/90">
               <Calendar size={12} />
-              <span>{c.recruitStart} ~ {c.recruitEnd}</span>
+              <span>{campaign.recruitStart} ~ {campaign.recruitEnd}</span>
             </div>
           </div>
-          <div className="p-5 space-y-3">
+          <div className="space-y-3 p-5">
             <h3
               style={{
                 fontFamily: "'Black Han Sans', sans-serif",
@@ -117,117 +146,257 @@ function CampaignCard({ c, onOpen }: { c: Campaign; onOpen: () => void }) {
                 lineHeight: 1.25,
               }}
             >
-              {c.title}
+              {campaign.title}
             </h3>
             <p
-              className="text-[13px] line-clamp-2"
+              className="line-clamp-2 text-[13px]"
               style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}
             >
-              {c.summary}
+              {campaign.summary}
             </p>
-            <ProgressBar joined={c.joined} capacity={c.capacity} status={c.status} />
+            <ProgressBar joined={campaign.joined} capacity={campaign.capacity} status={campaign.status} />
             <div
-              className="flex items-center justify-between text-[12px] pt-1"
+              className="flex items-center justify-between pt-1 text-[12px]"
               style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}
             >
               <span className="flex items-center gap-1.5">
-                <Users size={12} /> 모집 {c.capacity}명
+                <Users size={12} /> 모집 {campaign.capacity}명
               </span>
-              <span>{c.daysLeftLabel}</span>
+              <span>{campaign.daysLeftLabel}</span>
             </div>
           </div>
         </div>
-      </motion.div>
+      </motion.button>
     </div>
   );
 }
 
-function FilterBar({ filter, setFilter, query, setQuery }: { filter: Filter; setFilter: (f: Filter) => void; query: string; setQuery: (q: string) => void }) {
+function DebouncedSearchInput({ value, onCommit }: { value: string; onCommit: (query: string) => void }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const items: { id: Filter; label: string }[] = [
-    { id: "all", label: "전체" },
-    { id: "open", label: "모집중" },
-    { id: "upcoming", label: "모집예정" },
-    { id: "closed", label: "모집마감" },
-  ];
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    const normalized = draft.trim();
+    if (normalized === value) return;
+    const timeout = window.setTimeout(() => onCommit(normalized), 300);
+    return () => window.clearTimeout(timeout);
+  }, [draft, onCommit, value]);
+
   return (
-    <div className="flex flex-col md:flex-row md:items-center gap-4 mb-10">
-      <div className="flex gap-1 p-1 rounded-full" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-        {items.map((it) => {
-          const active = filter === it.id;
+    <label
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 py-2.5"
+      style={{
+        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
+        border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
+      }}
+    >
+      <Search size={16} className="shrink-0 opacity-50" />
+      <span className="sr-only">캠페인 검색</span>
+      <input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        maxLength={100}
+        placeholder="캠페인 검색..."
+        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:opacity-50"
+        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+      />
+    </label>
+  );
+}
+
+function FilterBar({
+  state,
+  onFilter,
+  onSearch,
+  onSort,
+  onAvailableOnly,
+}: {
+  state: UrlState;
+  onFilter: (filter: Filter) => void;
+  onSearch: (query: string) => void;
+  onSort: (sort: CampaignSearchSort) => void;
+  onAvailableOnly: (checked: boolean) => void;
+}) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+
+  return (
+    <div className="mb-8 space-y-4">
+      <div className="flex w-full gap-1 overflow-x-auto rounded-full p-1 md:w-fit" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
+        {FILTER_ITEMS.map((item) => {
+          const active = state.filter === item.id;
           return (
             <button
-              key={it.id}
-              onClick={() => setFilter(it.id)}
-              className="relative px-5 py-2 text-[13px] rounded-full"
+              key={item.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onFilter(item.id)}
+              className="relative shrink-0 rounded-full px-5 py-2 text-[13px]"
               style={{ color: active ? "#0f1f22" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
             >
-              {active && (
-                <motion.div
-                  layoutId="filter-pill"
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: "#7dd3a3" }}
-                />
-              )}
-              <span className="relative">{it.label}</span>
+              {active ? (
+                <motion.div layoutId="filter-pill" className="absolute inset-0 rounded-full" style={{ background: "#7dd3a3" }} />
+              ) : null}
+              <span className="relative">{item.label}</span>
             </button>
           );
         })}
       </div>
-      <div
-        className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-full"
-        style={{
-          background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-          border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
-        }}
-      >
-        <Search size={16} style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }} />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="캠페인 검색..."
-          className="flex-1 bg-transparent outline-none text-[13px] placeholder:opacity-50"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-        />
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <DebouncedSearchInput key={state.query} value={state.query} onCommit={onSearch} />
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
+            style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+          >
+            <input
+              type="checkbox"
+              checked={state.availableOnly}
+              onChange={(event) => onAvailableOnly(event.target.checked)}
+              className="accent-[#148a90]"
+            />
+            참여 가능
+          </label>
+          <label className="flex items-center gap-2 text-[13px]">
+            <span className="sr-only">정렬</span>
+            <select
+              value={state.sort}
+              onChange={(event) => onSort(event.target.value as CampaignSearchSort)}
+              className="rounded-full border px-4 py-2.5 outline-none"
+              style={{
+                color: dark ? "#f9f7f2" : "#0f1f22",
+                background: dark ? "#1c4044" : "#ffffff",
+                borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+              }}
+            >
+              <option value="latest">최신순</option>
+              <option value="popular">인기순</option>
+            </select>
+          </label>
+        </div>
       </div>
     </div>
   );
 }
 
-export default function CampaignListClient({ campaigns }: { campaigns: Campaign[] }) {
+function parsePage(value: string | null): number {
+  if (value === null) return 0;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function parseFilter(value: string | null): Filter {
+  return value === "open" || value === "upcoming" || value === "closed" ? value : "all";
+}
+
+function StatePanel({ children }: { children: React.ReactNode }) {
+  return <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center text-[14px]">{children}</div>;
+}
+
+export default function CampaignListClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
+  const [retryTick, setRetryTick] = useState(0);
+  const generationRef = useRef(0);
+
+  const urlState = useMemo<UrlState>(() => ({
+    query: searchParams.get("q") ?? "",
+    filter: parseFilter(searchParams.get("status")),
+    availableOnly: searchParams.get("availableOnly") === "true",
+    sort: searchParams.get("sort") === "popular" ? "popular" : "latest",
+    page: parsePage(searchParams.get("page")),
+  }), [searchParams]);
+  const requestIdentity = JSON.stringify([token, urlState, retryTick]);
+  const [searchState, setSearchState] = useState<SearchState>({
+    identity: "",
+    status: "loading",
+    response: null,
+  });
+  const currentState: SearchState = searchState.identity === requestIdentity
+    ? searchState
+    : { identity: requestIdentity, status: "loading", response: null };
 
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollY } = useScroll();
   const titleY = useTransform(scrollY, [0, 600], [0, -80]);
 
-  const filtered = campaigns.filter(
-    (c) => (filter === "all" || c.status === filter) && (query === "" || c.title.includes(query) || c.summary.includes(query)),
-  );
+  const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
+    const next = { ...urlState, ...changes };
+    const params = new URLSearchParams();
+    if (next.query) params.set("q", next.query);
+    if (next.filter !== "all") params.set("status", next.filter);
+    if (next.availableOnly) params.set("availableOnly", "true");
+    params.set("sort", next.sort);
+    params.set("page", next.page.toString());
+    const href = `/campaigns?${params.toString()}`;
+    if (replace) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
+  }, [router, urlState]);
+
+  const commitSearch = useCallback((query: string) => {
+    updateUrl({ query, page: 0 }, true);
+  }, [updateUrl]);
+
+  useEffect(() => {
+    const requestToken = token;
+    if (getToken() !== requestToken) return;
+
+    const params = new URLSearchParams();
+    if (urlState.query) params.set("q", urlState.query);
+    if (urlState.filter !== "all") params.set("status", urlState.filter);
+    params.set("availableOnly", urlState.availableOnly.toString());
+    params.set("sort", urlState.sort);
+    params.set("page", urlState.page.toString());
+    params.set("size", "9");
+
+    const generation = ++generationRef.current;
+    let cancelled = false;
+    const isCurrent = () =>
+      !cancelled && generation === generationRef.current && getToken() === requestToken;
+
+    apiGet<CampaignSearchResponse>(`/api/campaigns/search?${params.toString()}`)
+      .then((response) => {
+        if (!isCurrent()) return;
+        setSearchState({ identity: requestIdentity, status: "success", response });
+      })
+      .catch((error) => {
+        if (!isCurrent()) return;
+        if (error instanceof ApiError && error.status === 401 && requestToken) {
+          clearSession();
+          return;
+        }
+        setSearchState({ identity: requestIdentity, status: "error", response: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestIdentity, token, urlState.availableOnly, urlState.filter, urlState.page, urlState.query, urlState.sort]);
+
+  const response = currentState.response;
 
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen pt-32 pb-20 px-6 transition-colors overflow-hidden"
+      className="relative min-h-screen overflow-hidden px-6 pb-20 pt-32 transition-colors"
       style={{
-        position: "relative",
         backgroundImage: dark
           ? "linear-gradient(180deg,#0f1f22,#1c4044)"
           : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
       }}
     >
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-20 right-1/4 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-20">
+        <div className="absolute right-1/4 top-20 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
       </div>
 
-      <div className="max-w-6xl mx-auto relative">
-        <motion.div className="text-center mb-12" style={{ y: titleY }}>
-          <p className="tracking-[0.4em] uppercase mb-3" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+      <div className="relative mx-auto max-w-6xl">
+        <motion.div className="mb-12 text-center" style={{ y: titleY }}>
+          <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
             Campaigns
           </p>
           <h1
@@ -235,34 +404,96 @@ export default function CampaignListClient({ campaigns }: { campaigns: Campaign[
           >
             함께 만드는 작은 변화
           </h1>
-          <p className="mt-4 max-w-xl mx-auto" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+          <p className="mx-auto mt-4 max-w-xl" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
             모집중인 캠페인에 참여하거나, 다가올 캠페인을 미리 둘러보세요.
           </p>
         </motion.div>
 
-        <div className="flex items-center justify-end mb-4">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+            {currentState.status === "success" && response ? `검색 결과 ${response.totalElements.toLocaleString()}개` : "캠페인 검색"}
+          </p>
           <button
+            type="button"
             onClick={() => router.push("/campaigns/new")}
-            className="px-4 py-2 rounded-full text-[13px] font-medium hover:-translate-y-0.5 transition-transform"
+            className="shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-transform hover:-translate-y-0.5"
             style={{ background: "#7dd3a3", color: "#0f1f22" }}
           >
             + 캠페인 만들기
           </button>
         </div>
 
-        <FilterBar filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} />
+        <FilterBar
+          state={urlState}
+          onFilter={(filter) => updateUrl({ filter, page: 0 })}
+          onSearch={commitSearch}
+          onSort={(sort) => updateUrl({ sort, page: 0 })}
+          onAvailableOnly={(availableOnly) => updateUrl({ availableOnly, page: 0 })}
+        />
 
-        {filtered.length === 0 ? (
-          <p className="text-center py-20" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
-            조건에 맞는 캠페인이 없습니다.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((c) => (
-              <CampaignCard key={c.id} c={c} onOpen={() => router.push(`/campaigns/${c.id}`)} />
+        {currentState.status === "loading" ? (
+          <StatePanel>
+            <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
+            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>캠페인을 검색하는 중입니다.</p>
+          </StatePanel>
+        ) : null}
+
+        {currentState.status === "error" ? (
+          <StatePanel>
+            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>캠페인을 불러오지 못했습니다.</p>
+            <button
+              type="button"
+              onClick={() => setRetryTick((tick) => tick + 1)}
+              className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+            >
+              다시 시도
+            </button>
+          </StatePanel>
+        ) : null}
+
+        {currentState.status === "success" && response?.content.length === 0 ? (
+          <StatePanel>
+            <p style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>조건에 맞는 캠페인이 없습니다.</p>
+          </StatePanel>
+        ) : null}
+
+        {currentState.status === "success" && response && response.content.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {response.content.map((campaign) => (
+              <CampaignCard
+                key={campaign.id}
+                campaign={campaign}
+                onOpen={() => router.push(`/campaigns/${campaign.id}`)}
+              />
             ))}
           </div>
-        )}
+        ) : null}
+
+        {currentState.status === "success" && response && response.totalElements > 0 ? (
+          <div className="mt-10 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => updateUrl({ page: Math.max(0, response.page - 1) })}
+              disabled={response.page === 0}
+              className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
+            >
+              <ChevronLeft size={15} /> 이전
+            </button>
+            <span className="min-w-20 text-center text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+              {response.page + 1} / {response.totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => updateUrl({ page: response.page + 1 })}
+              disabled={response.page + 1 >= response.totalPages}
+              className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
+            >
+              다음 <ChevronRight size={15} />
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   );
