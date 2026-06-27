@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.auth.User
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.post.Author
 import com.dasida.api.post.Post
 import com.dasida.api.post.PostRepository
@@ -29,6 +30,7 @@ class CampaignControllerTest(
     @Autowired val campaignRepo: CampaignRepository,
     @Autowired val participantRepo: CampaignParticipantRepository,
     @Autowired val postRepo: PostRepository,
+    @Autowired val userRepo: UserRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
@@ -56,6 +58,31 @@ class CampaignControllerTest(
         return id
     }
 
+    private fun saveUser(name: String, verified: Boolean = false): User = userRepo.saveAndFlush(
+        User(
+            email = "participant-${UUID.randomUUID()}@test.com",
+            passwordHash = "hash",
+            name = name,
+            verified = verified,
+        ),
+    )
+
+    private fun saveParticipant(campaignId: String, userId: Long, id: String = "cp-${UUID.randomUUID()}"): String {
+        participantRepo.saveAndFlush(CampaignParticipant(id, campaignId, userId))
+        return id
+    }
+
+    private fun getParticipants(
+        id: String,
+        page: Int = 0,
+        size: Int = 20,
+        bearer: String? = token,
+    ) = mvc.get("/api/campaigns/$id/participants") {
+        if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        param("page", page.toString())
+        param("size", size.toString())
+    }
+
     @Test
     fun `목록은 시드 전체를 반환한다`() {
         mvc.get("/api/campaigns").andExpect {
@@ -76,6 +103,224 @@ class CampaignControllerTest(
     @Test
     fun `없는 id는 404`() {
         mvc.get("/api/campaigns/nope").andExpect { status { isNotFound() } }
+    }
+
+    // ---- 개설자용 참가자 목록 ----
+
+    @Test
+    fun `참가자 목록은 인증 없으면 401`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id, bearer = null).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `개설자는 참가자 목록을 조회할 수 있다`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.campaignId") { value(id) }
+            jsonPath("$.title") { value("테스트 캠페인") }
+        }
+    }
+
+    @Test
+    fun `다른 사용자는 참가자 목록을 조회할 수 없다`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id, bearer = otherToken).andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `authorUserId가 null인 캠페인 참가자 목록은 403`() {
+        val id = saveCampaign(authorUserId = null)
+        getParticipants(id).andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `없는 캠페인 참가자 목록은 404`() {
+        getParticipants("nope").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `참가자가 없으면 빈 목록과 totalElements 0을 반환한다`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(0) }
+            jsonPath("$.totalPages") { value(0) }
+            jsonPath("$.participants.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `참가자 이름과 인증 여부를 현재 사용자 정보로 반환한다`() {
+        val id = saveCampaign(joined = 1, authorUserId = 1)
+        val participant = saveUser("현재 이름", verified = true)
+        val participantId = saveParticipant(id, requireNotNull(participant.id))
+
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.participants[0].participantId") { value(participantId) }
+            jsonPath("$.participants[0].name") { value("현재 이름") }
+            jsonPath("$.participants[0].verified") { value(true) }
+        }
+    }
+
+    @Test
+    fun `참가자 응답에 이메일 비밀번호 해시 userId를 노출하지 않는다`() {
+        val id = saveCampaign(joined = 1, authorUserId = 1)
+        val participant = saveUser("개인정보 확인")
+        saveParticipant(id, requireNotNull(participant.id))
+
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.participants[0].email") { doesNotExist() }
+            jsonPath("$.participants[0].passwordHash") { doesNotExist() }
+            jsonPath("$.participants[0].userId") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `참가자 목록에 page와 size가 적용된다`() {
+        val id = saveCampaign(joined = 3, authorUserId = 1)
+        val users = listOf(saveUser("첫째"), saveUser("둘째"), saveUser("셋째"))
+        users.forEach { saveParticipant(id, requireNotNull(it.id)) }
+
+        getParticipants(id, page = 1, size = 2).andExpect {
+            status { isOk() }
+            jsonPath("$.page") { value(1) }
+            jsonPath("$.size") { value(2) }
+            jsonPath("$.totalElements") { value(3) }
+            jsonPath("$.totalPages") { value(2) }
+            jsonPath("$.participants.length()") { value(1) }
+            jsonPath("$.participants[0].name") { value("셋째") }
+        }
+    }
+
+    @Test
+    fun `참가자 목록은 userId 오름차순으로 결정적으로 정렬된다`() {
+        val id = saveCampaign(joined = 3, authorUserId = 1)
+        val first = saveUser("첫 번째")
+        val second = saveUser("두 번째")
+        val third = saveUser("세 번째")
+        val firstParticipant = saveParticipant(id, requireNotNull(first.id))
+        val secondParticipant = saveParticipant(id, requireNotNull(second.id))
+        val thirdParticipant = saveParticipant(id, requireNotNull(third.id))
+
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.participants[0].participantId") { value(firstParticipant) }
+            jsonPath("$.participants[1].participantId") { value(secondParticipant) }
+            jsonPath("$.participants[2].participantId") { value(thirdParticipant) }
+        }
+    }
+
+    @Test
+    fun `page가 음수면 400`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id, page = -1).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `size가 0이면 400`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id, size = 0).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `size가 100을 넘으면 400`() {
+        val id = saveCampaign(authorUserId = 1)
+        getParticipants(id, size = 101).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `join 후 참가자 목록에 나타난다`() {
+        val id = saveCampaign(status = "open", joined = 0, authorUserId = 1)
+        val participant = saveUser("새 참가자", verified = true)
+        val participantToken = jwt.issue(participant)
+
+        mvc.post("/api/campaigns/$id/join") {
+            headers { add("Authorization", "Bearer $participantToken") }
+        }.andExpect { status { isOk() } }
+
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.participants[0].name") { value("새 참가자") }
+        }
+    }
+
+    @Test
+    fun `leave 후 참가자 목록에서 사라진다`() {
+        val id = saveCampaign(status = "open", joined = 0, authorUserId = 1)
+        val participant = saveUser("취소 참가자")
+        val participantToken = jwt.issue(participant)
+        mvc.post("/api/campaigns/$id/join") {
+            headers { add("Authorization", "Bearer $participantToken") }
+        }.andExpect { status { isOk() } }
+
+        mvc.delete("/api/campaigns/$id/join") {
+            headers { add("Authorization", "Bearer $participantToken") }
+        }.andExpect { status { isOk() } }
+
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(0) }
+            jsonPath("$.participants.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `개설자는 모든 모집 상태의 참가자 목록을 조회할 수 있다`() {
+        listOf("upcoming", "open", "closed").forEach { campaignStatus ->
+            val id = saveCampaign(status = campaignStatus, authorUserId = 1)
+            getParticipants(id).andExpect {
+                status { isOk() }
+                jsonPath("$.status") { value(campaignStatus) }
+            }
+        }
+    }
+
+    @Test
+    fun `다른 캠페인 참가자는 목록에 섞이지 않는다`() {
+        val target = saveCampaign(joined = 1, authorUserId = 1)
+        val other = saveCampaign(joined = 1, authorUserId = 1)
+        val included = saveUser("대상 참가자")
+        val excluded = saveUser("다른 캠페인 참가자")
+        saveParticipant(target, requireNotNull(included.id))
+        saveParticipant(other, requireNotNull(excluded.id))
+
+        getParticipants(target).andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.participants[0].name") { value("대상 참가자") }
+        }
+    }
+
+    @Test
+    fun `사용자 row가 없는 참가자도 fallback으로 반환한다`() {
+        val id = saveCampaign(joined = 1, authorUserId = 1)
+        val participantId = saveParticipant(id, Long.MAX_VALUE)
+
+        getParticipants(id).andExpect {
+            status { isOk() }
+            jsonPath("$.participants[0].participantId") { value(participantId) }
+            jsonPath("$.participants[0].name") { value("탈퇴한 사용자") }
+            jsonPath("$.participants[0].verified") { value(false) }
+        }
+    }
+
+    @Test
+    fun `일반 캠페인 상세 GET은 공개 정책을 유지한다`() {
+        val id = saveCampaign(authorUserId = 1)
+        mvc.get("/api/campaigns/$id").andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `일반 캠페인 GET은 공개이고 참가자 GET만 인증이 필요하다`() {
+        val id = saveCampaign(authorUserId = 1)
+        mvc.get("/api/campaigns").andExpect { status { isOk() } }
+        mvc.get("/api/campaigns/$id").andExpect { status { isOk() } }
+        mvc.get("/api/campaigns/$id/participants").andExpect { status { isUnauthorized() } }
     }
 
     @Test
