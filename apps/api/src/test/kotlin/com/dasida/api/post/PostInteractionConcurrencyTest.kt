@@ -30,6 +30,7 @@ class PostInteractionConcurrencyTest(
     @Autowired val jwt: JwtService,
     @Autowired val postRepo: PostRepository,
     @Autowired val likeRepo: PostLikeRepository,
+    @Autowired val bookmarkRepo: PostBookmarkRepository,
     @Autowired val commentRepo: PostCommentRepository,
 ) {
     private fun tokenFor(userId: Long) = jwt.issue(
@@ -72,6 +73,10 @@ class PostInteractionConcurrencyTest(
         mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
             .andReturn().response.status
 
+    private fun bookmarkStatus(id: String, token: String): Int =
+        mvc.post("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andReturn().response.status
+
     private fun commentStatus(id: String, token: String, text: String): Int =
         mvc.post("/api/posts/$id/comments") {
             headers { add("Authorization", "Bearer $token") }
@@ -81,6 +86,7 @@ class PostInteractionConcurrencyTest(
 
     private fun cleanup(id: String) {
         likeRepo.deleteByPostId(id)
+        bookmarkRepo.deleteByPostId(id)
         commentRepo.deleteByPostId(id)
         postRepo.deleteById(id)
     }
@@ -110,6 +116,20 @@ class PostInteractionConcurrencyTest(
             assertThat(statuses).containsExactly(200, 200)
             assertThat(postRepo.findById(id).get().likes).isEqualTo(1)
             assertThat(likeRepo.countByPostId(id)).isEqualTo(1)
+        } finally {
+            cleanup(id)
+        }
+    }
+
+    @Test
+    fun `같은 사용자가 동시에 두 번 북마크해도 idempotent 하다`() {
+        val id = savePost()
+        val token = tokenFor(412)
+        try {
+            val statuses = concurrently(2) { bookmarkStatus(id, token) }
+
+            assertThat(statuses).containsExactly(200, 200)
+            assertThat(bookmarkRepo.countByPostId(id)).isEqualTo(1)
         } finally {
             cleanup(id)
         }
