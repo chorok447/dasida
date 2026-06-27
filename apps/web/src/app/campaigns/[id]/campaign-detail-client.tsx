@@ -152,7 +152,7 @@ function HeaderCard({ c }: { c: Campaign }) {
   );
 }
 
-function CTABar({ c, onJoin, joining }: { c: Campaign; onJoin: () => void; joining: boolean }) {
+function CTABar({ c, onJoin, joining, disabled }: { c: Campaign; onJoin: () => void; joining: boolean; disabled: boolean }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   if (c.joinedByMe) {
@@ -169,7 +169,7 @@ function CTABar({ c, onJoin, joining }: { c: Campaign; onJoin: () => void; joini
     return (
       <button
         onClick={onJoin}
-        disabled={joining}
+        disabled={disabled}
         className="w-full py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50"
         style={{ background: "#7dd3a3", color: "#0f1f22", fontSize: 17 }}
       >
@@ -267,8 +267,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [c, setC] = useState(campaign);
   const [joining, setJoining] = useState(false);
 
-  // 새로고침 후 joinedByMe 등 사용자별 상태 복원.
-  useAuthedRefresh<Campaign>(`/api/campaigns/${campaign.id}`, setC);
+  // 새로고침·로그인/로그아웃 시 joinedByMe 등 사용자별 상태 동기화.
+  const { refreshing, invalidatePending } = useAuthedRefresh<Campaign>(`/api/campaigns/${campaign.id}`, setC);
 
   const join = async () => {
     if (!getToken()) {
@@ -277,6 +277,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       return;
     }
     setJoining(true);
+    invalidatePending(); // 진행 중 재조회 결과가 참여 성공 결과를 덮어쓰지 않게
     try {
       setC(await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {}));
     } catch (e) {
@@ -321,7 +322,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         <HeaderCard c={c} />
 
         <div className="mt-8 sticky top-20 z-10">
-          <CTABar c={c} onJoin={join} joining={joining} />
+          <CTABar c={c} onJoin={join} joining={joining} disabled={joining || refreshing} />
         </div>
 
         <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>

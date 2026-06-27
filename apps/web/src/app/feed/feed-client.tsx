@@ -20,7 +20,7 @@ type Comment = { id: string; author: { name: string; verified: boolean }; text: 
 
 const categories = ["전체", "패션", "도시텃밭", "공방", "기증", "음식", "가구"];
 
-function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
+function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onOpen: () => void }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
@@ -35,6 +35,14 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
+  // 재조회로 p가 바뀌면(likedByMe/likes) 로컬 상태를 맞춘다. 리마운트 없이 동기화 → 댓글 입력 보존.
+  // 사용자의 좋아요 클릭은 p를 바꾸지 않으므로 낙관적 상태를 덮어쓰지 않는다.
+  const [synced, setSynced] = useState({ likes: p.likes, liked: p.likedByMe });
+  if (synced.likes !== p.likes || synced.liked !== p.likedByMe) {
+    setSynced({ likes: p.likes, liked: p.likedByMe });
+    setLikes(p.likes);
+    setLiked(p.likedByMe);
+  }
   const [commentCount, setCommentCount] = useState(p.comments);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -50,7 +58,7 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
 
   const onLike = async () => {
     if (!getToken()) return requireLogin();
-    if (liking) return; // 연타 방지
+    if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
     try {
       const updated = liked
@@ -156,7 +164,7 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
             <div className="flex gap-4 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              <button onClick={onLike} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors" style={liked ? { color: "#ed5c48" } : undefined}>
+              <button onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
                 <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
               </button>
               <button onClick={toggleComments} className="flex items-center gap-1">
@@ -296,9 +304,9 @@ export default function FeedClient({ posts: initialPosts, campaigns }: { posts: 
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
-  // 새로고침 후 토큰 포함 재조회로 likedByMe 복원.
+  // 새로고침·로그인/로그아웃 시 토큰 포함 재조회로 likedByMe 동기화.
   const [posts, setPosts] = useState(initialPosts);
-  useAuthedRefresh<Post[]>("/api/posts", setPosts);
+  const { refreshing } = useAuthedRefresh<Post[]>("/api/posts", setPosts);
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
@@ -354,8 +362,7 @@ export default function FeedClient({ posts: initialPosts, campaigns }: { posts: 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {posts.map((p) => (
-              // key에 likedByMe/likes 포함 → 재조회로 값이 바뀌면 카드를 리마운트해 초기 상태를 갱신.
-              <PostCard key={`${p.id}-${p.likedByMe}-${p.likes}`} p={p} onOpen={() => router.push(`/posts/${p.id}`)} />
+              <PostCard key={p.id} p={p} refreshing={refreshing} onOpen={() => router.push(`/posts/${p.id}`)} />
             ))}
           </div>
         </main>
