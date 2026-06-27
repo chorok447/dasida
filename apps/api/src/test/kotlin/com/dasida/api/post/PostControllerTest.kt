@@ -50,6 +50,26 @@ class PostControllerTest(
         return id
     }
 
+    private fun saveComment(
+        postId: String,
+        authorUserId: Long? = 1,
+        authorName: String = "테스터",
+        id: String = "itc-${UUID.randomUUID()}",
+    ): String {
+        commentRepo.saveAndFlush(
+            PostComment(
+                id = id,
+                postId = postId,
+                author = Author(authorName, false),
+                text = "테스트 댓글",
+                time = "방금",
+                seq = System.currentTimeMillis(),
+                authorUserId = authorUserId,
+            ),
+        )
+        return id
+    }
+
     @Test
     fun `목록은 시드 전체를 반환한다`() {
         mvc.get("/api/posts").andExpect {
@@ -634,11 +654,49 @@ class PostControllerTest(
     // ---- 댓글 ----
 
     @Test
-    fun `댓글 목록은 public 이고 배열을 반환한다`() {
-        val id = savePost()
+    fun `비로그인 댓글 목록은 ownedByMe false`() {
+        val id = savePost(comments = 1)
+        saveComment(id, authorUserId = 1)
         mvc.get("/api/posts/$id/comments").andExpect {
             status { isOk() }
             jsonPath("$") { isArray() }
+            jsonPath("$[0].ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `댓글 작성자 로그인 목록은 ownedByMe true`() {
+        val id = savePost(comments = 1)
+        saveComment(id, authorUserId = 1)
+        mvc.get("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].ownedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자 댓글 목록은 ownedByMe false`() {
+        val id = savePost(comments = 1)
+        saveComment(id, authorUserId = 1)
+        mvc.get("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token2") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `authorUserId가 null인 기존 댓글은 ownedByMe false`() {
+        val id = savePost(comments = 1)
+        saveComment(id, authorUserId = null, authorName = "테스터")
+        mvc.get("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].ownedByMe") { value(false) }
         }
     }
 
@@ -685,8 +743,34 @@ class PostControllerTest(
             status { isCreated() }
             jsonPath("$.text") { value("좋은 글이네요") }
             jsonPath("$.author.name") { value("테스터") }
+            jsonPath("$.ownedByMe") { value(true) }
         }
         mvc.get("/api/posts/$id").andExpect { jsonPath("$.comments") { value(1) } }
+    }
+
+    @Test
+    fun `댓글 작성 시 사용자 ID가 저장된다`() {
+        val id = savePost()
+        mvc.post("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"내 댓글"}"""
+        }.andExpect { status { isCreated() } }
+
+        assertThat(commentRepo.findByPostIdOrderBySeqAsc(id).single().authorUserId).isEqualTo(1)
+    }
+
+    @Test
+    fun `댓글 API 응답에 authorUserId는 노출되지 않는다`() {
+        val id = savePost()
+        mvc.post("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"내 댓글"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.authorUserId") { doesNotExist() }
+        }
     }
 
     @Test
@@ -696,6 +780,100 @@ class PostControllerTest(
             contentType = MediaType.APPLICATION_JSON
             content = """{"text":"댓글"}"""
         }.andExpect { status { isNotFound() } }
+    }
+
+    private fun deleteComment(postId: String, commentId: String, bearer: String? = token) =
+        mvc.delete("/api/posts/$postId/comments/$commentId") {
+            if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        }
+
+    @Test
+    fun `댓글 작성자는 삭제할 수 있고 row와 카운터가 함께 감소한다`() {
+        val postId = savePost(comments = 2)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        deleteComment(postId, commentId).andExpect { status { isNoContent() } }
+
+        assertThat(commentRepo.existsById(commentId)).isFalse()
+        assertThat(posts.findById(postId).get().comments).isEqualTo(1)
+    }
+
+    @Test
+    fun `댓글 카운터가 0이면 삭제해도 음수가 되지 않는다`() {
+        val postId = savePost(comments = 0)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        deleteComment(postId, commentId).andExpect { status { isNoContent() } }
+
+        assertThat(posts.findById(postId).get().comments).isZero()
+    }
+
+    @Test
+    fun `비로그인 댓글 삭제는 401`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        deleteComment(postId, commentId, bearer = null).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `다른 사용자의 댓글 삭제는 403이고 댓글과 카운터가 유지된다`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        deleteComment(postId, commentId, bearer = token2).andExpect { status { isForbidden() } }
+
+        assertThat(commentRepo.existsById(commentId)).isTrue()
+        assertThat(posts.findById(postId).get().comments).isEqualTo(1)
+    }
+
+    @Test
+    fun `authorUserId가 null인 기존 댓글 삭제는 403`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, authorUserId = null)
+
+        deleteComment(postId, commentId).andExpect { status { isForbidden() } }
+
+        assertThat(commentRepo.existsById(commentId)).isTrue()
+        assertThat(posts.findById(postId).get().comments).isEqualTo(1)
+    }
+
+    @Test
+    fun `존재하지 않는 게시글의 댓글 삭제는 404`() {
+        deleteComment("nope", "no-comment").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `존재하지 않는 댓글 삭제는 404이고 카운터가 유지된다`() {
+        val postId = savePost(comments = 1)
+
+        deleteComment(postId, "no-comment").andExpect { status { isNotFound() } }
+
+        assertThat(posts.findById(postId).get().comments).isEqualTo(1)
+    }
+
+    @Test
+    fun `다른 게시글의 commentId로 삭제하면 404`() {
+        val requestedPostId = savePost(comments = 1)
+        val actualPostId = savePost(comments = 1)
+        val commentId = saveComment(actualPostId, authorUserId = 1)
+
+        deleteComment(requestedPostId, commentId).andExpect { status { isNotFound() } }
+
+        assertThat(commentRepo.existsById(commentId)).isTrue()
+        assertThat(posts.findById(requestedPostId).get().comments).isEqualTo(1)
+        assertThat(posts.findById(actualPostId).get().comments).isEqualTo(1)
+    }
+
+    @Test
+    fun `같은 댓글을 다시 삭제하면 404`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        deleteComment(postId, commentId).andExpect { status { isNoContent() } }
+        deleteComment(postId, commentId).andExpect { status { isNotFound() } }
+
+        assertThat(posts.findById(postId).get().comments).isZero()
     }
 
     // ---- ownedByMe ----

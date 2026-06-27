@@ -10,6 +10,7 @@ import { useTheme } from "@/lib/theme-context";
 import { apiGet, apiPost, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { getToken, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
+import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import type { Post, PostComment } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
@@ -18,6 +19,7 @@ const MAX_COMMENT_LENGTH = 500;
 
 export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
+  const { token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const p = post;
@@ -87,29 +89,52 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const [commentsIdentity, setCommentsIdentity] = useState({ postId: p.id, token });
+  const commentsRequestGenerationRef = useRef(0);
+  const deletingCommentIdsRef = useRef(new Set<string>());
+  const [deletingCommentIds, setDeletingCommentIds] = useState<Set<string>>(() => new Set());
   const commentSectionRef = useRef<HTMLDivElement>(null);
 
-  // 진입 시(및 재시도/post 변경 시) 댓글 목록 조회. cancelled 플래그로 늦은 응답·언마운트 보호.
-  // loading/error 초기화는 effect 동기 setState 대신 초기 상태값과 retry 핸들러에서 처리(lint).
+  // 현재 identity로 다시 읽기 전에는 이전 사용자의 댓글 소유 상태를 렌더하지 않는다.
+  const commentsIdentityChanged = commentsIdentity.postId !== p.id || commentsIdentity.token !== token;
+  const visibleComments = commentsIdentityChanged ? [] : comments;
+  const visibleCommentsLoading = commentsLoading || commentsIdentityChanged;
+
+  // 댓글 GET은 public이다. 로그인·로그아웃·토큰 교체마다 다시 읽어 ownedByMe를 갱신한다.
+  // generation과 token을 함께 확인해 이전 identity의 늦은 응답이 현재 목록을 덮지 못하게 한다.
   useEffect(() => {
+    const requestToken = token;
+    const generation = ++commentsRequestGenerationRef.current;
     let cancelled = false;
+    const isCurrent = () =>
+      !cancelled &&
+      generation === commentsRequestGenerationRef.current &&
+      getToken() === requestToken;
+
     apiGet<PostComment[]>(`/api/posts/${p.id}/comments`)
       .then((list) => {
-        if (cancelled) return;
+        if (!isCurrent()) return;
         setComments(list);
         setCommentCount(list.length); // 실제 목록 길이와 동기화
         setCommentsError("");
+        setCommentsIdentity({ postId: p.id, token: requestToken });
       })
-      .catch(() => {
-        if (!cancelled) setCommentsError("댓글을 불러오지 못했습니다.");
+      .catch((error) => {
+        if (!isCurrent()) return;
+        if (error instanceof ApiError && error.status === 401) {
+          clearSession();
+          return;
+        }
+        setCommentsError("댓글을 불러오지 못했습니다.");
+        setCommentsIdentity({ postId: p.id, token: requestToken });
       })
       .finally(() => {
-        if (!cancelled) setCommentsLoading(false);
+        if (isCurrent()) setCommentsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [p.id, reloadTick]);
+  }, [p.id, reloadTick, token]);
 
   const retryComments = () => {
     setCommentsLoading(true);
@@ -120,7 +145,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const submitComment = async () => {
     const text = commentText.trim();
     // 목록 조회/에러 중에는 작성 금지 → 늦게 도착한 GET 이 방금 추가한 댓글을 덮는 경합 방지.
-    if (!text || submittingComment || commentsLoading || commentsError) return;
+    if (!text || submittingComment || visibleCommentsLoading || commentsError) return;
     if (text.length > MAX_COMMENT_LENGTH) {
       alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
       return;
@@ -148,6 +173,44 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       }
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const deleteComment = async (commentId: string) => {
+    const requestToken = getToken();
+    if (!requestToken) {
+      clearSession();
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (deletingCommentIdsRef.current.has(commentId)) return;
+    if (!confirm("이 댓글을 삭제할까요?")) return;
+
+    deletingCommentIdsRef.current.add(commentId);
+    setDeletingCommentIds(new Set(deletingCommentIdsRef.current));
+    try {
+      await apiDeleteVoid(`/api/posts/${p.id}/comments/${commentId}`);
+      if (getToken() !== requestToken) return;
+      setComments((current) => current.filter((comment) => comment.id !== commentId));
+      setCommentCount((current) => Math.max(0, current - 1));
+    } catch (error) {
+      if (getToken() !== requestToken) return;
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (error instanceof ApiError && error.status === 403) {
+        alert("댓글 삭제 권한이 없습니다.");
+      } else if (error instanceof ApiError && error.status === 404) {
+        alert("이미 삭제되었거나 존재하지 않는 댓글입니다.");
+        retryComments();
+      } else {
+        alert("댓글 삭제에 실패했습니다.");
+      }
+    } finally {
+      deletingCommentIdsRef.current.delete(commentId);
+      setDeletingCommentIds(new Set(deletingCommentIdsRef.current));
     }
   };
 
@@ -427,13 +490,13 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               }}
               placeholder="댓글 달기..."
               maxLength={MAX_COMMENT_LENGTH}
-              disabled={submittingComment || commentsLoading || !!commentsError}
+              disabled={submittingComment || visibleCommentsLoading || !!commentsError}
               className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
               style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
             />
             <button
               onClick={submitComment}
-              disabled={submittingComment || commentsLoading || !!commentsError || !commentText.trim()}
+              disabled={submittingComment || visibleCommentsLoading || !!commentsError || !commentText.trim()}
               aria-label="댓글 등록"
               className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
               style={{ background: "#7dd3a3", color: "#0f1f22" }}
@@ -442,7 +505,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             </button>
           </div>
           <div className="space-y-5 min-h-[64px]">
-            {commentsLoading ? (
+            {visibleCommentsLoading ? (
               <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>댓글을 불러오는 중…</p>
             ) : commentsError ? (
               <div className="flex items-center gap-3">
@@ -455,16 +518,28 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                   다시 시도
                 </button>
               </div>
-            ) : comments.length === 0 ? (
+            ) : visibleComments.length === 0 ? (
               <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>첫 댓글을 남겨보세요.</p>
             ) : (
-              comments.map((c) => (
+              visibleComments.map((c) => (
                 <div key={c.id} className="flex gap-3">
                   <Avatar name={c.author.name} verified={c.author.verified} />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-[13px]">
-                      <span style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>
-                      <span className="opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>· {c.time}</span>
+                      <span className="truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>
+                      <span className="shrink-0 opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>· {c.time}</span>
+                      {c.ownedByMe && (
+                        <button
+                          type="button"
+                          onClick={() => deleteComment(c.id)}
+                          disabled={deletingCommentIds.has(c.id)}
+                          aria-label="댓글 삭제"
+                          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:cursor-wait disabled:opacity-40"
+                          style={{ background: "rgba(237,92,72,0.12)", color: "#ed5c48" }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                     <p className="mt-0.5" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
                       {c.text}
