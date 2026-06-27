@@ -16,6 +16,7 @@ export type Campaign = {
   daysLeftLabel: string;
   author: { name: string; verified: boolean };
   body: { heading: string; paragraphs: string[]; images: string[] };
+  joinedByMe: boolean;
 };
 
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {

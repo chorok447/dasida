@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 
@@ -154,6 +155,16 @@ function HeaderCard({ c }: { c: Campaign }) {
 function CTABar({ c, onJoin, joining }: { c: Campaign; onJoin: () => void; joining: boolean }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  if (c.joinedByMe) {
+    return (
+      <div
+        className="w-full py-5 rounded-2xl text-center font-medium"
+        style={{ background: "rgba(125,211,163,0.18)", color: dark ? "#7dd3a3" : "#1c4044", fontSize: 16 }}
+      >
+        이미 참여한 캠페인입니다
+      </div>
+    );
+  }
   if (c.status === "open") {
     return (
       <button
@@ -255,6 +266,9 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [tab, setTab] = useState<Tab>("content");
   const [c, setC] = useState(campaign);
   const [joining, setJoining] = useState(false);
+
+  // 새로고침 후 joinedByMe 등 사용자별 상태 복원.
+  useAuthedRefresh<Campaign>(`/api/campaigns/${campaign.id}`, setC);
 
   const join = async () => {
     if (!getToken()) {
