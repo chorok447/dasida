@@ -41,7 +41,12 @@ class Author(
 )
 
 @Entity
-@Table(name = "posts")
+@Table(
+    name = "posts",
+    indexes = [
+        Index(name = "idx_posts_author_user_id", columnList = "author_user_id"),
+    ],
+)
 class Post(
     @Id val id: String,
     @Embedded val author: Author,
@@ -53,10 +58,15 @@ class Post(
     var comments: Int,
     val campaignId: String? = null,
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
+    // 작성자 소유권 판단용. author.name 은 작성 당시 표시 이름 snapshot 이므로 소유권엔 쓰지 않는다.
+    // 시드/기존 게시글은 null(소유자 없음). 이름 기반 backfill 하지 않는다.
+    @Column(name = "author_user_id") @JsonIgnore val authorUserId: Long? = null,
 )
 
 interface PostRepository : JpaRepository<Post, String> {
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Post>
+
+    fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Post>
 
     /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -242,6 +252,21 @@ class PostController(
         }
     }
 
+    /** 현재 사용자가 작성한 게시글. 소유권은 author.name 이 아니라 authorUserId 로 판단한다. */
+    @GetMapping("/mine")
+    fun mine(@AuthenticationPrincipal user: AuthUser): List<PostResponse> {
+        val posts = repo.findByAuthorUserIdOrderBySeqDesc(user.id)
+        if (posts.isEmpty()) return emptyList()
+
+        val postIds = posts.map { it.id }
+        // N+1 회피: 좋아요/북마크를 각각 한 번씩 bulk 조회.
+        val likedIds = likeRepo.findByUserIdAndPostIdIn(user.id, postIds).map { it.postId }.toSet()
+        val bookmarkedIds = bookmarkRepo.findByUserIdAndPostIdIn(user.id, postIds).map { it.postId }.toSet()
+        return posts.map {
+            it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+        }
+    }
+
     @GetMapping("/{id}")
     fun get(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?): PostResponse {
         val post = repo.findById(id).orElseThrow {
@@ -389,6 +414,7 @@ class PostController(
                 comments = 0,
                 campaignId = campaignId,
                 seq = System.currentTimeMillis(),
+                authorUserId = user.id,
             ),
         ).toResponse(likedByMe = false, bookmarkedByMe = false)
     }

@@ -29,12 +29,18 @@ class PostControllerTest(
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
 
     // 시드 상태에 의존하지 않도록 테스트용 게시글을 직접 저장.
-    private fun savePost(likes: Int = 0, comments: Int = 0, seq: Long = 0): String {
+    private fun savePost(
+        likes: Int = 0,
+        comments: Int = 0,
+        seq: Long = 0,
+        authorUserId: Long? = null,
+        authorName: String = "작성자",
+    ): String {
         val id = "itp-${UUID.randomUUID()}"
         posts.save(
             Post(
-                id, Author("작성자", false), "방금", "본문", emptyList(), emptyList(), likes, comments,
-                seq = seq,
+                id, Author(authorName, false), "방금", "본문", emptyList(), emptyList(), likes, comments,
+                seq = seq, authorUserId = authorUserId,
             ),
         )
         return id
@@ -526,6 +532,98 @@ class PostControllerTest(
             status { isOk() }
             jsonPath("$.length()") { value(1) }
             jsonPath("$[0].id") { value(id) }
+        }
+    }
+
+    // ---- 내 게시글 목록 ----
+
+    @Test
+    fun `비로그인 내 게시글 목록 요청은 401`() {
+        mvc.get("/api/posts/mine").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `내 게시글이 없으면 빈 배열`() {
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `현재 사용자가 작성한 게시글만 반환한다`() {
+        val mineId = savePost(authorUserId = 1)
+        savePost(authorUserId = 2) // 다른 사용자
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].id") { value(mineId) }
+        }
+    }
+
+    @Test
+    fun `이름이 같아도 authorUserId가 null이면 내 게시글에서 제외된다`() {
+        // 토큰 유저 이름과 동일한 이름의 기존(소유자 없는) 게시글
+        savePost(authorUserId = null, authorName = "테스터")
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `내 게시글 목록은 seq 내림차순으로 정렬된다`() {
+        val oldestId = savePost(seq = 100, authorUserId = 1)
+        val newestId = savePost(seq = 300, authorUserId = 1)
+        val middleId = savePost(seq = 200, authorUserId = 1)
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].id") { value(newestId) }
+            jsonPath("$[1].id") { value(middleId) }
+            jsonPath("$[2].id") { value(oldestId) }
+        }
+    }
+
+    @Test
+    fun `내 게시글 목록은 좋아요한 게시글만 likedByMe true`() {
+        val likedId = savePost(likes = 1, authorUserId = 1)
+        val unlikedId = savePost(authorUserId = 1)
+        likeRepo.saveAndFlush(PostLike("plk-mine-list", likedId, 1))
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$likedId')].likedByMe") { value(Matchers.hasItem(true)) }
+            jsonPath("$[?(@.id == '$unlikedId')].likedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
+    fun `내 게시글 목록은 북마크한 게시글만 bookmarkedByMe true`() {
+        val bookmarkedId = savePost(authorUserId = 1)
+        val plainId = savePost(authorUserId = 1)
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-mine-list", bookmarkedId, 1))
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$bookmarkedId')].bookmarkedByMe") { value(Matchers.hasItem(true)) }
+            jsonPath("$[?(@.id == '$plainId')].bookmarkedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
+    fun `POST로 생성한 게시글은 내 게시글 목록에 나타난다`() {
+        val createdId = postPost("""{"text":"내가 쓴 글"}""").andReturn()
+            .response.contentAsString.let { Regex("\"id\":\"([^\"]+)\"").find(it)!!.groupValues[1] }
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$createdId')]") { exists() }
+        }
+    }
+
+    @Test
+    fun `내 게시글 응답에 authorUserId는 노출되지 않는다`() {
+        savePost(authorUserId = 1)
+        mvc.get("/api/posts/mine") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].authorUserId") { doesNotExist() }
         }
     }
 
