@@ -1,34 +1,197 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
-import { useRef } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Camera, Trash2 } from "lucide-react";
+import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, LogIn, RefreshCw, UserRound } from "lucide-react";
+import { apiPut, ApiError } from "@/lib/api";
+import { clearSession, getToken, setSession } from "@/lib/auth";
+import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useTheme } from "@/lib/theme-context";
-import { ME_AVATAR } from "@/data/avatars";
+import type { UpdateProfileResponse, UserProfile } from "@/data/users";
 
-function Field({ label, placeholder, locked, value }: { label: string; placeholder?: string; locked?: boolean; value?: string }) {
+const MAX_NAME_LENGTH = 30;
+
+function PageState({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   return (
-    <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-      <label style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}>{label}</label>
+    <div
+      className="mx-auto flex min-h-72 max-w-2xl flex-col items-center justify-center gap-4 rounded-3xl border px-6 text-center"
+      style={{
+        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)",
+        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        color: dark ? "#f9f7f2" : "#0f1f22",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ProfileEditForm({ profile }: { profile: UserProfile }) {
+  const router = useRouter();
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+  const [name, setName] = useState(profile.name);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submitting) return;
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("표시 이름을 입력해주세요.");
+      return;
+    }
+    if (trimmedName.length > MAX_NAME_LENGTH) {
+      setError(`표시 이름은 ${MAX_NAME_LENGTH}자 이하여야 합니다.`);
+      return;
+    }
+
+    const requestToken = getToken();
+    if (!requestToken) {
+      clearSession();
+      router.push("/login");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const response = await apiPut<UpdateProfileResponse>("/api/auth/me", { name: trimmedName });
+      if (getToken() !== requestToken) return;
+      setSession(response.token, response.profile.name);
+      router.push("/mypage");
+    } catch (requestError) {
+      if (getToken() !== requestToken) return;
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        clearSession();
+        router.push("/login");
+      } else {
+        setError("프로필을 수정하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <Link
+        href="/mypage"
+        className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 transition-opacity hover:opacity-100"
+        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+      >
+        <ArrowLeft size={14} /> 마이페이지로 돌아가기
+      </Link>
+
       <div
-        className="rounded-xl px-4 py-3 transition-colors"
+        className="rounded-3xl border p-6 shadow-[0_35px_75px_-30px_rgba(0,0,0,0.45)] sm:p-10"
         style={{
-          background: locked
-            ? dark
-              ? "rgba(255,255,255,0.03)"
-              : "rgba(28,64,68,0.04)"
-            : dark
-            ? "rgba(255,255,255,0.06)"
-            : "#ffffff",
-          border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)"}`,
-          color: dark ? "#f9f7f2" : "#0f1f22",
-          opacity: locked ? 0.7 : 1,
+          background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.78)",
+          borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)",
         }}
       >
-        {value ? value : <input placeholder={placeholder} className="w-full bg-transparent outline-none placeholder:opacity-50" />}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: dark ? "rgba(125,211,163,0.14)" : "rgba(125,211,163,0.3)",
+              color: dark ? "#7dd3a3" : "#1c4044",
+            }}
+          >
+            <UserRound size={34} />
+          </div>
+          <div>
+            <h1
+              style={{
+                fontFamily: "'Black Han Sans', sans-serif",
+                fontSize: "clamp(30px, 6vw, 42px)",
+                color: dark ? "#f9f7f2" : "#0f1f22",
+              }}
+            >
+              프로필 수정
+            </h1>
+            <p
+              className="mt-1 text-[13px]"
+              style={{ color: dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)" }}
+            >
+              프로필 이미지 변경은 준비 중입니다.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={submit} className="space-y-6">
+          <div>
+            <label htmlFor="profile-name" className="mb-2 block text-[13px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              표시 이름
+            </label>
+            <input
+              id="profile-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={MAX_NAME_LENGTH}
+              autoComplete="name"
+              disabled={submitting}
+              className="w-full rounded-xl border px-4 py-3 outline-none transition-colors focus:border-[#7dd3a3] disabled:opacity-60"
+              style={{
+                background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
+                borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+                color: dark ? "#f9f7f2" : "#0f1f22",
+              }}
+            />
+            <p className="mt-1 text-right text-[11px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              {name.length}/{MAX_NAME_LENGTH}
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="profile-email" className="mb-2 block text-[13px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              이메일
+            </label>
+            <input
+              id="profile-email"
+              value={profile.email}
+              readOnly
+              aria-readonly="true"
+              className="w-full rounded-xl border px-4 py-3 opacity-65 outline-none"
+              style={{
+                background: dark ? "rgba(255,255,255,0.03)" : "rgba(28,64,68,0.04)",
+                borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+                color: dark ? "#f9f7f2" : "#0f1f22",
+              }}
+            />
+          </div>
+
+          {error ? (
+            <p role="alert" aria-live="polite" className="rounded-xl bg-[#ed5c48]/10 px-4 py-3 text-[13px] text-[#ed5c48]">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+            <Link
+              href="/mypage"
+              className="rounded-xl px-6 py-3 text-center text-[13px]"
+              style={{
+                background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                color: dark ? "#f9f7f2" : "#0f1f22",
+              }}
+            >
+              취소
+            </Link>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-xl bg-[#7dd3a3] px-8 py-3 text-[13px] font-medium text-[#0f1f22] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-50"
+            >
+              {submitting ? "저장 중…" : "저장하기"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -37,108 +200,45 @@ function Field({ label, placeholder, locked, value }: { label: string; placehold
 export default function ProfileEditPage() {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const ref = useRef<HTMLDivElement>(null);
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 150, damping: 20 });
-  const sy = useSpring(my, { stiffness: 150, damping: 20 });
-  const rY = useTransform(sx, [-0.5, 0.5], [-8, 8]);
-  const rX = useTransform(sy, [-0.5, 0.5], [6, -6]);
+  const { profile, loading, error, isLoggedIn, retry } = useCurrentUserProfile();
 
   return (
     <section
-      className="relative min-h-screen pt-32 pb-20 px-6 transition-colors overflow-hidden"
+      className="relative min-h-screen overflow-hidden px-6 pb-20 pt-28 transition-colors sm:pt-32"
       style={{
-        position: "relative",
         backgroundImage: dark
           ? "linear-gradient(180deg,#0f1f22,#1c4044)"
           : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
       }}
     >
-      <div className="absolute inset-0 pointer-events-none opacity-20">
-        <div className="absolute top-32 right-1/4 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-20">
+        <div className="absolute right-1/4 top-32 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
       </div>
 
-      <div className="max-w-3xl mx-auto relative" style={{ perspective: 1400 }}>
-        <p className="tracking-[0.4em] uppercase mb-3 text-center" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
-          Settings
-        </p>
-        <h1
-          className="text-center mb-12"
-          style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 56, color: dark ? "#f9f7f2" : "#0f1f22" }}
-        >
-          개인정보 수정
-        </h1>
-
-        <motion.div
-          ref={ref}
-          onMouseMove={(e) => {
-            const r = ref.current?.getBoundingClientRect();
-            if (!r) return;
-            mx.set((e.clientX - r.left) / r.width - 0.5);
-            my.set((e.clientY - r.top) / r.height - 0.5);
-          }}
-          onMouseLeave={() => {
-            mx.set(0);
-            my.set(0);
-          }}
-          style={{ rotateX: rX, rotateY: rY, transformStyle: "preserve-3d" }}
-          className="rounded-3xl p-10 border backdrop-blur-xl shadow-[0_40px_80px_-30px_rgba(0,0,0,0.4)]"
-        >
-          <div
-            className="absolute inset-0 rounded-3xl -z-10"
-            style={{
-              background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)",
-              borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)",
-            }}
-          />
-          <div style={{ transform: "translateZ(40px)" }} className="relative">
-            <div className="flex items-center gap-6 mb-10">
-              <div className="relative">
-                <img
-                  src={ME_AVATAR}
-                  alt="프로필"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-                <button
-                  className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full flex items-center justify-center shadow-lg"
-                  style={{ background: "#7dd3a3", color: "#0f1f22" }}
-                >
-                  <Camera size={16} />
-                </button>
-              </div>
-              <div>
-                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 24, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                  다시다시
-                </h3>
-                <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                  프로필 사진을 클릭해 변경하세요
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Field label="닉네임" placeholder="다시다시" />
-              <Field label="이메일" value="dasikim@gmail.com" locked />
-              <Field label="이름" value="김다시" locked />
-              <Field label="현재 비밀번호" placeholder="현재 비밀번호" />
-              <Field label="새 비밀번호" placeholder="새 비밀번호" />
-              <Field label="새 비밀번호 확인" placeholder="새 비밀번호 확인" />
-            </div>
-
-            <div className="mt-10 flex items-center justify-between">
-              <button className="text-[13px] flex items-center gap-2" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
-                <Trash2 size={14} /> 회원 탈퇴
-              </button>
-              <button
-                className="px-8 py-3 rounded-xl font-medium hover:-translate-y-0.5 transition-transform"
-                style={{ background: "#7dd3a3", color: "#0f1f22" }}
-              >
-                저장하기
-              </button>
-            </div>
-          </div>
-        </motion.div>
+      <div className="relative">
+        {!isLoggedIn ? (
+          <PageState>
+            <LogIn size={30} className="text-[#7dd3a3]" />
+            <p>프로필을 수정하려면 로그인이 필요합니다.</p>
+            <Link href="/login" className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
+              로그인 페이지로 이동
+            </Link>
+          </PageState>
+        ) : loading ? (
+          <PageState>
+            <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
+            <p>사용자 정보를 불러오는 중입니다.</p>
+          </PageState>
+        ) : error || !profile ? (
+          <PageState>
+            <p>{error || "사용자 정보를 불러오지 못했습니다."}</p>
+            <button type="button" onClick={retry} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
+              다시 시도
+            </button>
+          </PageState>
+        ) : (
+          <ProfileEditForm key={`${profile.id}:${profile.name}`} profile={profile} />
+        )}
       </div>
     </section>
   );
