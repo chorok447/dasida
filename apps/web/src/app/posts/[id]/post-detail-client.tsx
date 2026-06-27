@@ -30,11 +30,16 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [liking, setLiking] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
 
-  // 새로고침 후 likedByMe·likes 사용자별 상태 복원.
-  useAuthedRefresh<Post>(`/api/posts/${p.id}`, (u) => {
-    setLikes(u.likes);
-    setLiked(u.likedByMe);
-  });
+  // 새로고침·로그인/로그아웃 시 likedByMe·likes 동기화.
+  // identity 변경 시 liked만 즉시 neutral(false), likes 숫자는 유지.
+  const { refreshing, invalidatePending } = useAuthedRefresh<Post>(
+    `/api/posts/${p.id}`,
+    (u) => {
+      setLikes(u.likes);
+      setLiked(u.likedByMe);
+    },
+    () => setLiked(false),
+  );
 
   const onLike = async () => {
     if (!getToken()) {
@@ -42,15 +47,19 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       router.push("/login");
       return;
     }
-    if (liking) return; // 연타 방지
+    if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
+    invalidatePending(); // 늦게 도착할 재조회가 좋아요 결과를 덮어쓰지 않게
+    const requestToken = getToken(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
+      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         alert("로그인이 필요합니다.");
         router.push("/login");
@@ -191,7 +200,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   onClick={onLike}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
+                  disabled={liking || refreshing}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
                   style={{
                     background: liked ? "rgba(237,92,72,0.15)" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
                     color: liked ? "#ed5c48" : dark ? "#f9f7f2" : "#0f1f22",
