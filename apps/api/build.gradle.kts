@@ -1,5 +1,6 @@
 plugins {
 	kotlin("jvm") version "1.9.25"
+	kotlin("kapt") version "1.9.25"
 	kotlin("plugin.spring") version "1.9.25"
 	kotlin("plugin.jpa") version "1.9.25"
 	id("org.springframework.boot") version "3.5.0"
@@ -26,6 +27,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
+	implementation("io.github.openfeign.querydsl:querydsl-jpa:7.4.0")
+	kapt("io.github.openfeign.querydsl:querydsl-apt:7.4.0:jpa")
+	kapt("jakarta.persistence:jakarta.persistence-api")
+	kapt("jakarta.annotation:jakarta.annotation-api")
 	// JWT (jjwt)
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
