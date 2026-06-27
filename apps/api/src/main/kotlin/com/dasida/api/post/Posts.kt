@@ -129,6 +129,11 @@ class PostComment(
     @Column(columnDefinition = "TEXT") val text: String,
     @Column(name = "time_label") val time: String,
     @JsonIgnore var seq: Long = 0,
+    // 권한 판정용. author.name 은 작성 시점의 표시 이름 snapshot 이므로 사용하지 않는다.
+    // 기존 댓글은 null 을 허용하며 이름 기반으로 소유권을 복구하지 않는다.
+    @Column(name = "author_user_id")
+    @JsonIgnore
+    val authorUserId: Long? = null,
 )
 
 interface PostCommentRepository : JpaRepository<PostComment, String> {
@@ -199,6 +204,16 @@ data class UpdatePostRequest(
 )
 
 data class CreateCommentRequest(val text: String)
+
+/** 댓글 응답. authorUserId 자체는 노출하지 않고 현재 사용자 기준 소유 여부만 제공한다. */
+data class PostCommentResponse(
+    val id: String,
+    val postId: String,
+    val author: Author,
+    val text: String,
+    val time: String,
+    val ownedByMe: Boolean,
+)
 
 /** 게시글 응답. Post 필드 + 요청 유저 기준 좋아요/북마크/소유 상태. authorUserId 자체는 노출하지 않는다. */
 data class PostResponse(
@@ -375,10 +390,22 @@ class PostController(
         ownedByMe = authorUserId != null && authorUserId == viewerId,
     )
 
+    private fun PostComment.toResponse(viewerId: Long?) = PostCommentResponse(
+        id = id,
+        postId = postId,
+        author = author,
+        text = text,
+        time = time,
+        ownedByMe = authorUserId != null && authorUserId == viewerId,
+    )
+
     @GetMapping("/{id}/comments")
-    fun comments(@PathVariable id: String): List<PostComment> {
+    fun comments(
+        @PathVariable id: String,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): List<PostCommentResponse> {
         if (!repo.existsById(id)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        return commentRepo.findByPostIdOrderBySeqAsc(id)
+        return commentRepo.findByPostIdOrderBySeqAsc(id).map { it.toResponse(user?.id) }
     }
 
     @PostMapping("/{id}/comments")
@@ -388,7 +415,7 @@ class PostController(
         @PathVariable id: String,
         @RequestBody req: CreateCommentRequest,
         @AuthenticationPrincipal user: AuthUser,
-    ): PostComment {
+    ): PostCommentResponse {
         // write lock 으로 직렬화 → 서로 다른 유저의 동시 댓글 작성에서도 comments 증가가 유실되지 않음.
         val post = repo.findByIdForUpdate(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
@@ -403,10 +430,38 @@ class PostController(
                 text = text,
                 time = "방금 전",
                 seq = System.currentTimeMillis(),
+                authorUserId = user.id,
             ),
         )
         post.comments += 1
-        return comment
+        return comment.toResponse(user.id)
+    }
+
+    /**
+     * 댓글 삭제. 게시글 row 를 먼저 잠가 댓글 작성·삭제와 게시글 삭제의 잠금 순서를 통일한다.
+     * URL 의 게시글과 댓글 관계를 소유권보다 먼저 검증해 다른 게시글의 권한 정보를 노출하지 않는다.
+     */
+    @DeleteMapping("/{postId}/comments/{commentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    fun deleteComment(
+        @PathVariable postId: String,
+        @PathVariable commentId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ) {
+        val post = repo.findByIdForUpdate(postId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        val comment = commentRepo.findById(commentId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
+        if (comment.postId != postId) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
+        if (comment.authorUserId == null || comment.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment author")
+        }
+        commentRepo.delete(comment)
+        post.comments = maxOf(0, post.comments - 1)
     }
 
     @PostMapping
