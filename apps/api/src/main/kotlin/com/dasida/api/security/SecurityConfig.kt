@@ -49,6 +49,7 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/bookmarks").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/campaigns/joined").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
             }
