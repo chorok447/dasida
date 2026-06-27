@@ -57,6 +57,7 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/joined").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/mine").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/campaigns/*/participants").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
             }

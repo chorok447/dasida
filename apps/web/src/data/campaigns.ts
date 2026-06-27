@@ -20,6 +20,25 @@ export type Campaign = {
   ownedByMe: boolean;
 };
 
+export type CampaignParticipant = {
+  participantId: string;
+  name: string;
+  verified: boolean;
+};
+
+export type CampaignParticipantsResponse = {
+  campaignId: string;
+  title: string;
+  status: CampaignStatus;
+  capacity: number;
+  joined: number;
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  participants: CampaignParticipant[];
+};
+
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {
   open: { label: "모집중", color: "#7dd3a3", fg: "#0f1f22" },
   upcoming: { label: "모집예정", color: "#148a90", fg: "#ffffff" },
