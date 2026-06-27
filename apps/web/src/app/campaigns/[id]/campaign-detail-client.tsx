@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 
@@ -265,6 +266,9 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [tab, setTab] = useState<Tab>("content");
   const [c, setC] = useState(campaign);
   const [joining, setJoining] = useState(false);
+
+  // 새로고침 후 joinedByMe 등 사용자별 상태 복원.
+  useAuthedRefresh<Campaign>(`/api/campaigns/${campaign.id}`, setC);
 
   const join = async () => {
     if (!getToken()) {
