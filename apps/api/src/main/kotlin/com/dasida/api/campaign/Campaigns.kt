@@ -24,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -43,7 +44,7 @@ data class CampaignBody(val heading: String, val paragraphs: List<String>, val i
 )
 class Campaign(
     @Id val id: String,
-    val status: String, // "open" | "upcoming" | "closed"
+    var status: String, // "open" | "upcoming" | "closed"
     val title: String,
     @Column(columnDefinition = "TEXT") val summary: String,
     val thumb: String,
@@ -53,7 +54,7 @@ class Campaign(
     val runEnd: String,
     val capacity: Int,
     @Column(name = "joined_count") var joined: Int,
-    val daysLeftLabel: String,
+    var daysLeftLabel: String,
     @Embedded val author: Author,
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val body: CampaignBody,
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
@@ -170,6 +171,10 @@ data class CreateCampaignRequest(
     val capacity: Int = 0,
 )
 
+data class UpdateCampaignStatusRequest(
+    val status: String,
+)
+
 /** Campaign 응답. 참여·소유 상태는 현재 요청 사용자 기준이며 authorUserId 자체는 노출하지 않는다. */
 data class CampaignResponse(
     val id: String,
@@ -274,6 +279,48 @@ class CampaignController(
         campaign.joined += 1
         repo.save(campaign)
         return campaign.toResponse(viewerId = user.id, joinedByMe = true)
+    }
+
+    /**
+     * 캠페인 모집 상태 변경. join 과 같은 row lock 을 가장 먼저 잡아 참여·마감 요청을 직렬화한다.
+     * upcoming → open → closed 단방향 전환만 허용하며 같은 상태 요청은 멱등 처리한다.
+     */
+    @PutMapping("/{id}/status")
+    @Transactional
+    fun updateStatus(
+        @PathVariable id: String,
+        @RequestBody req: UpdateCampaignStatusRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignResponse {
+        val campaign = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        if (campaign.authorUserId == null || campaign.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
+        }
+
+        val target = req.status
+        if (target != "open" && target != "closed") {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign status")
+        }
+
+        if (campaign.status != target) {
+            when {
+                campaign.status == "upcoming" && target == "open" -> {
+                    campaign.status = "open"
+                    campaign.daysLeftLabel = "모집중"
+                }
+                campaign.status == "open" && target == "closed" -> {
+                    campaign.status = "closed"
+                    campaign.daysLeftLabel = "모집완료"
+                }
+                else -> throw ResponseStatusException(HttpStatus.CONFLICT, "invalid status transition")
+            }
+        }
+
+        return campaign.toResponse(
+            viewerId = user.id,
+            joinedByMe = participants.existsByCampaignIdAndUserId(id, user.id),
+        )
     }
 
     private fun Campaign.toResponse(
