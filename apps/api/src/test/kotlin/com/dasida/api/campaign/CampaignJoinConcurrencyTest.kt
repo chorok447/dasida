@@ -50,6 +50,21 @@ class CampaignJoinConcurrencyTest(
         return id
     }
 
+    private fun saveUpcomingCampaign(authorUserId: Long): String {
+        val id = "conc-edit-${UUID.randomUUID()}"
+        campaignRepo.saveAndFlush(
+            Campaign(
+                id, "upcoming", "수정 전 제목", "수정 전 요약", "https://x/before.png",
+                "2026-07-01", "2026-07-31", "2026-08-05", "2026-08-30",
+                5, 1, "모집예정", Author("개설자", false),
+                CampaignBody("캠페인 소개", listOf("수정 전 본문"), emptyList()),
+                authorUserId = authorUserId,
+            ),
+        )
+        participantRepo.saveAndFlush(CampaignParticipant("cp-$id", id, 999))
+        return id
+    }
+
     private fun joinStatus(id: String, token: String): Int =
         mvc.post("/api/campaigns/$id/join") {
             headers { add("Authorization", "Bearer $token") }
@@ -60,6 +75,22 @@ class CampaignJoinConcurrencyTest(
             headers { add("Authorization", "Bearer $token") }
             contentType = MediaType.APPLICATION_JSON
             content = """{"status":"closed"}"""
+        }.andReturn().response.status
+
+    private fun openStatus(id: String, token: String): Int =
+        mvc.put("/api/campaigns/$id/status") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"status":"open"}"""
+        }.andReturn().response.status
+
+    private fun editStatus(id: String, token: String): Int =
+        mvc.put("/api/campaigns/$id") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"title":"수정 후 제목","summary":"수정 후 요약","body":"수정 후 본문",
+                "thumb":"https://x/after.png","recruitStart":"2026-09-01","recruitEnd":"2026-09-30",
+                "runStart":"2026-10-05","runEnd":"2026-10-31","capacity":8}"""
         }.andReturn().response.status
 
     /** 두 요청을 동시에 시작시키고 각 HTTP status 를 모은다. */
@@ -147,6 +178,63 @@ class CampaignJoinConcurrencyTest(
             assertThat(campaign.status).isEqualTo("closed")
             assertThat(campaign.joined.toLong()).isEqualTo(participantCount)
             assertThat(campaign.joined).isLessThanOrEqualTo(campaign.capacity)
+        } finally {
+            pool.shutdownNow()
+            cleanup(id)
+        }
+    }
+
+    @Test
+    fun `동시 edit과 open은 row lock으로 직렬화되고 부분 수정이 없다`() {
+        val ownerId = 401L
+        val ownerToken = tokenFor(ownerId)
+        val id = saveUpcomingCampaign(ownerId)
+        val barrier = CyclicBarrier(2)
+        val pool = Executors.newFixedThreadPool(2)
+        try {
+            val editFuture = pool.submit(
+                Callable {
+                    barrier.await(5, TimeUnit.SECONDS)
+                    editStatus(id, ownerToken)
+                },
+            )
+            val openFuture = pool.submit(
+                Callable {
+                    barrier.await(5, TimeUnit.SECONDS)
+                    openStatus(id, ownerToken)
+                },
+            )
+
+            val editStatus = editFuture.get(10, TimeUnit.SECONDS)
+            val openStatus = openFuture.get(10, TimeUnit.SECONDS)
+
+            assertThat(openStatus).isEqualTo(200)
+            assertThat(editStatus).isIn(200, 409)
+            val campaign = campaignRepo.findById(id).get()
+            assertThat(campaign.status).isEqualTo("open")
+            if (editStatus == 200) {
+                assertThat(campaign.title).isEqualTo("수정 후 제목")
+                assertThat(campaign.summary).isEqualTo("수정 후 요약")
+                assertThat(campaign.thumb).isEqualTo("https://x/after.png")
+                assertThat(campaign.recruitStart).isEqualTo("2026-09-01")
+                assertThat(campaign.recruitEnd).isEqualTo("2026-09-30")
+                assertThat(campaign.runStart).isEqualTo("2026-10-05")
+                assertThat(campaign.runEnd).isEqualTo("2026-10-31")
+                assertThat(campaign.capacity).isEqualTo(8)
+                assertThat(campaign.body.paragraphs).containsExactly("수정 후 본문")
+            } else {
+                assertThat(campaign.title).isEqualTo("수정 전 제목")
+                assertThat(campaign.summary).isEqualTo("수정 전 요약")
+                assertThat(campaign.thumb).isEqualTo("https://x/before.png")
+                assertThat(campaign.recruitStart).isEqualTo("2026-07-01")
+                assertThat(campaign.recruitEnd).isEqualTo("2026-07-31")
+                assertThat(campaign.runStart).isEqualTo("2026-08-05")
+                assertThat(campaign.runEnd).isEqualTo("2026-08-30")
+                assertThat(campaign.capacity).isEqualTo(5)
+                assertThat(campaign.body.paragraphs).containsExactly("수정 전 본문")
+            }
+            assertThat(campaign.joined).isEqualTo(1)
+            assertThat(participantRepo.countByCampaignId(id)).isEqualTo(1)
         } finally {
             pool.shutdownNow()
             cleanup(id)

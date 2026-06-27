@@ -2,14 +2,16 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell } from "lucide-react";
+import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, apiPut, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
+import { useAuthSession } from "@/lib/use-auth-session";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 
@@ -159,18 +161,20 @@ function HeaderCard({ c }: { c: Campaign }) {
 
 function CampaignStatusManagement({
   c,
+  ownershipConfirmed,
   updating,
   disabled,
   onChange,
 }: {
   c: Campaign;
+  ownershipConfirmed: boolean;
   updating: boolean;
   disabled: boolean;
   onChange: (status: "open" | "closed") => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  if (!c.ownedByMe) return null;
+  if (!ownershipConfirmed) return null;
 
   const target = c.status === "upcoming" ? "open" : c.status === "open" ? "closed" : null;
   const label = target === "open" ? "모집 시작" : target === "closed" ? "모집 마감" : "모집 마감됨";
@@ -188,19 +192,34 @@ function CampaignStatusManagement({
         <p className="text-[13px] font-medium">모집 상태 관리</p>
         <p className="mt-0.5 text-[12px] opacity-60">캠페인 개설자만 모집을 시작하거나 마감할 수 있습니다.</p>
       </div>
-      <button
-        type="button"
-        onClick={() => target && onChange(target)}
-        disabled={disabled || target === null}
-        aria-label={label}
-        className="rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
-        style={{
-          background: target === "closed" ? "rgba(237,92,72,0.16)" : "#7dd3a3",
-          color: target === "closed" ? "#ed5c48" : "#0f1f22",
-        }}
-      >
-        {updating ? "처리 중…" : label}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {c.status === "upcoming" ? (
+          <Link
+            href={`/campaigns/${c.id}/edit`}
+            aria-label="캠페인 수정"
+            className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-medium"
+            style={{
+              background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+              color: dark ? "#f9f7f2" : "#1c4044",
+            }}
+          >
+            <Pencil size={14} /> 캠페인 수정
+          </Link>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => target && onChange(target)}
+          disabled={disabled || target === null}
+          aria-label={label}
+          className="rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
+          style={{
+            background: target === "closed" ? "rgba(237,92,72,0.16)" : "#7dd3a3",
+            color: target === "closed" ? "#ed5c48" : "#0f1f22",
+          }}
+        >
+          {updating ? "처리 중…" : label}
+        </button>
+      </div>
     </div>
   );
 }
@@ -314,10 +333,12 @@ function CommentsTab() {
 
 export default function CampaignDetailClient({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
+  const { token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [tab, setTab] = useState<Tab>("content");
   const [c, setC] = useState(campaign);
+  const [ownershipToken, setOwnershipToken] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const statusUpdatingRef = useRef(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
@@ -326,13 +347,20 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   // identity 변경 시 사용자별 상태만 즉시 neutral(false), joined 숫자는 유지한다.
   const { refreshing, invalidatePending } = useAuthedRefresh<Campaign>(
     `/api/campaigns/${campaign.id}`,
-    setC,
-    () => setC((cur) => (
-      cur.joinedByMe || cur.ownedByMe
-        ? { ...cur, joinedByMe: false, ownedByMe: false }
-        : cur
-    )),
+    (updated) => {
+      setC(updated);
+      setOwnershipToken(updated.ownedByMe ? getToken() : null);
+    },
+    () => {
+      setOwnershipToken(null);
+      setC((cur) => (
+        cur.joinedByMe || cur.ownedByMe
+          ? { ...cur, joinedByMe: false, ownedByMe: false }
+          : cur
+      ));
+    },
   );
+  const ownershipConfirmed = !!token && ownershipToken === token && c.ownedByMe;
 
   const join = async () => {
     if (!getToken()) {
@@ -434,6 +462,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
         <CampaignStatusManagement
           c={c}
+          ownershipConfirmed={ownershipConfirmed}
           updating={statusUpdating}
           disabled={statusUpdating || refreshing}
           onChange={updateStatus}
