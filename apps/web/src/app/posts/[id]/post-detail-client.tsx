@@ -30,8 +30,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [liking, setLiking] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
 
-  // 새로고침 후 likedByMe·likes 사용자별 상태 복원.
-  useAuthedRefresh<Post>(`/api/posts/${p.id}`, (u) => {
+  // 새로고침·로그인/로그아웃 시 likedByMe·likes 동기화.
+  const { refreshing, invalidatePending } = useAuthedRefresh<Post>(`/api/posts/${p.id}`, (u) => {
     setLikes(u.likes);
     setLiked(u.likedByMe);
   });
@@ -42,8 +42,9 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       router.push("/login");
       return;
     }
-    if (liking) return; // 연타 방지
+    if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
+    invalidatePending(); // 늦게 도착할 재조회가 좋아요 결과를 덮어쓰지 않게
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
@@ -191,7 +192,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   onClick={onLike}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
+                  disabled={liking || refreshing}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
                   style={{
                     background: liked ? "rgba(237,92,72,0.15)" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
                     color: liked ? "#ed5c48" : dark ? "#f9f7f2" : "#0f1f22",
