@@ -55,6 +55,8 @@ class Post(
 )
 
 interface PostRepository : JpaRepository<Post, String> {
+    fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Post>
+
     /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Post p where p.id = :id")
@@ -92,6 +94,7 @@ class PostBookmark(
 interface PostBookmarkRepository : JpaRepository<PostBookmark, String> {
     fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
     fun findByPostIdAndUserId(postId: String, userId: Long): PostBookmark?
+    fun findByUserId(userId: Long): List<PostBookmark>
     fun findByUserIdAndPostIdIn(userId: Long, postIds: Collection<String>): List<PostBookmark>
     fun countByPostId(postId: String): Long
 
@@ -214,6 +217,23 @@ class PostController(
         }
         return posts.map {
             it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+        }
+    }
+
+    /** 현재 사용자가 저장한 게시글. 북마크/게시글/좋아요를 각각 bulk 조회해 N+1을 피한다. */
+    @GetMapping("/bookmarks")
+    fun bookmarks(@AuthenticationPrincipal user: AuthUser): List<PostResponse> {
+        val postIds = bookmarkRepo.findByUserId(user.id).map { it.postId }.distinct()
+        if (postIds.isEmpty()) return emptyList()
+
+        val posts = repo.findAllByIdInOrderBySeqDesc(postIds)
+        if (posts.isEmpty()) return emptyList()
+
+        val likedIds = likeRepo.findByUserIdAndPostIdIn(user.id, posts.map { it.id })
+            .map { it.postId }
+            .toSet()
+        return posts.map {
+            it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = true)
         }
     }
 
