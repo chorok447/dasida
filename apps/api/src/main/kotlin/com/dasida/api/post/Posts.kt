@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -51,12 +52,13 @@ class Post(
     @Id val id: String,
     @Embedded val author: Author,
     @Column(name = "time_label") val time: String,
-    @Column(name = "content", columnDefinition = "TEXT") val text: String,
-    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val tags: List<String>,
-    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val images: List<String>,
+    // text/tags/images/campaignId 는 수정 API(PUT)에서 갱신되므로 var. 정렬·소유권 필드(seq/time/authorUserId)는 불변.
+    @Column(name = "content", columnDefinition = "TEXT") var text: String,
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") var tags: List<String>,
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") var images: List<String>,
     var likes: Int,
     var comments: Int,
-    val campaignId: String? = null,
+    var campaignId: String? = null,
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
     // 작성자 소유권 판단용. author.name 은 작성 당시 표시 이름 snapshot 이므로 소유권엔 쓰지 않는다.
     // 시드/기존 게시글은 null(소유자 없음). 이름 기반 backfill 하지 않는다.
@@ -189,9 +191,16 @@ data class CreatePostRequest(
     val campaignId: String? = null,
 )
 
+data class UpdatePostRequest(
+    val text: String,
+    val images: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val campaignId: String? = null,
+)
+
 data class CreateCommentRequest(val text: String)
 
-/** 게시글 응답. Post 필드 + 요청 유저 기준 좋아요/북마크 상태. */
+/** 게시글 응답. Post 필드 + 요청 유저 기준 좋아요/북마크/소유 상태. authorUserId 자체는 노출하지 않는다. */
 data class PostResponse(
     val id: String,
     val author: Author,
@@ -204,6 +213,7 @@ data class PostResponse(
     val campaignId: String?,
     val likedByMe: Boolean,
     val bookmarkedByMe: Boolean,
+    val ownedByMe: Boolean,
 )
 
 @RestController
@@ -231,7 +241,7 @@ class PostController(
             bookmarkRepo.findByUserIdAndPostIdIn(user.id, posts.map { it.id }).map { it.postId }.toSet()
         }
         return posts.map {
-            it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+            it.toResponse(viewerId = user?.id, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
         }
     }
 
@@ -248,7 +258,7 @@ class PostController(
             .map { it.postId }
             .toSet()
         return posts.map {
-            it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = true)
+            it.toResponse(viewerId = user.id, likedByMe = it.id in likedIds, bookmarkedByMe = true)
         }
     }
 
@@ -263,7 +273,7 @@ class PostController(
         val likedIds = likeRepo.findByUserIdAndPostIdIn(user.id, postIds).map { it.postId }.toSet()
         val bookmarkedIds = bookmarkRepo.findByUserIdAndPostIdIn(user.id, postIds).map { it.postId }.toSet()
         return posts.map {
-            it.toResponse(likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+            it.toResponse(viewerId = user.id, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
         }
     }
 
@@ -273,6 +283,7 @@ class PostController(
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
         return post.toResponse(
+            viewerId = user?.id,
             likedByMe = user != null && likeRepo.existsByPostIdAndUserId(id, user.id),
             bookmarkedByMe = user != null && bookmarkRepo.existsByPostIdAndUserId(id, user.id),
         )
@@ -296,6 +307,7 @@ class PostController(
             repo.save(post)
         }
         return post.toResponse(
+            viewerId = user.id,
             likedByMe = true,
             bookmarkedByMe = bookmarkRepo.existsByPostIdAndUserId(id, user.id),
         )
@@ -313,6 +325,7 @@ class PostController(
             post.likes = maxOf(0, post.likes - 1)
         }
         return post.toResponse(
+            viewerId = user.id,
             likedByMe = false,
             bookmarkedByMe = bookmarkRepo.existsByPostIdAndUserId(id, user.id),
         )
@@ -329,6 +342,7 @@ class PostController(
             bookmarkRepo.save(PostBookmark("pbk-${UUID.randomUUID()}", id, user.id))
         }
         return post.toResponse(
+            viewerId = user.id,
             likedByMe = likeRepo.existsByPostIdAndUserId(id, user.id),
             bookmarkedByMe = true,
         )
@@ -342,18 +356,23 @@ class PostController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         bookmarkRepo.findByPostIdAndUserId(id, user.id)?.let(bookmarkRepo::delete)
         return post.toResponse(
+            viewerId = user.id,
             likedByMe = likeRepo.existsByPostIdAndUserId(id, user.id),
             bookmarkedByMe = false,
         )
     }
 
+    // viewerId 기준 소유 여부를 한 곳에서 판정한다. authorUserId 가 null(시드/기존 글)이거나
+    // 비로그인(viewerId=null)이거나 다른 사용자면 false. 이름이 아니라 authorUserId 로만 비교.
     private fun Post.toResponse(
+        viewerId: Long?,
         likedByMe: Boolean = false,
         bookmarkedByMe: Boolean = false,
     ) = PostResponse(
         id = id, author = author, time = time, text = text, tags = tags, images = images,
         likes = likes, comments = comments, campaignId = campaignId, likedByMe = likedByMe,
         bookmarkedByMe = bookmarkedByMe,
+        ownedByMe = authorUserId != null && authorUserId == viewerId,
     )
 
     @GetMapping("/{id}/comments")
@@ -393,31 +412,95 @@ class PostController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreatePostRequest, @AuthenticationPrincipal user: AuthUser): PostResponse {
-        val text = req.text.trim()
-        if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
-        if (text.length > MAX_TEXT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
-
-        val campaignId = req.campaignId?.trim()?.ifBlank { null }
-        if (campaignId != null && !campaigns.existsById(campaignId)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign not found")
-        }
-
+        val fields = normalizeFields(req.text, req.tags, req.images, req.campaignId)
         return repo.save(
             Post(
                 id = "p-${UUID.randomUUID()}",
                 author = Author(user.name, user.verified),
                 time = "방금 전",
-                text = text,
-                tags = normalizeTags(req.tags),
-                images = normalizeImages(req.images),
+                text = fields.text,
+                tags = fields.tags,
+                images = fields.images,
                 likes = 0,
                 comments = 0,
-                campaignId = campaignId,
+                campaignId = fields.campaignId,
                 seq = System.currentTimeMillis(),
                 authorUserId = user.id,
             ),
-        ).toResponse(likedByMe = false, bookmarkedByMe = false)
+        ).toResponse(viewerId = user.id, likedByMe = false, bookmarkedByMe = false)
     }
+
+    /**
+     * 게시글 수정. 작성자(authorUserId)만 가능. 소유권은 author.name 이 아니라 authorUserId 로 판정.
+     * 정렬·소유권 필드(seq/time/likes/comments/authorUserId/id/author)는 건드리지 않아 목록 순서가 유지된다.
+     */
+    @PutMapping("/{id}")
+    @Transactional
+    fun update(
+        @PathVariable id: String,
+        @RequestBody req: UpdatePostRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PostResponse {
+        // 상호작용 API 와 같은 잠금 순서로 게시글 row 를 먼저 잠근다.
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        if (post.authorUserId == null || post.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the author")
+        }
+        val fields = normalizeFields(req.text, req.tags, req.images, req.campaignId)
+        post.text = fields.text
+        post.tags = fields.tags
+        post.images = fields.images
+        post.campaignId = fields.campaignId
+        return post.toResponse(
+            viewerId = user.id,
+            likedByMe = likeRepo.existsByPostIdAndUserId(id, user.id),
+            bookmarkedByMe = bookmarkRepo.existsByPostIdAndUserId(id, user.id),
+        )
+    }
+
+    /**
+     * 게시글 삭제. 작성자만 가능. 좋아요/북마크/댓글을 먼저 정리한 뒤 게시글을 지운다.
+     * soft delete 미도입 → 다시 삭제하면 404. 상호작용 API 와 같은 잠금 순서를 유지한다.
+     */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    fun delete(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser) {
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        if (post.authorUserId == null || post.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the author")
+        }
+        likeRepo.deleteByPostId(id)
+        bookmarkRepo.deleteByPostId(id)
+        commentRepo.deleteByPostId(id)
+        repo.delete(post)
+    }
+
+    /** 생성·수정 공통 검증/정규화. 결과가 어긋나지 않도록 한 곳에서 처리. */
+    private fun normalizeFields(
+        text: String,
+        tags: List<String>,
+        images: List<String>,
+        campaignId: String?,
+    ): NormalizedFields {
+        val trimmed = text.trim()
+        if (trimmed.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
+        if (trimmed.length > MAX_TEXT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
+        val cid = campaignId?.trim()?.ifBlank { null }
+        if (cid != null && !campaigns.existsById(cid)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign not found")
+        }
+        return NormalizedFields(trimmed, normalizeTags(tags), normalizeImages(images), cid)
+    }
+
+    private data class NormalizedFields(
+        val text: String,
+        val tags: List<String>,
+        val images: List<String>,
+        val campaignId: String?,
+    )
 
     private fun normalizeTags(tags: List<String>): List<String> {
         val normalized = tags
