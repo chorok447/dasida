@@ -14,8 +14,10 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -28,7 +30,7 @@ class User(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) val id: Long? = null,
     @Column(unique = true) val email: String,
     @JsonIgnore val passwordHash: String,
-    val name: String,
+    var name: String,
     val verified: Boolean = false,
 )
 
@@ -40,6 +42,9 @@ interface UserRepository : JpaRepository<User, Long> {
 data class SignupRequest(val email: String, val password: String, val name: String)
 data class LoginRequest(val email: String, val password: String)
 data class AuthResponse(val token: String, val name: String, val verified: Boolean)
+data class UserProfileResponse(val id: Long, val email: String, val name: String, val verified: Boolean)
+data class UpdateProfileRequest(val name: String)
+data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)
 
 @RestController
 @RequestMapping("/api/auth")
@@ -55,10 +60,8 @@ class AuthController(
     @ResponseStatus(HttpStatus.CREATED)
     fun signup(@RequestBody req: SignupRequest): AuthResponse {
         val email = req.email.trim().lowercase()
-        val name = req.name.trim()
-        if (email.isBlank() || name.isBlank()) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "email and name are required")
-        }
+        if (email.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "email is required")
+        val name = normalizeName(req.name)
         if (!email.matches(EMAIL_RE)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid email format")
         }
@@ -96,10 +99,47 @@ class AuthController(
     }
 
     @GetMapping("/me")
-    fun me(@AuthenticationPrincipal user: AuthUser?): AuthUser =
-        user ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
+    fun me(@AuthenticationPrincipal principal: AuthUser?): UserProfileResponse =
+        currentUser(principal).toProfile()
+
+    @PutMapping("/me")
+    @Transactional
+    fun updateProfile(
+        @AuthenticationPrincipal principal: AuthUser?,
+        @RequestBody req: UpdateProfileRequest,
+    ): UpdateProfileResponse {
+        val user = currentUser(principal)
+        user.name = normalizeName(req.name)
+        return UpdateProfileResponse(token = jwt.issue(user), profile = user.toProfile())
+    }
+
+    private fun currentUser(principal: AuthUser?): User {
+        val userId = principal?.id
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
+        return repo.findById(userId).orElseThrow {
+            ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+        }
+    }
+
+    private fun User.toProfile() = UserProfileResponse(
+        id = requireNotNull(id),
+        email = email,
+        name = name,
+        verified = verified,
+    )
+
+    private fun normalizeName(rawName: String): String {
+        val name = rawName.trim()
+        if (name.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required")
+        if (name.length > MAX_NAME_LENGTH) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name is too long")
+        }
+        return name
+    }
 
     companion object {
+        private const val MAX_NAME_LENGTH = 30
+
         // ponytail: 형식 sanity 체크만(RFC 5322 아님). local@domain.tld 수준이면 통과.
         private val EMAIL_RE = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 
