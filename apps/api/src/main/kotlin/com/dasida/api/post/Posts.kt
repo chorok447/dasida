@@ -9,13 +9,16 @@ import jakarta.persistence.Embeddable
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.LockModeType
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.transaction.annotation.Transactional
@@ -51,7 +54,12 @@ class Post(
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
 )
 
-interface PostRepository : JpaRepository<Post, String>
+interface PostRepository : JpaRepository<Post, String> {
+    /** 카운터 동시성 방어용 write lock 조회. like/unlike/comment 트랜잭션에서 가장 먼저 호출해 게시글별로 직렬화. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Post p where p.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Post?
+}
 
 /** 사용자별 좋아요. (post_id, user_id) unique 로 중복 좋아요를 막는다. */
 @Entity
@@ -66,6 +74,10 @@ interface PostLikeRepository : JpaRepository<PostLike, String> {
     fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
     fun findByPostIdAndUserId(postId: String, userId: Long): PostLike?
     fun findByUserIdAndPostIdIn(userId: Long, postIds: Collection<String>): List<PostLike>
+    fun countByPostId(postId: String): Long
+
+    @Transactional
+    fun deleteByPostId(postId: String)
 }
 
 /** 게시글 댓글. 오래된 순(seq ASC) 정렬. */
@@ -82,6 +94,10 @@ class PostComment(
 
 interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun findByPostIdOrderBySeqAsc(postId: String): List<PostComment>
+    fun countByPostId(postId: String): Long
+
+    @Transactional
+    fun deleteByPostId(postId: String)
 }
 
 /**
@@ -180,21 +196,22 @@ class PostController(
         return post.toResponse(user != null && likeRepo.existsByPostIdAndUserId(id, user.id))
     }
 
-    /** 좋아요. 이미 누른 경우 idempotent(200, 증가 없음). */
+    /**
+     * 좋아요. 이미 누른 경우 idempotent(200, 증가 없음).
+     *
+     * 동시성: 트랜잭션 안에서 post row 를 가장 먼저 write lock 으로 잡아 게시글별로 요청을 직렬화한다.
+     * 서로 다른 유저의 동시 좋아요에서도 likes 증가가 유실되지 않고, 같은 유저 동시 요청은 lock 보유 중
+     * existsBy 재확인으로 idempotent 처리된다. unique 제약은 최종 방어선으로 유지(예외 삼키기 없음).
+     */
     @PostMapping("/{id}/like")
+    @Transactional
     fun like(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): PostResponse {
-        val post = repo.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        }
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         if (!likeRepo.existsByPostIdAndUserId(id, user.id)) {
-            try {
-                // saveAndFlush 로 unique 위반을 즉시 표출. (controller 는 비-tx 라 catch 후 정상 200 반환)
-                likeRepo.saveAndFlush(PostLike("plk-${UUID.randomUUID()}", id, user.id))
-                post.likes += 1
-                repo.save(post)
-            } catch (_: DataIntegrityViolationException) {
-                // 동시 요청으로 이미 좋아요 row 가 들어간 경우. idempotent 200, 중복 증가 없음.
-            }
+            likeRepo.save(PostLike("plk-${UUID.randomUUID()}", id, user.id))
+            post.likes += 1
+            repo.save(post)
         }
         return post.toResponse(likedByMe = true)
     }
@@ -203,9 +220,9 @@ class PostController(
     @DeleteMapping("/{id}/like")
     @Transactional
     fun unlike(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): PostResponse {
-        val post = repo.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        }
+        // write lock 으로 직렬화 → 서로 다른 유저의 동시 unlike 에서도 감소가 유실되지 않음.
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         likeRepo.findByPostIdAndUserId(id, user.id)?.let {
             likeRepo.delete(it)
             post.likes = maxOf(0, post.likes - 1)
@@ -232,9 +249,9 @@ class PostController(
         @RequestBody req: CreateCommentRequest,
         @AuthenticationPrincipal user: AuthUser,
     ): PostComment {
-        val post = repo.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        }
+        // write lock 으로 직렬화 → 서로 다른 유저의 동시 댓글 작성에서도 comments 증가가 유실되지 않음.
+        val post = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         val text = req.text.trim()
         if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is required")
         if (text.length > MAX_COMMENT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is too long")
