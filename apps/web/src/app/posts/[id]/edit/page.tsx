@@ -63,6 +63,12 @@ export default function PostEditPage() {
   // cancelled 플래그로 늦게 도착한 응답이 현재 상태를 덮지 않게 한다.
   // loading 초기화는 초기 상태값과 retry 핸들러에서 처리(effect 내 동기 setState 회피, lint).
   useEffect(() => {
+    // 게시글 GET 은 public 이라 비로그인도 200(ownedByMe=false)이 온다.
+    // 권한 없음이 아니라 로그인이 필요한 상황이므로 조회 전에 로그인으로 보낸다.
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
     let cancelled = false;
     apiGet<Post>(`/api/posts/${id}`)
       .then((post) => {
@@ -80,8 +86,9 @@ export default function PostEditPage() {
       .catch((e) => {
         if (cancelled) return;
         if (e instanceof ApiError && e.status === 401) {
+          // 만료/깨진 토큰 → 세션 정리 후 로그인으로.
           clearSession();
-          setLoad({ kind: "forbidden" });
+          router.replace("/login");
         } else if (e instanceof ApiError && e.status === 404) {
           setLoad({ kind: "notfound" });
         } else if (e instanceof ApiError && e.status === 403) {
@@ -93,7 +100,7 @@ export default function PostEditPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, token, retry]);
+  }, [id, token, retry, router]);
 
   const addTag = () => {
     if (!tagInput.trim()) return;
@@ -129,7 +136,6 @@ export default function PostEditPage() {
       router.replace(`/posts/${id}`);
     } catch (e) {
       if (getToken() !== requestToken) return; // 오래된 결과를 반영하지 않음
-      setSaving(false);
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         alert("로그인이 필요합니다.");
@@ -139,6 +145,9 @@ export default function PostEditPage() {
       } else {
         alert("게시글 수정에 실패했습니다.");
       }
+    } finally {
+      // 토큰 변경으로 무시한 경우에도 버튼이 영구 비활성화되지 않게 정리.
+      setSaving(false);
     }
   };
 
