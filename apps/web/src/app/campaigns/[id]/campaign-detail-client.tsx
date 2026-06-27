@@ -283,9 +283,13 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     }
     setJoining(true);
     invalidatePending(); // 진행 중 재조회 결과가 참여 성공 결과를 덮어쓰지 않게
+    const requestToken = getToken(); // 요청 identity 캡처
     try {
-      setC(await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {}));
+      const updated = await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {});
+      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      setC(updated);
     } catch (e) {
+      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         alert("로그인이 필요합니다.");
         router.push("/login");

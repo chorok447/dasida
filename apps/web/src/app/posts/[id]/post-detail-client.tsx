@@ -50,13 +50,16 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
     invalidatePending(); // 늦게 도착할 재조회가 좋아요 결과를 덮어쓰지 않게
+    const requestToken = getToken(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
+      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         alert("로그인이 필요합니다.");
         router.push("/login");

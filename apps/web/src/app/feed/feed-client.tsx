@@ -60,13 +60,16 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
     if (!getToken()) return requireLogin();
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
+    const requestToken = getToken(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
+      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) requireLogin();
       else alert("좋아요 처리에 실패했습니다.");
     } finally {
