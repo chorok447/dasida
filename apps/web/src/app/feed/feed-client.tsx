@@ -7,8 +7,9 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, TrendingUp, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
-import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
 import type { Post } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
@@ -32,7 +33,8 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
 
   const router = useRouter();
   const [likes, setLikes] = useState(p.likes);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(p.likedByMe);
+  const [liking, setLiking] = useState(false);
   const [commentCount, setCommentCount] = useState(p.comments);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -48,14 +50,19 @@ function PostCard({ p, onOpen }: { p: Post; onOpen: () => void }) {
 
   const onLike = async () => {
     if (!getToken()) return requireLogin();
-    if (liked) return; // unlike 미구현(MVP): 한 번만 호출
+    if (liking) return; // 연타 방지
+    setLiking(true);
     try {
-      const updated = await apiPost<Post>(`/api/posts/${p.id}/like`, {});
+      const updated = liked
+        ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
+        : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
       setLikes(updated.likes);
-      setLiked(true);
+      setLiked(updated.likedByMe);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) requireLogin();
       else alert("좋아요 처리에 실패했습니다.");
+    } finally {
+      setLiking(false);
     }
   };
 
@@ -285,10 +292,13 @@ function SideRecommend() {
   );
 }
 
-export default function FeedClient({ posts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
+export default function FeedClient({ posts: initialPosts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
+  // 새로고침 후 토큰 포함 재조회로 likedByMe 복원.
+  const [posts, setPosts] = useState(initialPosts);
+  useAuthedRefresh<Post[]>("/api/posts", setPosts);
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
@@ -344,7 +354,8 @@ export default function FeedClient({ posts, campaigns }: { posts: Post[]; campai
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {posts.map((p) => (
-              <PostCard key={p.id} p={p} onOpen={() => router.push(`/posts/${p.id}`)} />
+              // key에 likedByMe/likes 포함 → 재조회로 값이 바뀌면 카드를 리마운트해 초기 상태를 갱신.
+              <PostCard key={`${p.id}-${p.likedByMe}-${p.likes}`} p={p} onOpen={() => router.push(`/posts/${p.id}`)} />
             ))}
           </div>
         </main>

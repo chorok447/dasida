@@ -2,6 +2,7 @@ package com.dasida.api.post
 
 import com.dasida.api.auth.User
 import com.dasida.api.security.JwtService
+import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -253,6 +254,52 @@ class PostControllerTest(
                 status { isOk() }
                 jsonPath("$.likes") { value(5) }
             }
+    }
+
+    // ---- likedByMe ----
+
+    @Test
+    fun `비로그인 단건은 likedByMe false`() {
+        mvc.get("/api/posts/${savePost()}").andExpect {
+            status { isOk() }
+            jsonPath("$.likedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `내가 좋아요한 post 는 likedByMe true`() {
+        val id = savePost()
+        likeRepo.saveAndFlush(PostLike("plk-me", id, 1))
+        mvc.get("/api/posts/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.likedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `좋아요하지 않은 post 는 로그인해도 likedByMe false`() {
+        mvc.get("/api/posts/${savePost()}") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            jsonPath("$.likedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `like 응답은 likedByMe true, unlike 응답은 false`() {
+        val id = savePost()
+        mvc.post("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { jsonPath("$.likedByMe") { value(true) } }
+        mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { jsonPath("$.likedByMe") { value(false) } }
+    }
+
+    @Test
+    fun `list 에서 내가 좋아요한 post 만 likedByMe true`() {
+        val id = savePost()
+        likeRepo.saveAndFlush(PostLike("plk-list", id, 1))
+        mvc.get("/api/posts") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].likedByMe") { value(Matchers.hasItem(true)) }
+        }
     }
 
     // ---- 댓글 ----
