@@ -29,9 +29,14 @@ class PostControllerTest(
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
 
     // 시드 상태에 의존하지 않도록 테스트용 게시글을 직접 저장.
-    private fun savePost(likes: Int = 0, comments: Int = 0): String {
+    private fun savePost(likes: Int = 0, comments: Int = 0, seq: Long = 0): String {
         val id = "itp-${UUID.randomUUID()}"
-        posts.save(Post(id, Author("작성자", false), "방금", "본문", emptyList(), emptyList(), likes, comments))
+        posts.save(
+            Post(
+                id, Author("작성자", false), "방금", "본문", emptyList(), emptyList(), likes, comments,
+                seq = seq,
+            ),
+        )
         return id
     }
 
@@ -411,6 +416,117 @@ class PostControllerTest(
             .andExpect { jsonPath("$.bookmarkedByMe") { value(true) } }
         mvc.delete("/api/posts/$id/like") { headers { add("Authorization", "Bearer $token") } }
             .andExpect { jsonPath("$.bookmarkedByMe") { value(true) } }
+    }
+
+    // ---- 저장한 게시글 목록 ----
+
+    @Test
+    fun `비로그인 북마크 목록 요청은 401`() {
+        mvc.get("/api/posts/bookmarks").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `북마크가 없으면 빈 배열`() {
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `현재 사용자가 북마크한 게시글만 반환한다`() {
+        val bookmarkedId = savePost()
+        savePost()
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-list-mine", bookmarkedId, 1))
+
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].id") { value(bookmarkedId) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자의 북마크는 반환하지 않는다`() {
+        val otherUserPostId = savePost()
+        bookmarkRepo.saveAndFlush(PostBookmark("pbk-list-other", otherUserPostId, 2))
+
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `북마크 목록은 post seq 내림차순으로 정렬된다`() {
+        val oldestId = savePost(seq = 100)
+        val newestId = savePost(seq = 300)
+        val middleId = savePost(seq = 200)
+        bookmarkRepo.saveAllAndFlush(
+            listOf(
+                PostBookmark("pbk-order-old", oldestId, 1),
+                PostBookmark("pbk-order-new", newestId, 1),
+                PostBookmark("pbk-order-middle", middleId, 1),
+            ),
+        )
+
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].id") { value(newestId) }
+            jsonPath("$[1].id") { value(middleId) }
+            jsonPath("$[2].id") { value(oldestId) }
+        }
+    }
+
+    @Test
+    fun `북마크 목록의 bookmarkedByMe는 모두 true`() {
+        val firstId = savePost()
+        val secondId = savePost()
+        bookmarkRepo.saveAllAndFlush(
+            listOf(
+                PostBookmark("pbk-all-true-1", firstId, 1),
+                PostBookmark("pbk-all-true-2", secondId, 1),
+            ),
+        )
+
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[*].bookmarkedByMe") { value(Matchers.everyItem(Matchers.equalTo(true))) }
+        }
+    }
+
+    @Test
+    fun `북마크 목록은 좋아요한 게시글만 likedByMe true`() {
+        val likedId = savePost(likes = 1)
+        val unlikedId = savePost()
+        bookmarkRepo.saveAllAndFlush(
+            listOf(
+                PostBookmark("pbk-liked-1", likedId, 1),
+                PostBookmark("pbk-liked-2", unlikedId, 1),
+            ),
+        )
+        likeRepo.saveAndFlush(PostLike("plk-saved-list", likedId, 1))
+
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$likedId')].likedByMe") { value(Matchers.hasItem(true)) }
+            jsonPath("$[?(@.id == '$unlikedId')].likedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
+    fun `북마크 POST를 반복해도 목록에 게시글은 한 번만 반환된다`() {
+        val id = savePost()
+        repeat(2) {
+            mvc.post("/api/posts/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+                .andExpect { status { isOk() } }
+        }
+
+        mvc.get("/api/posts/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].id") { value(id) }
+        }
     }
 
     // ---- 댓글 ----
