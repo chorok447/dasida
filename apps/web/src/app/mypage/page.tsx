@@ -4,12 +4,13 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Heart, MessageCircle, Bookmark, Share2, Calendar, Users, Pencil } from "lucide-react";
+import { Heart, MessageCircle, Calendar, Users, Pencil } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { fashionPhotos, naturePhotos, peoplePhotos, objectPhotos, workshopPhotos, marketPhotos } from "@/data/photos";
 import { ME_AVATAR } from "@/data/avatars";
+import { SavedPostsGrid } from "./saved-posts-grid";
 
-type Tab = "feed" | "campaign" | "likes";
+type Tab = "feed" | "campaign" | "saved";
 
 const feed = [
   { img: fashionPhotos[0], title: "낡은 청바지로 만든 토트백" },
@@ -113,7 +114,7 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const items: { id: Tab; label: string }[] = [
     { id: "feed", label: "피드" },
     { id: "campaign", label: "캠페인" },
-    { id: "likes", label: "좋아요" },
+    { id: "saved", label: "저장됨" },
   ];
   return (
     <div
@@ -232,30 +233,6 @@ function CampaignList() {
   );
 }
 
-function LikesGrid() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {feed.concat(feed).slice(0, 8).map((f, i) => (
-        <TiltMini key={i}>
-          <div className="relative aspect-square rounded-xl overflow-hidden border shadow-[0_15px_30px_-15px_rgba(0,0,0,0.4)]"
-            style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
-            <img src={f.img} alt="" className="w-full h-full object-cover" />
-            <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[#ed5c48] text-white flex items-center justify-center">
-              <Heart size={14} fill="white" />
-            </div>
-            <div className="absolute bottom-2 left-2 right-2 flex justify-between text-white text-[11px]">
-              <Bookmark size={14} />
-              <Share2 size={14} />
-            </div>
-          </div>
-        </TiltMini>
-      ))}
-    </div>
-  );
-}
-
 export default function MyPage() {
   const [tab, setTab] = useState<Tab>("feed");
   const { theme } = useTheme();
@@ -279,7 +256,7 @@ export default function MyPage() {
         <div className="max-w-5xl mx-auto px-8 py-10">
           {tab === "feed" && <FeedGrid />}
           {tab === "campaign" && <CampaignList />}
-          {tab === "likes" && <LikesGrid />}
+          {tab === "saved" && <SavedPostsGrid />}
         </div>
       </div>
     </section>
