@@ -9,6 +9,7 @@ import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.LockModeType
+import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
@@ -60,6 +61,8 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Campaign c where c.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Campaign?
+
+    fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
 }
 
 /** 캠페인 참여자. (campaign_id, user_id) unique 로 중복 참여를 막는다. */
@@ -67,6 +70,7 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
 @Table(
     name = "campaign_participants",
     uniqueConstraints = [UniqueConstraint(columnNames = ["campaign_id", "user_id"])],
+    indexes = [Index(name = "idx_campaign_participants_user_id", columnList = "user_id")],
 )
 class CampaignParticipant(
     @Id val id: String,
@@ -77,6 +81,7 @@ class CampaignParticipant(
 interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, String> {
     fun existsByCampaignIdAndUserId(campaignId: String, userId: Long): Boolean
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
+    fun findByUserId(userId: Long): List<CampaignParticipant>
     fun countByCampaignId(campaignId: String): Long
 
     @Transactional
@@ -191,6 +196,19 @@ class CampaignController(
             participants.findByUserIdAndCampaignIdIn(user.id, campaigns.map { it.id }).map { it.campaignId }.toSet()
         }
         return campaigns.map { it.toResponse(it.id in joinedIds) }
+    }
+
+    /**
+     * 현재 사용자가 참여한 캠페인 목록. 인증 필수.
+     * 1) participant 조회(user_id 인덱스) → campaignId 목록 추출
+     * 2) campaign IN 조회(seq DESC) → N+1 없이 2쿼리 완료
+     * 삭제된 캠페인의 orphan participant 는 자동으로 결과에서 제외.
+     */
+    @GetMapping("/joined")
+    fun joined(@AuthenticationPrincipal user: AuthUser): List<CampaignResponse> {
+        val campaignIds = participants.findByUserId(user.id).map { it.campaignId }
+        if (campaignIds.isEmpty()) return emptyList()
+        return repo.findAllByIdInOrderBySeqDesc(campaignIds).map { it.toResponse(joinedByMe = true) }
     }
 
     @GetMapping("/{id}")
