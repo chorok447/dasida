@@ -11,12 +11,10 @@ import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
-import type { Post } from "@/data/posts";
+import type { Post, PostComment } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 
 const MAX_COMMENT_LENGTH = 500;
-
-type Comment = { id: string; author: { name: string; verified: boolean }; text: string; time: string };
 
 const categories = ["전체", "패션", "도시텃밭", "공방", "기증", "음식", "가구"];
 
@@ -45,7 +43,7 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
   }
   const [commentCount, setCommentCount] = useState(p.comments);
   const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<PostComment[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [commentsError, setCommentsError] = useState("");
   const [commentText, setCommentText] = useState("");
@@ -82,7 +80,7 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
     setShowComments(next);
     if (next && !commentsLoaded) {
       try {
-        setComments(await apiGet<Comment[]>(`/api/posts/${p.id}/comments`));
+        setComments(await apiGet<PostComment[]>(`/api/posts/${p.id}/comments`));
         setCommentsError("");
       } catch {
         setComments([]);
@@ -100,7 +98,7 @@ function PostCard({ p, refreshing, onOpen }: { p: Post; refreshing: boolean; onO
     if (!getToken()) return requireLogin();
     setBusy(true);
     try {
-      const created = await apiPost<Comment>(`/api/posts/${p.id}/comments`, { text });
+      const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
       setComments((cs) => [...cs, created]);
       setCommentCount((c) => c + 1);
       setCommentText("");

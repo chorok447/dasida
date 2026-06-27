@@ -11,3 +11,12 @@ export type Post = {
   campaignId?: string;
   likedByMe: boolean;
 };
+
+// 게시글 댓글. 백엔드 GET/POST /api/posts/{id}/comments 응답과 1:1.
+export type PostComment = {
+  id: string;
+  postId: string;
+  author: { name: string; verified: boolean };
+  text: string;
+  time: string;
+};
