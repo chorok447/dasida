@@ -13,6 +13,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -264,6 +265,142 @@ class CampaignControllerTest(
         join(id).andExpect {
             status { isOk() }
             jsonPath("$.joined") { value(2) }
+        }
+    }
+
+    // ---- 모집 상태 변경 ----
+
+    private fun updateStatus(id: String, target: String, bearer: String? = token) =
+        mvc.put("/api/campaigns/$id/status") {
+            if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"status":"$target"}"""
+        }
+
+    @Test
+    fun `모집 상태 변경은 인증 없으면 401`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateStatus(id, "open", bearer = null).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `개설자는 upcoming 캠페인의 모집을 시작할 수 있다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+
+        updateStatus(id, "open").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("open") }
+            jsonPath("$.daysLeftLabel") { value("모집중") }
+            jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.joinedByMe") { value(false) }
+        }
+
+        val saved = campaignRepo.findById(id).get()
+        assertThat(saved.status).isEqualTo("open")
+        assertThat(saved.daysLeftLabel).isEqualTo("모집중")
+    }
+
+    @Test
+    fun `다른 사용자는 모집 상태를 변경할 수 없다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+
+        updateStatus(id, "open", bearer = otherToken).andExpect { status { isForbidden() } }
+
+        assertThat(campaignRepo.findById(id).get().status).isEqualTo("upcoming")
+    }
+
+    @Test
+    fun `authorUserId가 null인 캠페인 상태 변경은 403`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = null)
+        updateStatus(id, "open").andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `없는 캠페인 상태 변경은 404`() {
+        updateStatus("nope", "open").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `open 캠페인은 closed로 마감할 수 있다`() {
+        val id = saveCampaign(status = "open", authorUserId = 1)
+
+        updateStatus(id, "closed").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("closed") }
+            jsonPath("$.daysLeftLabel") { value("모집완료") }
+        }
+
+        val saved = campaignRepo.findById(id).get()
+        assertThat(saved.status).isEqualTo("closed")
+        assertThat(saved.daysLeftLabel).isEqualTo("모집완료")
+    }
+
+    @Test
+    fun `open에서 open 요청은 멱등 200이고 변경하지 않는다`() {
+        val id = saveCampaign(status = "open", authorUserId = 1)
+        updateStatus(id, "open").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("open") }
+            jsonPath("$.daysLeftLabel") { value("라벨") }
+        }
+    }
+
+    @Test
+    fun `closed에서 closed 요청은 멱등 200이고 변경하지 않는다`() {
+        val id = saveCampaign(status = "closed", authorUserId = 1)
+        updateStatus(id, "closed").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("closed") }
+            jsonPath("$.daysLeftLabel") { value("라벨") }
+        }
+    }
+
+    @Test
+    fun `closed 캠페인은 다시 open으로 변경할 수 없다`() {
+        val id = saveCampaign(status = "closed", authorUserId = 1)
+        updateStatus(id, "open").andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `upcoming 캠페인은 바로 closed로 변경할 수 없다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateStatus(id, "closed").andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `open과 closed 이외의 target status는 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        listOf("upcoming", "paused").forEach { target ->
+            updateStatus(id, target).andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
+    fun `상태 변경 응답은 실제 참여 상태를 반영한다`() {
+        val id = saveCampaign(status = "upcoming", joined = 1, authorUserId = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-status-owner", id, 1))
+
+        updateStatus(id, "open").andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.joinedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `모집 마감 후에는 참여할 수 없다`() {
+        val id = saveCampaign(status = "open", authorUserId = 1)
+        updateStatus(id, "closed").andExpect { status { isOk() } }
+        join(id).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `모집 시작 후에는 참여할 수 있다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateStatus(id, "open").andExpect { status { isOk() } }
+        join(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(1) }
         }
     }
 
