@@ -1,5 +1,6 @@
 package com.dasida.api.security
 
+import jakarta.servlet.DispatcherType
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -45,6 +46,10 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .authorizeHttpRequests {
+                // ERROR 재디스패치는 인가에서 제외 → 컨트롤러가 던진 400/409 등이 /error 경유로
+                // 401 마스킹되는 것을 막는다. 클라이언트가 직접 친 /error 는 REQUEST 디스패치라
+                // 아래 anyRequest().authenticated() 에 걸려 401 로 차단된다.
+                it.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/mine").authenticated()
