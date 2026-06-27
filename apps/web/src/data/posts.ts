@@ -21,4 +21,5 @@ export type PostComment = {
   author: { name: string; verified: boolean };
   text: string;
   time: string;
+  ownedByMe: boolean;
 };
