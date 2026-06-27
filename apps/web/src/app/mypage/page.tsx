@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { CheckCircle2, FileText, LogIn, Pencil, RefreshCw } from "lucide-react";
+import { CheckCircle2, LogIn, Pencil, RefreshCw } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import type { UserProfile } from "@/data/users";
+import { MyPostsGrid } from "./my-posts-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { JoinedCampaignsList } from "./joined-campaigns-list";
 
@@ -139,20 +140,8 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (tab: Tab) => void }) {
   );
 }
 
-function ComingSoon() {
-  return (
-    <PageState>
-      <FileText size={30} className="text-[#7dd3a3]" />
-      <div>
-        <p>내 게시글 목록은 준비 중입니다.</p>
-        <p className="mt-2 text-[13px] opacity-60">연동 API가 준비되면 실제 활동을 표시합니다.</p>
-      </div>
-    </PageState>
-  );
-}
-
 export default function MyPage() {
-  const [tab, setTab] = useState<Tab>("saved");
+  const [tab, setTab] = useState<Tab>("posts");
   const { theme } = useTheme();
   const dark = theme === "dark";
   const { profile, loading, error, isLoggedIn, retry } = useCurrentUserProfile();
@@ -202,7 +191,7 @@ export default function MyPage() {
             <ProfileHeader profile={profile} />
             <Tabs tab={tab} setTab={setTab} />
             <div className="mx-auto max-w-5xl px-6 py-10 sm:px-8">
-              {tab === "posts" ? <ComingSoon /> : null}
+              {tab === "posts" ? <MyPostsGrid /> : null}
               {tab === "campaigns" ? <JoinedCampaignsList /> : null}
               {tab === "saved" ? <SavedPostsGrid /> : null}
             </div>
