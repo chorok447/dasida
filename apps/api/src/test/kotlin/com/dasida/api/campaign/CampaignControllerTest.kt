@@ -463,6 +463,136 @@ class CampaignControllerTest(
         }
     }
 
+    // ---- 참여 취소(leave) ----
+
+    private fun leave(id: String, bearer: String? = token) =
+        mvc.delete("/api/campaigns/$id/join") {
+            if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        }
+
+    @Test
+    fun `open 캠페인 참여 취소는 200이고 participant 삭제와 joined 감소`() {
+        val id = saveCampaign(status = "open", joined = 1, authorUserId = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave", id, 1))
+        leave(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(0) }
+            jsonPath("$.joinedByMe") { value(false) }
+            jsonPath("$.ownedByMe") { value(false) }
+            jsonPath("$.authorUserId") { doesNotExist() }
+        }
+        assertThat(participantRepo.existsByCampaignIdAndUserId(id, 1)).isFalse()
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(0)
+    }
+
+    @Test
+    fun `개설자가 직접 참여한 캠페인 취소 응답은 ownedByMe true`() {
+        val id = saveCampaign(status = "open", joined = 1, authorUserId = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-owner", id, 1))
+        leave(id).andExpect {
+            status { isOk() }
+            jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.joinedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `참여하지 않은 사용자의 취소는 멱등 200이고 joined 변화 없음`() {
+        val id = saveCampaign(status = "open", joined = 3)
+        leave(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(3) }
+            jsonPath("$.joinedByMe") { value(false) }
+        }
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(3)
+    }
+
+    @Test
+    fun `반복 취소해도 joined가 한 번만 감소한다`() {
+        val id = saveCampaign(status = "open", joined = 1, authorUserId = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-rep", id, 1))
+        repeat(2) { leave(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(0) } } }
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(0)
+    }
+
+    @Test
+    fun `participant가 없으면 closed여도 멱등 200`() {
+        val id = saveCampaign(status = "closed", joined = 5)
+        leave(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joinedByMe") { value(false) }
+            jsonPath("$.joined") { value(5) }
+        }
+    }
+
+    @Test
+    fun `participant가 있는 closed 캠페인 취소는 409이고 데이터 유지`() {
+        val id = saveCampaign(status = "closed", joined = 1, authorUserId = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-closed", id, 1))
+        leave(id).andExpect { status { isConflict() } }
+        assertThat(participantRepo.existsByCampaignIdAndUserId(id, 1)).isTrue()
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(1)
+    }
+
+    @Test
+    fun `participant가 있는 upcoming 캠페인 취소는 409이고 데이터 유지`() {
+        val id = saveCampaign(status = "upcoming", joined = 1, authorUserId = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-upcoming", id, 1))
+        leave(id).andExpect { status { isConflict() } }
+        assertThat(participantRepo.existsByCampaignIdAndUserId(id, 1)).isTrue()
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(1)
+    }
+
+    @Test
+    fun `참여 취소는 인증 없으면 401`() {
+        mvc.delete("/api/campaigns/${saveCampaign(status = "open")}/join").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `없는 캠페인 취소는 404`() {
+        leave("nope").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `다른 사용자의 participant는 삭제하지 않는다`() {
+        val id = saveCampaign(status = "open", joined = 1, authorUserId = 9)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-other", id, 2)) // 다른 유저(id=2)
+        // 토큰 유저(1)는 참여한 적 없음 → 멱등 200, 데이터 변화 없음
+        leave(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(1) } }
+        assertThat(participantRepo.existsByCampaignIdAndUserId(id, 2)).isTrue()
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(1)
+    }
+
+    @Test
+    fun `joined가 0인데 participant가 있어도 취소 후 음수가 되지 않는다`() {
+        val id = saveCampaign(status = "open", joined = 0, authorUserId = 2)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-zero", id, 1))
+        leave(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(0) } }
+        assertThat(campaignRepo.findById(id).get().joined).isEqualTo(0)
+        assertThat(participantRepo.existsByCampaignIdAndUserId(id, 1)).isFalse()
+    }
+
+    @Test
+    fun `취소 후 같은 open 캠페인에 다시 참여할 수 있다`() {
+        val id = saveCampaign(status = "open", capacity = 10, joined = 0)
+        join(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(1) } }
+        leave(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(0) } }
+        join(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(1) } }
+        assertThat(participantRepo.existsByCampaignIdAndUserId(id, 1)).isTrue()
+    }
+
+    @Test
+    fun `정원이 찬 캠페인에서 한 명이 취소하면 다른 사용자가 참여할 수 있다`() {
+        val id = saveCampaign(status = "open", capacity = 1, joined = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-leave-full", id, 1)) // user1 이 마지막 자리
+        // user2 는 정원초과로 참여 불가
+        mvc.post("/api/campaigns/$id/join") { headers { add("Authorization", "Bearer $otherToken") } }
+            .andExpect { status { isConflict() } }
+        leave(id).andExpect { status { isOk() }; jsonPath("$.joined") { value(0) } } // user1 취소 → 자리 발생
+        mvc.post("/api/campaigns/$id/join") { headers { add("Authorization", "Bearer $otherToken") } }
+            .andExpect { status { isOk() }; jsonPath("$.joined") { value(1) } }
+    }
+
     // ---- 모집 상태 변경 ----
 
     private fun updateStatus(id: String, target: String, bearer: String? = token) =

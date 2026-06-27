@@ -92,6 +92,7 @@ class CampaignParticipant(
 
 interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, String> {
     fun existsByCampaignIdAndUserId(campaignId: String, userId: Long): Boolean
+    fun findByCampaignIdAndUserId(campaignId: String, userId: Long): CampaignParticipant?
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
     fun findByUserId(userId: Long): List<CampaignParticipant>
     fun countByCampaignId(campaignId: String): Long
@@ -294,6 +295,30 @@ class CampaignController(
         campaign.joined += 1
         repo.save(campaign)
         return campaign.toResponse(viewerId = user.id, joinedByMe = true)
+    }
+
+    /**
+     * 캠페인 참여 취소. join 과 같은 campaign row lock 을 가장 먼저 잡아 참여·취소·마감을 직렬화한다.
+     *
+     * count 조회 후 감소하지 않고, 해당 사용자의 participant row 존재 여부만으로 정확히 한 번만 감소시킨다.
+     * - participant 가 없으면 캠페인 상태와 무관하게 멱등 200(joinedByMe=false). 중복 취소도 추가 감소 없음.
+     * - participant 가 있는데 open 이 아니면 409(마감 후 취소 불가, 비정상 upcoming participant 도 동일).
+     * joined 는 0 미만으로 내려가지 않는다. 개설자가 직접 참여한 경우도 동일하게 처리한다.
+     */
+    @DeleteMapping("/{id}/join")
+    @Transactional
+    fun leave(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): CampaignResponse {
+        val campaign = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        val participant = participants.findByCampaignIdAndUserId(id, user.id)
+            ?: return campaign.toResponse(viewerId = user.id, joinedByMe = false)
+        if (campaign.status != "open") {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is not open")
+        }
+        participants.delete(participant)
+        campaign.joined = maxOf(0, campaign.joined - 1)
+        repo.save(campaign)
+        return campaign.toResponse(viewerId = user.id, joinedByMe = false)
     }
 
     /**
