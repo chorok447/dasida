@@ -8,7 +8,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil, Trash2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
-import { apiPost, apiPut, apiDeleteVoid, ApiError } from "@/lib/api";
+import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -245,16 +245,45 @@ function CampaignStatusManagement({
   );
 }
 
-function CTABar({ c, onJoin, joining, disabled }: { c: Campaign; onJoin: () => void; joining: boolean; disabled: boolean }) {
+function CTABar({
+  c,
+  onJoin,
+  onLeave,
+  action,
+  disabled,
+}: {
+  c: Campaign;
+  onJoin: () => void;
+  onLeave: () => void;
+  action: "join" | "leave" | null;
+  disabled: boolean;
+}) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const joinedStyle = { background: "rgba(125,211,163,0.18)", color: dark ? "#7dd3a3" : "#1c4044", fontSize: 16 };
   if (c.joinedByMe) {
+    // open 일 때만 취소 가능. closed 는 마감되어 취소 불가, upcoming 은 비정상 데이터라 안내만 표시한다.
+    if (c.status === "open") {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+          <div className="py-5 px-6 rounded-2xl text-center font-medium" style={joinedStyle}>
+            참여 중인 캠페인입니다
+          </div>
+          <button
+            onClick={onLeave}
+            disabled={disabled}
+            aria-label="참여 취소"
+            className="py-5 px-6 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: "rgba(237,92,72,0.16)", color: "#ed5c48" }}
+          >
+            {action === "leave" ? "취소 처리 중…" : "참여 취소"}
+          </button>
+        </div>
+      );
+    }
     return (
-      <div
-        className="w-full py-5 rounded-2xl text-center font-medium"
-        style={{ background: "rgba(125,211,163,0.18)", color: dark ? "#7dd3a3" : "#1c4044", fontSize: 16 }}
-      >
-        이미 참여한 캠페인입니다
+      <div className="w-full py-5 rounded-2xl text-center font-medium" style={joinedStyle}>
+        {c.status === "closed" ? "참여한 캠페인입니다 (모집 마감)" : "참여 완료된 캠페인입니다"}
       </div>
     );
   }
@@ -266,7 +295,7 @@ function CTABar({ c, onJoin, joining, disabled }: { c: Campaign; onJoin: () => v
         className="w-full py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50"
         style={{ background: "#7dd3a3", color: "#0f1f22", fontSize: 17 }}
       >
-        {joining ? "참여 처리 중…" : "캠페인 참여하기"}
+        {action === "join" ? "참여 처리 중…" : "캠페인 참여하기"}
       </button>
     );
   }
@@ -360,7 +389,9 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [tab, setTab] = useState<Tab>("content");
   const [c, setC] = useState(campaign);
   const [ownershipToken, setOwnershipToken] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
+  // join/leave 는 하나의 participation mutation 으로 묶어 동시 실행을 막고, 진행 중 문구를 구분한다.
+  const participationUpdatingRef = useRef(false);
+  const [participationAction, setParticipationAction] = useState<"join" | "leave" | null>(null);
   const statusUpdatingRef = useRef(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const deletingRef = useRef(false);
@@ -384,16 +415,24 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     },
   );
   const ownershipConfirmed = !!token && ownershipToken === token && c.ownedByMe;
+  // 어떤 mutation 이든 진행 중이거나 인증 재조회 중이면 다른 mutation 을 막는다(중복 UX 방어).
+  const anyMutating = participationAction !== null || statusUpdating || deleting || refreshing;
+  // ref 기준의 진행 여부. 핸들러 진입 즉시 동기적으로 검사해 연타 경합을 막는다.
+  const mutationBusy = () =>
+    participationUpdatingRef.current || statusUpdatingRef.current || deletingRef.current;
 
   const join = async () => {
+    if (mutationBusy()) return;
     if (!getToken()) {
       alert("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
-    setJoining(true);
-    invalidatePending(); // 진행 중 재조회 결과가 참여 성공 결과를 덮어쓰지 않게
     const requestToken = getToken(); // 요청 identity 캡처
+    if (!requestToken) return;
+    participationUpdatingRef.current = true;
+    setParticipationAction("join");
+    invalidatePending(); // 진행 중 재조회 결과가 참여 성공 결과를 덮어쓰지 않게
     try {
       const updated = await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {});
       if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
@@ -411,12 +450,52 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         alert("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } finally {
-      setJoining(false);
+      participationUpdatingRef.current = false;
+      setParticipationAction(null);
+    }
+  };
+
+  const leave = async () => {
+    if (mutationBusy()) return;
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (!confirm("캠페인 참여를 취소할까요?\n모집 마감 후에는 취소할 수 없습니다.")) return;
+
+    const requestToken = getToken();
+    if (!requestToken) return;
+    participationUpdatingRef.current = true;
+    setParticipationAction("leave");
+    invalidatePending();
+    try {
+      const updated = await apiDelete<Campaign>(`/api/campaigns/${c.id}/join`);
+      if (getToken() !== requestToken) return;
+      setC(updated); // joined/progress/joinedByMe 즉시 갱신
+      alert("참여가 취소되었습니다.");
+    } catch (e) {
+      if (getToken() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) {
+        clearSession();
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (e instanceof ApiError && e.status === 404) {
+        alert("존재하지 않는 캠페인입니다.");
+        router.push("/campaigns");
+      } else if (e instanceof ApiError && e.status === 409) {
+        alert("모집이 마감되어 참여를 취소할 수 없습니다.");
+      } else {
+        alert("참여 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      participationUpdatingRef.current = false;
+      setParticipationAction(null);
     }
   };
 
   const updateStatus = async (target: "open" | "closed") => {
-    if (statusUpdatingRef.current || deletingRef.current) return; // 삭제와 동시 실행 금지
+    if (mutationBusy()) return; // 참여/취소·삭제와 동시 실행 금지
     if (!getToken()) {
       alert("로그인이 필요합니다.");
       router.push("/login");
@@ -459,7 +538,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   };
 
   const deleteCampaign = async () => {
-    if (statusUpdatingRef.current || deletingRef.current) return; // 모집 시작과 동시 실행 금지
+    if (mutationBusy()) return; // 참여/취소·모집 시작과 동시 실행 금지
     if (!getToken()) {
       alert("로그인이 필요합니다.");
       router.push("/login");
@@ -529,13 +608,13 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
           ownershipConfirmed={ownershipConfirmed}
           updating={statusUpdating}
           deleting={deleting}
-          disabled={statusUpdating || deleting || refreshing}
+          disabled={anyMutating}
           onChange={updateStatus}
           onDelete={deleteCampaign}
         />
 
         <div className="mt-8 sticky top-20 z-10">
-          <CTABar c={c} onJoin={join} joining={joining} disabled={joining || refreshing} />
+          <CTABar c={c} onJoin={join} onLeave={leave} action={participationAction} disabled={anyMutating} />
         </div>
 
         <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
