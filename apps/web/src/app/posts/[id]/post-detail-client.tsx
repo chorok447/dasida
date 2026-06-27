@@ -77,7 +77,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
   const submitComment = async () => {
     const text = commentText.trim();
-    if (!text || submittingComment) return;
+    // 목록 조회/에러 중에는 작성 금지 → 늦게 도착한 GET 이 방금 추가한 댓글을 덮는 경합 방지.
+    if (!text || submittingComment || commentsLoading || commentsError) return;
     if (text.length > MAX_COMMENT_LENGTH) {
       alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
       return;
@@ -331,13 +332,13 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               }}
               placeholder="댓글 달기..."
               maxLength={MAX_COMMENT_LENGTH}
-              disabled={submittingComment}
+              disabled={submittingComment || commentsLoading || !!commentsError}
               className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
               style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
             />
             <button
               onClick={submitComment}
-              disabled={submittingComment || !commentText.trim()}
+              disabled={submittingComment || commentsLoading || !!commentsError || !commentText.trim()}
               aria-label="댓글 등록"
               className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
               style={{ background: "#7dd3a3", color: "#0f1f22" }}
