@@ -45,18 +45,18 @@ data class CampaignBody(val heading: String, val paragraphs: List<String>, val i
 class Campaign(
     @Id val id: String,
     var status: String, // "open" | "upcoming" | "closed"
-    val title: String,
-    @Column(columnDefinition = "TEXT") val summary: String,
-    val thumb: String,
-    val recruitStart: String,
-    val recruitEnd: String,
-    val runStart: String,
-    val runEnd: String,
-    val capacity: Int,
+    var title: String,
+    @Column(columnDefinition = "TEXT") var summary: String,
+    var thumb: String,
+    var recruitStart: String,
+    var recruitEnd: String,
+    var runStart: String,
+    var runEnd: String,
+    var capacity: Int,
     @Column(name = "joined_count") var joined: Int,
     var daysLeftLabel: String,
     @Embedded val author: Author,
-    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val body: CampaignBody,
+    @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") var body: CampaignBody,
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
     // 소유권 판정용. author.name 은 작성 시점의 표시 이름 snapshot 으로만 사용한다.
     // 시드/기존 캠페인은 null 을 허용하며 이름으로 소유자를 추정하지 않는다.
@@ -160,6 +160,18 @@ object CampaignSeed {
 }
 
 data class CreateCampaignRequest(
+    val title: String,
+    val summary: String = "",
+    val body: String = "",
+    val thumb: String = "",
+    val recruitStart: String = "",
+    val recruitEnd: String = "",
+    val runStart: String = "",
+    val runEnd: String = "",
+    val capacity: Int = 0,
+)
+
+data class UpdateCampaignRequest(
     val title: String,
     val summary: String = "",
     val body: String = "",
@@ -323,6 +335,40 @@ class CampaignController(
         )
     }
 
+    /** 모집 시작 전 캠페인 수정. 상태 변경과 같은 row lock 을 가장 먼저 잡아 요청을 직렬화한다. */
+    @PutMapping("/{id}")
+    @Transactional
+    fun update(
+        @PathVariable id: String,
+        @RequestBody req: UpdateCampaignRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignResponse {
+        val campaign = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        if (campaign.authorUserId == null || campaign.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
+        }
+        if (campaign.status != "upcoming") {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "only upcoming campaigns can be updated")
+        }
+
+        val input = normalize(req)
+        campaign.title = input.title
+        campaign.summary = input.summary
+        campaign.thumb = input.thumb
+        campaign.recruitStart = input.recruitStart
+        campaign.recruitEnd = input.recruitEnd
+        campaign.runStart = input.runStart
+        campaign.runEnd = input.runEnd
+        campaign.capacity = input.capacity
+        campaign.body = input.body
+
+        return campaign.toResponse(
+            viewerId = user.id,
+            joinedByMe = participants.existsByCampaignIdAndUserId(id, user.id),
+        )
+    }
+
     private fun Campaign.toResponse(
         viewerId: Long?,
         joinedByMe: Boolean = false,
@@ -337,16 +383,94 @@ class CampaignController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreateCampaignRequest, @AuthenticationPrincipal user: AuthUser): CampaignResponse {
-        val title = req.title.trim()
-        if (title.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
-        if (req.capacity <= 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive")
-        if (req.capacity > MAX_CAPACITY) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity is too large")
+        val input = normalize(req)
+
+        return repo.save(
+            Campaign(
+                id = "c-${UUID.randomUUID()}",
+                status = "upcoming",
+                title = input.title,
+                summary = input.summary,
+                thumb = input.thumb,
+                recruitStart = input.recruitStart,
+                recruitEnd = input.recruitEnd,
+                runStart = input.runStart,
+                runEnd = input.runEnd,
+                capacity = input.capacity,
+                joined = 0,
+                daysLeftLabel = "모집예정",
+                author = Author(user.name, user.verified),
+                body = input.body,
+                seq = System.currentTimeMillis(),
+                authorUserId = user.id,
+            ),
+        ).toResponse(viewerId = user.id, joinedByMe = false)
+    }
+
+    private data class NormalizedCampaignInput(
+        val title: String,
+        val summary: String,
+        val body: CampaignBody,
+        val thumb: String,
+        val recruitStart: String,
+        val recruitEnd: String,
+        val runStart: String,
+        val runEnd: String,
+        val capacity: Int,
+    )
+
+    private fun normalize(req: CreateCampaignRequest) = normalize(
+        title = req.title,
+        summary = req.summary,
+        body = req.body,
+        thumb = req.thumb,
+        recruitStartValue = req.recruitStart,
+        recruitEndValue = req.recruitEnd,
+        runStartValue = req.runStart,
+        runEndValue = req.runEnd,
+        capacity = req.capacity,
+    )
+
+    private fun normalize(req: UpdateCampaignRequest) = normalize(
+        title = req.title,
+        summary = req.summary,
+        body = req.body,
+        thumb = req.thumb,
+        recruitStartValue = req.recruitStart,
+        recruitEndValue = req.recruitEnd,
+        runStartValue = req.runStart,
+        runEndValue = req.runEnd,
+        capacity = req.capacity,
+    )
+
+    /** 생성·수정이 반드시 같은 검증과 정규화 규칙을 사용하도록 한 곳에서 처리한다. */
+    private fun normalize(
+        title: String,
+        summary: String,
+        body: String,
+        thumb: String,
+        recruitStartValue: String,
+        recruitEndValue: String,
+        runStartValue: String,
+        runEndValue: String,
+        capacity: Int,
+    ): NormalizedCampaignInput {
+        val normalizedTitle = title.trim()
+        if (normalizedTitle.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
+        }
+        if (capacity <= 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive")
+        }
+        if (capacity > MAX_CAPACITY) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity is too large")
+        }
 
         // 날짜는 ISO yyyy-MM-dd 만 허용. 프론트가 <input type=date> 로 보냄.
-        val recruitStart = parseDateOrBadRequest(req.recruitStart, "recruitStart")
-        val recruitEnd = parseDateOrBadRequest(req.recruitEnd, "recruitEnd")
-        val runStart = parseDateOrBadRequest(req.runStart, "runStart")
-        val runEnd = parseDateOrBadRequest(req.runEnd, "runEnd")
+        val recruitStart = parseDateOrBadRequest(recruitStartValue, "recruitStart")
+        val recruitEnd = parseDateOrBadRequest(recruitEndValue, "recruitEnd")
+        val runStart = parseDateOrBadRequest(runStartValue, "runStart")
+        val runEnd = parseDateOrBadRequest(runEndValue, "runEnd")
         if (recruitStart.isAfter(recruitEnd)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "recruitStart must be on or before recruitEnd")
         }
@@ -354,26 +478,18 @@ class CampaignController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "runStart must be on or before runEnd")
         }
 
-        return repo.save(
-            Campaign(
-                id = "c-${UUID.randomUUID()}",
-                status = "upcoming",
-                title = title,
-                summary = req.summary.trim(),
-                thumb = req.thumb.trim(),
-                recruitStart = recruitStart.toString(),
-                recruitEnd = recruitEnd.toString(),
-                runStart = runStart.toString(),
-                runEnd = runEnd.toString(),
-                capacity = req.capacity,
-                joined = 0,
-                daysLeftLabel = "모집예정",
-                author = Author(user.name, user.verified),
-                body = CampaignBody("캠페인 소개", listOf(req.body.trim()).filter { it.isNotBlank() }, emptyList()),
-                seq = System.currentTimeMillis(),
-                authorUserId = user.id,
-            ),
-        ).toResponse(viewerId = user.id, joinedByMe = false)
+        val normalizedBody = body.trim()
+        return NormalizedCampaignInput(
+            title = normalizedTitle,
+            summary = summary.trim(),
+            body = CampaignBody("캠페인 소개", listOf(normalizedBody).filter { it.isNotBlank() }, emptyList()),
+            thumb = thumb.trim(),
+            recruitStart = recruitStart.toString(),
+            recruitEnd = recruitEnd.toString(),
+            runStart = runStart.toString(),
+            runEnd = runEnd.toString(),
+            capacity = capacity,
+        )
     }
 
     private fun parseDateOrBadRequest(value: String, field: String): LocalDate {
