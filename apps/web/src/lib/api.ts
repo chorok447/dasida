@@ -58,6 +58,18 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** 백엔드 PUT 호출(JSON). 로그인 토큰이 있으면 Authorization 헤더 부착. 실패 시 ApiError. */
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
+  return res.json() as Promise<T>;
+}
+
 /** 백엔드 DELETE 호출. 로그인 토큰 부착. 실패 시 ApiError. */
 export async function apiDelete<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
