@@ -17,6 +17,7 @@ export type Campaign = {
   author: { name: string; verified: boolean };
   body: { heading: string; paragraphs: string[]; images: string[] };
   joinedByMe: boolean;
+  ownedByMe: boolean;
 };
 
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {

@@ -66,8 +66,13 @@ function HeaderCard({ c }: { c: Campaign }) {
           <div className="relative aspect-square md:aspect-auto overflow-hidden">
             <img src={c.thumb} alt={c.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-tr from-[#0f1f22]/40 to-transparent" />
-            <div className="absolute top-4 left-4" style={{ transform: "translateZ(50px)" }}>
+            <div className="absolute top-4 left-4 flex items-center gap-2" style={{ transform: "translateZ(50px)" }}>
               <StatusBadge c={c} />
+              {c.ownedByMe ? (
+                <span className="rounded-full bg-[#0f1f22]/80 px-3 py-1.5 text-[11px] text-[#7dd3a3]">
+                  내가 개설
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="p-8 flex flex-col gap-6">
@@ -267,12 +272,16 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [c, setC] = useState(campaign);
   const [joining, setJoining] = useState(false);
 
-  // 새로고침·로그인/로그아웃 시 joinedByMe 등 사용자별 상태 동기화.
-  // identity 변경 시 joinedByMe만 즉시 neutral(false), joined 숫자는 유지.
+  // 새로고침·로그인/로그아웃 시 참여·소유 상태를 함께 동기화한다.
+  // identity 변경 시 사용자별 상태만 즉시 neutral(false), joined 숫자는 유지한다.
   const { refreshing, invalidatePending } = useAuthedRefresh<Campaign>(
     `/api/campaigns/${campaign.id}`,
     setC,
-    () => setC((cur) => (cur.joinedByMe ? { ...cur, joinedByMe: false } : cur)),
+    () => setC((cur) => (
+      cur.joinedByMe || cur.ownedByMe
+        ? { ...cur, joinedByMe: false, ownedByMe: false }
+        : cur
+    )),
   );
 
   const join = async () => {

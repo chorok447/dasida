@@ -7,9 +7,9 @@ import { motion } from "motion/react";
 import { Calendar, Users, FileText, Layers, ArrowLeft, ArrowRight, Send } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { clearSession, getToken } from "@/lib/auth";
 import { workshopPhotos, naturePhotos, fashionPhotos, objectPhotos, marketPhotos } from "@/data/photos";
-import { statusMeta } from "@/data/campaigns";
+import { statusMeta, type Campaign } from "@/data/campaigns";
 
 const steps = [
   { id: 0, label: "기본 정보", icon: <FileText size={14} /> },
@@ -75,9 +75,15 @@ export default function CampaignCreatePage() {
   const prev = () => setStep((s) => Math.max(0, s - 1));
   const submit = async () => {
     if (!canSubmit || submitting) return;
+    const requestToken = getToken();
+    if (!requestToken) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
     setSubmitting(true);
     try {
-      await apiPost("/api/campaigns", {
+      const created = await apiPost<Campaign>("/api/campaigns", {
         title: title.trim(),
         summary: summary.trim(),
         body: body.trim(),
@@ -85,10 +91,19 @@ export default function CampaignCreatePage() {
         recruitStart, recruitEnd, runStart, runEnd,
         capacity: parsedCapacity,
       });
-      router.push("/campaigns");
+      if (getToken() !== requestToken) return;
+      router.replace(`/campaigns/${created.id}`);
     } catch (e) {
+      if (getToken() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) {
+        clearSession();
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else {
+        alert("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
       setSubmitting(false);
-      alert(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다." : "등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
 
