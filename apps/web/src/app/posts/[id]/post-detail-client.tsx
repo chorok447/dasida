@@ -1,23 +1,19 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { apiPost, apiDelete, ApiError } from "@/lib/api";
+import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
-import type { Post } from "@/data/posts";
+import type { Post, PostComment } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
 
-const sampleComments = [
-  { id: 1, name: "초록도시", time: "1시간", text: "이거 어떻게 만드신 거예요? 패턴 공유 가능하실까요?", verified: false },
-  { id: 2, name: "보틀앤캔들", time: "3시간", text: "와 디테일 봐… 다음 작품도 기대하고 있겠습니다!", verified: true },
-  { id: 3, name: "원두모음", time: "어제", text: "오프라인 클래스 같은 거 안 여시나요?", verified: false },
-];
+const MAX_COMMENT_LENGTH = 500;
 
 export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
@@ -40,6 +36,77 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     },
     () => setLiked(false),
   );
+
+  // ---- 댓글 ----
+  const [comments, setComments] = useState<PostComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [commentsError, setCommentsError] = useState("");
+  const [commentCount, setCommentCount] = useState(post.comments);
+  const [commentText, setCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const commentSectionRef = useRef<HTMLDivElement>(null);
+
+  // 진입 시(및 재시도/post 변경 시) 댓글 목록 조회. cancelled 플래그로 늦은 응답·언마운트 보호.
+  // loading/error 초기화는 effect 동기 setState 대신 초기 상태값과 retry 핸들러에서 처리(lint).
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<PostComment[]>(`/api/posts/${p.id}/comments`)
+      .then((list) => {
+        if (cancelled) return;
+        setComments(list);
+        setCommentCount(list.length); // 실제 목록 길이와 동기화
+        setCommentsError("");
+      })
+      .catch(() => {
+        if (!cancelled) setCommentsError("댓글을 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (!cancelled) setCommentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [p.id, reloadTick]);
+
+  const retryComments = () => {
+    setCommentsLoading(true);
+    setCommentsError("");
+    setReloadTick((t) => t + 1);
+  };
+
+  const submitComment = async () => {
+    const text = commentText.trim();
+    if (!text || submittingComment) return;
+    if (text.length > MAX_COMMENT_LENGTH) {
+      alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
+      return;
+    }
+    if (!getToken()) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    setSubmittingComment(true);
+    const requestToken = getToken(); // 요청 identity 캡처
+    try {
+      const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
+      if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 무시
+      setComments((cs) => [...cs, created]);
+      setCommentCount((c) => c + 1);
+      setCommentText("");
+    } catch (e) {
+      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (e instanceof ApiError && e.status === 401) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else {
+        alert("댓글 작성에 실패했습니다.");
+      }
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   const onLike = async () => {
     if (!getToken()) {
@@ -209,8 +276,13 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 >
                   <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} /> {likes}
                 </motion.button>
-                <button className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                  <MessageCircle size={14} /> {p.comments}
+                <button
+                  onClick={() => commentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  aria-label="댓글 보기"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
+                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                >
+                  <MessageCircle size={14} /> {commentCount}
                 </button>
                 <button className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
                   <Share2 size={14} />
@@ -232,14 +304,15 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         </div>
 
         <div
-          className="mt-8 rounded-3xl border p-8"
+          ref={commentSectionRef}
+          className="mt-8 rounded-3xl border p-8 scroll-mt-24"
           style={{
             background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
             borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
           }}
         >
           <h3 className="mb-6" style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            댓글 {sampleComments.length}
+            댓글 {commentCount}
           </h3>
           <div
             className="flex items-center gap-3 p-3 rounded-2xl mb-6"
@@ -247,29 +320,63 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
           >
             <Avatar name="나" />
             <input
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => {
+                // 한글 IME 조합 중 Enter 는 제출하지 않음.
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  submitComment();
+                }
+              }}
               placeholder="댓글 달기..."
-              className="flex-1 bg-transparent outline-none placeholder:opacity-50"
+              maxLength={MAX_COMMENT_LENGTH}
+              disabled={submittingComment}
+              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
               style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
             />
-            <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
+            <button
+              onClick={submitComment}
+              disabled={submittingComment || !commentText.trim()}
+              aria-label="댓글 등록"
+              className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
+              style={{ background: "#7dd3a3", color: "#0f1f22" }}
+            >
               <Send size={14} />
             </button>
           </div>
-          <div className="space-y-5">
-            {sampleComments.map((c) => (
-              <div key={c.id} className="flex gap-3">
-                <Avatar name={c.name} verified={c.verified} />
-                <div>
-                  <div className="flex items-center gap-2 text-[13px]">
-                    <span style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.name}</span>
-                    <span className="opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>· {c.time}</span>
-                  </div>
-                  <p className="mt-0.5" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
-                    {c.text}
-                  </p>
-                </div>
+          <div className="space-y-5 min-h-[64px]">
+            {commentsLoading ? (
+              <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>댓글을 불러오는 중…</p>
+            ) : commentsError ? (
+              <div className="flex items-center gap-3">
+                <p className="text-[13px]" style={{ color: "#ed5c48" }}>{commentsError}</p>
+                <button
+                  onClick={retryComments}
+                  className="text-[12px] px-3 py-1 rounded-full"
+                  style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                >
+                  다시 시도
+                </button>
               </div>
-            ))}
+            ) : comments.length === 0 ? (
+              <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>첫 댓글을 남겨보세요.</p>
+            ) : (
+              comments.map((c) => (
+                <div key={c.id} className="flex gap-3">
+                  <Avatar name={c.author.name} verified={c.author.verified} />
+                  <div>
+                    <div className="flex items-center gap-2 text-[13px]">
+                      <span style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>
+                      <span className="opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>· {c.time}</span>
+                    </div>
+                    <p className="mt-0.5" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
+                      {c.text}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
