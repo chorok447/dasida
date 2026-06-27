@@ -1,5 +1,6 @@
-// 캠페인 데이터는 백엔드(GET /api/campaigns)가 source of truth. 타입 + 프레젠테이션 메타만 유지.
+// 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
 export type CampaignStatus = "open" | "upcoming" | "closed";
+export type CampaignSearchSort = "latest" | "popular";
 
 export type Campaign = {
   id: string;
@@ -37,6 +38,14 @@ export type CampaignParticipantsResponse = {
   totalElements: number;
   totalPages: number;
   participants: CampaignParticipant[];
+};
+
+export type CampaignSearchResponse = {
+  content: Campaign[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
 
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {

@@ -1,0 +1,348 @@
+package com.dasida.api.campaign
+
+import com.dasida.api.auth.User
+import com.dasida.api.post.Author
+import com.dasida.api.security.JwtService
+import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+class CampaignSearchControllerTest(
+    @Autowired private val mvc: MockMvc,
+    @Autowired private val jwt: JwtService,
+    @Autowired private val campaignRepo: CampaignRepository,
+    @Autowired private val participantRepo: CampaignParticipantRepository,
+) {
+    private val token = jwt.issue(
+        User(id = 1, email = "search@test.com", passwordHash = "x", name = "검색 사용자", verified = true),
+    )
+
+    private fun marker(prefix: String = "search"): String =
+        "$prefix-${UUID.randomUUID().toString().replace("-", "")}"
+
+    private fun saveCampaign(
+        id: String = "search-${UUID.randomUUID()}",
+        status: String = "open",
+        title: String = "검색 캠페인",
+        summary: String = "검색 요약",
+        capacity: Int = 10,
+        joined: Int = 0,
+        seq: Long = System.nanoTime(),
+        authorUserId: Long? = null,
+    ): String {
+        campaignRepo.saveAndFlush(
+            Campaign(
+                id = id,
+                status = status,
+                title = title,
+                summary = summary,
+                thumb = "https://example.com/campaign.png",
+                recruitStart = "2026-07-01",
+                recruitEnd = "2026-07-31",
+                runStart = "2026-08-01",
+                runEnd = "2026-08-31",
+                capacity = capacity,
+                joined = joined,
+                daysLeftLabel = "검색 테스트",
+                author = Author("개설자", false),
+                body = CampaignBody("소개", emptyList(), emptyList()),
+                seq = seq,
+                authorUserId = authorUserId,
+            ),
+        )
+        return id
+    }
+
+    @Test
+    fun `기본 검색은 latest page 0 size 9를 사용한다`() {
+        val newest = saveCampaign(seq = Long.MAX_VALUE)
+        val next = saveCampaign(seq = Long.MAX_VALUE - 1)
+
+        mvc.get("/api/campaigns/search").andExpect {
+            status { isOk() }
+            jsonPath("$.page") { value(0) }
+            jsonPath("$.size") { value(9) }
+            jsonPath("$.content.length()") { value(9) }
+            jsonPath("$.content[0].id") { value(newest) }
+            jsonPath("$.content[1].id") { value(next) }
+        }
+    }
+
+    @Test
+    fun `제목과 요약을 대소문자 무시 부분 검색한다`() {
+        val titleKeyword = marker("TitleCase")
+        val summaryKeyword = marker("SummaryCase")
+        val titleId = saveCampaign(title = "앞 ${titleKeyword.uppercase()} 뒤")
+        val summaryId = saveCampaign(summary = "앞 ${summaryKeyword.uppercase()} 뒤")
+
+        mvc.get("/api/campaigns/search") { param("q", titleKeyword.lowercase()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(titleId) }
+        }
+        mvc.get("/api/campaigns/search") { param("q", summaryKeyword.lowercase()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(summaryId) }
+        }
+    }
+
+    @Test
+    fun `한글 검색어를 제목과 요약에서 찾는다`() {
+        val keyword = "한글검색${UUID.randomUUID().toString().take(8)}"
+        val id = saveCampaign(summary = "업사이클링 $keyword 캠페인")
+
+        mvc.get("/api/campaigns/search") { param("q", keyword) }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(id) }
+        }
+    }
+
+    @Test
+    fun `검색어는 trim하고 빈 문자열은 조건에서 제외한다`() {
+        val keyword = marker("trim")
+        val matched = saveCampaign(title = "제목 $keyword")
+        val newest = saveCampaign(seq = Long.MAX_VALUE)
+
+        mvc.get("/api/campaigns/search") { param("q", "  $keyword  ") }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(matched) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", "   ")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(newest) }
+        }
+    }
+
+    @Test
+    fun `100자를 초과한 검색어는 400`() {
+        mvc.get("/api/campaigns/search") { param("q", "가".repeat(101)) }
+            .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `status별로 필터하고 잘못된 status는 400`() {
+        val keyword = marker("status")
+        val open = saveCampaign(status = "open", summary = keyword)
+        val upcoming = saveCampaign(status = "upcoming", summary = keyword)
+        val closed = saveCampaign(status = "closed", summary = keyword)
+
+        listOf("open" to open, "upcoming" to upcoming, "closed" to closed).forEach { (status, id) ->
+            mvc.get("/api/campaigns/search") {
+                param("q", keyword)
+                param("status", status)
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.totalElements") { value(1) }
+                jsonPath("$.content[0].id") { value(id) }
+            }
+        }
+        mvc.get("/api/campaigns/search") { param("status", "draft") }
+            .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `availableOnly는 모집중이면서 정원이 남은 캠페인만 반환한다`() {
+        val keyword = marker("available")
+        val available = saveCampaign(status = "open", capacity = 3, joined = 2, summary = keyword)
+        saveCampaign(status = "open", capacity = 3, joined = 3, summary = keyword)
+        saveCampaign(status = "upcoming", capacity = 3, joined = 0, summary = keyword)
+        saveCampaign(status = "closed", capacity = 3, joined = 1, summary = keyword)
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("availableOnly", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(available) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "closed")
+            param("availableOnly", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(0) }
+            jsonPath("$.content.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `latest와 popular 정렬은 명시적 tie breaker를 사용한다`() {
+        val keyword = marker("sort")
+        val latest = saveCampaign(id = "sort-z-${UUID.randomUUID()}", summary = keyword, joined = 1, seq = 300)
+        val popular = saveCampaign(id = "sort-y-${UUID.randomUUID()}", summary = keyword, joined = 9, seq = 100)
+        val tieA = saveCampaign(id = "sort-a-${UUID.randomUUID()}", summary = keyword, joined = 5, seq = 200)
+        val tieB = saveCampaign(id = "sort-b-${UUID.randomUUID()}", summary = keyword, joined = 5, seq = 200)
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("sort", "latest")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(latest, tieA, tieB, popular)) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("sort", "popular")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(popular, tieA, tieB, latest)) }
+        }
+    }
+
+    @Test
+    fun `잘못된 sort는 400`() {
+        mvc.get("/api/campaigns/search") { param("sort", "deadline") }
+            .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `page와 size 경계를 검증한다`() {
+        mvc.get("/api/campaigns/search") { param("page", "-1") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/campaigns/search") { param("size", "0") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/campaigns/search") { param("size", "51") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/campaigns/search") { param("size", "1") }
+            .andExpect { status { isOk() } }
+        mvc.get("/api/campaigns/search") { param("size", "50") }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `totalElements와 totalPages가 정확하고 범위 밖 page는 비어 있다`() {
+        val keyword = marker("paging")
+        repeat(5) { index -> saveCampaign(title = "$keyword $index", seq = index.toLong()) }
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("page", "1")
+            param("size", "2")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.page") { value(1) }
+            jsonPath("$.size") { value(2) }
+            jsonPath("$.totalElements") { value(5) }
+            jsonPath("$.totalPages") { value(3) }
+            jsonPath("$.content.length()") { value(2) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("page", "3")
+            param("size", "2")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(5) }
+            jsonPath("$.totalPages") { value(3) }
+            jsonPath("$.content.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `비로그인 검색은 사용자별 상태가 모두 false`() {
+        val keyword = marker("anonymous")
+        saveCampaign(title = keyword, authorUserId = 1)
+
+        mvc.get("/api/campaigns/search") { param("q", keyword) }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].joinedByMe") { value(false) }
+            jsonPath("$.content[0].ownedByMe") { value(false) }
+        }
+    }
+
+    @Test
+    fun `로그인 검색은 실제 참여와 소유 상태를 반영한다`() {
+        val keyword = marker("viewer")
+        val id = saveCampaign(title = keyword, authorUserId = 1)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", id, 1))
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].joinedByMe") { value(true) }
+            jsonPath("$.content[0].ownedByMe") { value(true) }
+            jsonPath("$.content[0].authorUserId") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `현재 page 밖 참가 상태는 현재 page 결과에 섞이지 않는다`() {
+        val keyword = marker("page-state")
+        val first = saveCampaign(title = keyword, seq = 200)
+        val second = saveCampaign(title = keyword, seq = 100)
+        participantRepo.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", second, 1))
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("size", "1")
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(first) }
+            jsonPath("$.content[0].joinedByMe") { value(false) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("page", "1")
+            param("size", "1")
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(second) }
+            jsonPath("$.content[0].joinedByMe") { value(true) }
+        }
+    }
+
+    @Test
+    fun `검색 특수문자는 LIKE wildcard가 아니라 일반 문자로 처리한다`() {
+        val prefix = marker("literal")
+        val percent = saveCampaign(title = "$prefix%percent")
+        val underscore = saveCampaign(title = "${prefix}_underscore")
+        val backslash = saveCampaign(title = "$prefix\\backslash")
+        saveCampaign(title = "${prefix}Xpercent")
+        saveCampaign(title = "${prefix}Xunderscore")
+
+        listOf("$prefix%" to percent, "${prefix}_" to underscore, "$prefix\\" to backslash).forEach { (query, id) ->
+            mvc.get("/api/campaigns/search") { param("q", query) }.andExpect {
+                status { isOk() }
+                jsonPath("$.totalElements") { value(1) }
+                jsonPath("$.content[0].id") { value(id) }
+            }
+        }
+    }
+
+    @Test
+    fun `기존 목록 배열 계약을 유지하고 search를 id로 오인하지 않는다`() {
+        val arrayResponse = mvc.get("/api/campaigns").andExpect {
+            status { isOk() }
+            jsonPath("$") { isArray() }
+        }.andReturn().response.contentAsString
+        assertThat(arrayResponse).startsWith("[")
+
+        mvc.get("/api/campaigns/search").andExpect {
+            status { isOk() }
+            jsonPath("$.content") { isArray() }
+            jsonPath("$.page") { value(0) }
+        }
+    }
+}
