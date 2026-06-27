@@ -37,7 +37,10 @@ import java.util.UUID
 data class CampaignBody(val heading: String, val paragraphs: List<String>, val images: List<String>)
 
 @Entity
-@Table(name = "campaigns")
+@Table(
+    name = "campaigns",
+    indexes = [Index(name = "idx_campaigns_author_user_id", columnList = "author_user_id")],
+)
 class Campaign(
     @Id val id: String,
     val status: String, // "open" | "upcoming" | "closed"
@@ -54,6 +57,11 @@ class Campaign(
     @Embedded val author: Author,
     @JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition = "json") val body: CampaignBody,
     @JsonIgnore var seq: Long = 0, // 정렬용. 시드=인덱스, 생성=epoch millis (최신이 위로)
+    // 소유권 판정용. author.name 은 작성 시점의 표시 이름 snapshot 으로만 사용한다.
+    // 시드/기존 캠페인은 null 을 허용하며 이름으로 소유자를 추정하지 않는다.
+    @Column(name = "author_user_id")
+    @JsonIgnore
+    val authorUserId: Long? = null,
 )
 
 interface CampaignRepository : JpaRepository<Campaign, String> {
@@ -63,6 +71,7 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findByIdForUpdate(@Param("id") id: String): Campaign?
 
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
+    fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
 }
 
 /** 캠페인 참여자. (campaign_id, user_id) unique 로 중복 참여를 막는다. */
@@ -161,7 +170,7 @@ data class CreateCampaignRequest(
     val capacity: Int = 0,
 )
 
-/** GET/join 응답. Campaign 필드 + 요청 유저 기준 joinedByMe. */
+/** Campaign 응답. 참여·소유 상태는 현재 요청 사용자 기준이며 authorUserId 자체는 노출하지 않는다. */
 data class CampaignResponse(
     val id: String,
     val status: String,
@@ -178,6 +187,7 @@ data class CampaignResponse(
     val author: Author,
     val body: CampaignBody,
     val joinedByMe: Boolean,
+    val ownedByMe: Boolean,
 )
 
 @RestController
@@ -195,7 +205,7 @@ class CampaignController(
         } else {
             participants.findByUserIdAndCampaignIdIn(user.id, campaigns.map { it.id }).map { it.campaignId }.toSet()
         }
-        return campaigns.map { it.toResponse(it.id in joinedIds) }
+        return campaigns.map { it.toResponse(viewerId = user?.id, joinedByMe = it.id in joinedIds) }
     }
 
     /**
@@ -208,7 +218,22 @@ class CampaignController(
     fun joined(@AuthenticationPrincipal user: AuthUser): List<CampaignResponse> {
         val campaignIds = participants.findByUserId(user.id).map { it.campaignId }
         if (campaignIds.isEmpty()) return emptyList()
-        return repo.findAllByIdInOrderBySeqDesc(campaignIds).map { it.toResponse(joinedByMe = true) }
+        return repo.findAllByIdInOrderBySeqDesc(campaignIds)
+            .map { it.toResponse(viewerId = user.id, joinedByMe = true) }
+    }
+
+    /** 현재 사용자가 개설한 캠페인. 캠페인과 참여 상태를 각각 bulk 조회해 N+1을 피한다. */
+    @GetMapping("/mine")
+    fun mine(@AuthenticationPrincipal user: AuthUser): List<CampaignResponse> {
+        val campaigns = repo.findByAuthorUserIdOrderBySeqDesc(user.id)
+        if (campaigns.isEmpty()) return emptyList()
+
+        val joinedIds = participants.findByUserIdAndCampaignIdIn(user.id, campaigns.map { it.id })
+            .map { it.campaignId }
+            .toSet()
+        return campaigns.map {
+            it.toResponse(viewerId = user.id, joinedByMe = it.id in joinedIds)
+        }
     }
 
     @GetMapping("/{id}")
@@ -216,7 +241,10 @@ class CampaignController(
         val campaign = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         }
-        return campaign.toResponse(user != null && participants.existsByCampaignIdAndUserId(id, user.id))
+        return campaign.toResponse(
+            viewerId = user?.id,
+            joinedByMe = user != null && participants.existsByCampaignIdAndUserId(id, user.id),
+        )
     }
 
     /**
@@ -233,7 +261,9 @@ class CampaignController(
         val campaign = repo.findByIdForUpdate(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         // lock 보유 상태에서 재확인 → 같은 유저 동시 요청도 직렬화되어 idempotent.
-        if (participants.existsByCampaignIdAndUserId(id, user.id)) return campaign.toResponse(joinedByMe = true)
+        if (participants.existsByCampaignIdAndUserId(id, user.id)) {
+            return campaign.toResponse(viewerId = user.id, joinedByMe = true)
+        }
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign is not open")
         }
@@ -243,14 +273,18 @@ class CampaignController(
         participants.save(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
         campaign.joined += 1
         repo.save(campaign)
-        return campaign.toResponse(joinedByMe = true)
+        return campaign.toResponse(viewerId = user.id, joinedByMe = true)
     }
 
-    private fun Campaign.toResponse(joinedByMe: Boolean = false) = CampaignResponse(
+    private fun Campaign.toResponse(
+        viewerId: Long?,
+        joinedByMe: Boolean = false,
+    ) = CampaignResponse(
         id = id, status = status, title = title, summary = summary, thumb = thumb,
         recruitStart = recruitStart, recruitEnd = recruitEnd, runStart = runStart, runEnd = runEnd,
         capacity = capacity, joined = joined, daysLeftLabel = daysLeftLabel,
         author = author, body = body, joinedByMe = joinedByMe,
+        ownedByMe = authorUserId != null && authorUserId == viewerId,
     )
 
     @PostMapping
@@ -290,8 +324,9 @@ class CampaignController(
                 author = Author(user.name, user.verified),
                 body = CampaignBody("캠페인 소개", listOf(req.body.trim()).filter { it.isNotBlank() }, emptyList()),
                 seq = System.currentTimeMillis(),
+                authorUserId = user.id,
             ),
-        ).toResponse(joinedByMe = false)
+        ).toResponse(viewerId = user.id, joinedByMe = false)
     }
 
     private fun parseDateOrBadRequest(value: String, field: String): LocalDate {
