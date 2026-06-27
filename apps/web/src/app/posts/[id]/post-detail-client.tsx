@@ -24,17 +24,22 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(p.bookmarkedByMe);
+  const [bookmarking, setBookmarking] = useState(false);
 
-  // 새로고침·로그인/로그아웃 시 likedByMe·likes 동기화.
-  // identity 변경 시 liked만 즉시 neutral(false), likes 숫자는 유지.
+  // 새로고침·로그인/로그아웃 시 좋아요·북마크 상태와 likes를 동기화한다.
+  // identity 변경 시 사용자별 상태만 즉시 neutral(false), likes 숫자는 유지한다.
   const { refreshing, invalidatePending } = useAuthedRefresh<Post>(
     `/api/posts/${p.id}`,
     (u) => {
       setLikes(u.likes);
       setLiked(u.likedByMe);
+      setBookmarked(u.bookmarkedByMe);
     },
-    () => setLiked(false),
+    () => {
+      setLiked(false);
+      setBookmarked(false);
+    },
   );
 
   // ---- 댓글 ----
@@ -136,6 +141,35 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       }
     } finally {
       setLiking(false);
+    }
+  };
+
+  const onBookmark = async () => {
+    const requestToken = getToken();
+    if (!requestToken) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (bookmarking || refreshing) return;
+    setBookmarking(true);
+    invalidatePending();
+    try {
+      const updated = bookmarked
+        ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
+        : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
+      if (getToken() !== requestToken) return;
+      setBookmarked(updated.bookmarkedByMe);
+    } catch (e) {
+      if (getToken() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+      } else {
+        alert("북마크 처리에 실패했습니다.");
+      }
+    } finally {
+      setBookmarking(false);
     }
   };
 
@@ -290,8 +324,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 </button>
                 <motion.button
                   whileTap={{ scale: 0.85 }}
-                  onClick={() => setBookmarked((v) => !v)}
-                  className="ml-auto w-9 h-9 rounded-full flex items-center justify-center"
+                  onClick={onBookmark}
+                  disabled={bookmarking || refreshing}
+                  aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
+                  className="ml-auto w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-50"
                   style={{
                     background: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
                     color: bookmarked ? "#0f1f22" : dark ? "#f9f7f2" : "#0f1f22",
