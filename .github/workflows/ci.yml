@@ -5,8 +5,7 @@ on:
     branches: [develop, main]
   pull_request:
     branches: [develop, main]
-    # labeled: 라벨을 나중에 달아도 CI+자동 머지가 다시 평가되도록 기본 타입에 추가한다.
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 # 같은 브랜치/PR에서 새 푸시가 오면 진행 중 실행을 취소한다.
 concurrency:
@@ -49,12 +48,15 @@ jobs:
         working-directory: apps/api
         run: ./gradlew build --no-daemon
 
-  # web/api 두 검사가 모두 통과하고 PR에 'automerge' 라벨이 있을 때만 merge commit 으로 자동 머지.
-  # 무료 플랜 프라이빗 repo 라 GitHub 네이티브 auto-merge(브랜치 보호) 대신 이 잡으로 대체한다.
+  # main/develop 대상의 Ready 상태 PR은 web/api 검사 통과 후 자동 머지한다.
+  # Draft PR과 push workflow에서는 auto-merge job을 실행하지 않는다.
   automerge:
     name: auto-merge
     needs: [web, api]
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'automerge')
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      (github.base_ref == 'develop' || github.base_ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
