@@ -1,0 +1,189 @@
+package com.dasida.api.campaign
+
+import com.dasida.api.post.Author
+import com.dasida.api.security.AuthUser
+import com.fasterxml.jackson.annotation.JsonIgnore
+import jakarta.persistence.Column
+import jakarta.persistence.Embedded
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Index
+import jakarta.persistence.Table
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
+import java.time.Instant
+import java.util.UUID
+
+@Entity
+@Table(
+    name = "campaign_comments",
+    indexes = [
+        Index(
+            name = "idx_campaign_comments_campaign_created",
+            columnList = "campaign_id, created_at",
+        ),
+    ],
+)
+class CampaignComment(
+    @Id val id: String,
+    @Column(name = "campaign_id") val campaignId: String,
+    @Embedded val author: Author,
+    @Column(columnDefinition = "TEXT") val text: String,
+    @Column(name = "created_at") val createdAt: Instant,
+    @Column(name = "author_user_id") @JsonIgnore val authorUserId: Long,
+)
+
+interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
+    fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignComment>
+    fun findByIdAndCampaignId(id: String, campaignId: String): CampaignComment?
+    fun countByCampaignId(campaignId: String): Long
+
+    @Transactional
+    fun deleteByCampaignId(campaignId: String)
+}
+
+data class CampaignCommentResponse(
+    val id: String,
+    val campaignId: String,
+    val author: Author,
+    val text: String,
+    val createdAt: Instant,
+    val ownedByMe: Boolean,
+)
+
+data class CampaignCommentsResponse(
+    val content: List<CampaignCommentResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
+data class CreateCampaignCommentRequest(val text: String)
+
+@RestController
+@RequestMapping("/api/campaigns/{campaignId}/comments")
+class CampaignCommentController(
+    private val campaigns: CampaignRepository,
+    private val comments: CampaignCommentRepository,
+) {
+    @GetMapping
+    @Transactional(readOnly = true)
+    fun list(
+        @PathVariable campaignId: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): CampaignCommentsResponse {
+        validatePage(page, size)
+        if (!campaigns.existsById(campaignId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+
+        val result = comments.findByCampaignId(
+            campaignId,
+            PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")),
+            ),
+        )
+        return CampaignCommentsResponse(
+            content = result.content.map { it.toResponse(user?.id) },
+            page = result.number,
+            size = result.size,
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+        )
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    fun create(
+        @PathVariable campaignId: String,
+        @RequestBody request: CreateCampaignCommentRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignCommentResponse {
+        val text = normalizeText(request.text)
+        // 캠페인 삭제와 같은 row를 첫 DB 조회로 잠가 orphan comment 생성을 막는다.
+        campaigns.findByIdForUpdate(campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+
+        return comments.save(
+            CampaignComment(
+                id = "cc-${UUID.randomUUID()}",
+                campaignId = campaignId,
+                author = Author(user.name, user.verified),
+                text = text,
+                createdAt = Instant.now(),
+                authorUserId = user.id,
+            ),
+        ).toResponse(user.id)
+    }
+
+    @DeleteMapping("/{commentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    fun delete(
+        @PathVariable campaignId: String,
+        @PathVariable commentId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ) {
+        // 작성·캠페인 삭제와 lock 순서를 맞추기 위해 campaign row를 가장 먼저 잠근다.
+        campaigns.findByIdForUpdate(campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        val comment = comments.findByIdAndCampaignId(commentId, campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (comment.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
+        }
+        comments.delete(comment)
+    }
+
+    private fun validatePage(page: Int, size: Int) {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size !in 1..MAX_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
+        }
+    }
+
+    private fun normalizeText(value: String): String {
+        val text = value.trim()
+        if (text.isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
+        if (text.length > MAX_TEXT_LENGTH) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text must not exceed $MAX_TEXT_LENGTH characters")
+        }
+        return text
+    }
+
+    private fun CampaignComment.toResponse(viewerId: Long?) = CampaignCommentResponse(
+        id = id,
+        campaignId = campaignId,
+        author = author,
+        text = text,
+        createdAt = createdAt,
+        ownedByMe = authorUserId == viewerId,
+    )
+
+    private companion object {
+        const val MAX_PAGE_SIZE = 100
+        const val MAX_TEXT_LENGTH = 500
+    }
+}
