@@ -48,6 +48,23 @@ export type CampaignSearchResponse = {
   totalPages: number;
 };
 
+export type CampaignComment = {
+  id: string;
+  campaignId: string;
+  author: { name: string; verified: boolean };
+  text: string;
+  createdAt: string;
+  ownedByMe: boolean;
+};
+
+export type CampaignCommentsResponse = {
+  content: CampaignComment[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {
   open: { label: "모집중", color: "#7dd3a3", fg: "#0f1f22" },
   upcoming: { label: "모집예정", color: "#148a90", fg: "#ffffff" },
