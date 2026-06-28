@@ -14,6 +14,7 @@ import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
+import { CampaignComments } from "./campaign-comments";
 
 type Tab = "content" | "comments";
 
@@ -373,29 +374,6 @@ function ContentTab({ c }: { c: Campaign }) {
   );
 }
 
-function CommentsTab() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  // 캠페인 댓글 API 는 아직 없음 → 실제 기능처럼 보이지 않게 준비 중 안내만 표시.
-  return (
-    <div
-      className="rounded-3xl border p-10 text-center"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
-    >
-      <MessageCircle size={28} className="mx-auto mb-4" style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} />
-      <p className="text-[15px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-        캠페인 댓글 기능은 준비 중입니다.
-      </p>
-      <p className="mt-2 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-        궁금한 점은 추후 문의 기능을 통해 남길 수 있어요.
-      </p>
-    </div>
-  );
-}
-
 export default function CampaignDetailClient({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const { token } = useAuthSession();
@@ -635,7 +613,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
           {([
             { id: "content", label: "캠페인 내용", icon: <FileText size={14} /> },
-            { id: "comments", label: "문의", icon: <MessageCircle size={14} /> },
+            { id: "comments", label: "댓글", icon: <MessageCircle size={14} /> },
           ] as { id: Tab; label: string; icon: React.ReactNode }[]).map((t) => {
             const active = tab === t.id;
             return (
@@ -660,7 +638,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         </div>
 
         <div className="mt-8">
-          {tab === "content" ? <ContentTab c={c} /> : <CommentsTab />}
+          {tab === "content" ? <ContentTab c={c} /> : <CampaignComments campaignId={c.id} />}
         </div>
       </div>
     </section>

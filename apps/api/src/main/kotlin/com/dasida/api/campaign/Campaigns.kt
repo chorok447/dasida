@@ -249,6 +249,7 @@ class CampaignController(
     private val repo: CampaignRepository,
     private val campaignSearch: CampaignSearchRepository,
     private val participants: CampaignParticipantRepository,
+    private val comments: CampaignCommentRepository,
     private val posts: PostRepository,
     private val users: UserRepository,
 ) {
@@ -574,6 +575,7 @@ class CampaignController(
         if (posts.existsByCampaignId(id)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign has linked posts")
         }
+        comments.deleteByCampaignId(id)
         repo.delete(campaign)
     }
 
