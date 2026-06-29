@@ -40,6 +40,8 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.LocalDate
 import java.util.UUID
 
 data class CampaignBody(val heading: String, val paragraphs: List<String>, val images: List<String>)
@@ -240,6 +242,8 @@ data class CampaignResponse(
     val capacity: Int,
     val joined: Int,
     val daysLeftLabel: String,
+    val recruitable: Boolean,
+    val recruitState: String,
     val author: Author,
     val body: CampaignBody,
     val joinedByMe: Boolean,
@@ -273,6 +277,7 @@ class CampaignController(
     private val posts: PostRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
+    private val clock: Clock,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<CampaignResponse> {
@@ -325,6 +330,7 @@ class CampaignController(
                 query = query,
                 status = status,
                 availableOnly = availableOnly,
+                today = LocalDate.now(clock).toString(),
                 sort = searchSort,
                 page = page,
                 size = size,
@@ -536,7 +542,7 @@ class CampaignController(
     }
 
     /**
-     * 캠페인 참여. 인증 필요. open 이 아니면 400, 정원 초과면 409, 이미 참여한 유저는 idempotent(200, 증가 없음).
+     * 캠페인 참여. 인증 필요. 신규 참여는 open·모집 기간·정원을 모두 검증한다.
      *
      * 동시성: 트랜잭션 안에서 캠페인 row 를 가장 먼저 write lock 으로 잡아, 같은 캠페인에 대한 요청을 직렬화한다.
      * 이렇게 하면 (1) 서로 다른 유저가 마지막 자리에 동시에 들어와도 capacity 를 넘지 않고,
@@ -554,6 +560,16 @@ class CampaignController(
         }
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign is not open")
+        }
+        val recruitment = campaign.recruitmentOn(LocalDate.now(clock))
+        if (!recruitment.validDates) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign recruit dates are invalid")
+        }
+        if (recruitment.state == CampaignRecruitState.BEFORE_RECRUIT) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign recruitment has not started")
+        }
+        if (recruitment.state == CampaignRecruitState.ENDED) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign recruitment has ended")
         }
         if (campaign.joined >= campaign.capacity) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is full")
@@ -707,16 +723,20 @@ class CampaignController(
     private fun Campaign.toResponse(
         viewerId: Long?,
         joinedByMe: Boolean = false,
-    ) = CampaignResponse(
-        id = id, status = status, title = title, summary = summary, thumb = thumb,
-        recruitStart = canonicalCampaignDateOrOriginal(recruitStart),
-        recruitEnd = canonicalCampaignDateOrOriginal(recruitEnd),
-        runStart = canonicalCampaignDateOrOriginal(runStart),
-        runEnd = canonicalCampaignDateOrOriginal(runEnd),
-        capacity = capacity, joined = joined, daysLeftLabel = daysLeftLabel,
-        author = author, body = body, joinedByMe = joinedByMe,
-        ownedByMe = authorUserId != null && authorUserId == viewerId,
-    )
+    ): CampaignResponse {
+        val recruitment = recruitmentOn(LocalDate.now(clock))
+        return CampaignResponse(
+            id = id, status = status, title = title, summary = summary, thumb = thumb,
+            recruitStart = canonicalCampaignDateOrOriginal(recruitStart),
+            recruitEnd = canonicalCampaignDateOrOriginal(recruitEnd),
+            runStart = canonicalCampaignDateOrOriginal(runStart),
+            runEnd = canonicalCampaignDateOrOriginal(runEnd),
+            capacity = capacity, joined = joined, daysLeftLabel = recruitment.daysLeftLabel,
+            recruitable = recruitment.recruitable, recruitState = recruitment.state.value,
+            author = author, body = body, joinedByMe = joinedByMe,
+            ownedByMe = authorUserId != null && authorUserId == viewerId,
+        )
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

@@ -5,6 +5,7 @@ import com.dasida.api.campaign.Campaign
 import com.dasida.api.campaign.CampaignBody
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.campaign.CreateCampaignCommentRequest
+import com.dasida.api.campaign.FixedClockTestConfiguration
 import com.dasida.api.post.Author
 import com.dasida.api.post.CreateCommentRequest
 import com.dasida.api.post.Post
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
@@ -26,6 +28,7 @@ import java.util.UUID
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(FixedClockTestConfiguration::class)
 class NotificationEventTest(
     @Autowired private val mvc: MockMvc,
     @Autowired private val jwt: JwtService,

@@ -5,21 +5,21 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Bell, Pencil, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Pencil, Trash2, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { statusMeta, type Campaign } from "@/data/campaigns";
+import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 import { CampaignComments } from "./campaign-comments";
 
 type Tab = "content" | "comments";
 
 function StatusBadge({ c }: { c: Campaign }) {
-  const m = statusMeta[c.status];
+  const m = campaignRecruitMeta(c);
   return (
     <span
       className="text-[11px] tracking-[0.2em] px-3 py-1.5 rounded-full inline-block"
@@ -139,7 +139,7 @@ function HeaderCard({ c }: { c: Campaign }) {
                   animate={{ width: `${pct}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   className="h-full rounded-full"
-                  style={{ background: statusMeta[c.status].color }}
+                  style={{ background: campaignRecruitMeta(c).color }}
                 />
               </div>
               <div className="flex justify-between text-[12px] mt-2" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
@@ -267,12 +267,14 @@ function CTABar({
   onLeave,
   action,
   disabled,
+  loggedIn,
 }: {
   c: Campaign;
   onJoin: () => void;
   onLeave: () => void;
   action: "join" | "leave" | null;
   disabled: boolean;
+  loggedIn: boolean;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -303,7 +305,7 @@ function CTABar({
       </div>
     );
   }
-  if (c.status === "open") {
+  if (c.recruitable) {
     return (
       <button
         onClick={onJoin}
@@ -311,35 +313,23 @@ function CTABar({
         className="w-full py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50"
         style={{ background: "#7dd3a3", color: "#0f1f22", fontSize: 17 }}
       >
-        {action === "join" ? "참여 처리 중…" : "캠페인 참여하기"}
+        {action === "join" ? "참여 처리 중…" : loggedIn ? "캠페인 참여하기" : "로그인 후 캠페인 참여"}
       </button>
     );
   }
-  if (c.status === "upcoming") {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-        <div
-          className="py-5 px-6 rounded-2xl text-center font-medium"
-          style={{ background: "#148a90", color: "#ffffff", fontSize: 16 }}
-        >
-          {c.recruitStart} 00:00 모집을 시작합니다
-        </div>
-        <button
-          onClick={() => alert("알림 신청은 준비 중입니다.")}
-          className="py-5 px-6 rounded-2xl font-medium flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-transform"
-          style={{ background: "#0d7479", color: "#ffffff" }}
-        >
-          <Bell size={16} /> 알림 신청
-        </button>
-      </div>
-    );
-  }
+  const unavailableMessage = c.recruitState === "before_recruit"
+    ? "모집 시작 전입니다"
+    : c.recruitState === "ended"
+      ? "모집이 종료되었습니다"
+      : c.recruitState === "closed"
+        ? "모집이 마감되었습니다"
+        : "정원이 마감되었습니다";
   return (
     <div
       className="w-full py-5 rounded-2xl text-center"
       style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.08)", color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}
     >
-      모집이 마감되었습니다
+      {unavailableMessage}
     </div>
   );
 }
@@ -433,10 +423,11 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     } catch (e) {
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
+        clearSession();
         alert("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집 정원이 가득 찼습니다.");
+        alert("모집 기간이 아니거나 정원이 마감되었습니다.");
       } else if (e instanceof ApiError && e.status === 400) {
         alert("현재 참여할 수 없는 캠페인입니다.");
       } else {
@@ -607,7 +598,14 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         />
 
         <div className="mt-8 sticky top-20 z-10">
-          <CTABar c={c} onJoin={join} onLeave={leave} action={participationAction} disabled={anyMutating} />
+          <CTABar
+            c={c}
+            onJoin={join}
+            onLeave={leave}
+            action={participationAction}
+            disabled={anyMutating}
+            loggedIn={!!token}
+          />
         </div>
 
         <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>

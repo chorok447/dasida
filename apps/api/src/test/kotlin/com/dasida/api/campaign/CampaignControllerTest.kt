@@ -2,6 +2,7 @@ package com.dasida.api.campaign
 
 import com.dasida.api.auth.User
 import com.dasida.api.auth.UserRepository
+import com.dasida.api.notification.NotificationRepository
 import com.dasida.api.post.Author
 import com.dasida.api.post.Post
 import com.dasida.api.post.PostRepository
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
@@ -24,6 +26,7 @@ import java.util.UUID
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(FixedClockTestConfiguration::class)
 class CampaignControllerTest(
     @Autowired val mvc: MockMvc,
     @Autowired val jwt: JwtService,
@@ -31,6 +34,7 @@ class CampaignControllerTest(
     @Autowired val participantRepo: CampaignParticipantRepository,
     @Autowired val postRepo: PostRepository,
     @Autowired val userRepo: UserRepository,
+    @Autowired val notificationRepo: NotificationRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
@@ -101,6 +105,63 @@ class CampaignControllerTest(
         mvc.get("/api/campaigns/c2").andExpect {
             status { isOk() }
             jsonPath("$.title") { value("한강공원 플로깅 데이") }
+        }
+    }
+
+    @Test
+    fun `모집 시작 전 open 캠페인은 참여할 수 없다`() {
+        val id = saveCampaign(recruitStart = "2026-07-16", recruitEnd = "2026-07-31")
+
+        mvc.get("/api/campaigns/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.recruitState") { value("before_recruit") }
+            jsonPath("$.recruitable") { value(false) }
+            jsonPath("$.daysLeftLabel") { value("모집 예정") }
+        }
+    }
+
+    @Test
+    fun `모집 시작일과 종료일 당일은 모집 중이다`() {
+        val startDay = saveCampaign(recruitStart = "2026-07-15", recruitEnd = "2026-07-31")
+        val endDay = saveCampaign(recruitStart = "2026-07-01", recruitEnd = "2026-07-15")
+
+        listOf(startDay to "D-16", endDay to "오늘 마감").forEach { (id, label) ->
+            mvc.get("/api/campaigns/$id").andExpect {
+                status { isOk() }
+                jsonPath("$.recruitState") { value("recruiting") }
+                jsonPath("$.recruitable") { value(true) }
+                jsonPath("$.daysLeftLabel") { value(label) }
+            }
+        }
+    }
+
+    @Test
+    fun `모집 종료 다음 날이면 모집 종료 상태다`() {
+        val id = saveCampaign(recruitStart = "2026-07-01", recruitEnd = "2026-07-14")
+
+        mvc.get("/api/campaigns/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.recruitState") { value("ended") }
+            jsonPath("$.recruitable") { value(false) }
+            jsonPath("$.daysLeftLabel") { value("모집완료") }
+        }
+    }
+
+    @Test
+    fun `closed 또는 정원 마감 캠페인은 참여할 수 없다`() {
+        val closed = saveCampaign(status = "closed")
+        val full = saveCampaign(status = "open", capacity = 2, joined = 2)
+
+        mvc.get("/api/campaigns/$closed").andExpect {
+            status { isOk() }
+            jsonPath("$.recruitState") { value("closed") }
+            jsonPath("$.recruitable") { value(false) }
+        }
+        mvc.get("/api/campaigns/$full").andExpect {
+            status { isOk() }
+            jsonPath("$.recruitState") { value("recruiting") }
+            jsonPath("$.recruitable") { value(false) }
+            jsonPath("$.daysLeftLabel") { value("모집완료") }
         }
     }
 
@@ -808,8 +869,10 @@ class CampaignControllerTest(
     }
 
     @Test
-    fun `open 이 아닌 campaign 참여는 400`() {
-        join(saveCampaign(status = "upcoming")).andExpect { status { isBadRequest() } }
+    fun `upcoming과 closed campaign 신규 참여는 400`() {
+        listOf("upcoming", "closed").forEach { campaignStatus ->
+            join(saveCampaign(status = campaignStatus)).andExpect { status { isBadRequest() } }
+        }
     }
 
     @Test
@@ -818,6 +881,41 @@ class CampaignControllerTest(
             status { isOk() }
             jsonPath("$.joined") { value(1) }
         }
+    }
+
+    @Test
+    fun `모집 시작 전과 종료 후 신규 참여는 409이고 데이터와 알림이 변하지 않는다`() {
+        val ids = listOf(
+            saveCampaign(authorUserId = 2, recruitStart = "2026-07-16", recruitEnd = "2026-07-31"),
+            saveCampaign(authorUserId = 2, recruitStart = "2026-07-01", recruitEnd = "2026-07-14"),
+        )
+
+        ids.forEach { id ->
+            join(id).andExpect { status { isConflict() } }
+            assertThat(participantRepo.countByCampaignId(id)).isZero()
+            assertThat(campaignRepo.findById(id).get().joined).isZero()
+            assertThat(notificationRepo.findAll().none { it.href.contains(id) }).isTrue()
+        }
+    }
+
+    @Test
+    fun `모집 종료일 당일에는 신규 참여할 수 있다`() {
+        val id = saveCampaign(recruitStart = "2026-07-01", recruitEnd = "2026-07-15")
+
+        join(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(1) }
+            jsonPath("$.recruitState") { value("recruiting") }
+        }
+    }
+
+    @Test
+    fun `비정상 legacy 모집 날짜의 신규 참여는 409다`() {
+        val id = saveCampaign(recruitStart = "legacy-date", recruitEnd = "2026-07-31")
+
+        join(id).andExpect { status { isConflict() } }
+        assertThat(participantRepo.countByCampaignId(id)).isZero()
+        assertThat(campaignRepo.findById(id).get().joined).isZero()
     }
 
     @Test
@@ -840,6 +938,26 @@ class CampaignControllerTest(
             status { isOk() }
             jsonPath("$.joined") { value(2) }
         }
+    }
+
+    @Test
+    fun `기간 밖이어도 기존 참여자의 join은 멱등 200이고 알림을 만들지 않는다`() {
+        val id = saveCampaign(
+            joined = 1,
+            authorUserId = 2,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-14",
+        )
+        participantRepo.saveAndFlush(CampaignParticipant("cp-ended-idempotent", id, 1))
+
+        join(id).andExpect {
+            status { isOk() }
+            jsonPath("$.joined") { value(1) }
+            jsonPath("$.joinedByMe") { value(true) }
+            jsonPath("$.recruitState") { value("ended") }
+        }
+        assertThat(participantRepo.countByCampaignId(id)).isEqualTo(1)
+        assertThat(notificationRepo.findAll().none { it.href.contains(id) }).isTrue()
     }
 
     // ---- 참여 취소(leave) ----
@@ -994,7 +1112,9 @@ class CampaignControllerTest(
         updateStatus(id, "open").andExpect {
             status { isOk() }
             jsonPath("$.status") { value("open") }
-            jsonPath("$.daysLeftLabel") { value("모집중") }
+            jsonPath("$.daysLeftLabel") { value("D-16") }
+            jsonPath("$.recruitState") { value("recruiting") }
+            jsonPath("$.recruitable") { value(true) }
             jsonPath("$.ownedByMe") { value(true) }
             jsonPath("$.joinedByMe") { value(false) }
         }
@@ -1032,6 +1152,8 @@ class CampaignControllerTest(
             status { isOk() }
             jsonPath("$.status") { value("closed") }
             jsonPath("$.daysLeftLabel") { value("모집완료") }
+            jsonPath("$.recruitState") { value("closed") }
+            jsonPath("$.recruitable") { value(false) }
         }
 
         val saved = campaignRepo.findById(id).get()
@@ -1045,7 +1167,7 @@ class CampaignControllerTest(
         updateStatus(id, "open").andExpect {
             status { isOk() }
             jsonPath("$.status") { value("open") }
-            jsonPath("$.daysLeftLabel") { value("라벨") }
+            jsonPath("$.daysLeftLabel") { value("D-16") }
         }
     }
 
@@ -1055,7 +1177,7 @@ class CampaignControllerTest(
         updateStatus(id, "closed").andExpect {
             status { isOk() }
             jsonPath("$.status") { value("closed") }
-            jsonPath("$.daysLeftLabel") { value("라벨") }
+            jsonPath("$.daysLeftLabel") { value("모집완료") }
         }
     }
 
