@@ -43,12 +43,16 @@ class CampaignControllerTest(
         seq: Long = System.nanoTime(),
         authorUserId: Long? = null,
         authorName: String = "개설자",
+        recruitStart: String = "2026-07-01",
+        recruitEnd: String = "2026-07-31",
+        runStart: String = "2026-08-05",
+        runEnd: String = "2026-08-30",
     ): String {
         val id = "itc-${UUID.randomUUID()}"
         campaignRepo.save(
             Campaign(
                 id, status, "테스트 캠페인", "요약", "https://x/y.png",
-                "2026-07-01", "2026-07-31", "2026-08-05", "2026-08-30",
+                recruitStart, recruitEnd, runStart, runEnd,
                 capacity, joined, "라벨", Author(authorName, false),
                 CampaignBody("소개", emptyList(), emptyList()),
                 seq = seq,
@@ -332,10 +336,17 @@ class CampaignControllerTest(
     }
 
     // 검증을 통과하는 정상 payload(날짜/정원 포함).
-    private fun validBody(title: String = "새 플로깅 캠페인", capacity: Int = 20) =
+    private fun validBody(
+        title: String = "새 플로깅 캠페인",
+        capacity: Int = 20,
+        recruitStart: String = "2026-07-01",
+        recruitEnd: String = "2026-07-31",
+        runStart: String = "2026-08-05",
+        runEnd: String = "2026-08-30",
+    ) =
         """{"title":"$title","summary":"줍깅","capacity":$capacity,
-           "recruitStart":"2026-07-01","recruitEnd":"2026-07-31",
-           "runStart":"2026-08-05","runEnd":"2026-08-30"}"""
+           "recruitStart":"$recruitStart","recruitEnd":"$recruitEnd",
+           "runStart":"$runStart","runEnd":"$runEnd"}"""
 
     private fun postCampaign(body: String) = mvc.post("/api/campaigns") {
         headers { add("Authorization", "Bearer $token") }
@@ -353,7 +364,37 @@ class CampaignControllerTest(
             jsonPath("$.joined") { value(0) }
             jsonPath("$.author.name") { value("테스터") }
             jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.recruitStart") { value("2026-07-01") }
+            jsonPath("$.recruitEnd") { value("2026-07-31") }
+            jsonPath("$.runStart") { value("2026-08-05") }
+            jsonPath("$.runEnd") { value("2026-08-30") }
         }
+    }
+
+    @Test
+    fun `점 표기와 공백이 있는 생성 날짜는 ISO 형식으로 정규화된다`() {
+        val title = "날짜 정규화 ${UUID.randomUUID()}"
+        postCampaign(
+            validBody(
+                title = title,
+                recruitStart = " 2026.07.01 ",
+                recruitEnd = " 2026.07.31 ",
+                runStart = " 2026.08.05 ",
+                runEnd = " 2026.08.30 ",
+            ),
+        ).andExpect {
+            status { isCreated() }
+            jsonPath("$.recruitStart") { value("2026-07-01") }
+            jsonPath("$.recruitEnd") { value("2026-07-31") }
+            jsonPath("$.runStart") { value("2026-08-05") }
+            jsonPath("$.runEnd") { value("2026-08-30") }
+        }
+
+        val saved = campaignRepo.findAll().single { it.title == title }
+        assertThat(saved.recruitStart).isEqualTo("2026-07-01")
+        assertThat(saved.recruitEnd).isEqualTo("2026-07-31")
+        assertThat(saved.runStart).isEqualTo("2026-08-05")
+        assertThat(saved.runEnd).isEqualTo("2026-08-30")
     }
 
     @Test
@@ -409,10 +450,24 @@ class CampaignControllerTest(
     }
 
     @Test
+    fun `존재하지 않거나 빈 생성 날짜는 400`() {
+        listOf("2026-02-30", "   ").forEach { recruitStart ->
+            postCampaign(validBody(recruitStart = recruitStart)).andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
     fun `모집 시작이 종료보다 늦으면 400`() {
         postCampaign(
             """{"title":"순서","capacity":10,"recruitStart":"2026-07-31",
                "recruitEnd":"2026-07-01","runStart":"2026-08-05","runEnd":"2026-08-30"}""",
+        ).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `모집 종료가 진행 시작보다 늦으면 400`() {
+        postCampaign(
+            validBody(recruitEnd = "2026-08-06", runStart = "2026-08-05"),
         ).andExpect { status { isBadRequest() } }
     }
 
@@ -422,6 +477,39 @@ class CampaignControllerTest(
             """{"title":"순서","capacity":10,"recruitStart":"2026-07-01",
                "recruitEnd":"2026-07-31","runStart":"2026-08-30","runEnd":"2026-08-05"}""",
         ).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `생성 날짜의 같은 날짜 경계는 허용한다`() {
+        postCampaign(
+            validBody(
+                recruitStart = "2026-07-01",
+                recruitEnd = "2026-07-01",
+                runStart = "2026-07-01",
+                runEnd = "2026-07-01",
+            ),
+        ).andExpect {
+            status { isCreated() }
+            jsonPath("$.runEnd") { value("2026-07-01") }
+        }
+    }
+
+    @Test
+    fun `상세 응답의 지원 가능한 legacy 날짜는 ISO 형식이다`() {
+        val id = saveCampaign(
+            recruitStart = "2026.07.01",
+            recruitEnd = "2026.07.31",
+            runStart = "2026.08.05",
+            runEnd = "2026.08.30",
+        )
+
+        mvc.get("/api/campaigns/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.recruitStart") { value("2026-07-01") }
+            jsonPath("$.recruitEnd") { value("2026-07-31") }
+            jsonPath("$.runStart") { value("2026-08-05") }
+            jsonPath("$.runEnd") { value("2026-08-30") }
+        }
     }
 
     // ---- 캠페인 수정 ----
@@ -475,6 +563,29 @@ class CampaignControllerTest(
         assertThat(saved.summary).isEqualTo("수정 요약")
         assertThat(saved.body.paragraphs).containsExactly("수정 본문")
         assertThat(saved.capacity).isEqualTo(30)
+    }
+
+    @Test
+    fun `점 표기 수정 날짜는 ISO 형식으로 정규화된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+
+        updateCampaign(
+            id,
+            validUpdateBody(
+                recruitStart = " 2026.09.01 ",
+                recruitEnd = " 2026.09.30 ",
+                runStart = " 2026.10.05 ",
+                runEnd = " 2026.10.31 ",
+            ),
+        ).andExpect {
+            status { isOk() }
+            jsonPath("$.recruitStart") { value("2026-09-01") }
+            jsonPath("$.recruitEnd") { value("2026-09-30") }
+            jsonPath("$.runStart") { value("2026-10-05") }
+            jsonPath("$.runEnd") { value("2026-10-31") }
+        }
+
+        assertThat(campaignRepo.findById(id).get().recruitEnd).isEqualTo("2026-09-30")
     }
 
     @Test
@@ -542,11 +653,34 @@ class CampaignControllerTest(
     }
 
     @Test
+    fun `수정 날짜 검증 실패 시 기존 날짜를 유지한다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+
+        updateCampaign(id, validUpdateBody(recruitStart = "2026-02-30"))
+            .andExpect { status { isBadRequest() } }
+
+        val saved = campaignRepo.findById(id).get()
+        assertThat(saved.recruitStart).isEqualTo("2026-07-01")
+        assertThat(saved.recruitEnd).isEqualTo("2026-07-31")
+        assertThat(saved.runStart).isEqualTo("2026-08-05")
+        assertThat(saved.runEnd).isEqualTo("2026-08-30")
+    }
+
+    @Test
     fun `수정 모집 시작일이 종료일보다 늦으면 400`() {
         val id = saveCampaign(status = "upcoming", authorUserId = 1)
         updateCampaign(
             id,
             validUpdateBody(recruitStart = "2026-09-30", recruitEnd = "2026-09-01"),
+        ).andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `수정 모집 종료일이 진행 시작일보다 늦으면 400`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        updateCampaign(
+            id,
+            validUpdateBody(recruitEnd = "2026-10-06", runStart = "2026-10-05"),
         ).andExpect { status { isBadRequest() } }
     }
 
