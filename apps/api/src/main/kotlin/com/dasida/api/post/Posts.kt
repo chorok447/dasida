@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
@@ -236,6 +237,14 @@ data class PostResponse(
     val ownedByMe: Boolean,
 )
 
+data class PostSearchResponse(
+    val content: List<PostResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
 @RestController
 @RequestMapping("/api/posts")
 class PostController(
@@ -244,6 +253,7 @@ class PostController(
     private val likeRepo: PostLikeRepository,
     private val bookmarkRepo: PostBookmarkRepository,
     private val commentRepo: PostCommentRepository,
+    private val postSearch: PostSearchRepository,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<PostResponse> {
@@ -263,6 +273,72 @@ class PostController(
         return posts.map {
             it.toResponse(viewerId = user?.id, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
         }
+    }
+
+    /** 공개 검색. Querydsl content/count와 현재 page 상호작용 bulk 조회를 분리한다. */
+    @GetMapping("/search")
+    @Transactional(readOnly = true)
+    fun search(
+        @RequestParam(name = "q", required = false) q: String?,
+        @RequestParam(defaultValue = "false") campaignOnly: Boolean,
+        @RequestParam(defaultValue = "latest") sort: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): PostSearchResponse {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size !in 1..MAX_SEARCH_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
+        }
+
+        val query = q?.trim()?.takeIf { it.isNotEmpty() }
+        if (query != null && query.length > MAX_SEARCH_QUERY_LENGTH) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "q must not exceed $MAX_SEARCH_QUERY_LENGTH characters",
+            )
+        }
+        val searchSort = when (sort) {
+            "latest" -> PostSearchSort.LATEST
+            "popular" -> PostSearchSort.POPULAR
+            "discussed" -> PostSearchSort.DISCUSSED
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid post sort")
+        }
+
+        val result = postSearch.search(
+            PostSearchCondition(
+                query = query,
+                campaignOnly = campaignOnly,
+                sort = searchSort,
+                page = page,
+                size = size,
+            ),
+        )
+        val postIds = result.content.map { it.id }
+        val likedIds = if (user == null || postIds.isEmpty()) {
+            emptySet()
+        } else {
+            likeRepo.findByUserIdAndPostIdIn(user.id, postIds).map { it.postId }.toSet()
+        }
+        val bookmarkedIds = if (user == null || postIds.isEmpty()) {
+            emptySet()
+        } else {
+            bookmarkRepo.findByUserIdAndPostIdIn(user.id, postIds).map { it.postId }.toSet()
+        }
+
+        return PostSearchResponse(
+            content = result.content.map {
+                it.toResponse(
+                    viewerId = user?.id,
+                    likedByMe = it.id in likedIds,
+                    bookmarkedByMe = it.id in bookmarkedIds,
+                )
+            },
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
     }
 
     /** 현재 사용자가 저장한 게시글. 북마크/게시글/좋아요를 각각 bulk 조회해 N+1을 피한다. */
@@ -597,5 +673,10 @@ class PostController(
         private const val MAX_TAG_LENGTH = 30
         private const val MAX_IMAGES = 4
         private const val MAX_COMMENT_LENGTH = 500
+        private const val MAX_SEARCH_PAGE_SIZE = 50
+        private const val MAX_SEARCH_QUERY_LENGTH = 100
+
+        private fun totalPages(totalElements: Long, size: Int): Int =
+            if (totalElements == 0L) 0 else ((totalElements - 1) / size + 1).toInt()
     }
 }
