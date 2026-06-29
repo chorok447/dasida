@@ -15,9 +15,15 @@ import {
   Users,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
 import {
+  appendCampaignDateRangeFilters,
+  campaignDateRangeError,
   campaignRecruitMeta,
+  EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
+  readCampaignDateRangeFilters,
   type Campaign,
+  type CampaignDateRangeFilters,
   type CampaignRecruitState,
   type CampaignSearchResponse,
 } from "@/data/campaigns";
@@ -31,7 +37,7 @@ import { useTheme } from "@/lib/theme-context";
 type SearchType = "all" | "campaigns" | "posts";
 type SearchSort = "latest" | "popular" | "deadline";
 
-type UrlState = {
+type UrlState = CampaignDateRangeFilters & {
   query: string;
   type: SearchType;
   sort: SearchSort;
@@ -45,6 +51,7 @@ type ResultState = {
   status: "loading" | "success" | "error";
   campaigns: CampaignSearchResponse | null;
   posts: PostSearchResponse | null;
+  errorMessage: string | null;
 };
 
 const TYPE_TABS: { id: SearchType; label: string }[] = [
@@ -83,6 +90,7 @@ function buildSearchHref(state: UrlState): string {
   if (state.type === "campaigns") {
     if (state.recruitState) params.set("recruitState", state.recruitState);
     if (state.availableOnly) params.set("availableOnly", "true");
+    appendCampaignDateRangeFilters(params, state);
   }
   params.set("page", state.page.toString());
   return `/search?${params.toString()}`;
@@ -301,11 +309,15 @@ export default function SearchClient() {
       sort: parseSort(searchParams.get("sort"), type),
       recruitState: type === "campaigns" ? parseRecruitState(searchParams.get("recruitState")) : null,
       availableOnly: type === "campaigns" && searchParams.get("availableOnly") === "true",
+      ...(type === "campaigns"
+        ? readCampaignDateRangeFilters(searchParams)
+        : EMPTY_CAMPAIGN_DATE_RANGE_FILTERS),
       page: parsePage(searchParams.get("page")),
     };
   }, [searchParams]);
   const canonicalHref = buildSearchHref(urlState);
   const currentHref = searchParams.toString() ? `/search?${searchParams.toString()}` : "/search";
+  const dateFilterError = campaignDateRangeError(urlState);
 
   useEffect(() => {
     if (currentHref !== canonicalHref) router.replace(canonicalHref, { scroll: false });
@@ -317,10 +329,11 @@ export default function SearchClient() {
     status: "loading",
     campaigns: null,
     posts: null,
+    errorMessage: null,
   });
   const currentState: ResultState = resultState.identity === requestIdentity
     ? resultState
-    : { identity: requestIdentity, status: "loading", campaigns: null, posts: null };
+    : { identity: requestIdentity, status: "loading", campaigns: null, posts: null, errorMessage: null };
 
   const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
     const merged = { ...urlState, ...changes };
@@ -331,6 +344,7 @@ export default function SearchClient() {
           sort: merged.sort === "deadline" ? "latest" : merged.sort,
           recruitState: null,
           availableOnly: false,
+          ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
         };
     const href = buildSearchHref(next);
     if (replace) router.replace(href, { scroll: false });
@@ -353,6 +367,14 @@ export default function SearchClient() {
     }
     if (urlState.type === "campaigns" && urlState.availableOnly) {
       campaignParams.set("availableOnly", "true");
+    }
+    if (urlState.type === "campaigns") {
+      appendCampaignDateRangeFilters(campaignParams, {
+        recruitEndFrom: urlState.recruitEndFrom,
+        recruitEndTo: urlState.recruitEndTo,
+        runStartFrom: urlState.runStartFrom,
+        runStartTo: urlState.runStartTo,
+      });
     }
     campaignParams.set("page", urlState.page.toString());
     campaignParams.set("size", "6");
@@ -381,7 +403,7 @@ export default function SearchClient() {
         posts = await apiGet<PostSearchResponse>(`/api/posts/search?${postParams.toString()}`);
       }
       if (!isCurrent()) return;
-      setResultState({ identity: requestIdentity, status: "success", campaigns, posts });
+      setResultState({ identity: requestIdentity, status: "success", campaigns, posts, errorMessage: null });
     };
 
     load().catch((error) => {
@@ -390,7 +412,16 @@ export default function SearchClient() {
         clearSession();
         return;
       }
-      setResultState({ identity: requestIdentity, status: "error", campaigns: null, posts: null });
+      const errorMessage = error instanceof ApiError && error.status === 400
+        ? dateFilterError ?? "날짜 형식이 올바르지 않습니다."
+        : "검색 결과를 불러오지 못했습니다.";
+      setResultState({
+        identity: requestIdentity,
+        status: "error",
+        campaigns: null,
+        posts: null,
+        errorMessage,
+      });
     });
 
     return () => {
@@ -399,10 +430,15 @@ export default function SearchClient() {
   }, [
     requestIdentity,
     token,
+    dateFilterError,
     urlState.availableOnly,
     urlState.page,
     urlState.query,
+    urlState.recruitEndFrom,
+    urlState.recruitEndTo,
     urlState.recruitState,
+    urlState.runStartFrom,
+    urlState.runStartTo,
     urlState.sort,
     urlState.type,
   ]);
@@ -470,40 +506,48 @@ export default function SearchClient() {
             </label>
           </div>
           {urlState.type === "campaigns" ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex min-w-0 flex-1 items-center gap-2 text-[13px] sm:flex-none">
-                <span className="shrink-0 opacity-65">모집 상태</span>
-                <select
-                  value={urlState.recruitState ?? ""}
-                  onChange={(event) => updateUrl({
-                    recruitState: event.target.value
-                      ? event.target.value as CampaignRecruitState
-                      : null,
-                    page: 0,
-                  })}
-                  className="min-w-0 rounded-full border px-4 py-2.5 outline-none"
-                  style={{ color: dark ? "#f9f7f2" : "#0f1f22", background: dark ? "#1c4044" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)" }}
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex min-w-0 flex-1 items-center gap-2 text-[13px] sm:flex-none">
+                  <span className="shrink-0 opacity-65">모집 상태</span>
+                  <select
+                    value={urlState.recruitState ?? ""}
+                    onChange={(event) => updateUrl({
+                      recruitState: event.target.value
+                        ? event.target.value as CampaignRecruitState
+                        : null,
+                      page: 0,
+                    })}
+                    className="min-w-0 rounded-full border px-4 py-2.5 outline-none"
+                    style={{ color: dark ? "#f9f7f2" : "#0f1f22", background: dark ? "#1c4044" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)" }}
+                  >
+                    <option value="">전체</option>
+                    <option value="before_recruit">모집 예정</option>
+                    <option value="recruiting">모집 중</option>
+                    <option value="ended">모집 종료</option>
+                    <option value="closed">마감</option>
+                  </select>
+                </label>
+                <label
+                  className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
+                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
                 >
-                  <option value="">전체</option>
-                  <option value="before_recruit">모집 예정</option>
-                  <option value="recruiting">모집 중</option>
-                  <option value="ended">모집 종료</option>
-                  <option value="closed">마감</option>
-                </select>
-              </label>
-              <label
-                className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
-                style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={urlState.availableOnly}
-                  onChange={(event) => updateUrl({ availableOnly: event.target.checked, page: 0 })}
-                  className="accent-[#148a90]"
-                />
-                참여 가능
-              </label>
-            </div>
+                  <input
+                    type="checkbox"
+                    checked={urlState.availableOnly}
+                    onChange={(event) => updateUrl({ availableOnly: event.target.checked, page: 0 })}
+                    className="accent-[#148a90]"
+                  />
+                  참여 가능
+                </label>
+              </div>
+              <CampaignDateRangeFilterControls
+                value={urlState}
+                dark={dark}
+                onChange={(field, value) => updateUrl({ [field]: value, page: 0 })}
+                onClear={() => updateUrl({ ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS, page: 0 })}
+              />
+            </>
           ) : null}
         </div>
 
@@ -532,7 +576,9 @@ export default function SearchClient() {
 
         {currentState.status === "error" ? (
           <StatePanel>
-            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>검색 결과를 불러오지 못했습니다.</p>
+            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+              {currentState.errorMessage ?? "검색 결과를 불러오지 못했습니다."}
+            </p>
             <button type="button" onClick={() => setRetryTick((tick) => tick + 1)} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               다시 시도
             </button>
