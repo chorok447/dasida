@@ -34,6 +34,7 @@ object NotificationType {
     const val POST_COMMENT_CREATED = "POST_COMMENT_CREATED"
     const val CAMPAIGN_COMMENT_CREATED = "CAMPAIGN_COMMENT_CREATED"
     const val CAMPAIGN_JOINED = "CAMPAIGN_JOINED"
+    const val CAMPAIGN_PARTICIPATION_REMOVED = "CAMPAIGN_PARTICIPATION_REMOVED"
 }
 
 /**
@@ -125,7 +126,20 @@ class NotificationService(private val repo: NotificationRepository) {
         href: String,
     ) {
         if (recipientUserId == null || recipientUserId == actorUserId) return
-        val now = Instant.now()
+        notifyUser(recipientUserId, type, title, body, href)
+    }
+
+    /**
+     * 수신자에게 직접 알림 생성(actor==receiver 여부와 무관). 강제 퇴장처럼 본인에게도 알려야 하는 경우에 쓴다.
+     * 같은 트랜잭션에 참여하며 DB 제약 위반은 삼키지 않는다.
+     */
+    fun notifyUser(
+        recipientUserId: Long,
+        type: String,
+        title: String,
+        body: String,
+        href: String,
+    ) {
         repo.save(
             Notification(
                 id = "noti-${UUID.randomUUID()}",
@@ -135,7 +149,7 @@ class NotificationService(private val repo: NotificationRepository) {
                 body = body.trim().take(MAX_BODY),
                 href = href,
                 readAt = null,
-                createdAt = now,
+                createdAt = Instant.now(),
                 time = "방금 전",
                 seq = System.nanoTime(),
             ),
