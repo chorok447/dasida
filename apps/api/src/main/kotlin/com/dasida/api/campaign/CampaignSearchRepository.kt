@@ -3,6 +3,7 @@ package com.dasida.api.campaign
 import com.dasida.api.common.QUERYDSL_LIKE_ESCAPE
 import com.dasida.api.common.literalContainsPattern
 import com.querydsl.core.BooleanBuilder
+import com.querydsl.core.types.dsl.CaseBuilder
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.stereotype.Repository
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Repository
 enum class CampaignSearchSort {
     LATEST,
     POPULAR,
+    DEADLINE,
 }
 
 data class CampaignSearchCondition(
@@ -72,6 +74,12 @@ class QuerydslCampaignSearchRepository(
         when (sort) {
             CampaignSearchSort.LATEST -> arrayOf(campaign.seq.desc(), campaign.id.asc())
             CampaignSearchSort.POPULAR -> arrayOf(campaign.joined.desc(), campaign.seq.desc(), campaign.id.asc())
+            CampaignSearchSort.DEADLINE -> arrayOf(
+                CaseBuilder().`when`(campaign.status.eq("open")).then(0).otherwise(1).asc(),
+                campaign.recruitEnd.asc(),
+                campaign.seq.desc(),
+                campaign.id.asc(),
+            )
         }
 
 }
