@@ -1,24 +1,43 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { apiGet, apiPost, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
+import { apiPost, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { getToken, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
-import type { Post, PostComment } from "@/data/posts";
+import {
+  fetchPostCommentsPage,
+  type Post,
+  type PostComment,
+  type PostCommentsPageResponse,
+} from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
 
 const MAX_COMMENT_LENGTH = 500;
 
+type CommentsState = {
+  identity: string;
+  status: "loading" | "success" | "error";
+  response: PostCommentsPageResponse | null;
+  error: string;
+};
+
+function parseCommentsPage(value: string | null): number {
+  if (value === null) return 0;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
 export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -82,26 +101,46 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   // ---- 댓글 ----
-  const [comments, setComments] = useState<PostComment[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(true);
-  const [commentsError, setCommentsError] = useState("");
+  const commentsPage = parseCommentsPage(searchParams.get("commentsPage"));
+  const rawCommentsPage = searchParams.get("commentsPage");
   const [commentCount, setCommentCount] = useState(post.comments);
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-  const [commentsIdentity, setCommentsIdentity] = useState({ postId: p.id, token });
   const commentsRequestGenerationRef = useRef(0);
   const deletingCommentIdsRef = useRef(new Set<string>());
   const [deletingCommentIds, setDeletingCommentIds] = useState<Set<string>>(() => new Set());
   const commentSectionRef = useRef<HTMLDivElement>(null);
+  const commentsRequestIdentity = JSON.stringify([p.id, token, commentsPage, reloadTick]);
+  const [commentsState, setCommentsState] = useState<CommentsState>({
+    identity: "",
+    status: "loading",
+    response: null,
+    error: "",
+  });
+  const currentCommentsState: CommentsState = commentsState.identity === commentsRequestIdentity
+    ? commentsState
+    : { identity: commentsRequestIdentity, status: "loading", response: null, error: "" };
+  const visibleComments = currentCommentsState.response?.content ?? [];
+  const visibleCommentsLoading = currentCommentsState.status === "loading";
+  const commentsError = currentCommentsState.status === "error" ? currentCommentsState.error : "";
 
-  // 현재 identity로 다시 읽기 전에는 이전 사용자의 댓글 소유 상태를 렌더하지 않는다.
-  const commentsIdentityChanged = commentsIdentity.postId !== p.id || commentsIdentity.token !== token;
-  const visibleComments = commentsIdentityChanged ? [] : comments;
-  const visibleCommentsLoading = commentsLoading || commentsIdentityChanged;
+  const updateCommentsPage = useCallback((page: number, replace = false) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("commentsPage", Math.max(0, page).toString());
+    const href = `/posts/${encodeURIComponent(p.id)}?${params.toString()}`;
+    if (replace) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
+  }, [p.id, router, searchParams]);
+
+  useEffect(() => {
+    if (rawCommentsPage !== null && rawCommentsPage !== commentsPage.toString()) {
+      updateCommentsPage(commentsPage, true);
+    }
+  }, [commentsPage, rawCommentsPage, updateCommentsPage]);
 
   // 댓글 GET은 public이다. 로그인·로그아웃·토큰 교체마다 다시 읽어 ownedByMe를 갱신한다.
-  // generation과 token을 함께 확인해 이전 identity의 늦은 응답이 현재 목록을 덮지 못하게 한다.
+  // post/page/generation/token을 함께 확인해 이전 identity의 늦은 응답이 현재 목록을 덮지 못하게 한다.
   useEffect(() => {
     const requestToken = token;
     const generation = ++commentsRequestGenerationRef.current;
@@ -111,34 +150,47 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       generation === commentsRequestGenerationRef.current &&
       getToken() === requestToken;
 
-    apiGet<PostComment[]>(`/api/posts/${p.id}/comments`)
-      .then((list) => {
+    fetchPostCommentsPage(p.id, { page: commentsPage, size: 20 }, requestToken)
+      .then((response) => {
         if (!isCurrent()) return;
-        setComments(list);
-        setCommentCount(list.length); // 실제 목록 길이와 동기화
-        setCommentsError("");
-        setCommentsIdentity({ postId: p.id, token: requestToken });
+        if (response.content.length === 0 && commentsPage > 0) {
+          const previousPage = response.totalPages > 0
+            ? Math.min(commentsPage - 1, response.totalPages - 1)
+            : 0;
+          updateCommentsPage(previousPage, true);
+          return;
+        }
+        setCommentCount(response.totalElements);
+        setCommentsState({
+          identity: commentsRequestIdentity,
+          status: "success",
+          response,
+          error: "",
+        });
       })
       .catch((error) => {
         if (!isCurrent()) return;
         if (error instanceof ApiError && error.status === 401) {
           clearSession();
+          alert("로그인이 필요합니다.");
+          router.push("/login");
           return;
         }
-        setCommentsError("댓글을 불러오지 못했습니다.");
-        setCommentsIdentity({ postId: p.id, token: requestToken });
-      })
-      .finally(() => {
-        if (isCurrent()) setCommentsLoading(false);
+        setCommentsState({
+          identity: commentsRequestIdentity,
+          status: "error",
+          response: null,
+          error: error instanceof ApiError && error.status === 404
+            ? "게시글을 찾을 수 없습니다."
+            : "댓글을 불러오지 못했습니다.",
+        });
       });
     return () => {
       cancelled = true;
     };
-  }, [p.id, reloadTick, token]);
+  }, [commentsPage, commentsRequestIdentity, p.id, router, token, updateCommentsPage]);
 
   const retryComments = () => {
-    setCommentsLoading(true);
-    setCommentsError("");
     setReloadTick((t) => t + 1);
   };
 
@@ -158,14 +210,19 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setSubmittingComment(true);
     const requestToken = getToken(); // 요청 identity 캡처
     try {
-      const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
+      await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
       if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 무시
-      setComments((cs) => [...cs, created]);
       setCommentCount((c) => c + 1);
       setCommentText("");
+      if (commentsPage === 0 && rawCommentsPage === "0") {
+        retryComments();
+      } else {
+        updateCommentsPage(0, commentsPage === 0);
+      }
     } catch (e) {
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
+        clearSession();
         alert("로그인이 필요합니다.");
         router.push("/login");
       } else {
@@ -192,8 +249,13 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     try {
       await apiDeleteVoid(`/api/posts/${p.id}/comments/${commentId}`);
       if (getToken() !== requestToken) return;
-      setComments((current) => current.filter((comment) => comment.id !== commentId));
       setCommentCount((current) => Math.max(0, current - 1));
+      const response = currentCommentsState.response;
+      if (response && response.content.length === 1 && commentsPage > 0) {
+        updateCommentsPage(commentsPage - 1);
+      } else {
+        retryComments();
+      }
     } catch (error) {
       if (getToken() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
@@ -549,6 +611,33 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               ))
             )}
           </div>
+          {currentCommentsState.status === "success" &&
+          currentCommentsState.response &&
+          currentCommentsState.response.totalElements > 0 ? (
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => updateCommentsPage(commentsPage - 1)}
+                disabled={currentCommentsState.response.page === 0}
+                className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+              >
+                <ChevronLeft size={14} /> 이전
+              </button>
+              <span className="min-w-20 text-center text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                {currentCommentsState.response.page + 1} / {currentCommentsState.response.totalPages} 페이지
+              </span>
+              <button
+                type="button"
+                onClick={() => updateCommentsPage(commentsPage + 1)}
+                disabled={currentCommentsState.response.page + 1 >= currentCommentsState.response.totalPages}
+                className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+              >
+                다음 <ChevronRight size={14} />
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

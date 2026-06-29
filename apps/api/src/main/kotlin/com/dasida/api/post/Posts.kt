@@ -152,6 +152,7 @@ class PostComment(
 
 interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun findByPostIdOrderBySeqAsc(postId: String): List<PostComment>
+    fun findByPostId(postId: String, pageable: Pageable): Page<PostComment>
     fun countByPostId(postId: String): Long
 
     @Transactional
@@ -227,6 +228,14 @@ data class PostCommentResponse(
     val text: String,
     val time: String,
     val ownedByMe: Boolean,
+)
+
+data class PostCommentsPageResponse(
+    val content: List<PostCommentResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
 )
 
 /** 게시글 응답. Post 필드 + 요청 유저 기준 좋아요/북마크/소유 상태. authorUserId 자체는 노출하지 않는다. */
@@ -562,6 +571,38 @@ class PostController(
         return commentRepo.findByPostIdOrderBySeqAsc(id).map { it.toResponse(user?.id) }
     }
 
+    /** 기존 배열 API는 유지하고 상세 화면용 최신순 pagination을 별도 경로로 제공한다. */
+    @GetMapping("/{id}/comments/page")
+    @Transactional(readOnly = true)
+    fun commentsPage(
+        @PathVariable id: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): PostCommentsPageResponse {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size !in 1..MAX_COMMENT_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_COMMENT_PAGE_SIZE")
+        }
+        if (!repo.existsById(id)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+
+        val result = commentRepo.findByPostId(
+            id,
+            PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.desc("seq"), Sort.Order.asc("id")),
+            ),
+        )
+        return PostCommentsPageResponse(
+            content = result.content.map { it.toResponse(user?.id) },
+            page = result.number,
+            size = result.size,
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+        )
+    }
+
     @PostMapping("/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
@@ -771,6 +812,7 @@ class PostController(
         private const val MAX_IMAGES = 4
         private const val MAX_COMMENT_LENGTH = 500
         private const val MAX_SEARCH_PAGE_SIZE = 50
+        private const val MAX_COMMENT_PAGE_SIZE = 100
         private const val MAX_SEARCH_QUERY_LENGTH = 100
 
         private fun totalPages(totalElements: Long, size: Int): Int =
