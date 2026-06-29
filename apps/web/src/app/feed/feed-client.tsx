@@ -1,23 +1,156 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Heart, MessageCircle, Share2, Bookmark, Image as ImageIcon, Sparkles, TrendingUp, Send } from "lucide-react";
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Image as ImageIcon,
+  MessageCircle,
+  RefreshCw,
+  Search,
+  Send,
+  Share2,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { Avatar } from "@/components/avatar";
-import type { Post, PostComment } from "@/data/posts";
+import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 
 const MAX_COMMENT_LENGTH = 500;
 
-const categories = ["전체", "패션", "도시텃밭", "공방", "기증", "음식", "가구"];
+type UrlState = {
+  query: string;
+  campaignOnly: boolean;
+  sort: PostSearchSort;
+  page: number;
+};
+
+type SearchState = {
+  identity: string;
+  queryIdentity: string;
+  token: string | null;
+  status: "loading" | "success" | "error";
+  response: PostSearchResponse | null;
+};
+
+function parsePage(value: string | null): number {
+  if (value === null) return 0;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function neutralizeInteractions(response: PostSearchResponse): PostSearchResponse {
+  return {
+    ...response,
+    content: response.content.map((post) => ({
+      ...post,
+      likedByMe: false,
+      bookmarkedByMe: false,
+      ownedByMe: false,
+    })),
+  };
+}
+
+function DebouncedSearchInput({ value, onCommit }: { value: string; onCommit: (query: string) => void }) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    const normalized = draft.trim();
+    if (normalized === value) return;
+    const timeout = window.setTimeout(() => onCommit(normalized), 300);
+    return () => window.clearTimeout(timeout);
+  }, [draft, onCommit, value]);
+
+  return (
+    <label
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 py-2.5"
+      style={{
+        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
+        border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
+      }}
+    >
+      <Search size={16} className="shrink-0 opacity-50" />
+      <span className="sr-only">게시글 검색</span>
+      <input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        maxLength={100}
+        placeholder="본문 또는 작성자 검색..."
+        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:opacity-50"
+        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+      />
+    </label>
+  );
+}
+
+function FeedControls({
+  state,
+  onSearch,
+  onSort,
+  onCampaignOnly,
+}: {
+  state: UrlState;
+  onSearch: (query: string) => void;
+  onSort: (sort: PostSearchSort) => void;
+  onCampaignOnly: (checked: boolean) => void;
+}) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+
+  return (
+    <div className="mb-6 flex flex-col gap-3">
+      <DebouncedSearchInput key={state.query} value={state.query} onCommit={onSearch} />
+      <div className="flex flex-wrap items-center gap-3">
+        <label
+          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
+          style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+        >
+          <input
+            type="checkbox"
+            checked={state.campaignOnly}
+            onChange={(event) => onCampaignOnly(event.target.checked)}
+            className="accent-[#148a90]"
+          />
+          캠페인 게시글만
+        </label>
+        <label className="ml-auto flex items-center gap-2 text-[13px]">
+          <span className="sr-only">게시글 정렬</span>
+          <select
+            value={state.sort}
+            onChange={(event) => onSort(event.target.value as PostSearchSort)}
+            className="rounded-full border px-4 py-2.5 outline-none"
+            style={{
+              color: dark ? "#f9f7f2" : "#0f1f22",
+              background: dark ? "#1c4044" : "#ffffff",
+              borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+            }}
+          >
+            <option value="latest">최신순</option>
+            <option value="popular">인기순</option>
+            <option value="discussed">댓글순</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function StatePanel({ children }: { children: React.ReactNode }) {
+  return <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center text-[14px]">{children}</div>;
+}
 
 function PostCard({
   p,
@@ -46,6 +179,7 @@ function PostCard({
   const [liking, setLiking] = useState(false);
   const [bookmarked, setBookmarked] = useState(p.bookmarkedByMe);
   const [bookmarking, setBookmarking] = useState(false);
+  const [commentCount, setCommentCount] = useState(p.comments);
   // 인증 재조회로 새 p가 오면 서버 상태를 반영한다. identity 변경 직후에는 사용자별 상태를 즉시 중립화한다.
   // 카드를 리마운트하지 않아 작성 중인 댓글 입력은 보존한다.
   const [synced, setSynced] = useState({ post: p, identity });
@@ -53,10 +187,10 @@ function PostCard({
     const identityChanged = synced.identity !== identity;
     setSynced({ post: p, identity });
     setLikes(p.likes);
+    setCommentCount(p.comments);
     setLiked(identityChanged ? false : p.likedByMe);
     setBookmarked(identityChanged ? false : p.bookmarkedByMe);
   }
-  const [commentCount, setCommentCount] = useState(p.comments);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<PostComment[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
@@ -267,7 +401,6 @@ function PostCard({
 function SideHot({ campaigns }: { campaigns: Campaign[] }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const hot = campaigns.filter((c) => c.status === "open").slice(0, 3);
   return (
     <div
       className="rounded-2xl border p-5"
@@ -283,7 +416,7 @@ function SideHot({ campaigns }: { campaigns: Campaign[] }) {
         </h3>
       </div>
       <div className="space-y-3">
-        {hot.map((c) => {
+        {campaigns.map((c) => {
           const pct = progressPercent(c.joined, c.capacity);
           return (
             <div key={c.id} className="flex gap-3 items-center">
@@ -342,21 +475,116 @@ function SideRecommend() {
   );
 }
 
-export default function FeedClient({ posts: initialPosts, campaigns }: { posts: Post[]; campaigns: Campaign[] }) {
+export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme } = useTheme();
   const { token } = useAuthSession();
   const dark = theme === "dark";
-  // 새로고침·로그인/로그아웃 시 토큰 포함 재조회로 사용자별 상태를 동기화한다.
-  // identity 변경 시 좋아요/북마크만 즉시 neutral(false), likes 숫자는 유지한다.
-  const [posts, setPosts] = useState(initialPosts);
-  const { refreshing } = useAuthedRefresh<Post[]>("/api/posts", setPosts, () =>
-    setPosts((cur) =>
-      cur.map((p) =>
-        p.likedByMe || p.bookmarkedByMe ? { ...p, likedByMe: false, bookmarkedByMe: false } : p,
-      ),
-    ),
-  );
+  const [retryTick, setRetryTick] = useState(0);
+  const generationRef = useRef(0);
+
+  const urlState = useMemo<UrlState>(() => {
+    const sort = searchParams.get("sort");
+    return {
+      query: searchParams.get("q") ?? "",
+      campaignOnly: searchParams.get("campaignOnly") === "true",
+      sort: sort === "popular" || sort === "discussed" ? sort : "latest",
+      page: parsePage(searchParams.get("page")),
+    };
+  }, [searchParams]);
+  const queryIdentity = JSON.stringify(urlState);
+  const requestIdentity = JSON.stringify([token, queryIdentity, retryTick]);
+  const [searchState, setSearchState] = useState<SearchState>({
+    identity: "",
+    queryIdentity: "",
+    token: null,
+    status: "loading",
+    response: null,
+  });
+  const requestIsCurrent = searchState.identity === requestIdentity;
+  const response = useMemo(() => {
+    if (requestIsCurrent) return searchState.response;
+    if (searchState.queryIdentity !== queryIdentity || !searchState.response) return null;
+    return searchState.token === token
+      ? searchState.response
+      : neutralizeInteractions(searchState.response);
+  }, [queryIdentity, requestIsCurrent, searchState.queryIdentity, searchState.response, searchState.token, token]);
+  const requestStatus = requestIsCurrent ? searchState.status : "loading";
+  const refreshing = requestStatus === "loading";
+
+  const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
+    const next = { ...urlState, ...changes };
+    const params = new URLSearchParams();
+    if (next.query) params.set("q", next.query);
+    if (next.campaignOnly) params.set("campaignOnly", "true");
+    params.set("sort", next.sort);
+    params.set("page", next.page.toString());
+    const href = `/feed?${params.toString()}`;
+    if (replace) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
+  }, [router, urlState]);
+
+  const commitSearch = useCallback((query: string) => {
+    updateUrl({ query, page: 0 }, true);
+  }, [updateUrl]);
+
+  const searchPath = useMemo(() => {
+    const params = new URLSearchParams();
+    if (urlState.query) params.set("q", urlState.query);
+    params.set("campaignOnly", urlState.campaignOnly.toString());
+    params.set("sort", urlState.sort);
+    params.set("page", urlState.page.toString());
+    params.set("size", "10");
+    return `/api/posts/search?${params.toString()}`;
+  }, [urlState.campaignOnly, urlState.page, urlState.query, urlState.sort]);
+
+  useEffect(() => {
+    const requestToken = token;
+    if (getToken() !== requestToken) return;
+
+    const generation = ++generationRef.current;
+    let cancelled = false;
+    const isCurrent = () =>
+      !cancelled && generation === generationRef.current && getToken() === requestToken;
+
+    apiGet<PostSearchResponse>(searchPath)
+      .then((nextResponse) => {
+        if (!isCurrent()) return;
+        setSearchState({
+          identity: requestIdentity,
+          queryIdentity,
+          token: requestToken,
+          status: "success",
+          response: nextResponse,
+        });
+      })
+      .catch((error) => {
+        if (!isCurrent()) return;
+        if (error instanceof ApiError && error.status === 401 && requestToken) {
+          clearSession();
+          return;
+        }
+        setSearchState((previous) => {
+          const previousResponse = previous.queryIdentity === queryIdentity ? previous.response : null;
+          const fallback = previousResponse && previous.token !== requestToken
+            ? neutralizeInteractions(previousResponse)
+            : previousResponse;
+          return {
+            identity: requestIdentity,
+            queryIdentity,
+            token: requestToken,
+            status: "error",
+            response: fallback,
+          };
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queryIdentity, requestIdentity, searchPath, token]);
+
   return (
     <section
       className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
@@ -371,27 +599,7 @@ export default function FeedClient({ posts: initialPosts, campaigns }: { posts: 
         <div className="absolute top-20 left-1/3 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto relative grid grid-cols-1 lg:grid-cols-[220px_1fr_300px] gap-6">
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-2">
-            <p className="tracking-[0.3em] uppercase text-[11px] mb-3" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
-              카테고리
-            </p>
-            {categories.map((c, i) => (
-              <button
-                key={c}
-                className="block w-full text-left px-3 py-2 rounded-lg text-[13px]"
-                style={{
-                  background: i === 0 ? (dark ? "rgba(125,211,163,0.15)" : "rgba(125,211,163,0.25)") : "transparent",
-                  color: i === 0 ? (dark ? "#7dd3a3" : "#1c4044") : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)",
-                }}
-              >
-                # {c}
-              </button>
-            ))}
-          </div>
-        </aside>
-
+      <div className="relative mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <main>
           <button
             onClick={() => router.push("/posts/new")}
@@ -410,17 +618,103 @@ export default function FeedClient({ posts: initialPosts, campaigns }: { posts: 
             </span>
           </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {posts.map((p) => (
-              <PostCard
-                key={p.id}
-                p={p}
-                refreshing={refreshing}
-                identity={token}
-                onOpen={() => router.push(`/posts/${p.id}`)}
-              />
-            ))}
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+              {response ? `검색 결과 ${response.totalElements.toLocaleString()}개` : "게시글 검색"}
+            </p>
+            <button
+              type="button"
+              aria-label="피드 새로고침"
+              onClick={() => setRetryTick((tick) => tick + 1)}
+              disabled={refreshing}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full disabled:opacity-45"
+              style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)" }}
+            >
+              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            </button>
           </div>
+
+          <FeedControls
+            state={urlState}
+            onSearch={commitSearch}
+            onSort={(sort) => updateUrl({ sort, page: 0 })}
+            onCampaignOnly={(campaignOnly) => updateUrl({ campaignOnly, page: 0 })}
+          />
+
+          {requestStatus === "loading" && !response ? (
+            <StatePanel>
+              <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
+              <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>게시글을 검색하는 중입니다.</p>
+            </StatePanel>
+          ) : null}
+
+          {requestStatus === "error" && !response ? (
+            <StatePanel>
+              <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>게시글을 불러오지 못했습니다.</p>
+              <button
+                type="button"
+                onClick={() => setRetryTick((tick) => tick + 1)}
+                className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+              >
+                다시 시도
+              </button>
+            </StatePanel>
+          ) : null}
+
+          {requestStatus === "error" && response ? (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#ed5c48]/25 px-4 py-3 text-[12px] text-[#ed5c48]">
+              <span>최신 게시글을 불러오지 못해 이전 결과를 표시합니다.</span>
+              <button type="button" onClick={() => setRetryTick((tick) => tick + 1)} className="underline underline-offset-4">
+                다시 시도
+              </button>
+            </div>
+          ) : null}
+
+          {requestStatus === "success" && response?.content.length === 0 ? (
+            <StatePanel>
+              <p style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>조건에 맞는 게시글이 없습니다.</p>
+            </StatePanel>
+          ) : null}
+
+          {response && response.content.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              {response.content.map((post) => (
+                <PostCard
+                  key={post.id}
+                  p={post}
+                  refreshing={refreshing}
+                  identity={token}
+                  onOpen={() => router.push(`/posts/${post.id}`)}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {response && response.totalElements > 0 ? (
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => updateUrl({ page: Math.max(0, response.page - 1) })}
+                disabled={refreshing || response.page === 0}
+                className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
+              >
+                <ChevronLeft size={15} /> 이전
+              </button>
+              <span className="min-w-20 text-center text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+                {response.page + 1} / {response.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => updateUrl({ page: response.page + 1 })}
+                disabled={refreshing || response.page + 1 >= response.totalPages}
+                className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
+              >
+                다음 <ChevronRight size={15} />
+              </button>
+            </div>
+          ) : null}
         </main>
 
         <aside className="hidden lg:block">
