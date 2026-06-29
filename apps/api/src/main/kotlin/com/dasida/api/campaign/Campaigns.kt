@@ -100,6 +100,7 @@ class CampaignParticipant(
 interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, String> {
     fun existsByCampaignIdAndUserId(campaignId: String, userId: Long): Boolean
     fun findByCampaignIdAndUserId(campaignId: String, userId: Long): CampaignParticipant?
+    fun findByIdAndCampaignId(id: String, campaignId: String): CampaignParticipant?
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
     fun findByUserId(userId: Long): List<CampaignParticipant>
     fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignParticipant>
@@ -215,6 +216,14 @@ data class CampaignParticipantsResponse(
     val totalElements: Long,
     val totalPages: Int,
     val participants: List<CampaignParticipantResponse>,
+)
+
+/** 참가자 퇴장 결과. 갱신된 joined 를 함께 반환하고 participant.userId 는 노출하지 않는다. */
+data class CampaignParticipantRemovalResponse(
+    val campaignId: String,
+    val participantId: String,
+    val removed: Boolean,
+    val joined: Int,
 )
 
 /** Campaign 응답. 참여·소유 상태는 현재 요청 사용자 기준이며 authorUserId 자체는 노출하지 않는다. */
@@ -419,6 +428,52 @@ class CampaignController(
                     verified = participantUser?.verified ?: false,
                 )
             },
+        )
+    }
+
+    /**
+     * 개설자용 참가자 강제 퇴장. open 캠페인에서만, 개설자만 가능.
+     *
+     * 잠금 순서는 join/leave/status/delete 와 동일하게 campaign row write lock 을 가장 먼저 잡아
+     * 같은 캠페인의 참여·취소·마감·삭제·강제퇴장을 직렬화한다. participant row 존재 여부만으로
+     * joined 를 정확히 한 번만 감소시키며(0 미만 방지), 제거된 사용자에게 같은 트랜잭션에서 알림을 만든다.
+     * - 캠페인 없음 404, 비개설자/레거시(authorUserId=null) 403, open 아니면 409, participant 없음 404.
+     */
+    @DeleteMapping("/{id}/participants/{participantId}")
+    @Transactional
+    fun removeParticipant(
+        @PathVariable id: String,
+        @PathVariable participantId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignParticipantRemovalResponse {
+        val campaign = repo.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        if (campaign.authorUserId == null || campaign.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
+        }
+        if (campaign.status != "open") {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is not open")
+        }
+        // 다른 캠페인의 participantId 거나 이미 제거됐으면 null → 404. 상태 검사 뒤라 status 를 비개설자에게 노출하지 않는다.
+        val participant = participants.findByIdAndCampaignId(participantId, id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "participant $participantId not found")
+
+        participants.delete(participant)
+        campaign.joined = maxOf(0, campaign.joined - 1)
+        repo.save(campaign)
+        // 제거된 사용자에게 알림(개설자가 자기 자신을 제거한 경우에도 생성).
+        notifications.notifyUser(
+            recipientUserId = participant.userId,
+            type = NotificationType.CAMPAIGN_PARTICIPATION_REMOVED,
+            title = "참여 중인 캠페인에서 제외되었습니다",
+            body = campaign.title,
+            href = "/campaigns/$id",
+        )
+        return CampaignParticipantRemovalResponse(
+            campaignId = id,
+            participantId = participantId,
+            removed = true,
+            joined = campaign.joined,
         )
     }
 

@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, ShieldCheck, UserMinus, Users } from "lucide-react";
 import { apiGet, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import {
+  removeCampaignParticipant,
   statusMeta,
   type CampaignParticipantsResponse,
 } from "@/data/campaigns";
@@ -57,6 +58,8 @@ export default function ParticipantsClient({ id }: { id: string }) {
   const requestInFlightRef = useRef(false);
   const [page, setPage] = useState(0);
   const [retry, setRetry] = useState(0);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const identity = `${id}:${token ?? "anonymous"}:${page}:${retry}`;
   const [loadState, setLoadState] = useState<LoadState>({ identity: "", kind: "loading" });
   const currentLoad: LoadState = loadState.identity === identity
@@ -124,6 +127,45 @@ export default function ParticipantsClient({ id }: { id: string }) {
     if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
     setRetry((current) => current + 1);
+  };
+
+  // 개설자 강제 퇴장. 성공 시 현재 page 를 재조회한다(load effect 가 빈 page 면 이전 page 로 이동).
+  // 오류 시 목록은 유지하고 inline 메시지만 갱신한다.
+  const removeParticipant = async (participantId: string) => {
+    if (requestInFlightRef.current || removingId) return;
+    if (
+      !window.confirm(
+        "이 참가자를 캠페인에서 제외할까요?\n제외된 사용자는 다시 참여할 수 있습니다.",
+      )
+    ) {
+      return;
+    }
+    setRemovingId(participantId);
+    setActionError(null);
+    requestInFlightRef.current = true;
+    try {
+      await removeCampaignParticipant(id, participantId);
+      requestInFlightRef.current = false;
+      setRetry((current) => current + 1); // 현재 page 재조회 → joined/목록 갱신
+    } catch (error) {
+      requestInFlightRef.current = false;
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        router.replace("/login");
+        return;
+      }
+      if (error instanceof ApiError && error.status === 403) {
+        setActionError("참가자를 제외할 권한이 없습니다.");
+      } else if (error instanceof ApiError && error.status === 404) {
+        setActionError("이미 제외되었거나 찾을 수 없는 참가자입니다.");
+      } else if (error instanceof ApiError && error.status === 409) {
+        setActionError("모집 중인 캠페인에서만 참가자를 제외할 수 있습니다.");
+      } else {
+        setActionError("참가자 제외에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   if (currentLoad.kind === "loading") {
@@ -222,6 +264,15 @@ export default function ParticipantsClient({ id }: { id: string }) {
               <span className="text-[12px] opacity-55">사용자 ID 순</span>
             </div>
 
+            {actionError ? (
+              <div
+                className="mb-3 rounded-xl px-4 py-3 text-[13px]"
+                style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+              >
+                {actionError}
+              </div>
+            ) : null}
+
             {data.participants.length === 0 ? (
               <div className="rounded-2xl border border-dashed px-5 py-14 text-center text-[14px] opacity-65" style={{ borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.14)" }}>
                 아직 참여자가 없습니다.
@@ -231,11 +282,25 @@ export default function ParticipantsClient({ id }: { id: string }) {
                 {data.participants.map((participant) => (
                   <li key={participant.participantId} className="flex min-h-14 items-center justify-between gap-4 py-3">
                     <span className="min-w-0 truncate text-[14px] font-medium">{participant.name}</span>
-                    {participant.verified ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#7dd3a3]/20 px-2.5 py-1 text-[11px] text-[#2f9c68]">
-                        <ShieldCheck size={12} /> 인증 사용자
-                      </span>
-                    ) : null}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {participant.verified ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#7dd3a3]/20 px-2.5 py-1 text-[11px] text-[#2f9c68]">
+                          <ShieldCheck size={12} /> 인증 사용자
+                        </span>
+                      ) : null}
+                      {/* 퇴장은 모집 중(open)인 캠페인에서만. 처리 중인 행은 disabled. */}
+                      {data.status === "open" ? (
+                        <button
+                          type="button"
+                          onClick={() => removeParticipant(participant.participantId)}
+                          disabled={removingId !== null}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+                          style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+                        >
+                          <UserMinus size={13} /> {removingId === participant.participantId ? "처리 중…" : "퇴장"}
+                        </button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
