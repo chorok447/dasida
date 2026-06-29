@@ -1,5 +1,5 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
-import { apiDelete } from "@/lib/api";
+import { apiDelete, apiGet } from "@/lib/api";
 
 export type CampaignStatus = "open" | "upcoming" | "closed";
 export type CampaignSearchSort = "latest" | "popular";
@@ -49,6 +49,25 @@ export type CampaignSearchResponse = {
   totalElements: number;
   totalPages: number;
 };
+
+// 마이페이지 캠페인 pagination 응답(참여/개설). 백엔드 CampaignPageResponse 와 1:1.
+export type CampaignPageResponse = {
+  content: Campaign[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+const MY_CAMPAIGNS_PAGE_SIZE = 9;
+
+function campaignsPage(path: string, page: number): Promise<CampaignPageResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(MY_CAMPAIGNS_PAGE_SIZE) });
+  return apiGet<CampaignPageResponse>(`${path}?${params.toString()}`);
+}
+
+export const fetchJoinedCampaignsPage = (page: number) => campaignsPage("/api/campaigns/joined/page", page);
+export const fetchMyCampaignsPage = (page: number) => campaignsPage("/api/campaigns/mine/page", page);
 
 export type CampaignParticipantRemovalResponse = {
   campaignId: string;
