@@ -3,6 +3,7 @@ import { apiDelete, apiGet } from "@/lib/api";
 
 export type CampaignStatus = "open" | "upcoming" | "closed";
 export type CampaignSearchSort = "latest" | "popular" | "deadline";
+export type CampaignRecruitState = "before_recruit" | "recruiting" | "ended" | "closed";
 
 export type Campaign = {
   id: string;
@@ -17,6 +18,8 @@ export type Campaign = {
   capacity: number;
   joined: number;
   daysLeftLabel: string;
+  recruitable: boolean;
+  recruitState: CampaignRecruitState;
   author: { name: string; verified: boolean };
   body: { heading: string; paragraphs: string[]; images: string[] };
   joinedByMe: boolean;
@@ -108,3 +111,17 @@ export const statusMeta: Record<CampaignStatus, { label: string; color: string; 
   upcoming: { label: "모집예정", color: "#148a90", fg: "#ffffff" },
   closed: { label: "모집마감", color: "rgba(120,120,130,0.7)", fg: "#ffffff" },
 };
+
+const recruitStateMeta: Record<CampaignRecruitState, { label: string; color: string; fg: string }> = {
+  before_recruit: { label: "모집예정", color: "#148a90", fg: "#ffffff" },
+  recruiting: { label: "모집중", color: "#7dd3a3", fg: "#0f1f22" },
+  ended: { label: "모집종료", color: "rgba(120,120,130,0.7)", fg: "#ffffff" },
+  closed: { label: "모집마감", color: "rgba(120,120,130,0.7)", fg: "#ffffff" },
+};
+
+export function campaignRecruitMeta(campaign: Campaign) {
+  if (campaign.recruitState === "recruiting" && !campaign.recruitable && campaign.joined >= campaign.capacity) {
+    return { label: "정원마감", color: "rgba(237,92,72,0.82)", fg: "#ffffff" };
+  }
+  return recruitStateMeta[campaign.recruitState];
+}

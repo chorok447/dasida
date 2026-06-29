@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(FixedClockTestConfiguration::class)
 class CampaignJoinConcurrencyTest(
     @Autowired val mvc: MockMvc,
     @Autowired val jwt: JwtService,
@@ -35,13 +37,18 @@ class CampaignJoinConcurrencyTest(
         User(id = userId, email = "u$userId@t.com", passwordHash = "x", name = "유저$userId", verified = false),
     )
 
-    private fun saveOpenCampaign(capacity: Int, authorUserId: Long? = null): String {
+    private fun saveOpenCampaign(
+        capacity: Int,
+        authorUserId: Long? = null,
+        recruitStart: String = "2026-07-01",
+        recruitEnd: String = "2026-07-31",
+    ): String {
         val id = "conc-${UUID.randomUUID()}"
         // worker thread 가 볼 수 있도록 commit 된 상태로 저장.
         campaignRepo.saveAndFlush(
             Campaign(
                 id, "open", "동시성 캠페인", "요약", "https://x/y.png",
-                "2026-07-01", "2026-07-31", "2026-08-05", "2026-08-30",
+                recruitStart, recruitEnd, "2026-08-05", "2026-08-30",
                 capacity, 0, "라벨", Author("개설자", false),
                 CampaignBody("소개", emptyList(), emptyList()),
                 authorUserId = authorUserId,
@@ -143,6 +150,24 @@ class CampaignJoinConcurrencyTest(
             assertThat(statuses).containsExactly(200, 200) // 둘 다 idempotent 성공
             assertThat(campaignRepo.findById(id).get().joined).isEqualTo(1)
             assertThat(participantRepo.countByCampaignId(id)).isEqualTo(1)
+        } finally {
+            cleanup(id)
+        }
+    }
+
+    @Test
+    fun `모집 기간 밖 동시 join은 모두 실패하고 데이터가 변하지 않는다`() {
+        val id = saveOpenCampaign(
+            capacity = 5,
+            recruitStart = "2026-07-16",
+            recruitEnd = "2026-07-31",
+        )
+        try {
+            val statuses = joinConcurrently(id, listOf(tokenFor(211), tokenFor(212)))
+
+            assertThat(statuses).containsOnly(409)
+            assertThat(campaignRepo.findById(id).get().joined).isZero()
+            assertThat(participantRepo.countByCampaignId(id)).isZero()
         } finally {
             cleanup(id)
         }

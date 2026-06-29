@@ -7,11 +7,10 @@ import { CalendarDays, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import {
+  campaignRecruitMeta,
   fetchJoinedCampaignsPage,
   fetchMyCampaignsPage,
-  statusMeta,
   type Campaign,
-  type CampaignStatus,
 } from "@/data/campaigns";
 import { PaginatedSection } from "./paginated-section";
 
@@ -54,8 +53,8 @@ function StatePanel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StatusBadge({ status }: { status: CampaignStatus }) {
-  const m = statusMeta[status];
+function StatusBadge({ campaign }: { campaign: Campaign }) {
+  const m = campaignRecruitMeta(campaign);
   return (
     <span className="text-[11px] tracking-[0.2em] px-2.5 py-1 rounded-full" style={{ background: m.color, color: m.fg }}>
       {m.label}
@@ -63,10 +62,11 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
   );
 }
 
-function ProgressBar({ joined, capacity, status }: { joined: number; capacity: number; status: CampaignStatus }) {
+function ProgressBar({ campaign }: { campaign: Campaign }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const pct = progressPercent(joined, capacity);
+  const pct = progressPercent(campaign.joined, campaign.capacity);
+  const meta = campaignRecruitMeta(campaign);
   return (
     <div className="w-full">
       <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
@@ -76,20 +76,20 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
           viewport={{ once: true }}
           transition={{ duration: 0.9, ease: "easeOut" }}
           className="h-full rounded-full"
-          style={{ background: statusMeta[status].color }}
+          style={{ background: meta.color }}
         />
       </div>
       <div className="flex justify-between text-[11px] mt-1.5" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
         <span>
-          {capacity > 0 ? (
+          {campaign.capacity > 0 ? (
             <>
-              <b style={{ color: statusMeta[status].color }}>{joined}</b> / {capacity}명
+              <b style={{ color: meta.color }}>{campaign.joined}</b> / {campaign.capacity}명
             </>
           ) : (
             "모집 인원 미정"
           )}
         </span>
-        <span>{statusMeta[status].label === "모집중" ? "참여 중" : statusMeta[status].label}</span>
+        <span>{meta.label}</span>
       </div>
     </div>
   );
@@ -112,7 +112,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
         <img src={campaign.thumb} alt={campaign.title} className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
         <div className="absolute top-3 right-3">
-          <StatusBadge status={campaign.status} />
+          <StatusBadge campaign={campaign} />
         </div>
         <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-white/90 text-[12px]">
           <CalendarDays size={12} />
@@ -134,7 +134,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
         <p className="text-[13px] line-clamp-2" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
           {campaign.summary}
         </p>
-        <ProgressBar joined={campaign.joined} capacity={campaign.capacity} status={campaign.status} />
+        <ProgressBar campaign={campaign} />
         <div className="flex items-center justify-between text-[12px] pt-1" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
           <span className="flex items-center gap-1.5">
             <Users size={12} /> 모집 {campaign.capacity}명

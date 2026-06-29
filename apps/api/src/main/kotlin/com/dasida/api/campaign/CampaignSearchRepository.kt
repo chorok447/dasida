@@ -18,6 +18,7 @@ data class CampaignSearchCondition(
     val query: String?,
     val status: String?,
     val availableOnly: Boolean,
+    val today: String,
     val sort: CampaignSearchSort,
     val page: Int,
     val size: Int,
@@ -51,6 +52,8 @@ class QuerydslCampaignSearchRepository(
         if (condition.availableOnly) {
             predicates.and(campaign.status.eq("open"))
             predicates.and(campaign.joined.lt(campaign.capacity))
+            predicates.and(campaign.recruitStart.loe(condition.today))
+            predicates.and(campaign.recruitEnd.goe(condition.today))
         }
 
         val content = queryFactory

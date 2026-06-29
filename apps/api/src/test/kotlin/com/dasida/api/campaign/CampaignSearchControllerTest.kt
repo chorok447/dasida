@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.transaction.annotation.Transactional
@@ -17,6 +18,7 @@ import java.util.UUID
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(FixedClockTestConfiguration::class)
 class CampaignSearchControllerTest(
     @Autowired private val mvc: MockMvc,
     @Autowired private val jwt: JwtService,
@@ -39,6 +41,7 @@ class CampaignSearchControllerTest(
         joined: Int = 0,
         seq: Long = System.nanoTime(),
         authorUserId: Long? = null,
+        recruitStart: String = "2026-07-01",
         recruitEnd: String = "2026-07-31",
     ): String {
         campaignRepo.saveAndFlush(
@@ -48,7 +51,7 @@ class CampaignSearchControllerTest(
                 title = title,
                 summary = summary,
                 thumb = "https://example.com/campaign.png",
-                recruitStart = "2026-07-01",
+                recruitStart = recruitStart,
                 recruitEnd = recruitEnd,
                 runStart = "2026-08-01",
                 runEnd = "2026-08-31",
@@ -158,12 +161,26 @@ class CampaignSearchControllerTest(
     }
 
     @Test
-    fun `availableOnly는 모집중이면서 정원이 남은 캠페인만 반환한다`() {
+    fun `availableOnly는 모집 기간 중이고 정원이 남은 open 캠페인만 반환한다`() {
         val keyword = marker("available")
         val available = saveCampaign(status = "open", capacity = 3, joined = 2, summary = keyword)
         saveCampaign(status = "open", capacity = 3, joined = 3, summary = keyword)
         saveCampaign(status = "upcoming", capacity = 3, joined = 0, summary = keyword)
         saveCampaign(status = "closed", capacity = 3, joined = 1, summary = keyword)
+        saveCampaign(
+            status = "open",
+            capacity = 3,
+            joined = 0,
+            summary = keyword,
+            recruitStart = "2026-07-16",
+        )
+        saveCampaign(
+            status = "open",
+            capacity = 3,
+            joined = 0,
+            summary = keyword,
+            recruitEnd = "2026-07-14",
+        )
 
         mvc.get("/api/campaigns/search") {
             param("q", keyword)
@@ -267,21 +284,21 @@ class CampaignSearchControllerTest(
             summary = keyword,
             capacity = 3,
             joined = 1,
-            recruitEnd = "2026-07-01",
+            recruitEnd = "2026-07-20",
         )
         val availableLate = saveCampaign(
             status = "open",
             summary = keyword,
             capacity = 3,
             joined = 2,
-            recruitEnd = "2026-07-10",
+            recruitEnd = "2026-07-31",
         )
         saveCampaign(
             status = "open",
             summary = keyword,
             capacity = 3,
             joined = 3,
-            recruitEnd = "2026-06-01",
+            recruitEnd = "2026-07-16",
         )
         saveCampaign(status = "upcoming", summary = keyword, recruitEnd = "2026-05-01")
 

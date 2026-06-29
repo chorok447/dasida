@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import {
-  statusMeta,
+  campaignRecruitMeta,
   type Campaign,
   type CampaignSearchResponse,
 } from "@/data/campaigns";
@@ -113,7 +113,7 @@ function CampaignResultCard({ campaign }: { campaign: Campaign }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const progress = progressPercent(campaign.joined, campaign.capacity);
-  const meta = statusMeta[campaign.status];
+  const meta = campaignRecruitMeta(campaign);
 
   return (
     <Link
