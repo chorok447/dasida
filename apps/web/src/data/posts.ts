@@ -54,3 +54,26 @@ export type PostComment = {
   time: string;
   ownedByMe: boolean;
 };
+
+export type PostCommentsPageResponse = {
+  content: PostComment[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export function fetchPostCommentsPage(
+  postId: string,
+  params: { page?: number; size?: number } = {},
+  token?: string | null,
+): Promise<PostCommentsPageResponse> {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 0),
+    size: String(params.size ?? 20),
+  });
+  return apiGet<PostCommentsPageResponse>(
+    `/api/posts/${encodeURIComponent(postId)}/comments/page?${query.toString()}`,
+    token,
+  );
+}
