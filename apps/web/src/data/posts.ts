@@ -1,4 +1,6 @@
 // 게시물 데이터는 백엔드(GET /api/posts)가 source of truth. 여기엔 타입만 유지.
+export type PostSearchSort = "latest" | "popular" | "discussed";
+
 export type Post = {
   id: string;
   author: { name: string; verified: boolean };
@@ -12,6 +14,14 @@ export type Post = {
   likedByMe: boolean;
   bookmarkedByMe: boolean;
   ownedByMe: boolean;
+};
+
+export type PostSearchResponse = {
+  content: Post[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
 
 // 게시글 댓글. 백엔드 GET/POST /api/posts/{id}/comments 응답과 1:1.
