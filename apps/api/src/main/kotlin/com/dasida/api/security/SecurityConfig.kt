@@ -58,6 +58,9 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/joined").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/mine").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/*/participants").authenticated()
+                // 알림은 사용자별 데이터 → 일반 GET permitAll 보다 먼저 보호한다.
+                it.requestMatchers(HttpMethod.GET, "/api/notifications/**").authenticated()
+                it.requestMatchers(HttpMethod.POST, "/api/notifications/**").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
             }

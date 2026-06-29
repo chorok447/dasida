@@ -1,5 +1,7 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.notification.NotificationService
+import com.dasida.api.notification.NotificationType
 import com.dasida.api.post.Author
 import com.dasida.api.security.AuthUser
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -82,6 +84,7 @@ data class CreateCampaignCommentRequest(val text: String)
 class CampaignCommentController(
     private val campaigns: CampaignRepository,
     private val comments: CampaignCommentRepository,
+    private val notifications: NotificationService,
 ) {
     @GetMapping
     @Transactional(readOnly = true)
@@ -123,10 +126,10 @@ class CampaignCommentController(
     ): CampaignCommentResponse {
         val text = normalizeText(request.text)
         // 캠페인 삭제와 같은 row를 첫 DB 조회로 잠가 orphan comment 생성을 막는다.
-        campaigns.findByIdForUpdate(campaignId)
+        val campaign = campaigns.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
 
-        return comments.save(
+        val saved = comments.save(
             CampaignComment(
                 id = "cc-${UUID.randomUUID()}",
                 campaignId = campaignId,
@@ -135,7 +138,17 @@ class CampaignCommentController(
                 createdAt = Instant.now(),
                 authorUserId = user.id,
             ),
-        ).toResponse(user.id)
+        )
+        // 내가 개설한 캠페인에 타인이 댓글 → 개설자에게 알림(본인 댓글/개설자 미상은 helper 가 생략).
+        notifications.notify(
+            recipientUserId = campaign.authorUserId,
+            actorUserId = user.id,
+            type = NotificationType.CAMPAIGN_COMMENT_CREATED,
+            title = "${user.name}님이 캠페인에 댓글을 남겼습니다",
+            body = campaign.title,
+            href = "/campaigns/$campaignId",
+        )
+        return saved.toResponse(user.id)
     }
 
     @DeleteMapping("/{commentId}")

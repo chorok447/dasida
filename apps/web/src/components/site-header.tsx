@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { getToken } from "@/lib/auth";
+import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
 const PROTECTED_PREFIXES = ["/posts/new", "/campaigns/new", "/mypage", "/profile/edit"];
@@ -24,7 +27,36 @@ export function SiteHeader() {
   const dark = theme === "dark";
   const pathname = usePathname();
   const router = useRouter();
-  const { isLoggedIn, name, logout } = useAuthSession();
+  const { isLoggedIn, name, logout, token } = useAuthSession();
+  // 카운트를 조회 시점의 token 과 함께 보관 → 토큰이 바뀌면 이전 사용자 값을 표시하지 않는다(reset 용 동기 setState 회피).
+  const [unreadState, setUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
+  const unreadGenRef = useRef(0);
+  const unread = unreadState.token === token ? unreadState.count : 0;
+
+  // 로그인 상태에서만 unread count 조회. 로그아웃(token=null)이면 요청하지 않고 badge 는 위 파생값으로 0.
+  // token 변경 시 재조회, 알림 페이지의 읽음 처리(NOTIF_EVENT) 후에도 갱신. polling 은 하지 않음.
+  useEffect(() => {
+    if (!token) return;
+    const requestToken = token;
+    const refresh = () => {
+      const generation = ++unreadGenRef.current;
+      fetchNotificationUnreadCount()
+        .then((res) => {
+          // 늦은 응답/토큰 변경 시 무시. 실패 시 badge 만 숨기고 헤더는 유지.
+          if (generation === unreadGenRef.current && getToken() === requestToken) {
+            setUnreadState({ token: requestToken, count: res.unreadCount });
+          }
+        })
+        .catch(() => {
+          if (generation === unreadGenRef.current && getToken() === requestToken) {
+            setUnreadState({ token: requestToken, count: 0 });
+          }
+        });
+    };
+    refresh();
+    window.addEventListener(NOTIF_EVENT, refresh);
+    return () => window.removeEventListener(NOTIF_EVENT, refresh);
+  }, [token]);
 
   const onLogout = () => {
     logout();
@@ -86,10 +118,17 @@ export function SiteHeader() {
             href="/notifications"
             className="w-9 h-9 rounded-full flex items-center justify-center relative"
             style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
-            aria-label="알림"
+            aria-label={unread > 0 ? `알림 ${unread > 99 ? "99+" : unread}개` : "알림"}
           >
             <Bell size={16} />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#7dd3a3]" />
+            {isLoggedIn && unread > 0 && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-medium"
+                style={{ background: "#ed5c48", color: "#ffffff" }}
+              >
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
           </Link>
           {/* 서버 스냅샷은 항상 로그아웃 상태 → 비로그인 뷰로 hydration, 이후 클라이언트에서 갱신. */}
           {isLoggedIn ? (

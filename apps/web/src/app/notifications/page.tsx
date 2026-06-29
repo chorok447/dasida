@@ -1,8 +1,6 @@
-import { apiGet } from "@/lib/api";
-import type { Notification } from "@/data/notifications";
 import NotificationsClient from "./notifications-client";
 
-export default async function NotificationsPage() {
-  const notifications = await apiGet<Notification[]>("/api/notifications");
-  return <NotificationsClient notifications={notifications} />;
+// 알림은 사용자별(인증 필수) 데이터라 SSR 로 미리 받지 않고 클라이언트에서 토큰으로 조회한다.
+export default function NotificationsPage() {
+  return <NotificationsClient />;
 }

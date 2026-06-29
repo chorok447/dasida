@@ -2,6 +2,8 @@ package com.dasida.api.campaign
 
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.Photos
+import com.dasida.api.notification.NotificationService
+import com.dasida.api.notification.NotificationType
 import com.dasida.api.post.Author
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.AuthUser
@@ -252,6 +254,7 @@ class CampaignController(
     private val comments: CampaignCommentRepository,
     private val posts: PostRepository,
     private val users: UserRepository,
+    private val notifications: NotificationService,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<CampaignResponse> {
@@ -445,6 +448,15 @@ class CampaignController(
         participants.save(CampaignParticipant("cp-${UUID.randomUUID()}", id, user.id))
         campaign.joined += 1
         repo.save(campaign)
+        // 새 participant 가 실제로 생성된 경로에서만 알림 → 멱등 join(위 early return)은 중복 생성 안 함.
+        notifications.notify(
+            recipientUserId = campaign.authorUserId,
+            actorUserId = user.id,
+            type = NotificationType.CAMPAIGN_JOINED,
+            title = "${user.name}님이 캠페인에 참여했습니다",
+            body = campaign.title,
+            href = "/campaigns/$id/participants",
+        )
         return campaign.toResponse(viewerId = user.id, joinedByMe = true)
     }
 
