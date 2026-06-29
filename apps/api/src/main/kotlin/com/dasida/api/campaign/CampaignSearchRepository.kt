@@ -1,5 +1,7 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.common.QUERYDSL_LIKE_ESCAPE
+import com.dasida.api.common.literalContainsPattern
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -37,10 +39,10 @@ class QuerydslCampaignSearchRepository(
         val predicates = BooleanBuilder()
 
         condition.query?.let { query ->
-            val pattern = "%${escapeLike(query.lowercase())}%"
+            val pattern = literalContainsPattern(query)
             predicates.and(
-                campaign.title.lower().like(pattern, LIKE_ESCAPE)
-                    .or(campaign.summary.lower().like(pattern, LIKE_ESCAPE)),
+                campaign.title.lower().like(pattern, QUERYDSL_LIKE_ESCAPE)
+                    .or(campaign.summary.lower().like(pattern, QUERYDSL_LIKE_ESCAPE)),
             )
         }
         condition.status?.let { predicates.and(campaign.status.eq(it)) }
@@ -72,12 +74,4 @@ class QuerydslCampaignSearchRepository(
             CampaignSearchSort.POPULAR -> arrayOf(campaign.joined.desc(), campaign.seq.desc(), campaign.id.asc())
         }
 
-    private fun escapeLike(value: String): String = value
-        .replace(LIKE_ESCAPE.toString(), "$LIKE_ESCAPE$LIKE_ESCAPE")
-        .replace("%", "$LIKE_ESCAPE%")
-        .replace("_", "${LIKE_ESCAPE}_")
-
-    private companion object {
-        const val LIKE_ESCAPE = '!'
-    }
 }
