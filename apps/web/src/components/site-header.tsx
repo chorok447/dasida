@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -40,10 +40,10 @@ export function SiteHeader() {
         borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
       }}
     >
-      <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" style={{ color: dark ? "#7dd3a3" : "#1c4044" }}>
           <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
-          <span className="text-[10px] tracking-[0.3em] opacity-60">UPCYCLE</span>
+          <span className="hidden text-[10px] tracking-[0.3em] opacity-60 sm:inline">UPCYCLE</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1">
           {items.map((it) => {
@@ -69,7 +69,19 @@ export function SiteHeader() {
             );
           })}
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/search"
+            className="flex h-9 items-center justify-center gap-2 rounded-full px-3"
+            style={{
+              background: pathname === "/search" ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
+              color: pathname === "/search" ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+            }}
+            aria-label="통합 검색"
+          >
+            <Search size={16} />
+            <span className="hidden xl:inline text-[12px]">검색</span>
+          </Link>
           <Link
             href="/notifications"
             className="w-9 h-9 rounded-full flex items-center justify-center relative"
@@ -82,7 +94,7 @@ export function SiteHeader() {
           {/* 서버 스냅샷은 항상 로그아웃 상태 → 비로그인 뷰로 hydration, 이후 클라이언트에서 갱신. */}
           {isLoggedIn ? (
             <>
-              <span className="text-[13px] px-1" style={{ color: dark ? "#f9f7f2" : "#1c4044" }}>
+              <span className="hidden text-[13px] px-1 sm:inline" style={{ color: dark ? "#f9f7f2" : "#1c4044" }}>
                 {name ?? "사용자"}
               </span>
               <button
