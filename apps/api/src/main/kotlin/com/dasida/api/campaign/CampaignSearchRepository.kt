@@ -17,6 +17,7 @@ enum class CampaignSearchSort {
 data class CampaignSearchCondition(
     val query: String?,
     val status: String?,
+    val recruitState: CampaignRecruitState?,
     val availableOnly: Boolean,
     val today: String,
     val sort: CampaignSearchSort,
@@ -49,6 +50,23 @@ class QuerydslCampaignSearchRepository(
             )
         }
         condition.status?.let { predicates.and(campaign.status.eq(it)) }
+        condition.recruitState?.let { recruitState ->
+            predicates.and(
+                when (recruitState) {
+                    CampaignRecruitState.BEFORE_RECRUIT -> campaign.status.eq("upcoming")
+                        .or(
+                            campaign.status.eq("open")
+                                .and(campaign.recruitStart.gt(condition.today)),
+                        )
+                    CampaignRecruitState.RECRUITING -> campaign.status.eq("open")
+                        .and(campaign.recruitStart.loe(condition.today))
+                        .and(campaign.recruitEnd.goe(condition.today))
+                    CampaignRecruitState.ENDED -> campaign.status.eq("open")
+                        .and(campaign.recruitEnd.lt(condition.today))
+                    CampaignRecruitState.CLOSED -> campaign.status.eq("closed")
+                },
+            )
+        }
         if (condition.availableOnly) {
             predicates.and(campaign.status.eq("open"))
             predicates.and(campaign.joined.lt(campaign.capacity))
