@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
 import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Search, Users } from "lucide-react";
 import {
-  statusMeta,
+  campaignRecruitMeta,
   type Campaign,
   type CampaignSearchResponse,
   type CampaignSearchSort,
@@ -39,8 +39,8 @@ const FILTER_ITEMS: { id: Filter; label: string }[] = [
   { id: "closed", label: "모집마감" },
 ];
 
-function StatusBadge({ status }: { status: CampaignStatus }) {
-  const meta = statusMeta[status];
+function StatusBadge({ campaign }: { campaign: Campaign }) {
+  const meta = campaignRecruitMeta(campaign);
   return (
     <span
       className="rounded-full px-2.5 py-1 text-[11px] tracking-[0.2em]"
@@ -51,10 +51,11 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
   );
 }
 
-function ProgressBar({ joined, capacity, status }: { joined: number; capacity: number; status: CampaignStatus }) {
+function ProgressBar({ campaign }: { campaign: Campaign }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const pct = progressPercent(joined, capacity);
+  const pct = progressPercent(campaign.joined, campaign.capacity);
+  const meta = campaignRecruitMeta(campaign);
   return (
     <div className="w-full">
       <div
@@ -67,7 +68,7 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
           viewport={{ once: true }}
           transition={{ duration: 0.9, ease: "easeOut" }}
           className="h-full rounded-full"
-          style={{ background: statusMeta[status].color }}
+          style={{ background: meta.color }}
         />
       </div>
       <div
@@ -75,15 +76,15 @@ function ProgressBar({ joined, capacity, status }: { joined: number; capacity: n
         style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}
       >
         <span>
-          {capacity > 0 ? (
+          {campaign.capacity > 0 ? (
             <>
-              <b style={{ color: statusMeta[status].color }}>{joined}</b> / {capacity}명
+              <b style={{ color: meta.color }}>{campaign.joined}</b> / {campaign.capacity}명
             </>
           ) : (
             "모집 인원 미정"
           )}
         </span>
-        <span>{statusMeta[status].label === "모집중" ? "참여 중" : statusMeta[status].label}</span>
+        <span>{meta.label}</span>
       </div>
     </div>
   );
@@ -130,7 +131,7 @@ function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => 
             <img src={campaign.thumb} alt={campaign.title} className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
             <div className="absolute right-3 top-3" style={{ transform: "translateZ(40px)" }}>
-              <StatusBadge status={campaign.status} />
+              <StatusBadge campaign={campaign} />
             </div>
             <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-[12px] text-white/90">
               <Calendar size={12} />
@@ -154,7 +155,7 @@ function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => 
             >
               {campaign.summary}
             </p>
-            <ProgressBar joined={campaign.joined} capacity={campaign.capacity} status={campaign.status} />
+            <ProgressBar campaign={campaign} />
             <div
               className="flex items-center justify-between pt-1 text-[12px]"
               style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}
