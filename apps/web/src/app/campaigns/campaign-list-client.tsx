@@ -5,9 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
 import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Search, Users } from "lucide-react";
+import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
 import {
+  appendCampaignDateRangeFilters,
+  campaignDateRangeError,
   campaignRecruitMeta,
+  EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
+  readCampaignDateRangeFilters,
   type Campaign,
+  type CampaignDateRangeField,
+  type CampaignDateRangeFilters,
   type CampaignRecruitState,
   type CampaignSearchResponse,
   type CampaignSearchSort,
@@ -24,8 +31,9 @@ type SearchState = {
   identity: string;
   status: "loading" | "success" | "error";
   response: CampaignSearchResponse | null;
+  errorMessage: string | null;
 };
-type UrlState = {
+type UrlState = CampaignDateRangeFilters & {
   query: string;
   filter: Filter;
   recruitState: CampaignRecruitState | null;
@@ -215,6 +223,8 @@ function FilterBar({
   onSort,
   onRecruitState,
   onAvailableOnly,
+  onDateChange,
+  onClearDates,
 }: {
   state: UrlState;
   onFilter: (filter: Filter) => void;
@@ -222,6 +232,8 @@ function FilterBar({
   onSort: (sort: CampaignSearchSort) => void;
   onRecruitState: (recruitState: CampaignRecruitState | null) => void;
   onAvailableOnly: (checked: boolean) => void;
+  onDateChange: (field: CampaignDateRangeField, value: string) => void;
+  onClearDates: () => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -304,6 +316,12 @@ function FilterBar({
           </label>
         </div>
       </div>
+      <CampaignDateRangeFilterControls
+        value={state}
+        dark={dark}
+        onChange={onDateChange}
+        onClear={onClearDates}
+      />
     </div>
   );
 }
@@ -334,6 +352,7 @@ function buildCampaignsHref(state: UrlState): string {
   if (state.filter !== "all") params.set("status", state.filter);
   if (state.recruitState) params.set("recruitState", state.recruitState);
   if (state.availableOnly) params.set("availableOnly", "true");
+  appendCampaignDateRangeFilters(params, state);
   params.set("sort", state.sort);
   params.set("page", state.page.toString());
   return `/campaigns?${params.toString()}`;
@@ -357,11 +376,13 @@ export default function CampaignListClient() {
     filter: parseFilter(searchParams.get("status")),
     recruitState: parseRecruitState(searchParams.get("recruitState")),
     availableOnly: searchParams.get("availableOnly") === "true",
+    ...readCampaignDateRangeFilters(searchParams),
     sort: parseSort(searchParams.get("sort")),
     page: parsePage(searchParams.get("page")),
   }), [searchParams]);
   const canonicalHref = buildCampaignsHref(urlState);
   const currentHref = searchParams.toString() ? `/campaigns?${searchParams.toString()}` : "/campaigns";
+  const dateFilterError = campaignDateRangeError(urlState);
 
   useEffect(() => {
     if (currentHref !== canonicalHref) router.replace(canonicalHref, { scroll: false });
@@ -371,10 +392,11 @@ export default function CampaignListClient() {
     identity: "",
     status: "loading",
     response: null,
+    errorMessage: null,
   });
   const currentState: SearchState = searchState.identity === requestIdentity
     ? searchState
-    : { identity: requestIdentity, status: "loading", response: null };
+    : { identity: requestIdentity, status: "loading", response: null, errorMessage: null };
 
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollY } = useScroll();
@@ -400,6 +422,12 @@ export default function CampaignListClient() {
     if (urlState.filter !== "all") params.set("status", urlState.filter);
     if (urlState.recruitState) params.set("recruitState", urlState.recruitState);
     params.set("availableOnly", urlState.availableOnly.toString());
+    appendCampaignDateRangeFilters(params, {
+      recruitEndFrom: urlState.recruitEndFrom,
+      recruitEndTo: urlState.recruitEndTo,
+      runStartFrom: urlState.runStartFrom,
+      runStartTo: urlState.runStartTo,
+    });
     params.set("sort", urlState.sort);
     params.set("page", urlState.page.toString());
     params.set("size", "9");
@@ -412,7 +440,7 @@ export default function CampaignListClient() {
     apiGet<CampaignSearchResponse>(`/api/campaigns/search?${params.toString()}`)
       .then((response) => {
         if (!isCurrent()) return;
-        setSearchState({ identity: requestIdentity, status: "success", response });
+        setSearchState({ identity: requestIdentity, status: "success", response, errorMessage: null });
       })
       .catch((error) => {
         if (!isCurrent()) return;
@@ -420,7 +448,10 @@ export default function CampaignListClient() {
           clearSession();
           return;
         }
-        setSearchState({ identity: requestIdentity, status: "error", response: null });
+        const errorMessage = error instanceof ApiError && error.status === 400
+          ? dateFilterError ?? "날짜 형식이 올바르지 않습니다."
+          : "캠페인을 불러오지 못했습니다.";
+        setSearchState({ identity: requestIdentity, status: "error", response: null, errorMessage });
       });
 
     return () => {
@@ -429,11 +460,16 @@ export default function CampaignListClient() {
   }, [
     requestIdentity,
     token,
+    dateFilterError,
     urlState.availableOnly,
     urlState.filter,
     urlState.page,
     urlState.query,
+    urlState.recruitEndFrom,
+    urlState.recruitEndTo,
     urlState.recruitState,
+    urlState.runStartFrom,
+    urlState.runStartTo,
     urlState.sort,
   ]);
 
@@ -489,6 +525,8 @@ export default function CampaignListClient() {
           onSort={(sort) => updateUrl({ sort, page: 0 })}
           onRecruitState={(recruitState) => updateUrl({ recruitState, page: 0 })}
           onAvailableOnly={(availableOnly) => updateUrl({ availableOnly, page: 0 })}
+          onDateChange={(field, value) => updateUrl({ [field]: value, page: 0 })}
+          onClearDates={() => updateUrl({ ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS, page: 0 })}
         />
 
         {currentState.status === "loading" ? (
@@ -500,7 +538,9 @@ export default function CampaignListClient() {
 
         {currentState.status === "error" ? (
           <StatePanel>
-            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>캠페인을 불러오지 못했습니다.</p>
+            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+              {currentState.errorMessage ?? "캠페인을 불러오지 못했습니다."}
+            </p>
             <button
               type="button"
               onClick={() => setRetryTick((tick) => tick + 1)}

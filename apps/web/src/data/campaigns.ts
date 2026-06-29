@@ -5,6 +5,87 @@ export type CampaignStatus = "open" | "upcoming" | "closed";
 export type CampaignSearchSort = "latest" | "popular" | "deadline";
 export type CampaignRecruitState = "before_recruit" | "recruiting" | "ended" | "closed";
 
+export type CampaignDateRangeFilters = {
+  recruitEndFrom: string;
+  recruitEndTo: string;
+  runStartFrom: string;
+  runStartTo: string;
+};
+
+export type CampaignSearchParams = {
+  q?: string;
+  status?: CampaignStatus;
+  recruitState?: CampaignRecruitState;
+  availableOnly?: boolean;
+  sort?: CampaignSearchSort;
+  page?: number;
+  size?: number;
+  recruitEndFrom?: string;
+  recruitEndTo?: string;
+  runStartFrom?: string;
+  runStartTo?: string;
+};
+
+export type CampaignDateRangeField = keyof CampaignDateRangeFilters;
+
+export const EMPTY_CAMPAIGN_DATE_RANGE_FILTERS: CampaignDateRangeFilters = {
+  recruitEndFrom: "",
+  recruitEndTo: "",
+  runStartFrom: "",
+  runStartTo: "",
+};
+
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function isIsoDate(value: string): boolean {
+  const match = ISO_DATE_PATTERN.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
+function readIsoDate(value: string | null): string {
+  const trimmed = value?.trim() ?? "";
+  return isIsoDate(trimmed) ? trimmed : "";
+}
+
+export function readCampaignDateRangeFilters(params: { get(name: string): string | null }): CampaignDateRangeFilters {
+  return {
+    recruitEndFrom: readIsoDate(params.get("recruitEndFrom")),
+    recruitEndTo: readIsoDate(params.get("recruitEndTo")),
+    runStartFrom: readIsoDate(params.get("runStartFrom")),
+    runStartTo: readIsoDate(params.get("runStartTo")),
+  };
+}
+
+export function appendCampaignDateRangeFilters(
+  params: URLSearchParams,
+  filters: CampaignDateRangeFilters,
+): void {
+  (Object.keys(filters) as CampaignDateRangeField[]).forEach((field) => {
+    if (filters[field]) params.set(field, filters[field]);
+  });
+}
+
+export function campaignDateRangeError(filters: CampaignDateRangeFilters): string | null {
+  if (filters.recruitEndFrom && filters.recruitEndTo && filters.recruitEndFrom > filters.recruitEndTo) {
+    return "모집 마감일의 시작일은 종료일보다 늦을 수 없습니다.";
+  }
+  if (filters.runStartFrom && filters.runStartTo && filters.runStartFrom > filters.runStartTo) {
+    return "진행 시작일의 시작일은 종료일보다 늦을 수 없습니다.";
+  }
+  return null;
+}
+
+export function hasCampaignDateRangeFilters(filters: CampaignDateRangeFilters): boolean {
+  return Object.values(filters).some(Boolean);
+}
+
 export type Campaign = {
   id: string;
   status: CampaignStatus;

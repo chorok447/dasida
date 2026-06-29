@@ -19,6 +19,10 @@ data class CampaignSearchCondition(
     val status: String?,
     val recruitState: CampaignRecruitState?,
     val availableOnly: Boolean,
+    val recruitEndFrom: String?,
+    val recruitEndTo: String?,
+    val runStartFrom: String?,
+    val runStartTo: String?,
     val today: String,
     val sort: CampaignSearchSort,
     val page: Int,
@@ -73,6 +77,10 @@ class QuerydslCampaignSearchRepository(
             predicates.and(campaign.recruitStart.loe(condition.today))
             predicates.and(campaign.recruitEnd.goe(condition.today))
         }
+        condition.recruitEndFrom?.let { predicates.and(campaign.recruitEnd.goe(it)) }
+        condition.recruitEndTo?.let { predicates.and(campaign.recruitEnd.loe(it)) }
+        condition.runStartFrom?.let { predicates.and(campaign.runStart.goe(it)) }
+        condition.runStartTo?.let { predicates.and(campaign.runStart.loe(it)) }
 
         val content = queryFactory
             .selectFrom(campaign)
