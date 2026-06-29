@@ -57,6 +57,7 @@ class PostControllerTest(
         authorUserId: Long? = 1,
         authorName: String = "테스터",
         id: String = "itc-${UUID.randomUUID()}",
+        seq: Long = System.currentTimeMillis(),
     ): String {
         commentRepo.saveAndFlush(
             PostComment(
@@ -65,7 +66,7 @@ class PostControllerTest(
                 author = Author(authorName, false),
                 text = "테스트 댓글",
                 time = "방금",
-                seq = System.currentTimeMillis(),
+                seq = seq,
                 authorUserId = authorUserId,
             ),
         )
@@ -705,6 +706,137 @@ class PostControllerTest(
     @Test
     fun `없는 post 댓글 목록은 404`() {
         mvc.get("/api/posts/nope/comments").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `새 댓글 page API는 기본 page 0 size 20과 비로그인 소유 상태를 반환한다`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        mvc.get("/api/posts/$postId/comments/page").andExpect {
+            status { isOk() }
+            jsonPath("$.page") { value(0) }
+            jsonPath("$.size") { value(20) }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.totalPages") { value(1) }
+            jsonPath("$.content[0].id") { value(commentId) }
+            jsonPath("$.content[0].ownedByMe") { value(false) }
+            jsonPath("$.content[0].authorUserId") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `댓글 page API는 로그인 사용자의 댓글만 ownedByMe true`() {
+        val postId = savePost(comments = 2)
+        val mine = saveComment(postId, authorUserId = 1, seq = 200)
+        val other = saveComment(postId, authorUserId = 2, seq = 100)
+
+        mvc.get("/api/posts/$postId/comments/page") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[?(@.id == '$mine')].ownedByMe") { value(Matchers.hasItem(true)) }
+            jsonPath("$.content[?(@.id == '$other')].ownedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
+    fun `댓글 page API는 없는 게시글 404와 빈 목록 metadata를 반환한다`() {
+        mvc.get("/api/posts/nope/comments/page").andExpect { status { isNotFound() } }
+
+        val postId = savePost()
+        mvc.get("/api/posts/$postId/comments/page").andExpect {
+            status { isOk() }
+            jsonPath("$.content") { isEmpty() }
+            jsonPath("$.totalElements") { value(0) }
+            jsonPath("$.totalPages") { value(0) }
+        }
+    }
+
+    @Test
+    fun `댓글 page API는 page와 size 범위를 검증한다`() {
+        val postId = savePost()
+        mvc.get("/api/posts/$postId/comments/page") { param("page", "-1") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/posts/$postId/comments/page") { param("size", "0") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/posts/$postId/comments/page") { param("size", "101") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/posts/$postId/comments/page") { param("size", "100") }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `댓글 page API는 최신 seq와 id tie breaker로 정렬하고 metadata를 유지한다`() {
+        val postId = savePost(comments = 4)
+        val newest = saveComment(postId, id = "itc-z-${UUID.randomUUID()}", seq = 300)
+        val tieA = saveComment(postId, id = "itc-a-${UUID.randomUUID()}", seq = 200)
+        val tieB = saveComment(postId, id = "itc-b-${UUID.randomUUID()}", seq = 200)
+        val oldest = saveComment(postId, id = "itc-y-${UUID.randomUUID()}", seq = 100)
+
+        mvc.get("/api/posts/$postId/comments/page") {
+            param("size", "2")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(newest, tieA)) }
+            jsonPath("$.totalElements") { value(4) }
+            jsonPath("$.totalPages") { value(2) }
+        }
+        mvc.get("/api/posts/$postId/comments/page") {
+            param("page", "1")
+            param("size", "2")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(tieB, oldest)) }
+        }
+        mvc.get("/api/posts/$postId/comments/page") {
+            param("page", "2")
+            param("size", "2")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content") { isEmpty() }
+            jsonPath("$.totalElements") { value(4) }
+            jsonPath("$.totalPages") { value(2) }
+        }
+    }
+
+    @Test
+    fun `기존 댓글 배열 API는 오래된 순 배열 계약을 유지한다`() {
+        val postId = savePost(comments = 2)
+        val oldest = saveComment(postId, seq = 100)
+        val newest = saveComment(postId, seq = 200)
+
+        mvc.get("/api/posts/$postId/comments").andExpect {
+            status { isOk() }
+            jsonPath("$") { isArray() }
+            jsonPath("$[*].id") { value(Matchers.contains(oldest, newest)) }
+        }
+    }
+
+    @Test
+    fun `댓글 작성과 삭제는 page API totalElements에 반영된다`() {
+        val postId = savePost(comments = 0)
+        val created = mvc.post("/api/posts/$postId/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"페이지 댓글"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.ownedByMe") { value(true) }
+        }.andReturn().response.contentAsString
+        val commentId = Regex("\"id\":\"([^\"]+)\"").find(created)!!.groupValues[1]
+
+        mvc.get("/api/posts/$postId/comments/page").andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(commentId) }
+        }
+        deleteComment(postId, commentId).andExpect { status { isNoContent() } }
+        mvc.get("/api/posts/$postId/comments/page").andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(0) }
+            jsonPath("$.content") { isEmpty() }
+        }
     }
 
     @Test
