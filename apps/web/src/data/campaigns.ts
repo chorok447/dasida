@@ -1,4 +1,6 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
+import { apiDelete } from "@/lib/api";
+
 export type CampaignStatus = "open" | "upcoming" | "closed";
 export type CampaignSearchSort = "latest" | "popular";
 
@@ -47,6 +49,23 @@ export type CampaignSearchResponse = {
   totalElements: number;
   totalPages: number;
 };
+
+export type CampaignParticipantRemovalResponse = {
+  campaignId: string;
+  participantId: string;
+  removed: boolean;
+  joined: number;
+};
+
+/** 개설자용 참가자 강제 퇴장. apiDelete 가 getToken() 으로 인증 헤더를 붙이며 갱신된 joined 를 반환한다. */
+export function removeCampaignParticipant(
+  campaignId: string,
+  participantId: string,
+): Promise<CampaignParticipantRemovalResponse> {
+  return apiDelete<CampaignParticipantRemovalResponse>(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/participants/${encodeURIComponent(participantId)}`,
+  );
+}
 
 export type CampaignComment = {
   id: string;
