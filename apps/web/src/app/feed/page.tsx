@@ -5,7 +5,7 @@ import FeedClient from "./feed-client";
 
 export default async function FeedPage() {
   const campaigns = await apiGet<CampaignSearchResponse>(
-    "/api/campaigns/search?status=open&sort=popular&page=0&size=3",
+    "/api/campaigns/search?status=open&availableOnly=true&sort=popular&page=0&size=3",
   );
   return (
     <Suspense fallback={<FeedFallback />}>

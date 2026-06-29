@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.format.ResolverStyle
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 private val ISO_DATE_PATTERN = Regex("\\d{4}-\\d{2}-\\d{2}")
@@ -31,6 +32,51 @@ internal fun parseCampaignDate(value: String, fieldName: String): LocalDate {
 /** 지원하는 legacy 점 표기는 응답에서 canonical 형식으로 바꾸고 알 수 없는 값은 안전하게 유지한다. */
 internal fun canonicalCampaignDateOrOriginal(value: String): String =
     parseSupportedCampaignDate(value.trim())?.toString() ?: value
+
+internal enum class CampaignRecruitState(val value: String) {
+    BEFORE_RECRUIT("before_recruit"),
+    RECRUITING("recruiting"),
+    ENDED("ended"),
+    CLOSED("closed"),
+}
+
+internal data class CampaignRecruitment(
+    val state: CampaignRecruitState,
+    val recruitable: Boolean,
+    val daysLeftLabel: String,
+    val validDates: Boolean = true,
+)
+
+/** status와 모집 기간을 함께 평가한다. 알 수 없는 legacy 날짜는 안전하게 모집 종료로 취급한다. */
+internal fun Campaign.recruitmentOn(today: LocalDate): CampaignRecruitment {
+    if (status == "closed") {
+        return CampaignRecruitment(CampaignRecruitState.CLOSED, false, "모집완료")
+    }
+    if (status == "upcoming") {
+        return CampaignRecruitment(CampaignRecruitState.BEFORE_RECRUIT, false, "모집 예정")
+    }
+
+    val start = parseSupportedCampaignDate(recruitStart.trim())
+    val end = parseSupportedCampaignDate(recruitEnd.trim())
+    if (start == null || end == null || start.isAfter(end)) {
+        return CampaignRecruitment(CampaignRecruitState.ENDED, false, "모집완료", validDates = false)
+    }
+    if (today.isBefore(start)) {
+        return CampaignRecruitment(CampaignRecruitState.BEFORE_RECRUIT, false, "모집 예정")
+    }
+    if (today.isAfter(end)) {
+        return CampaignRecruitment(CampaignRecruitState.ENDED, false, "모집완료")
+    }
+
+    val recruitable = joined < capacity
+    val remainingDays = ChronoUnit.DAYS.between(today, end)
+    val label = when {
+        !recruitable -> "모집완료"
+        remainingDays == 0L -> "오늘 마감"
+        else -> "D-$remainingDays"
+    }
+    return CampaignRecruitment(CampaignRecruitState.RECRUITING, recruitable, label)
+}
 
 private fun parseSupportedCampaignDate(value: String): LocalDate? {
     val formatter = when {
