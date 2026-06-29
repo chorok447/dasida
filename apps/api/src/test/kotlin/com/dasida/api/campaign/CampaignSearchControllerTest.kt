@@ -43,6 +43,7 @@ class CampaignSearchControllerTest(
         authorUserId: Long? = null,
         recruitStart: String = "2026-07-01",
         recruitEnd: String = "2026-07-31",
+        runStart: String = "2026-08-01",
     ): String {
         campaignRepo.saveAndFlush(
             Campaign(
@@ -53,7 +54,7 @@ class CampaignSearchControllerTest(
                 thumb = "https://example.com/campaign.png",
                 recruitStart = recruitStart,
                 recruitEnd = recruitEnd,
-                runStart = "2026-08-01",
+                runStart = runStart,
                 runEnd = "2026-08-31",
                 capacity = capacity,
                 joined = joined,
@@ -322,6 +323,208 @@ class CampaignSearchControllerTest(
             status { isOk() }
             jsonPath("$.totalElements") { value(0) }
         }
+    }
+
+    @Test
+    fun `날짜 검색 파라미터는 canonical ISO만 허용하고 빈 값은 생략한다`() {
+        val keyword = marker("date-params")
+        val id = saveCampaign(
+            summary = keyword,
+            recruitEnd = "2026-07-20",
+            runStart = "2026-08-10",
+        )
+
+        mapOf(
+            "recruitEndFrom" to " 2026-07-20 ",
+            "recruitEndTo" to "2026-07-20",
+            "runStartFrom" to "2026-08-10",
+            "runStartTo" to "2026-08-10",
+        ).forEach { (name, value) ->
+            mvc.get("/api/campaigns/search") {
+                param("q", keyword)
+                param(name, value)
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.totalElements") { value(1) }
+                jsonPath("$.content[0].id") { value(id) }
+            }
+        }
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitEndFrom", "")
+            param("recruitEndTo", "   ")
+            param("runStartFrom", "")
+            param("runStartTo", "   ")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+        }
+
+        mapOf(
+            "recruitEndFrom" to "2026.07.20",
+            "recruitEndTo" to "2026/07/20",
+            "runStartFrom" to "2026-02-30",
+            "runStartTo" to "not-a-date",
+        ).forEach { (name, value) ->
+            mvc.get("/api/campaigns/search") { param(name, value) }
+                .andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
+    fun `날짜 검색 범위의 시작일이 종료일보다 늦으면 400`() {
+        mvc.get("/api/campaigns/search") {
+            param("recruitEndFrom", "2026-07-31")
+            param("recruitEndTo", "2026-07-01")
+        }.andExpect { status { isBadRequest() } }
+
+        mvc.get("/api/campaigns/search") {
+            param("runStartFrom", "2026-08-31")
+            param("runStartTo", "2026-08-01")
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `모집 종료일 범위는 경계를 포함한다`() {
+        val keyword = marker("recruit-end-range")
+        val early = saveCampaign(summary = keyword, recruitEnd = "2026-07-10", seq = 300)
+        val boundary = saveCampaign(summary = keyword, recruitEnd = "2026-07-20", seq = 200)
+        val late = saveCampaign(summary = keyword, recruitEnd = "2026-07-30", seq = 100)
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitEndFrom", "2026-07-20")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(boundary, late)) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitEndTo", "2026-07-20")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(early, boundary)) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitEndFrom", "2026-07-20")
+            param("recruitEndTo", "2026-07-20")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(boundary) }
+        }
+    }
+
+    @Test
+    fun `진행 시작일 범위는 경계를 포함한다`() {
+        val keyword = marker("run-start-range")
+        val early = saveCampaign(summary = keyword, runStart = "2026-08-01", seq = 300)
+        val boundary = saveCampaign(summary = keyword, runStart = "2026-08-10", seq = 200)
+        val late = saveCampaign(summary = keyword, runStart = "2026-08-20", seq = 100)
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("runStartFrom", "2026-08-10")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(boundary, late)) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("runStartTo", "2026-08-10")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(early, boundary)) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("runStartFrom", "2026-08-10")
+            param("runStartTo", "2026-08-10")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(boundary) }
+        }
+    }
+
+    @Test
+    fun `날짜 범위는 기존 검색 조건과 정렬 및 pagination에 교집합으로 적용한다`() {
+        val keyword = marker("date-intersection")
+        val early = saveCampaign(
+            status = "open",
+            summary = keyword,
+            capacity = 3,
+            joined = 1,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-20",
+            runStart = "2026-08-10",
+        )
+        val late = saveCampaign(
+            status = "open",
+            summary = keyword,
+            capacity = 3,
+            joined = 2,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-25",
+            runStart = "2026-08-15",
+        )
+        saveCampaign(
+            status = "open",
+            summary = keyword,
+            capacity = 3,
+            joined = 3,
+            recruitEnd = "2026-07-22",
+            runStart = "2026-08-12",
+        )
+        saveCampaign(status = "closed", summary = keyword, recruitEnd = "2026-07-21", runStart = "2026-08-11")
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "open")
+            param("recruitState", "recruiting")
+            param("availableOnly", "true")
+            param("recruitEndFrom", "2026-07-20")
+            param("recruitEndTo", "2026-07-25")
+            param("runStartFrom", "2026-08-10")
+            param("runStartTo", "2026-08-15")
+            param("sort", "deadline")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(early) }
+            jsonPath("$.totalElements") { value(2) }
+            jsonPath("$.totalPages") { value(2) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "open")
+            param("recruitState", "recruiting")
+            param("availableOnly", "true")
+            param("recruitEndFrom", "2026-07-20")
+            param("recruitEndTo", "2026-07-25")
+            param("runStartFrom", "2026-08-10")
+            param("runStartTo", "2026-08-15")
+            param("sort", "deadline")
+            param("page", "1")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(late) }
+        }
+    }
+
+    @Test
+    fun `비정상 legacy 날짜가 남아 있어도 날짜 검색은 500이 아니다`() {
+        val keyword = marker("date-legacy")
+        saveCampaign(summary = keyword, recruitEnd = "legacy-date", runStart = "legacy-date")
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitEndFrom", "2026-01-01")
+            param("runStartTo", "2026-12-31")
+        }.andExpect { status { isOk() } }
     }
 
     @Test

@@ -302,6 +302,10 @@ class CampaignController(
         @RequestParam(defaultValue = "latest") sort: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "9") size: Int,
+        @RequestParam(required = false) recruitEndFrom: String?,
+        @RequestParam(required = false) recruitEndTo: String?,
+        @RequestParam(required = false) runStartFrom: String?,
+        @RequestParam(required = false) runStartTo: String?,
         @AuthenticationPrincipal user: AuthUser?,
     ): CampaignSearchResponse {
         if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
@@ -333,6 +337,28 @@ class CampaignController(
             "deadline" -> CampaignSearchSort.DEADLINE
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign sort")
         }
+        val normalizedRecruitEndFrom = normalizeOptionalCampaignSearchDate(recruitEndFrom, "recruitEndFrom")
+        val normalizedRecruitEndTo = normalizeOptionalCampaignSearchDate(recruitEndTo, "recruitEndTo")
+        val normalizedRunStartFrom = normalizeOptionalCampaignSearchDate(runStartFrom, "runStartFrom")
+        val normalizedRunStartTo = normalizeOptionalCampaignSearchDate(runStartTo, "runStartTo")
+        if (normalizedRecruitEndFrom != null &&
+            normalizedRecruitEndTo != null &&
+            normalizedRecruitEndFrom > normalizedRecruitEndTo
+        ) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "recruitEndFrom must be on or before recruitEndTo",
+            )
+        }
+        if (normalizedRunStartFrom != null &&
+            normalizedRunStartTo != null &&
+            normalizedRunStartFrom > normalizedRunStartTo
+        ) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "runStartFrom must be on or before runStartTo",
+            )
+        }
 
         val result = campaignSearch.search(
             CampaignSearchCondition(
@@ -340,6 +366,10 @@ class CampaignController(
                 status = status,
                 recruitState = recruitStateFilter,
                 availableOnly = availableOnly,
+                recruitEndFrom = normalizedRecruitEndFrom,
+                recruitEndTo = normalizedRecruitEndTo,
+                runStartFrom = normalizedRunStartFrom,
+                runStartTo = normalizedRunStartTo,
                 today = LocalDate.now(clock).toString(),
                 sort = searchSort,
                 page = page,
