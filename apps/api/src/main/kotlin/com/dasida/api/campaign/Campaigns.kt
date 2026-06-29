@@ -82,6 +82,7 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
 
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
+    fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
 }
 
 /** 캠페인 참여자. (campaign_id, user_id) unique 로 중복 참여를 막는다. */
@@ -103,6 +104,7 @@ interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, Str
     fun findByIdAndCampaignId(id: String, campaignId: String): CampaignParticipant?
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
     fun findByUserId(userId: Long): List<CampaignParticipant>
+    fun findByUserId(userId: Long, pageable: Pageable): Page<CampaignParticipant>
     fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignParticipant>
     fun countByCampaignId(campaignId: String): Long
 
@@ -254,6 +256,15 @@ data class CampaignSearchResponse(
     val totalPages: Int,
 )
 
+/** 마이페이지 캠페인 목록(참여/개설) pagination 응답. Spring Page 를 직접 노출하지 않는다. */
+data class CampaignPageResponse(
+    val content: List<CampaignResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
 @RestController
 @RequestMapping("/api/campaigns")
 class CampaignController(
@@ -365,6 +376,54 @@ class CampaignController(
         return campaigns.map {
             it.toResponse(viewerId = user.id, joinedByMe = it.id in joinedIds)
         }
+    }
+
+    /**
+     * 참여 캠페인 pagination. participant row 를 id ASC(deterministic, 참여 일시 없음)로 page 한 뒤
+     * 해당 page 의 campaignId 만 bulk 조회하고 participant page 순서를 보존한다. 삭제된 캠페인의 orphan 은 제외.
+     */
+    @GetMapping("/joined/page")
+    @Transactional(readOnly = true)
+    fun joinedPage(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "9") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignPageResponse {
+        validatePageParams(page, size)
+        val participantPage = participants.findByUserId(user.id, PageRequest.of(page, size, Sort.by("id").ascending()))
+        val campaignIds = participantPage.content.map { it.campaignId }
+        val byId = if (campaignIds.isEmpty()) emptyMap() else repo.findAllById(campaignIds).associateBy { it.id }
+        val ordered = campaignIds.mapNotNull { byId[it] } // participant page 순서 보존, orphan 제외
+        return CampaignPageResponse(
+            content = ordered.map { it.toResponse(viewerId = user.id, joinedByMe = true) },
+            page = page,
+            size = size,
+            totalElements = participantPage.totalElements,
+            totalPages = totalPages(participantPage.totalElements, size),
+        )
+    }
+
+    /** 개설 캠페인 pagination. 최신순(seq DESC, id). 현재 page 의 id 만 대상으로 참여 상태 bulk 조회. */
+    @GetMapping("/mine/page")
+    @Transactional(readOnly = true)
+    fun minePage(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "9") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignPageResponse {
+        validatePageParams(page, size)
+        val result = repo.findByAuthorUserId(
+            user.id,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
+        )
+        val joinedIds = joinedByPage(user.id, result.content.map { it.id })
+        return CampaignPageResponse(
+            content = result.content.map { it.toResponse(viewerId = user.id, joinedByMe = it.id in joinedIds) },
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
     }
 
     @GetMapping("/{id}")
@@ -777,6 +836,21 @@ class CampaignController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "$field must be yyyy-MM-dd")
         }
     }
+
+    private fun validatePageParams(page: Int, size: Int) {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size < 1 || size > MAX_SEARCH_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
+        }
+    }
+
+    /** 현재 page 의 campaignId 만 대상으로 참여 상태 bulk 조회. 빈 page 면 query 생략. */
+    private fun joinedByPage(userId: Long, campaignIds: List<String>): Set<String> =
+        if (campaignIds.isEmpty()) {
+            emptySet()
+        } else {
+            participants.findByUserIdAndCampaignIdIn(userId, campaignIds).map { it.campaignId }.toSet()
+        }
 
     companion object {
         private val CAMPAIGN_STATUSES = setOf("open", "upcoming", "closed")

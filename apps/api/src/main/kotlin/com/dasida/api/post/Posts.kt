@@ -17,6 +17,9 @@ import jakarta.persistence.Index
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
@@ -75,6 +78,8 @@ interface PostRepository : JpaRepository<Post, String> {
 
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Post>
 
+    fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Post>
+
     /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Post p where p.id = :id")
@@ -120,6 +125,7 @@ interface PostBookmarkRepository : JpaRepository<PostBookmark, String> {
     fun existsByPostIdAndUserId(postId: String, userId: Long): Boolean
     fun findByPostIdAndUserId(postId: String, userId: Long): PostBookmark?
     fun findByUserId(userId: Long): List<PostBookmark>
+    fun findByUserId(userId: Long, pageable: Pageable): Page<PostBookmark>
     fun findByUserIdAndPostIdIn(userId: Long, postIds: Collection<String>): List<PostBookmark>
     fun countByPostId(postId: String): Long
 
@@ -240,6 +246,15 @@ data class PostResponse(
 )
 
 data class PostSearchResponse(
+    val content: List<PostResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
+/** 마이페이지 게시글 목록(내 글/저장됨) pagination 응답. Spring Page 를 직접 노출하지 않는다. */
+data class PostPageResponse(
     val content: List<PostResponse>,
     val page: Int,
     val size: Int,
@@ -374,6 +389,61 @@ class PostController(
         return posts.map {
             it.toResponse(viewerId = user.id, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
         }
+    }
+
+    /** 내 게시글 pagination. 최신순(seq DESC, id). 현재 page 의 id 만 대상으로 좋아요/북마크 bulk 조회. */
+    @GetMapping("/mine/page")
+    @Transactional(readOnly = true)
+    fun minePage(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PostPageResponse {
+        validatePageParams(page, size)
+        val result = repo.findByAuthorUserId(
+            user.id,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
+        )
+        val postIds = result.content.map { it.id }
+        val likedIds = likedByPage(user.id, postIds)
+        val bookmarkedIds = bookmarkedByPage(user.id, postIds)
+        return PostPageResponse(
+            content = result.content.map {
+                it.toResponse(viewerId = user.id, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+            },
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
+    }
+
+    /**
+     * 저장한 게시글 pagination. bookmark row 를 id ASC(deterministic, createdAt 없음)로 page 한 뒤
+     * 해당 page 의 postId 만 bulk 조회하고 bookmark page 순서를 보존한다. 삭제된 게시글의 orphan bookmark 는 제외.
+     */
+    @GetMapping("/bookmarks/page")
+    @Transactional(readOnly = true)
+    fun bookmarksPage(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PostPageResponse {
+        validatePageParams(page, size)
+        val bookmarkPage = bookmarkRepo.findByUserId(user.id, PageRequest.of(page, size, Sort.by("id").ascending()))
+        val postIds = bookmarkPage.content.map { it.postId }
+        val postsById = if (postIds.isEmpty()) emptyMap() else repo.findAllById(postIds).associateBy { it.id }
+        val orderedPosts = postIds.mapNotNull { postsById[it] } // bookmark page 순서 보존, orphan 제외
+        val likedIds = likedByPage(user.id, orderedPosts.map { it.id })
+        return PostPageResponse(
+            content = orderedPosts.map {
+                it.toResponse(viewerId = user.id, likedByMe = it.id in likedIds, bookmarkedByMe = true)
+            },
+            page = page,
+            size = size,
+            totalElements = bookmarkPage.totalElements,
+            totalPages = totalPages(bookmarkPage.totalElements, size),
+        )
     }
 
     @GetMapping("/{id}")
@@ -678,6 +748,21 @@ class PostController(
         }
         return normalized
     }
+
+    private fun validatePageParams(page: Int, size: Int) {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size !in 1..MAX_SEARCH_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
+        }
+    }
+
+    /** 현재 page 의 postId 만 대상으로 좋아요 bulk 조회. 빈 page 면 query 생략. */
+    private fun likedByPage(userId: Long, postIds: List<String>): Set<String> =
+        if (postIds.isEmpty()) emptySet() else likeRepo.findByUserIdAndPostIdIn(userId, postIds).map { it.postId }.toSet()
+
+    /** 현재 page 의 postId 만 대상으로 북마크 bulk 조회. 빈 page 면 query 생략. */
+    private fun bookmarkedByPage(userId: Long, postIds: List<String>): Set<String> =
+        if (postIds.isEmpty()) emptySet() else bookmarkRepo.findByUserIdAndPostIdIn(userId, postIds).map { it.postId }.toSet()
 
     companion object {
         private const val MAX_TEXT_LENGTH = 1000

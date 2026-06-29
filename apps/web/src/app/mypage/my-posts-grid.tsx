@@ -1,23 +1,11 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, Heart, MessageCircle, PenLine, RefreshCw } from "lucide-react";
-import { apiGet, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
-import { useAuthSession } from "@/lib/use-auth-session";
+import { FileText, Heart, MessageCircle, PenLine } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import type { Post } from "@/data/posts";
-
-type LoadStatus = "idle" | "loading" | "success" | "error";
-
-type MyPostsState = {
-  identity: string | null;
-  status: LoadStatus;
-  posts: Post[];
-  error: string;
-};
+import { fetchMyPostsPage, type Post } from "@/data/posts";
+import { PaginatedSection } from "./paginated-section";
 
 function StatePanel({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
@@ -101,113 +89,34 @@ function MyPostCard({ post }: { post: Post }) {
   );
 }
 
-export function MyPostsGrid() {
-  const { token } = useAuthSession();
-  const [reloadTick, setReloadTick] = useState(0);
-  const [state, setState] = useState<MyPostsState>(() => ({
-    identity: token,
-    status: token ? "loading" : "idle",
-    posts: [],
-    error: "",
-  }));
-  const generationRef = useRef(0);
-
-  // token 교체 시 이전 사용자 목록을 네트워크 응답보다 먼저 제거
-  if (state.identity !== token) {
-    setState({
-      identity: token,
-      status: token ? "loading" : "idle",
-      posts: [],
-      error: "",
-    });
-  }
-
-  useEffect(() => {
-    if (!token) return;
-
-    const requestToken = token;
-    const generation = ++generationRef.current;
-    let cancelled = false;
-    const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
-
-    apiGet<Post[]>("/api/posts/mine")
-      .then((posts) => {
-        if (!isCurrent()) return;
-        setState((current) =>
-          current.identity === requestToken
-            ? { ...current, status: "success", posts, error: "" }
-            : current,
-        );
-      })
-      .catch((error) => {
-        if (!isCurrent()) return;
-        if (error instanceof ApiError && error.status === 401) {
-          clearSession();
-          return;
-        }
-        setState((current) =>
-          current.identity === requestToken
-            ? {
-                ...current,
-                status: "error",
-                posts: [],
-                error: "내 게시글을 불러오지 못했습니다.",
-              }
-            : current,
-        );
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadTick, token]);
-
-  const retry = () => {
-    setState((current) => ({ ...current, status: "loading", error: "" }));
-    setReloadTick((tick) => tick + 1);
-  };
-
-  if (state.status === "loading") {
-    return (
-      <StatePanel>
-        <RefreshCw size={26} className="animate-spin text-[#7dd3a3]" />
-        <p>내 게시글을 불러오는 중입니다.</p>
-      </StatePanel>
-    );
-  }
-
-  if (state.status === "error") {
-    return (
-      <StatePanel>
-        <p>{state.error}</p>
-        <button type="button" onClick={retry} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
-          다시 시도
-        </button>
-      </StatePanel>
-    );
-  }
-
-  if (state.posts.length === 0) {
-    return (
-      <StatePanel>
-        <FileText size={28} className="text-[#7dd3a3]" />
-        <p>작성한 게시글이 없습니다.</p>
-        <Link
-          href="/posts/new"
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
-        >
-          <PenLine size={14} /> 첫 게시글 작성하기
-        </Link>
-      </StatePanel>
-    );
-  }
-
+export function MyPostsGrid({ page, onPageChange }: { page: number; onPageChange: (page: number) => void }) {
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {state.posts.map((post) => (
-        <MyPostCard key={post.id} post={post} />
-      ))}
-    </div>
+    <PaginatedSection<Post>
+      identityKey="posts"
+      page={page}
+      onPageChange={onPageChange}
+      fetcher={fetchMyPostsPage}
+      loadingLabel="내 게시글을 불러오는 중입니다."
+      errorLabel="내 게시글을 불러오지 못했습니다."
+      empty={
+        <StatePanel>
+          <FileText size={28} className="text-[#7dd3a3]" />
+          <p>작성한 게시글이 없습니다.</p>
+          <Link
+            href="/posts/new"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+          >
+            <PenLine size={14} /> 첫 게시글 작성하기
+          </Link>
+        </StatePanel>
+      }
+      renderItems={(posts) => (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {posts.map((post) => (
+            <MyPostCard key={post.id} post={post} />
+          ))}
+        </div>
+      )}
+    />
   );
 }
