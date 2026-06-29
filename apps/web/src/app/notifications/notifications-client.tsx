@@ -1,153 +1,298 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Heart, MessageCircle, Megaphone, Settings, Bell } from "lucide-react";
+import { Bell, MessageCircle, Users, CheckCheck, Check } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import type { Notification, NotifKind } from "@/data/notifications";
+import { useAuthSession } from "@/lib/use-auth-session";
+import { ApiError } from "@/lib/api";
+import { clearSession, getToken } from "@/lib/auth";
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  relativeTime,
+  type NotificationsResponse,
+} from "@/data/notifications";
 
-type Filter = "all" | NotifKind;
+const PAGE_SIZE = 20;
 
-const filters: { id: Filter; label: string }[] = [
+const filters: { id: "all" | "unread"; label: string }[] = [
   { id: "all", label: "전체" },
-  { id: "like", label: "좋아요" },
-  { id: "comment", label: "댓글" },
-  { id: "campaign", label: "캠페인" },
-  { id: "system", label: "시스템" },
+  { id: "unread", label: "안 읽음" },
 ];
 
-const iconFor: Record<NotifKind, React.ReactNode> = {
-  like: <Heart size={16} />,
-  comment: <MessageCircle size={16} />,
-  campaign: <Megaphone size={16} />,
-  system: <Bell size={16} />,
-};
+function iconFor(type: string) {
+  if (type === "CAMPAIGN_JOINED") return <Users size={16} />;
+  if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} />;
+  return <Bell size={16} />;
+}
 
-const colorFor: Record<NotifKind, string> = {
-  like: "#ed5c48",
-  comment: "#7dd3a3",
-  campaign: "#148a90",
-  system: "#afa58d",
-};
+type Result = { identity: string; status: "success" | "error"; data: NotificationsResponse | null };
 
-export default function NotificationsClient({ notifications }: { notifications: Notification[] }) {
+export default function NotificationsClient() {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const [filter, setFilter] = useState<Filter>("all");
-  const list = notifications.filter((n) => filter === "all" || n.kind === filter);
+  const router = useRouter();
+  const { token, isLoggedIn } = useAuthSession();
 
-  const [push, setPush] = useState(true);
-  const [emails, setEmails] = useState(false);
-  const [campaign, setCampaign] = useState(true);
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [page, setPage] = useState(0);
+  const [retryTick, setRetryTick] = useState(0);
+  const [result, setResult] = useState<Result>({ identity: "", status: "success", data: null });
+  const [busy, setBusy] = useState(false); // 모두 읽음 in-flight (중복 클릭 방지)
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set()); // 개별 읽음 in-flight
+
+  const generationRef = useRef(0);
+
+  // 요청 identity(토큰·페이지·필터·retry). 저장된 결과가 이 값과 다르면 아직 로딩 중으로 간주(동기 setState 회피).
+  const requestIdentity = JSON.stringify([token, page, filter, retryTick]);
+
+  // 비로그인은 로그인 페이지로(로그인 후 알림으로 복귀).
+  useEffect(() => {
+    if (!isLoggedIn) router.replace("/login?next=/notifications");
+  }, [isLoggedIn, router]);
+
+  // 검색 페이지와 동일한 stale 방어: generation + token 으로 늦은 응답이 최신을 덮지 못하게 한다.
+  useEffect(() => {
+    const requestToken = token;
+    if (!requestToken || getToken() !== requestToken) return;
+    const generation = ++generationRef.current;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && generation === generationRef.current && getToken() === requestToken;
+
+    fetchNotifications(page, PAGE_SIZE, filter === "unread")
+      .then((res) => {
+        if (!isCurrent()) return;
+        setResult({ identity: requestIdentity, status: "success", data: res });
+      })
+      .catch((e) => {
+        if (!isCurrent()) return;
+        if (e instanceof ApiError && e.status === 401) {
+          clearSession();
+          router.replace("/login?next=/notifications");
+          return;
+        }
+        setResult({ identity: requestIdentity, status: "error", data: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestIdentity, token, page, filter, router]);
+
+  const current = result.identity === requestIdentity;
+  const loading = !current;
+  const error = current && result.status === "error";
+  const data = current && result.status === "success" ? result.data : null;
+  const list = data?.content ?? [];
+  const unreadCount = data?.unreadCount ?? 0;
+  const totalPages = data?.totalPages ?? 0;
+
+  const changeFilter = (next: "all" | "unread") => {
+    if (next === filter) return;
+    setPage(0);
+    setFilter(next);
+  };
+
+  const markAll = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await markAllNotificationsRead();
+      setRetryTick((t) => t + 1); // 목록·unreadCount 재조회
+    } catch {
+      /* 실패해도 화면 유지 — 다음 조회에서 정합 */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markOne = async (id: string) => {
+    if (pendingIds.has(id)) return;
+    setPendingIds((s) => new Set(s).add(id));
+    try {
+      await markNotificationRead(id);
+      setRetryTick((t) => t + 1);
+    } catch {
+      /* noop */
+    } finally {
+      setPendingIds((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const open = async (id: string, href: string, read: boolean) => {
+    try {
+      if (!read) await markNotificationRead(id);
+    } catch {
+      /* 읽음 실패해도 이동은 진행 */
+    }
+    router.push(href);
+  };
+
+  const cardBg = dark ? "rgba(255,255,255,0.04)" : "#ffffff";
+  const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
+  const fg = dark ? "#f9f7f2" : "#0f1f22";
+
+  if (!isLoggedIn) {
+    return (
+      <section className="min-h-screen flex items-center justify-center" style={{ color: fg }}>
+        <p className="text-[14px] opacity-70">로그인 페이지로 이동합니다…</p>
+      </section>
+    );
+  }
 
   return (
     <section
-      className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
+      className="relative min-h-screen pt-28 pb-20 px-4 sm:px-6 transition-colors overflow-hidden"
       style={{
-        position: "relative",
         backgroundImage: dark
           ? "linear-gradient(180deg,#0f1f22,#1c4044)"
           : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
       }}
     >
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-40 left-1/3 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
-      <div className="max-w-5xl mx-auto relative">
-        <div className="text-center mb-10">
+      <div className="max-w-3xl mx-auto relative">
+        <div className="text-center mb-8">
           <p className="tracking-[0.4em] uppercase mb-3" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
             Notifications
           </p>
-          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            알림
+          <h1
+            style={{
+              fontFamily: "'Black Han Sans', sans-serif",
+              fontSize: "clamp(32px, 4.5vw, 54px)",
+              color: fg,
+            }}
+          >
+            알림{unreadCount > 0 ? ` (${unreadCount > 99 ? "99+" : unreadCount})` : ""}
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
-          <div>
-            <div className="flex gap-1 p-1 rounded-full mb-6 w-fit" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-              {filters.map((f) => {
-                const active = filter === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => setFilter(f.id)}
-                    className="relative px-4 py-2 text-[13px] rounded-full"
-                    style={{ color: active ? "#0f1f22" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
-                  >
-                    {active && <motion.div layoutId="notif-pill" className="absolute inset-0 rounded-full" style={{ background: "#7dd3a3" }} />}
-                    <span className="relative">{f.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="space-y-2">
-              {list.map((n) => (
-                <div
-                  key={n.id}
-                  className="flex items-center gap-4 p-4 rounded-2xl border transition-colors"
-                  style={{
-                    background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-                    borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-                  }}
+        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <div
+            className="flex gap-1 p-1 rounded-full"
+            style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+          >
+            {filters.map((f) => {
+              const active = filter === f.id;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => changeFilter(f.id)}
+                  className="relative px-4 py-2 text-[13px] rounded-full"
+                  style={{ color: active ? "#0f1f22" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
                 >
-                  <div className="relative">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: colorFor[n.kind] + "22", color: colorFor[n.kind] }}
-                    >
-                      {iconFor[n.kind]}
-                    </div>
-                    {n.unread && <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#7dd3a3]" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{n.title}</div>
-                    <div className="text-[12px] opacity-70 truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{n.body}</div>
-                  </div>
-                  {n.thumb && (
-                    <img src={n.thumb} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                  {active && (
+                    <motion.div layoutId="notif-filter-pill" className="absolute inset-0 rounded-full" style={{ background: "#7dd3a3" }} />
                   )}
-                  <span className="text-[11px] opacity-60 flex-shrink-0" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{n.time}</span>
-                </div>
-              ))}
-            </div>
+                  <span className="relative">{f.label}</span>
+                </button>
+              );
+            })}
           </div>
-
-          <aside className="hidden lg:block">
-            <div
-              className="rounded-2xl border p-5 sticky top-24"
-              style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Settings size={14} style={{ color: "#7dd3a3" }} />
-                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: dark ? "#f9f7f2" : "#0f1f22" }}>알림 설정</h3>
-              </div>
-              {[
-                { label: "푸시 알림", v: push, set: setPush },
-                { label: "이메일 알림", v: emails, set: setEmails },
-                { label: "캠페인 알림", v: campaign, set: setCampaign },
-              ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between py-2.5">
-                  <span className="text-[13px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{row.label}</span>
-                  <button
-                    onClick={() => row.set(!row.v)}
-                    className="w-10 h-5 rounded-full p-0.5 transition-colors"
-                    style={{ background: row.v ? "#7dd3a3" : dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-                  >
-                    <motion.div
-                      animate={{ x: row.v ? 20 : 0 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                      className="w-4 h-4 rounded-full bg-white"
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </aside>
+          <button
+            onClick={markAll}
+            disabled={busy || unreadCount === 0}
+            className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40"
+            style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
+          >
+            <CheckCheck size={15} /> 모두 읽음
+          </button>
         </div>
+
+        {loading ? (
+          <div className="py-20 text-center text-[14px] opacity-60" style={{ color: fg }}>
+            불러오는 중…
+          </div>
+        ) : error ? (
+          <div className="py-20 text-center" style={{ color: fg }}>
+            <p className="text-[14px] mb-4 opacity-80">알림을 불러오지 못했습니다.</p>
+            <button
+              onClick={() => setRetryTick((t) => t + 1)}
+              className="text-[13px] px-4 py-2 rounded-full font-medium"
+              style={{ background: "#7dd3a3", color: "#0f1f22" }}
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : list.length === 0 ? (
+          <div className="py-20 text-center text-[14px] opacity-60" style={{ color: fg }}>
+            {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {list.map((n) => (
+              <div
+                key={n.id}
+                className="flex items-center gap-3 p-4 rounded-2xl border transition-colors cursor-pointer"
+                style={{
+                  background: n.read ? cardBg : dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.12)",
+                  borderColor: cardBorder,
+                }}
+                onClick={() => open(n.id, n.href, n.read)}
+              >
+                <div className="relative flex-shrink-0">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "rgba(20,138,144,0.14)", color: "#148a90" }}
+                  >
+                    {iconFor(n.type)}
+                  </div>
+                  {!n.read && <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#7dd3a3]" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] truncate" style={{ color: fg }}>{n.title}</div>
+                  <div className="text-[12px] opacity-70 truncate" style={{ color: fg }}>{n.body}</div>
+                </div>
+                <span className="text-[11px] opacity-60 flex-shrink-0" style={{ color: fg }}>
+                  {relativeTime(n)}
+                </span>
+                {!n.read && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markOne(n.id);
+                    }}
+                    disabled={pendingIds.has(n.id)}
+                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40"
+                    style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
+                    aria-label="읽음 처리"
+                  >
+                    <Check size={15} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && !error && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-8" style={{ color: fg }}>
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page <= 0}
+              className="text-[13px] px-4 py-2 rounded-full disabled:opacity-40"
+              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+            >
+              이전
+            </button>
+            <span className="text-[13px] opacity-70">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => (p + 1 < totalPages ? p + 1 : p))}
+              disabled={page + 1 >= totalPages}
+              className="text-[13px] px-4 py-2 rounded-full disabled:opacity-40"
+              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+            >
+              다음
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
