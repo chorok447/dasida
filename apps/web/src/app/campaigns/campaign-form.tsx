@@ -87,6 +87,9 @@ export function validateCampaignForm(values: CampaignFormValues): ValidationResu
   if (values.recruitStart > values.recruitEnd) {
     return { ok: false, message: "모집 시작일은 모집 종료일보다 늦을 수 없습니다." };
   }
+  if (values.recruitEnd > values.runStart) {
+    return { ok: false, message: "모집 종료일은 진행 시작일보다 늦을 수 없습니다." };
+  }
   if (values.runStart > values.runEnd) {
     return { ok: false, message: "진행 시작일은 진행 종료일보다 늦을 수 없습니다." };
   }

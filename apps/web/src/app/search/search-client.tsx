@@ -28,7 +28,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 
 type SearchType = "all" | "campaigns" | "posts";
-type SearchSort = "latest" | "popular";
+type SearchSort = "latest" | "popular" | "deadline";
 
 type UrlState = {
   query: string;
@@ -54,8 +54,10 @@ function parseType(value: string | null): SearchType {
   return value === "campaigns" || value === "posts" ? value : "all";
 }
 
-function parseSort(value: string | null): SearchSort {
-  return value === "popular" ? "popular" : "latest";
+function parseSort(value: string | null, type: SearchType): SearchSort {
+  if (value === "popular") return "popular";
+  if (value === "deadline" && type === "campaigns") return "deadline";
+  return "latest";
 }
 
 function parsePage(value: string | null): number {
@@ -278,12 +280,15 @@ export default function SearchClient() {
   const [retryTick, setRetryTick] = useState(0);
   const generationRef = useRef(0);
 
-  const urlState = useMemo<UrlState>(() => ({
-    query: (searchParams.get("q") ?? "").slice(0, 100),
-    type: parseType(searchParams.get("type")),
-    sort: parseSort(searchParams.get("sort")),
-    page: parsePage(searchParams.get("page")),
-  }), [searchParams]);
+  const urlState = useMemo<UrlState>(() => {
+    const type = parseType(searchParams.get("type"));
+    return {
+      query: (searchParams.get("q") ?? "").slice(0, 100),
+      type,
+      sort: parseSort(searchParams.get("sort"), type),
+      page: parsePage(searchParams.get("page")),
+    };
+  }, [searchParams]);
   const canonicalHref = buildSearchHref(urlState);
   const currentHref = searchParams.toString() ? `/search?${searchParams.toString()}` : "/search";
 
@@ -303,7 +308,10 @@ export default function SearchClient() {
     : { identity: requestIdentity, status: "loading", campaigns: null, posts: null };
 
   const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
-    const next = { ...urlState, ...changes };
+    const merged = { ...urlState, ...changes };
+    const next: UrlState = merged.type !== "campaigns" && merged.sort === "deadline"
+      ? { ...merged, sort: "latest" }
+      : merged;
     const href = buildSearchHref(next);
     if (replace) router.replace(href, { scroll: false });
     else router.push(href, { scroll: false });
@@ -317,11 +325,13 @@ export default function SearchClient() {
     const requestToken = token;
     if (getToken() !== requestToken) return;
 
-    const params = new URLSearchParams();
-    if (urlState.query) params.set("q", urlState.query);
-    params.set("sort", urlState.sort);
-    params.set("page", urlState.page.toString());
-    params.set("size", "6");
+    const campaignParams = new URLSearchParams();
+    if (urlState.query) campaignParams.set("q", urlState.query);
+    campaignParams.set("sort", urlState.sort);
+    campaignParams.set("page", urlState.page.toString());
+    campaignParams.set("size", "6");
+    const postParams = new URLSearchParams(campaignParams);
+    if (postParams.get("sort") === "deadline") postParams.set("sort", "latest");
 
     const generation = ++generationRef.current;
     let cancelled = false;
@@ -333,13 +343,13 @@ export default function SearchClient() {
       let posts: PostSearchResponse | null = null;
       if (urlState.type === "all") {
         [campaigns, posts] = await Promise.all([
-          apiGet<CampaignSearchResponse>(`/api/campaigns/search?${params.toString()}`),
-          apiGet<PostSearchResponse>(`/api/posts/search?${params.toString()}`),
+          apiGet<CampaignSearchResponse>(`/api/campaigns/search?${campaignParams.toString()}`),
+          apiGet<PostSearchResponse>(`/api/posts/search?${postParams.toString()}`),
         ]);
       } else if (urlState.type === "campaigns") {
-        campaigns = await apiGet<CampaignSearchResponse>(`/api/campaigns/search?${params.toString()}`);
+        campaigns = await apiGet<CampaignSearchResponse>(`/api/campaigns/search?${campaignParams.toString()}`);
       } else {
-        posts = await apiGet<PostSearchResponse>(`/api/posts/search?${params.toString()}`);
+        posts = await apiGet<PostSearchResponse>(`/api/posts/search?${postParams.toString()}`);
       }
       if (!isCurrent()) return;
       setResultState({ identity: requestIdentity, status: "success", campaigns, posts });
@@ -417,6 +427,7 @@ export default function SearchClient() {
               >
                 <option value="latest">최신순</option>
                 <option value="popular">인기순</option>
+                {urlState.type === "campaigns" ? <option value="deadline">마감임박순</option> : null}
               </select>
             </label>
           </div>
