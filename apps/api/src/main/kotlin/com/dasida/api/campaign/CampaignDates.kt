@@ -33,7 +33,7 @@ internal fun parseCampaignDate(value: String, fieldName: String): LocalDate {
 internal fun canonicalCampaignDateOrOriginal(value: String): String =
     parseSupportedCampaignDate(value.trim())?.toString() ?: value
 
-internal enum class CampaignRecruitState(val value: String) {
+enum class CampaignRecruitState(val value: String) {
     BEFORE_RECRUIT("before_recruit"),
     RECRUITING("recruiting"),
     ENDED("ended"),
