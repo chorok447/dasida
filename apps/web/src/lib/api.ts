@@ -32,8 +32,13 @@ async function parseBody(res: Response): Promise<unknown> {
 }
 
 /** 백엔드 GET 호출. 토큰이 있으면 부착(사용자별 상태 계산용). 실패 시 ApiError. */
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders(), cache: "no-store" });
+export async function apiGet<T>(path: string, token?: string | null): Promise<T> {
+  const headers = token === undefined
+    ? authHeaders()
+    : token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
+  const res = await fetch(`${BASE}${path}`, { headers, cache: "no-store" });
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
   return res.json() as Promise<T>;
 }
