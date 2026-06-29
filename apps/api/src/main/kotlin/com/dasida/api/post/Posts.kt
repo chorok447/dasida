@@ -2,6 +2,8 @@ package com.dasida.api.post
 
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.Photos
+import com.dasida.api.notification.NotificationService
+import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
 import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.Column
@@ -254,6 +256,7 @@ class PostController(
     private val bookmarkRepo: PostBookmarkRepository,
     private val commentRepo: PostCommentRepository,
     private val postSearch: PostSearchRepository,
+    private val notifications: NotificationService,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<PostResponse> {
@@ -515,6 +518,15 @@ class PostController(
             ),
         )
         post.comments += 1
+        // 내 게시글에 타인이 댓글 → 게시글 작성자에게 알림(본인 댓글/작성자 미상은 helper 가 생략).
+        notifications.notify(
+            recipientUserId = post.authorUserId,
+            actorUserId = user.id,
+            type = NotificationType.POST_COMMENT_CREATED,
+            title = "${user.name}님이 내 게시글에 댓글을 남겼습니다",
+            body = text,
+            href = "/posts/$id",
+        )
         return comment.toResponse(user.id)
     }
 

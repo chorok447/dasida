@@ -1,12 +1,84 @@
-// 알림 데이터는 백엔드(GET /api/notifications)가 source of truth. 타입만 유지.
-export type NotifKind = "like" | "comment" | "campaign" | "system";
+// 알림은 백엔드(/api/notifications, 인증 필수)가 source of truth. 사용자별 데이터.
+import { apiGet, apiPost } from "@/lib/api";
 
-export type Notification = {
+export type NotificationItem = {
   id: string;
-  kind: NotifKind;
+  type: string;
   title: string;
   body: string;
+  href: string;
+  read: boolean;
+  readAt: string | null;
+  createdAt?: string | null;
   time: string;
-  unread: boolean;
-  thumb?: string;
 };
+
+export type NotificationsResponse = {
+  content: NotificationItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  unreadCount: number;
+};
+
+export type NotificationUnreadCountResponse = {
+  unreadCount: number;
+};
+
+export type NotificationReadAllResponse = {
+  updatedCount: number;
+  unreadCount: number;
+};
+
+// 읽음 처리 후 헤더 badge 가 다시 조회하도록 알리는 이벤트(auth 이벤트와 별개).
+export const NOTIF_EVENT = "dasida-notif";
+
+export function emitNotificationsChanged() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(NOTIF_EVENT));
+}
+
+export function fetchNotifications(
+  page: number,
+  size: number,
+  unreadOnly: boolean,
+): Promise<NotificationsResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    unreadOnly: String(unreadOnly),
+  });
+  return apiGet<NotificationsResponse>(`/api/notifications?${params.toString()}`);
+}
+
+export function fetchNotificationUnreadCount(): Promise<NotificationUnreadCountResponse> {
+  return apiGet<NotificationUnreadCountResponse>("/api/notifications/unread-count");
+}
+
+export async function markNotificationRead(id: string): Promise<NotificationItem> {
+  const res = await apiPost<NotificationItem>(`/api/notifications/${id}/read`, {});
+  emitNotificationsChanged();
+  return res;
+}
+
+export async function markAllNotificationsRead(): Promise<NotificationReadAllResponse> {
+  const res = await apiPost<NotificationReadAllResponse>("/api/notifications/read-all", {});
+  emitNotificationsChanged();
+  return res;
+}
+
+/** createdAt 으로 상대시간 라벨 생성. 없으면 저장된 time 스냅샷 fallback. */
+export function relativeTime(item: Pick<NotificationItem, "createdAt" | "time">): string {
+  if (!item.createdAt) return item.time;
+  const then = new Date(item.createdAt).getTime();
+  if (Number.isNaN(then)) return item.time;
+  const diff = Date.now() - then;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "방금 전";
+  if (min < 60) return `${min}분 전`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}일 전`;
+  return new Date(then).toLocaleDateString("ko-KR");
+}
