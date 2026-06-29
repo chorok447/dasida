@@ -2,7 +2,7 @@
 import { apiDelete, apiGet } from "@/lib/api";
 
 export type CampaignStatus = "open" | "upcoming" | "closed";
-export type CampaignSearchSort = "latest" | "popular";
+export type CampaignSearchSort = "latest" | "popular" | "deadline";
 
 export type Campaign = {
   id: string;

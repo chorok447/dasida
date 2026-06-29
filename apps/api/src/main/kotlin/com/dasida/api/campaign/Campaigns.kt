@@ -40,8 +40,6 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
-import java.time.LocalDate
-import java.time.format.DateTimeParseException
 import java.util.UUID
 
 data class CampaignBody(val heading: String, val paragraphs: List<String>, val images: List<String>)
@@ -132,42 +130,42 @@ object CampaignSeed {
     val campaigns: List<Campaign> = listOf(
         Campaign("c1", "open", "강아지를 위한 업사이클링 댕교복",
             "버려진 의류를 활용해 반려견용 의류를 제작하고 보호소에 기부합니다.", fashion[1],
-            "2026.06.18", "2026.07.18", "2026.07.22", "2026.08.20", 40, 39, "21일 남음",
+            "2026-06-18", "2026-07-18", "2026-07-22", "2026-08-20", 40, 39, "21일 남음",
             Author("김다시", true),
             CampaignBody("캠페인 소개", longBody, listOf(fashion[0], fashion[2]))),
         Campaign("c2", "open", "한강공원 플로깅 데이",
             "달리면서 줍는 환경 캠페인. 토요일 오전 두 시간.", people[0],
-            "2026.06.10", "2026.06.30", "2026.07.05", "2026.07.05", 60, 47, "5일 남음",
+            "2026-06-10", "2026-06-30", "2026-07-05", "2026-07-05", 60, 47, "5일 남음",
             Author("한강러너스", true),
             CampaignBody("캠페인 소개", longBody, listOf(people[2], people[4]))),
         Campaign("c3", "upcoming", "도시 텃밭 워크숍",
             "재활용 화분으로 시작하는 작은 텃밭 클래스.", nature[1],
-            "2026.07.01", "2026.07.20", "2026.07.25", "2026.08.25", 30, 0, "3일 후 모집 시작",
+            "2026-07-01", "2026-07-20", "2026-07-25", "2026-08-25", 30, 0, "3일 후 모집 시작",
             Author("서울도시농부", false),
             CampaignBody("캠페인 소개", longBody, listOf(nature[3], nature[5]))),
         Campaign("c4", "upcoming", "헌 옷 기증 마켓",
             "잠든 옷장을 깨워 다시 입을 곳으로.", market[1],
-            "2026.07.15", "2026.08.05", "2026.08.10", "2026.08.11", 100, 0, "12일 후 모집 시작",
+            "2026-07-15", "2026-08-05", "2026-08-10", "2026-08-11", 100, 0, "12일 후 모집 시작",
             Author("리룸", true),
             CampaignBody("캠페인 소개", longBody, listOf(market[3], market[5]))),
         Campaign("c5", "closed", "폐현수막으로 만드는 에코백",
             "선거철 현수막의 두 번째 인생.", workshop[0],
-            "2026.04.01", "2026.04.30", "2026.05.10", "2026.05.30", 40, 40, "모집완료",
+            "2026-04-01", "2026-04-30", "2026-05-10", "2026-05-30", 40, 40, "모집완료",
             Author("김다시", true),
             CampaignBody("캠페인 결과", longBody, listOf(workshop[3], workshop[5]))),
         Campaign("c6", "closed", "커피박 비누 만들기",
             "버려지는 커피 찌꺼기로 만드는 친환경 비누.", obj[1],
-            "2026.03.10", "2026.03.30", "2026.04.05", "2026.04.20", 25, 25, "모집완료",
+            "2026-03-10", "2026-03-30", "2026-04-05", "2026-04-20", 25, 25, "모집완료",
             Author("원두모음", false),
             CampaignBody("캠페인 결과", longBody, listOf(obj[2], obj[4]))),
         Campaign("c7", "open", "유리병 캔들 메이킹",
             "다 쓴 유리병에 향을 담아 다시.", obj[0],
-            "2026.06.20", "2026.07.10", "2026.07.15", "2026.07.30", 20, 12, "14일 남음",
+            "2026-06-20", "2026-07-10", "2026-07-15", "2026-07-30", 20, 12, "14일 남음",
             Author("보틀앤캔들", true),
             CampaignBody("캠페인 소개", longBody, listOf(obj[3], obj[5]))),
         Campaign("c8", "open", "버려진 가구로 만드는 작은 의자",
             "친구와 함께하는 목공 업사이클.", workshop[2],
-            "2026.06.01", "2026.07.01", "2026.07.10", "2026.07.31", 16, 9, "8일 남음",
+            "2026-06-01", "2026-07-01", "2026-07-10", "2026-07-31", 16, 9, "8일 남음",
             Author("리메이크목공방", false),
             CampaignBody("캠페인 소개", longBody, listOf(workshop[4], workshop[6]))),
     )
@@ -318,6 +316,7 @@ class CampaignController(
         val searchSort = when (sort) {
             "latest" -> CampaignSearchSort.LATEST
             "popular" -> CampaignSearchSort.POPULAR
+            "deadline" -> CampaignSearchSort.DEADLINE
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign sort")
         }
 
@@ -710,7 +709,10 @@ class CampaignController(
         joinedByMe: Boolean = false,
     ) = CampaignResponse(
         id = id, status = status, title = title, summary = summary, thumb = thumb,
-        recruitStart = recruitStart, recruitEnd = recruitEnd, runStart = runStart, runEnd = runEnd,
+        recruitStart = canonicalCampaignDateOrOriginal(recruitStart),
+        recruitEnd = canonicalCampaignDateOrOriginal(recruitEnd),
+        runStart = canonicalCampaignDateOrOriginal(runStart),
+        runEnd = canonicalCampaignDateOrOriginal(runEnd),
         capacity = capacity, joined = joined, daysLeftLabel = daysLeftLabel,
         author = author, body = body, joinedByMe = joinedByMe,
         ownedByMe = authorUserId != null && authorUserId == viewerId,
@@ -802,13 +804,16 @@ class CampaignController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity is too large")
         }
 
-        // 날짜는 ISO yyyy-MM-dd 만 허용. 프론트가 <input type=date> 로 보냄.
+        // ISO와 legacy 점 표기를 strict parsing한 뒤 저장 값은 ISO로 통일한다.
         val recruitStart = parseDateOrBadRequest(recruitStartValue, "recruitStart")
         val recruitEnd = parseDateOrBadRequest(recruitEndValue, "recruitEnd")
         val runStart = parseDateOrBadRequest(runStartValue, "runStart")
         val runEnd = parseDateOrBadRequest(runEndValue, "runEnd")
         if (recruitStart.isAfter(recruitEnd)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "recruitStart must be on or before recruitEnd")
+        }
+        if (recruitEnd.isAfter(runStart)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "recruitEnd must be on or before runStart")
         }
         if (runStart.isAfter(runEnd)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "runStart must be on or before runEnd")
@@ -828,14 +833,7 @@ class CampaignController(
         )
     }
 
-    private fun parseDateOrBadRequest(value: String, field: String): LocalDate {
-        if (value.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "$field is required")
-        return try {
-            LocalDate.parse(value.trim())
-        } catch (_: DateTimeParseException) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "$field must be yyyy-MM-dd")
-        }
-    }
+    private fun parseDateOrBadRequest(value: String, field: String) = parseCampaignDate(value, field)
 
     private fun validatePageParams(page: Int, size: Int) {
         if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")

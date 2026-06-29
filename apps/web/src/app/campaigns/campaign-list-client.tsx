@@ -273,6 +273,7 @@ function FilterBar({
             >
               <option value="latest">최신순</option>
               <option value="popular">인기순</option>
+              <option value="deadline">마감임박순</option>
             </select>
           </label>
         </div>
@@ -289,6 +290,10 @@ function parsePage(value: string | null): number {
 
 function parseFilter(value: string | null): Filter {
   return value === "open" || value === "upcoming" || value === "closed" ? value : "all";
+}
+
+function parseSort(value: string | null): CampaignSearchSort {
+  return value === "popular" || value === "deadline" ? value : "latest";
 }
 
 function StatePanel({ children }: { children: React.ReactNode }) {
@@ -308,7 +313,7 @@ export default function CampaignListClient() {
     query: searchParams.get("q") ?? "",
     filter: parseFilter(searchParams.get("status")),
     availableOnly: searchParams.get("availableOnly") === "true",
-    sort: searchParams.get("sort") === "popular" ? "popular" : "latest",
+    sort: parseSort(searchParams.get("sort")),
     page: parsePage(searchParams.get("page")),
   }), [searchParams]);
   const requestIdentity = JSON.stringify([token, urlState, retryTick]);

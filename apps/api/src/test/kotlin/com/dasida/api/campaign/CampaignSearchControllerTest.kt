@@ -39,6 +39,7 @@ class CampaignSearchControllerTest(
         joined: Int = 0,
         seq: Long = System.nanoTime(),
         authorUserId: Long? = null,
+        recruitEnd: String = "2026-07-31",
     ): String {
         campaignRepo.saveAndFlush(
             Campaign(
@@ -48,7 +49,7 @@ class CampaignSearchControllerTest(
                 summary = summary,
                 thumb = "https://example.com/campaign.png",
                 recruitStart = "2026-07-01",
-                recruitEnd = "2026-07-31",
+                recruitEnd = recruitEnd,
                 runStart = "2026-08-01",
                 runEnd = "2026-08-31",
                 capacity = capacity,
@@ -208,8 +209,127 @@ class CampaignSearchControllerTest(
     }
 
     @Test
+    fun `deadline은 모집중을 우선하고 종료일과 tie breaker 순으로 정렬한다`() {
+        val keyword = marker("deadline-order")
+        val prefix = "deadline-${UUID.randomUUID()}"
+        val openEarly = saveCampaign(
+            id = "$prefix-open-early",
+            status = "open",
+            summary = keyword,
+            recruitEnd = "2026-07-01",
+            seq = 100,
+        )
+        val openTieA = saveCampaign(
+            id = "$prefix-open-tie-a",
+            status = "open",
+            summary = keyword,
+            recruitEnd = "2026-07-10",
+            seq = 200,
+        )
+        val openTieB = saveCampaign(
+            id = "$prefix-open-tie-b",
+            status = "open",
+            summary = keyword,
+            recruitEnd = "2026-07-10",
+            seq = 200,
+        )
+        val openOlder = saveCampaign(
+            id = "$prefix-open-older",
+            status = "open",
+            summary = keyword,
+            recruitEnd = "2026-07-10",
+            seq = 100,
+        )
+        val upcomingEarlier = saveCampaign(
+            id = "$prefix-upcoming",
+            status = "upcoming",
+            summary = keyword,
+            recruitEnd = "2026-06-01",
+            seq = 300,
+        )
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("sort", "deadline")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") {
+                value(Matchers.contains(openEarly, openTieA, openTieB, openOlder, upcomingEarlier))
+            }
+        }
+    }
+
+    @Test
+    fun `deadline은 status와 availableOnly 필터 및 pagination metadata를 유지한다`() {
+        val keyword = marker("deadline-filter")
+        val availableEarly = saveCampaign(
+            status = "open",
+            summary = keyword,
+            capacity = 3,
+            joined = 1,
+            recruitEnd = "2026-07-01",
+        )
+        val availableLate = saveCampaign(
+            status = "open",
+            summary = keyword,
+            capacity = 3,
+            joined = 2,
+            recruitEnd = "2026-07-10",
+        )
+        saveCampaign(
+            status = "open",
+            summary = keyword,
+            capacity = 3,
+            joined = 3,
+            recruitEnd = "2026-06-01",
+        )
+        saveCampaign(status = "upcoming", summary = keyword, recruitEnd = "2026-05-01")
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "open")
+            param("availableOnly", "true")
+            param("sort", "deadline")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(availableEarly) }
+            jsonPath("$.totalElements") { value(2) }
+            jsonPath("$.totalPages") { value(2) }
+        }
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "open")
+            param("availableOnly", "true")
+            param("sort", "deadline")
+            param("page", "1")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(availableLate) }
+        }
+    }
+
+    @Test
+    fun `비정상 legacy 종료일이 남아 있어도 deadline 검색은 500이 아니다`() {
+        val keyword = marker("deadline-legacy")
+        saveCampaign(summary = keyword, recruitEnd = "legacy-date")
+        saveCampaign(summary = keyword, recruitEnd = "2026-07-01")
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("sort", "deadline")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(2) }
+            jsonPath("$.content.length()") { value(2) }
+        }
+    }
+
+    @Test
     fun `잘못된 sort는 400`() {
-        mvc.get("/api/campaigns/search") { param("sort", "deadline") }
+        mvc.get("/api/campaigns/search") { param("sort", "closing-soon") }
             .andExpect { status { isBadRequest() } }
     }
 
