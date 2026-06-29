@@ -8,6 +8,7 @@ import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Search, Users } from "l
 import {
   campaignRecruitMeta,
   type Campaign,
+  type CampaignRecruitState,
   type CampaignSearchResponse,
   type CampaignSearchSort,
   type CampaignStatus,
@@ -27,6 +28,7 @@ type SearchState = {
 type UrlState = {
   query: string;
   filter: Filter;
+  recruitState: CampaignRecruitState | null;
   availableOnly: boolean;
   sort: CampaignSearchSort;
   page: number;
@@ -211,12 +213,14 @@ function FilterBar({
   onFilter,
   onSearch,
   onSort,
+  onRecruitState,
   onAvailableOnly,
 }: {
   state: UrlState;
   onFilter: (filter: Filter) => void;
   onSearch: (query: string) => void;
   onSort: (sort: CampaignSearchSort) => void;
+  onRecruitState: (recruitState: CampaignRecruitState | null) => void;
   onAvailableOnly: (checked: boolean) => void;
 }) {
   const { theme } = useTheme();
@@ -248,6 +252,27 @@ function FilterBar({
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <DebouncedSearchInput key={state.query} value={state.query} onCommit={onSearch} />
         <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-[13px]">
+            <span className="shrink-0 opacity-65">모집 상태</span>
+            <select
+              value={state.recruitState ?? ""}
+              onChange={(event) => onRecruitState(
+                event.target.value ? event.target.value as CampaignRecruitState : null,
+              )}
+              className="rounded-full border px-4 py-2.5 outline-none"
+              style={{
+                color: dark ? "#f9f7f2" : "#0f1f22",
+                background: dark ? "#1c4044" : "#ffffff",
+                borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+              }}
+            >
+              <option value="">전체</option>
+              <option value="before_recruit">모집 예정</option>
+              <option value="recruiting">모집 중</option>
+              <option value="ended">모집 종료</option>
+              <option value="closed">마감</option>
+            </select>
+          </label>
           <label
             className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
             style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
@@ -293,8 +318,25 @@ function parseFilter(value: string | null): Filter {
   return value === "open" || value === "upcoming" || value === "closed" ? value : "all";
 }
 
+function parseRecruitState(value: string | null): CampaignRecruitState | null {
+  return value === "before_recruit" || value === "recruiting" || value === "ended" || value === "closed"
+    ? value
+    : null;
+}
+
 function parseSort(value: string | null): CampaignSearchSort {
   return value === "popular" || value === "deadline" ? value : "latest";
+}
+
+function buildCampaignsHref(state: UrlState): string {
+  const params = new URLSearchParams();
+  if (state.query) params.set("q", state.query);
+  if (state.filter !== "all") params.set("status", state.filter);
+  if (state.recruitState) params.set("recruitState", state.recruitState);
+  if (state.availableOnly) params.set("availableOnly", "true");
+  params.set("sort", state.sort);
+  params.set("page", state.page.toString());
+  return `/campaigns?${params.toString()}`;
 }
 
 function StatePanel({ children }: { children: React.ReactNode }) {
@@ -313,10 +355,17 @@ export default function CampaignListClient() {
   const urlState = useMemo<UrlState>(() => ({
     query: searchParams.get("q") ?? "",
     filter: parseFilter(searchParams.get("status")),
+    recruitState: parseRecruitState(searchParams.get("recruitState")),
     availableOnly: searchParams.get("availableOnly") === "true",
     sort: parseSort(searchParams.get("sort")),
     page: parsePage(searchParams.get("page")),
   }), [searchParams]);
+  const canonicalHref = buildCampaignsHref(urlState);
+  const currentHref = searchParams.toString() ? `/campaigns?${searchParams.toString()}` : "/campaigns";
+
+  useEffect(() => {
+    if (currentHref !== canonicalHref) router.replace(canonicalHref, { scroll: false });
+  }, [canonicalHref, currentHref, router]);
   const requestIdentity = JSON.stringify([token, urlState, retryTick]);
   const [searchState, setSearchState] = useState<SearchState>({
     identity: "",
@@ -333,13 +382,7 @@ export default function CampaignListClient() {
 
   const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
     const next = { ...urlState, ...changes };
-    const params = new URLSearchParams();
-    if (next.query) params.set("q", next.query);
-    if (next.filter !== "all") params.set("status", next.filter);
-    if (next.availableOnly) params.set("availableOnly", "true");
-    params.set("sort", next.sort);
-    params.set("page", next.page.toString());
-    const href = `/campaigns?${params.toString()}`;
+    const href = buildCampaignsHref(next);
     if (replace) router.replace(href, { scroll: false });
     else router.push(href, { scroll: false });
   }, [router, urlState]);
@@ -355,6 +398,7 @@ export default function CampaignListClient() {
     const params = new URLSearchParams();
     if (urlState.query) params.set("q", urlState.query);
     if (urlState.filter !== "all") params.set("status", urlState.filter);
+    if (urlState.recruitState) params.set("recruitState", urlState.recruitState);
     params.set("availableOnly", urlState.availableOnly.toString());
     params.set("sort", urlState.sort);
     params.set("page", urlState.page.toString());
@@ -382,7 +426,16 @@ export default function CampaignListClient() {
     return () => {
       cancelled = true;
     };
-  }, [requestIdentity, token, urlState.availableOnly, urlState.filter, urlState.page, urlState.query, urlState.sort]);
+  }, [
+    requestIdentity,
+    token,
+    urlState.availableOnly,
+    urlState.filter,
+    urlState.page,
+    urlState.query,
+    urlState.recruitState,
+    urlState.sort,
+  ]);
 
   const response = currentState.response;
 
@@ -434,6 +487,7 @@ export default function CampaignListClient() {
           onFilter={(filter) => updateUrl({ filter, page: 0 })}
           onSearch={commitSearch}
           onSort={(sort) => updateUrl({ sort, page: 0 })}
+          onRecruitState={(recruitState) => updateUrl({ recruitState, page: 0 })}
           onAvailableOnly={(availableOnly) => updateUrl({ availableOnly, page: 0 })}
         />
 

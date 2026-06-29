@@ -297,6 +297,7 @@ class CampaignController(
     fun search(
         @RequestParam(name = "q", required = false) q: String?,
         @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) recruitState: String?,
         @RequestParam(defaultValue = "false") availableOnly: Boolean,
         @RequestParam(defaultValue = "latest") sort: String,
         @RequestParam(defaultValue = "0") page: Int,
@@ -318,6 +319,14 @@ class CampaignController(
         if (status != null && status !in CAMPAIGN_STATUSES) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign status")
         }
+        val recruitStateFilter = when (recruitState) {
+            null -> null
+            "before_recruit" -> CampaignRecruitState.BEFORE_RECRUIT
+            "recruiting" -> CampaignRecruitState.RECRUITING
+            "ended" -> CampaignRecruitState.ENDED
+            "closed" -> CampaignRecruitState.CLOSED
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid campaign recruitState")
+        }
         val searchSort = when (sort) {
             "latest" -> CampaignSearchSort.LATEST
             "popular" -> CampaignSearchSort.POPULAR
@@ -329,6 +338,7 @@ class CampaignController(
             CampaignSearchCondition(
                 query = query,
                 status = status,
+                recruitState = recruitStateFilter,
                 availableOnly = availableOnly,
                 today = LocalDate.now(clock).toString(),
                 sort = searchSort,

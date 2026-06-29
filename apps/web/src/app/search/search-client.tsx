@@ -18,6 +18,7 @@ import { Avatar } from "@/components/avatar";
 import {
   campaignRecruitMeta,
   type Campaign,
+  type CampaignRecruitState,
   type CampaignSearchResponse,
 } from "@/data/campaigns";
 import type { Post, PostSearchResponse } from "@/data/posts";
@@ -34,6 +35,8 @@ type UrlState = {
   query: string;
   type: SearchType;
   sort: SearchSort;
+  recruitState: CampaignRecruitState | null;
+  availableOnly: boolean;
   page: number;
 };
 
@@ -66,11 +69,21 @@ function parsePage(value: string | null): number {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+function parseRecruitState(value: string | null): CampaignRecruitState | null {
+  return value === "before_recruit" || value === "recruiting" || value === "ended" || value === "closed"
+    ? value
+    : null;
+}
+
 function buildSearchHref(state: UrlState): string {
   const params = new URLSearchParams();
   if (state.query) params.set("q", state.query);
   params.set("type", state.type);
   params.set("sort", state.sort);
+  if (state.type === "campaigns") {
+    if (state.recruitState) params.set("recruitState", state.recruitState);
+    if (state.availableOnly) params.set("availableOnly", "true");
+  }
   params.set("page", state.page.toString());
   return `/search?${params.toString()}`;
 }
@@ -286,6 +299,8 @@ export default function SearchClient() {
       query: (searchParams.get("q") ?? "").slice(0, 100),
       type,
       sort: parseSort(searchParams.get("sort"), type),
+      recruitState: type === "campaigns" ? parseRecruitState(searchParams.get("recruitState")) : null,
+      availableOnly: type === "campaigns" && searchParams.get("availableOnly") === "true",
       page: parsePage(searchParams.get("page")),
     };
   }, [searchParams]);
@@ -309,9 +324,14 @@ export default function SearchClient() {
 
   const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
     const merged = { ...urlState, ...changes };
-    const next: UrlState = merged.type !== "campaigns" && merged.sort === "deadline"
-      ? { ...merged, sort: "latest" }
-      : merged;
+    const next: UrlState = merged.type === "campaigns"
+      ? merged
+      : {
+          ...merged,
+          sort: merged.sort === "deadline" ? "latest" : merged.sort,
+          recruitState: null,
+          availableOnly: false,
+        };
     const href = buildSearchHref(next);
     if (replace) router.replace(href, { scroll: false });
     else router.push(href, { scroll: false });
@@ -328,10 +348,19 @@ export default function SearchClient() {
     const campaignParams = new URLSearchParams();
     if (urlState.query) campaignParams.set("q", urlState.query);
     campaignParams.set("sort", urlState.sort);
+    if (urlState.type === "campaigns" && urlState.recruitState) {
+      campaignParams.set("recruitState", urlState.recruitState);
+    }
+    if (urlState.type === "campaigns" && urlState.availableOnly) {
+      campaignParams.set("availableOnly", "true");
+    }
     campaignParams.set("page", urlState.page.toString());
     campaignParams.set("size", "6");
-    const postParams = new URLSearchParams(campaignParams);
-    if (postParams.get("sort") === "deadline") postParams.set("sort", "latest");
+    const postParams = new URLSearchParams();
+    if (urlState.query) postParams.set("q", urlState.query);
+    postParams.set("sort", urlState.sort === "popular" ? "popular" : "latest");
+    postParams.set("page", urlState.page.toString());
+    postParams.set("size", "6");
 
     const generation = ++generationRef.current;
     let cancelled = false;
@@ -367,7 +396,16 @@ export default function SearchClient() {
     return () => {
       cancelled = true;
     };
-  }, [requestIdentity, token, urlState.page, urlState.query, urlState.sort, urlState.type]);
+  }, [
+    requestIdentity,
+    token,
+    urlState.availableOnly,
+    urlState.page,
+    urlState.query,
+    urlState.recruitState,
+    urlState.sort,
+    urlState.type,
+  ]);
 
   const campaignResponse = currentState.campaigns;
   const postResponse = currentState.posts;
@@ -431,6 +469,42 @@ export default function SearchClient() {
               </select>
             </label>
           </div>
+          {urlState.type === "campaigns" ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex min-w-0 flex-1 items-center gap-2 text-[13px] sm:flex-none">
+                <span className="shrink-0 opacity-65">모집 상태</span>
+                <select
+                  value={urlState.recruitState ?? ""}
+                  onChange={(event) => updateUrl({
+                    recruitState: event.target.value
+                      ? event.target.value as CampaignRecruitState
+                      : null,
+                    page: 0,
+                  })}
+                  className="min-w-0 rounded-full border px-4 py-2.5 outline-none"
+                  style={{ color: dark ? "#f9f7f2" : "#0f1f22", background: dark ? "#1c4044" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)" }}
+                >
+                  <option value="">전체</option>
+                  <option value="before_recruit">모집 예정</option>
+                  <option value="recruiting">모집 중</option>
+                  <option value="ended">모집 종료</option>
+                  <option value="closed">마감</option>
+                </select>
+              </label>
+              <label
+                className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
+                style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={urlState.availableOnly}
+                  onChange={(event) => updateUrl({ availableOnly: event.target.checked, page: 0 })}
+                  className="accent-[#148a90]"
+                />
+                참여 가능
+              </label>
+            </div>
+          ) : null}
         </div>
 
         <div className="mb-5 flex items-center justify-between gap-3">

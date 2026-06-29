@@ -161,6 +161,112 @@ class CampaignSearchControllerTest(
     }
 
     @Test
+    fun `recruitState는 현재 날짜와 운영 상태로 파생해 필터한다`() {
+        val keyword = marker("recruit-state")
+        val upcoming = saveCampaign(status = "upcoming", summary = keyword, seq = 600)
+        val openBefore = saveCampaign(
+            status = "open",
+            summary = keyword,
+            recruitStart = "2026-07-16",
+            recruitEnd = "2026-07-31",
+            seq = 500,
+        )
+        val recruiting = saveCampaign(
+            status = "open",
+            summary = keyword,
+            recruitStart = "2026-07-15",
+            recruitEnd = "2026-07-15",
+            seq = 400,
+        )
+        val ended = saveCampaign(
+            status = "open",
+            summary = keyword,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-14",
+            seq = 300,
+        )
+        val closed = saveCampaign(status = "closed", summary = keyword, seq = 200)
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitState", "before_recruit")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(2) }
+            jsonPath("$.content[*].id") { value(Matchers.contains(upcoming, openBefore)) }
+            jsonPath("$.content[*].recruitState") {
+                value(Matchers.everyItem(Matchers.`is`("before_recruit")))
+            }
+        }
+        listOf(
+            "recruiting" to recruiting,
+            "ended" to ended,
+            "closed" to closed,
+        ).forEach { (state, id) ->
+            mvc.get("/api/campaigns/search") {
+                param("q", keyword)
+                param("recruitState", state)
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.totalElements") { value(1) }
+                jsonPath("$.content[0].id") { value(id) }
+                jsonPath("$.content[0].recruitState") { value(state) }
+            }
+        }
+        mvc.get("/api/campaigns/search") { param("q", keyword) }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(5) }
+        }
+    }
+
+    @Test
+    fun `recruitState는 정확한 lowercase 값만 허용한다`() {
+        listOf("RECRUITING", "before-recruit", "unknown").forEach { recruitState ->
+            mvc.get("/api/campaigns/search") { param("recruitState", recruitState) }
+                .andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
+    fun `status와 검색어와 recruitState는 교집합으로 적용한다`() {
+        val keyword = marker("recruit-intersection")
+        val recruiting = saveCampaign(
+            status = "open",
+            title = "$keyword 모집 중",
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-31",
+        )
+        saveCampaign(
+            status = "open",
+            title = "$keyword 모집 종료",
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-14",
+        )
+        saveCampaign(status = "closed", title = "$keyword 마감")
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "open")
+            param("recruitState", "recruiting")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(recruiting) }
+            jsonPath("$.content[0].recruitState") { value("recruiting") }
+            jsonPath("$.content[0].recruitable") { value(true) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("status", "closed")
+            param("recruitState", "recruiting")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(0) }
+            jsonPath("$.content.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `availableOnly는 모집 기간 중이고 정원이 남은 open 캠페인만 반환한다`() {
         val keyword = marker("available")
         val available = saveCampaign(status = "open", capacity = 3, joined = 2, summary = keyword)
@@ -198,6 +304,23 @@ class CampaignSearchControllerTest(
             status { isOk() }
             jsonPath("$.totalElements") { value(0) }
             jsonPath("$.content.length()") { value(0) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitState", "recruiting")
+            param("availableOnly", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(1) }
+            jsonPath("$.content[0].id") { value(available) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitState", "before_recruit")
+            param("availableOnly", "true")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements") { value(0) }
         }
     }
 
@@ -329,6 +452,51 @@ class CampaignSearchControllerTest(
     }
 
     @Test
+    fun `deadline과 recruitState 조합은 정렬과 pagination metadata를 유지한다`() {
+        val keyword = marker("deadline-recruit-state")
+        val early = saveCampaign(
+            status = "open",
+            summary = keyword,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-20",
+        )
+        val late = saveCampaign(
+            status = "open",
+            summary = keyword,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-31",
+        )
+        saveCampaign(
+            status = "open",
+            summary = keyword,
+            recruitStart = "2026-07-01",
+            recruitEnd = "2026-07-14",
+        )
+
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitState", "recruiting")
+            param("sort", "deadline")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(early) }
+            jsonPath("$.totalElements") { value(2) }
+            jsonPath("$.totalPages") { value(2) }
+        }
+        mvc.get("/api/campaigns/search") {
+            param("q", keyword)
+            param("recruitState", "recruiting")
+            param("sort", "deadline")
+            param("page", "1")
+            param("size", "1")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].id") { value(late) }
+        }
+    }
+
+    @Test
     fun `비정상 legacy 종료일이 남아 있어도 deadline 검색은 500이 아니다`() {
         val keyword = marker("deadline-legacy")
         saveCampaign(summary = keyword, recruitEnd = "legacy-date")
@@ -400,6 +568,8 @@ class CampaignSearchControllerTest(
 
         mvc.get("/api/campaigns/search") { param("q", keyword) }.andExpect {
             status { isOk() }
+            jsonPath("$.content[0].recruitState") { value("recruiting") }
+            jsonPath("$.content[0].recruitable") { value(true) }
             jsonPath("$.content[0].joinedByMe") { value(false) }
             jsonPath("$.content[0].ownedByMe") { value(false) }
         }
