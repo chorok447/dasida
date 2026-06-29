@@ -27,7 +27,9 @@ export default function LoginPage() {
     try {
       const res = await apiPost<AuthResponse>("/api/auth/login", { email, password });
       setSession(res.token, res.name);
-      router.push("/feed");
+      // 보호 페이지에서 넘어온 경우 복귀(open redirect 방지: 내부 경로만 허용).
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") ? next : "/feed");
     } catch (e) {
       setSubmitting(false);
       // 보안상 이메일 존재 여부는 드러내지 않음(401은 자격증명 오류로 통일). 그 외는 일시적 오류 안내.
