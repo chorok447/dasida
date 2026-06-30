@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -72,6 +73,10 @@ interface NotificationRepository : JpaRepository<Notification, String> {
     @Modifying
     @Query("update Notification n set n.readAt = :readAt where n.userId = :userId and n.readAt is null")
     fun markAllRead(@Param("userId") userId: Long, @Param("readAt") readAt: Instant): Int
+
+    @Modifying
+    @Query("delete from Notification n where n.userId = :userId and n.readAt is not null")
+    fun deleteReadByUserId(@Param("userId") userId: Long): Int
 }
 
 data class NotificationResponse(
@@ -98,6 +103,10 @@ data class NotificationsResponse(
 data class NotificationUnreadCountResponse(val unreadCount: Long)
 
 data class NotificationReadAllResponse(val updatedCount: Long, val unreadCount: Long)
+
+data class NotificationDeleteResponse(val deleted: Boolean, val unreadCount: Long)
+
+data class NotificationDeleteReadResponse(val deletedCount: Long, val unreadCount: Long)
 
 fun Notification.toResponse() = NotificationResponse(
     id = id,
@@ -212,6 +221,31 @@ class NotificationController(private val repo: NotificationRepository) {
     fun readAll(@AuthenticationPrincipal user: AuthUser): NotificationReadAllResponse {
         val updated = repo.markAllRead(user.id, Instant.now())
         return NotificationReadAllResponse(updatedCount = updated.toLong(), unreadCount = 0)
+    }
+
+    @DeleteMapping("/read")
+    @Transactional
+    fun deleteRead(@AuthenticationPrincipal user: AuthUser): NotificationDeleteReadResponse {
+        val deleted = repo.deleteReadByUserId(user.id)
+        return NotificationDeleteReadResponse(
+            deletedCount = deleted.toLong(),
+            unreadCount = repo.countByUserIdAndReadAtIsNull(user.id),
+        )
+    }
+
+    @DeleteMapping("/{id}")
+    @Transactional
+    fun delete(
+        @PathVariable id: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ): NotificationDeleteResponse {
+        val notification = repo.findByIdAndUserId(id, user.id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "notification $id not found")
+        repo.delete(notification)
+        return NotificationDeleteResponse(
+            deleted = true,
+            unreadCount = repo.countByUserIdAndReadAtIsNull(user.id),
+        )
     }
 
     private companion object {
