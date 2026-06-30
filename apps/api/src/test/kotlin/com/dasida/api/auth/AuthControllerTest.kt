@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.MediaType
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
@@ -24,6 +25,7 @@ class AuthControllerTest(
     @Autowired val repo: UserRepository,
     @Autowired val jwt: JwtService,
     @Autowired val objectMapper: ObjectMapper,
+    @Autowired val passwordEncoder: PasswordEncoder,
 ) {
 
     private fun saveUser(
@@ -36,6 +38,34 @@ class AuthControllerTest(
     )
 
     private fun authorization(user: User) = "Bearer ${jwt.issue(user)}"
+
+    private fun savePasswordUser(
+        email: String,
+        password: String = "Current1!",
+        name: String = "비밀번호사용자",
+        verified: Boolean = false,
+    ): User = saveUser(
+        email = email,
+        name = name,
+        verified = verified,
+        passwordHash = passwordEncoder.encode(password),
+    )
+
+    private fun changePassword(
+        user: User,
+        currentPassword: String,
+        newPassword: String,
+        authenticated: Boolean = true,
+    ) = mvc.put("/api/auth/password") {
+        if (authenticated) headers { add("Authorization", authorization(user)) }
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(ChangePasswordRequest(currentPassword, newPassword))
+    }
+
+    private fun login(email: String, password: String) = mvc.post("/api/auth/login") {
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(LoginRequest(email, password))
+    }
 
     @Test
     fun `회원가입하면 201과 토큰을 반환한다`() {
@@ -157,6 +187,95 @@ class AuthControllerTest(
                 contentType = MediaType.APPLICATION_JSON
                 content = """{"email":"bad$i@dasida.com","password":"$pw","name":"불가"}"""
             }.andExpect { status { isBadRequest() } }
+        }
+    }
+
+    // ---- 비밀번호 변경 ----
+
+    @Test
+    fun `비로그인 비밀번호 변경은 401`() {
+        val user = savePasswordUser(email = "password-unauthorized@dasida.com")
+
+        changePassword(user, "Current1!", "Changed2@", authenticated = false)
+            .andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `비밀번호 변경은 현재 비밀번호와 새 비밀번호 정책을 검증한다`() {
+        val user = savePasswordUser(email = "password-policy@dasida.com")
+        val originalHash = user.passwordHash
+        val invalidRequests = listOf(
+            "" to "Changed2@",
+            "Current1!" to "",
+            "Current1!" to "Ab1!",
+            "Current1!" to ("a".repeat(13) + "A1!"),
+            "Current1!" to "1234567!",
+            "Current1!" to "password!",
+            "Current1!" to "password1",
+            "Current1!" to "Current1!",
+        )
+
+        invalidRequests.forEach { (currentPassword, newPassword) ->
+            changePassword(user, currentPassword, newPassword)
+                .andExpect { status { isBadRequest() } }
+        }
+        assertThat(repo.findById(requireNotNull(user.id)).orElseThrow().passwordHash).isEqualTo(originalHash)
+    }
+
+    @Test
+    fun `현재 비밀번호가 틀리면 hash와 로그인 비밀번호를 유지한다`() {
+        val email = "password-wrong@dasida.com"
+        val user = savePasswordUser(email = email)
+        val originalHash = user.passwordHash
+
+        changePassword(user, "Wrong1!x", "Changed2@")
+            .andExpect { status { isBadRequest() } }
+
+        assertThat(repo.findById(requireNotNull(user.id)).orElseThrow().passwordHash).isEqualTo(originalHash)
+        login(email, "Current1!").andExpect { status { isOk() } }
+        login(email, "Changed2@").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `비밀번호 변경은 hash를 갱신하고 새 JWT를 반환한다`() {
+        val email = "password-success@dasida.com"
+        val user = savePasswordUser(
+            email = email,
+            name = "이름유지",
+            verified = true,
+        )
+        val originalHash = user.passwordHash
+
+        val response = changePassword(user, "Current1!", "Changed2@").andExpect {
+            status { isOk() }
+            jsonPath("$.changed") { value(true) }
+            jsonPath("$.token") { isNotEmpty() }
+            jsonPath("$.passwordHash") { doesNotExist() }
+            jsonPath("$.currentPassword") { doesNotExist() }
+            jsonPath("$.newPassword") { doesNotExist() }
+        }.andReturn().response
+
+        val changed = repo.findById(requireNotNull(user.id)).orElseThrow()
+        assertThat(changed.passwordHash).isNotEqualTo(originalHash)
+        assertThat(changed.passwordHash).isNotEqualTo("Changed2@")
+        assertThat(passwordEncoder.matches("Changed2@", changed.passwordHash)).isTrue()
+        assertThat(changed.email).isEqualTo(email)
+        assertThat(changed.name).isEqualTo("이름유지")
+        assertThat(changed.verified).isTrue()
+
+        login(email, "Current1!").andExpect { status { isUnauthorized() } }
+        login(email, "Changed2@").andExpect { status { isOk() } }
+
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        assertThat(newToken).isNotBlank()
+        mvc.get("/api/auth/me") {
+            headers { add("Authorization", "Bearer $newToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.email") { value(email) }
+            jsonPath("$.name") { value("이름유지") }
+            jsonPath("$.verified") { value(true) }
+            jsonPath("$.passwordHash") { doesNotExist() }
         }
     }
 

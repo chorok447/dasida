@@ -11,6 +11,7 @@ import type { UserProfile } from "@/data/users";
 import { MyPostsGrid } from "./my-posts-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { UserCampaignsList } from "./joined-campaigns-list";
+import { ChangePasswordForm } from "./change-password-form";
 
 type Tab = "posts" | "campaigns" | "created" | "saved";
 
@@ -218,6 +219,7 @@ export default function MyPageClient() {
         ) : (
           <>
             <ProfileHeader profile={profile} />
+            <ChangePasswordForm key={profile.id} profileName={profile.name} />
             <Tabs tab={tab} onSelect={onSelectTab} />
             <div className="mx-auto max-w-5xl px-6 py-10 sm:px-8">
               {tab === "posts" ? <MyPostsGrid page={page} onPageChange={onPageChange} /> : null}

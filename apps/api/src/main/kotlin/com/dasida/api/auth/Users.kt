@@ -29,7 +29,7 @@ import org.springframework.web.server.ResponseStatusException
 class User(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) val id: Long? = null,
     @Column(unique = true) val email: String,
-    @JsonIgnore val passwordHash: String,
+    @JsonIgnore var passwordHash: String,
     var name: String,
     val verified: Boolean = false,
 )
@@ -45,6 +45,8 @@ data class AuthResponse(val token: String, val name: String, val verified: Boole
 data class UserProfileResponse(val id: Long, val email: String, val name: String, val verified: Boolean)
 data class UpdateProfileRequest(val name: String)
 data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)
+data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
+data class ChangePasswordResponse(val changed: Boolean, val token: String?)
 
 @RestController
 @RequestMapping("/api/auth")
@@ -65,12 +67,7 @@ class AuthController(
         if (!email.matches(EMAIL_RE)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid email format")
         }
-        if (!req.password.matches(PASSWORD_RE)) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "password must be 8-15 chars with letters, digits and a special character",
-            )
-        }
+        validatePassword(req.password)
         // 빠른 실패용 사전 체크. 동시 가입 경쟁은 아래 unique 제약 위반 catch 로 처리.
         if (repo.existsByEmail(email)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
@@ -113,6 +110,27 @@ class AuthController(
         return UpdateProfileResponse(token = jwt.issue(user), profile = user.toProfile())
     }
 
+    @PutMapping("/password")
+    @Transactional
+    fun changePassword(
+        @AuthenticationPrincipal principal: AuthUser?,
+        @RequestBody req: ChangePasswordRequest,
+    ): ChangePasswordResponse {
+        val user = currentUser(principal)
+        if (req.currentPassword.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
+        }
+        if (!encoder.matches(req.currentPassword, user.passwordHash)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is incorrect")
+        }
+        validatePassword(req.newPassword)
+        if (encoder.matches(req.newPassword, user.passwordHash)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "new password must be different")
+        }
+        user.passwordHash = encoder.encode(req.newPassword)
+        return ChangePasswordResponse(changed = true, token = jwt.issue(user))
+    }
+
     private fun currentUser(principal: AuthUser?): User {
         val userId = principal?.id
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
@@ -135,6 +153,15 @@ class AuthController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name is too long")
         }
         return name
+    }
+
+    private fun validatePassword(password: String) {
+        if (!password.matches(PASSWORD_RE)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "password must be 8-15 chars with letters, digits and a special character",
+            )
+        }
     }
 
     companion object {
