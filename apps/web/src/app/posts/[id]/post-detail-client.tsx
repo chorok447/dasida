@@ -13,6 +13,7 @@ import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import {
+  fetchPostCommentPageLocation,
   fetchPostCommentsPage,
   type Post,
   type PostComment,
@@ -27,6 +28,13 @@ type CommentsState = {
   status: "loading" | "success" | "error";
   response: PostCommentsPageResponse | null;
   error: string;
+};
+
+type TargetLocationState = {
+  identity: string;
+  status: "loading" | "success" | "not-found" | "error";
+  page: number | null;
+  message: string;
 };
 
 function parseCommentsPage(value: string | null): number {
@@ -103,15 +111,42 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   // ---- 댓글 ----
   const commentsPage = parseCommentsPage(searchParams.get("commentsPage"));
   const rawCommentsPage = searchParams.get("commentsPage");
+  const targetCommentId = searchParams.get("commentId")?.trim() || null;
   const [commentCount, setCommentCount] = useState(post.comments);
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const commentsRequestGenerationRef = useRef(0);
+  const targetRequestGenerationRef = useRef(0);
   const deletingCommentIdsRef = useRef(new Set<string>());
   const [deletingCommentIds, setDeletingCommentIds] = useState<Set<string>>(() => new Set());
   const commentSectionRef = useRef<HTMLDivElement>(null);
-  const commentsRequestIdentity = JSON.stringify([p.id, token, commentsPage, reloadTick]);
+  const targetIdentity = JSON.stringify([p.id, targetCommentId]);
+  const [targetLocationState, setTargetLocationState] = useState<TargetLocationState>({
+    identity: "",
+    status: "loading",
+    page: null,
+    message: "",
+  });
+  const currentTargetLocation: TargetLocationState | null = targetCommentId
+    ? targetLocationState.identity === targetIdentity
+      ? targetLocationState
+      : { identity: targetIdentity, status: "loading", page: null, message: "" }
+    : null;
+  const targetLocationStatus = currentTargetLocation?.status;
+  const targetLocationPage = currentTargetLocation?.page;
+  const targetLocationMessage = currentTargetLocation?.message ?? "";
+  const targetResolution = currentTargetLocation
+    ? `${currentTargetLocation.status}:${currentTargetLocation.page ?? ""}`
+    : "none";
+  const commentsRequestIdentity = JSON.stringify([
+    p.id,
+    token,
+    commentsPage,
+    reloadTick,
+    targetCommentId,
+    targetResolution,
+  ]);
   const [commentsState, setCommentsState] = useState<CommentsState>({
     identity: "",
     status: "loading",
@@ -121,13 +156,16 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const currentCommentsState: CommentsState = commentsState.identity === commentsRequestIdentity
     ? commentsState
     : { identity: commentsRequestIdentity, status: "loading", response: null, error: "" };
+  const currentCommentsStatus = currentCommentsState.status;
+  const currentCommentsResponse = currentCommentsState.response;
   const visibleComments = currentCommentsState.response?.content ?? [];
   const visibleCommentsLoading = currentCommentsState.status === "loading";
   const commentsError = currentCommentsState.status === "error" ? currentCommentsState.error : "";
 
-  const updateCommentsPage = useCallback((page: number, replace = false) => {
+  const updateCommentsPage = useCallback((page: number, replace = false, preserveTarget = false) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("commentsPage", Math.max(0, page).toString());
+    if (!preserveTarget) params.delete("commentId");
     const href = `/posts/${encodeURIComponent(p.id)}?${params.toString()}`;
     if (replace) router.replace(href, { scroll: false });
     else router.push(href, { scroll: false });
@@ -135,13 +173,54 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
   useEffect(() => {
     if (rawCommentsPage !== null && rawCommentsPage !== commentsPage.toString()) {
-      updateCommentsPage(commentsPage, true);
+      updateCommentsPage(commentsPage, true, !!targetCommentId);
     }
-  }, [commentsPage, rawCommentsPage, updateCommentsPage]);
+  }, [commentsPage, rawCommentsPage, targetCommentId, updateCommentsPage]);
+
+  // commentId가 있으면 목록보다 먼저 위치를 확인한다. commentsPage가 함께 있어도 location 결과가 우선한다.
+  useEffect(() => {
+    if (!targetCommentId) return;
+    const generation = ++targetRequestGenerationRef.current;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && generation === targetRequestGenerationRef.current;
+
+    fetchPostCommentPageLocation(p.id, targetCommentId, 20)
+      .then((location) => {
+        if (!isCurrent()) return;
+        setTargetLocationState({
+          identity: targetIdentity,
+          status: "success",
+          page: location.page,
+          message: "",
+        });
+        if (commentsPage !== location.page || rawCommentsPage !== location.page.toString()) {
+          updateCommentsPage(location.page, true, true);
+        }
+      })
+      .catch((error) => {
+        if (!isCurrent()) return;
+        const notFound = error instanceof ApiError && error.status === 404;
+        setTargetLocationState({
+          identity: targetIdentity,
+          status: notFound ? "not-found" : "error",
+          page: 0,
+          message: notFound ? "댓글을 찾을 수 없습니다." : "댓글 위치를 확인하지 못했습니다.",
+        });
+        if (commentsPage !== 0 || rawCommentsPage !== "0") {
+          updateCommentsPage(0, true, true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [commentsPage, p.id, rawCommentsPage, targetCommentId, targetIdentity, updateCommentsPage]);
 
   // 댓글 GET은 public이다. 로그인·로그아웃·토큰 교체마다 다시 읽어 ownedByMe를 갱신한다.
   // post/page/generation/token을 함께 확인해 이전 identity의 늦은 응답이 현재 목록을 덮지 못하게 한다.
   useEffect(() => {
+    if (targetLocationStatus === "loading") return;
+    if (targetLocationPage !== undefined && targetLocationPage !== null && targetLocationPage !== commentsPage) return;
     const requestToken = token;
     const generation = ++commentsRequestGenerationRef.current;
     let cancelled = false;
@@ -188,7 +267,19 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     return () => {
       cancelled = true;
     };
-  }, [commentsPage, commentsRequestIdentity, p.id, router, token, updateCommentsPage]);
+  }, [commentsPage, commentsRequestIdentity, p.id, router, targetLocationPage, targetLocationStatus, token, updateCommentsPage]);
+
+  useEffect(() => {
+    if (!targetCommentId || currentCommentsStatus !== "success") return;
+    if (!currentCommentsResponse?.content.some((comment) => comment.id === targetCommentId)) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`comment-${targetCommentId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentCommentsResponse, currentCommentsStatus, targetCommentId]);
 
   const retryComments = () => {
     setReloadTick((t) => t + 1);
@@ -567,6 +658,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             </button>
           </div>
           <div className="space-y-5 min-h-[64px]">
+            {targetLocationMessage ? (
+              <p role="alert" className="text-[13px]" style={{ color: "#ed5c48" }}>
+                {targetLocationMessage}
+              </p>
+            ) : null}
             {visibleCommentsLoading ? (
               <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>댓글을 불러오는 중…</p>
             ) : commentsError ? (
@@ -584,7 +680,19 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>첫 댓글을 남겨보세요.</p>
             ) : (
               visibleComments.map((c) => (
-                <div key={c.id} className="flex gap-3">
+                <div
+                  key={c.id}
+                  id={`comment-${c.id}`}
+                  className="flex scroll-mt-28 gap-3 rounded-2xl p-3 transition-colors"
+                  style={{
+                    background: c.id === targetCommentId
+                      ? dark
+                        ? "rgba(125,211,163,0.16)"
+                        : "rgba(125,211,163,0.24)"
+                      : "transparent",
+                    outline: c.id === targetCommentId ? "1px solid rgba(125,211,163,0.55)" : "none",
+                  }}
+                >
                   <Avatar name={c.author.name} verified={c.author.verified} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-[13px]">
