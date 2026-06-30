@@ -1,10 +1,14 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2, MessageCircle, RefreshCw, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import type { CampaignComment, CampaignCommentsResponse } from "@/data/campaigns";
+import {
+  fetchCampaignCommentPageLocation,
+  type CampaignComment,
+  type CampaignCommentsResponse,
+} from "@/data/campaigns";
 import { ApiError, apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -15,6 +19,13 @@ type CommentListState = {
   status: "loading" | "success" | "error";
   response: CampaignCommentsResponse | null;
   error: string;
+};
+
+type TargetLocationState = {
+  identity: string;
+  status: "loading" | "success" | "not-found" | "error";
+  page: number | null;
+  message: string;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -34,10 +45,12 @@ function CommentStatePanel({ children }: { children: React.ReactNode }) {
 function CommentItem({
   comment,
   deleting,
+  highlighted,
   onDelete,
 }: {
   comment: CampaignComment;
   deleting: boolean;
+  highlighted: boolean;
   onDelete: (comment: CampaignComment) => void;
 }) {
   const { theme } = useTheme();
@@ -45,10 +58,21 @@ function CommentItem({
 
   return (
     <article
-      className="rounded-2xl border p-5"
+      id={`comment-${comment.id}`}
+      className="scroll-mt-28 rounded-2xl border p-5 transition-colors"
       style={{
-        background: dark ? "rgba(255,255,255,0.025)" : "rgba(249,247,242,0.55)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: highlighted
+          ? dark
+            ? "rgba(125,211,163,0.16)"
+            : "rgba(125,211,163,0.24)"
+          : dark
+            ? "rgba(255,255,255,0.025)"
+            : "rgba(249,247,242,0.55)",
+        borderColor: highlighted
+          ? "rgba(125,211,163,0.65)"
+          : dark
+            ? "rgba(255,255,255,0.08)"
+            : "rgba(28,64,68,0.08)",
       }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -91,8 +115,15 @@ function CommentItem({
   );
 }
 
-export function CampaignComments({ campaignId }: { campaignId: string }) {
+export function CampaignComments({
+  campaignId,
+  targetCommentId,
+}: {
+  campaignId: string;
+  targetCommentId: string | null;
+}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -105,7 +136,33 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
   const [mutationError, setMutationError] = useState("");
   const generationRef = useRef(0);
-  const requestIdentity = JSON.stringify([campaignId, token, page, retryTick]);
+  const targetGenerationRef = useRef(0);
+  const targetIdentity = JSON.stringify([campaignId, targetCommentId]);
+  const [targetLocationState, setTargetLocationState] = useState<TargetLocationState>({
+    identity: "",
+    status: "loading",
+    page: null,
+    message: "",
+  });
+  const currentTargetLocation: TargetLocationState | null = targetCommentId
+    ? targetLocationState.identity === targetIdentity
+      ? targetLocationState
+      : { identity: targetIdentity, status: "loading", page: null, message: "" }
+    : null;
+  const targetLocationStatus = currentTargetLocation?.status;
+  const targetLocationPage = currentTargetLocation?.page;
+  const targetLocationMessage = currentTargetLocation?.message ?? "";
+  const targetResolution = currentTargetLocation
+    ? `${currentTargetLocation.status}:${currentTargetLocation.page ?? ""}`
+    : "none";
+  const requestIdentity = JSON.stringify([
+    campaignId,
+    token,
+    page,
+    retryTick,
+    targetCommentId,
+    targetResolution,
+  ]);
   const [listState, setListState] = useState<CommentListState>({
     identity: "",
     status: "loading",
@@ -115,8 +172,59 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
   const currentState: CommentListState = listState.identity === requestIdentity
     ? listState
     : { identity: requestIdentity, status: "loading", response: null, error: "" };
+  const currentStatus = currentState.status;
+  const currentResponse = currentState.response;
+
+  const clearTargetComment = () => {
+    if (!targetCommentId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("commentId");
+    const query = params.toString();
+    router.replace(`/campaigns/${encodeURIComponent(campaignId)}${query ? `?${query}` : ""}`, { scroll: false });
+  };
+
+  const changePage = (nextPage: number) => {
+    clearTargetComment();
+    setPage(Math.max(0, nextPage));
+  };
 
   useEffect(() => {
+    if (!targetCommentId) return;
+    const generation = ++targetGenerationRef.current;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && generation === targetGenerationRef.current;
+
+    fetchCampaignCommentPageLocation(campaignId, targetCommentId, 20)
+      .then((location) => {
+        if (!isCurrent()) return;
+        setTargetLocationState({
+          identity: targetIdentity,
+          status: "success",
+          page: location.page,
+          message: "",
+        });
+        setPage(location.page);
+      })
+      .catch((error) => {
+        if (!isCurrent()) return;
+        const notFound = error instanceof ApiError && error.status === 404;
+        setTargetLocationState({
+          identity: targetIdentity,
+          status: notFound ? "not-found" : "error",
+          page: 0,
+          message: notFound ? "댓글을 찾을 수 없습니다." : "댓글 위치를 확인하지 못했습니다.",
+        });
+        setPage(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignId, targetCommentId, targetIdentity]);
+
+  useEffect(() => {
+    if (targetLocationStatus === "loading") return;
+    if (targetLocationPage !== undefined && targetLocationPage !== null && targetLocationPage !== page) return;
     const requestToken = token;
     if (getToken() !== requestToken) return;
 
@@ -125,7 +233,10 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
     const isCurrent = () =>
       !cancelled && generation === generationRef.current && getToken() === requestToken;
 
-    apiGet<CampaignCommentsResponse>(`/api/campaigns/${campaignId}/comments?page=${page}&size=20`)
+    apiGet<CampaignCommentsResponse>(
+      `/api/campaigns/${campaignId}/comments?page=${page}&size=20`,
+      requestToken,
+    )
       .then((response) => {
         if (!isCurrent()) return;
         if (response.content.length === 0 && page > 0 && response.totalPages > 0) {
@@ -154,7 +265,19 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [campaignId, page, requestIdentity, router, token]);
+  }, [campaignId, page, requestIdentity, router, targetLocationPage, targetLocationStatus, token]);
+
+  useEffect(() => {
+    if (!targetCommentId || currentStatus !== "success") return;
+    if (!currentResponse?.content.some((comment) => comment.id === targetCommentId)) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`comment-${targetCommentId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentResponse, currentStatus, targetCommentId]);
 
   const reload = () => setRetryTick((tick) => tick + 1);
 
@@ -180,6 +303,7 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
       await apiPost<CampaignComment>(`/api/campaigns/${campaignId}/comments`, { text: normalized });
       if (getToken() !== requestToken) return;
       setText("");
+      clearTargetComment();
       if (page === 0) reload();
       else setPage(0);
     } catch (error) {
@@ -201,6 +325,7 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
   };
 
   const refreshAfterDelete = () => {
+    clearTargetComment();
     const response = currentState.response;
     if (response && response.content.length === 1 && page > 0) {
       setPage((current) => Math.max(0, current - 1));
@@ -320,6 +445,9 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
           </div>
         )}
         {mutationError ? <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{mutationError}</p> : null}
+        {targetLocationMessage ? (
+          <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{targetLocationMessage}</p>
+        ) : null}
       </div>
 
       <div className="mt-7 space-y-3">
@@ -351,6 +479,7 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
             key={comment.id}
             comment={comment}
             deleting={deletingIds.has(comment.id)}
+            highlighted={comment.id === targetCommentId}
             onDelete={deleteComment}
           />
         )) : null}
@@ -360,7 +489,7 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <button
             type="button"
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            onClick={() => changePage(page - 1)}
             disabled={response.page === 0}
             className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
             style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
@@ -372,7 +501,7 @@ export function CampaignComments({ campaignId }: { campaignId: string }) {
           </span>
           <button
             type="button"
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => changePage(page + 1)}
             disabled={response.page + 1 >= response.totalPages}
             className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
             style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}

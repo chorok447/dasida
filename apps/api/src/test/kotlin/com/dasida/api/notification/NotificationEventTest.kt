@@ -114,13 +114,14 @@ class NotificationEventTest(
     fun `내 게시글에 타인이 댓글을 달면 알림이 생성된다`() {
         val postId = savePost(authorUserId = owner)
 
-        comment(postId, actorToken).andExpect { status { isCreated() } }
+        val response = comment(postId, actorToken).andExpect { status { isCreated() } }.andReturn()
+        val commentId = mapper.readTree(response.response.contentAsString)["id"].asText()
 
         val list = eventsAbout(postId)
         assertThat(list).hasSize(1)
         assertThat(list[0].userId).isEqualTo(owner)
         assertThat(list[0].type).isEqualTo(NotificationType.POST_COMMENT_CREATED)
-        assertThat(list[0].href).isEqualTo("/posts/$postId")
+        assertThat(list[0].href).isEqualTo("/posts/$postId?commentId=$commentId")
         assertThat(list[0].title).contains("행동한사람")
         assertThat(list[0].readAt).isNull()
     }
@@ -142,13 +143,14 @@ class NotificationEventTest(
     @Test
     fun `내 캠페인에 타인이 댓글을 달면 알림이 생성된다`() {
         val campaignId = saveCampaign(authorUserId = owner)
-        campaignComment(campaignId, actorToken).andExpect { status { isCreated() } }
+        val response = campaignComment(campaignId, actorToken).andExpect { status { isCreated() } }.andReturn()
+        val commentId = mapper.readTree(response.response.contentAsString)["id"].asText()
 
         val list = eventsAbout(campaignId)
         assertThat(list).hasSize(1)
         assertThat(list[0].userId).isEqualTo(owner)
         assertThat(list[0].type).isEqualTo(NotificationType.CAMPAIGN_COMMENT_CREATED)
-        assertThat(list[0].href).isEqualTo("/campaigns/$campaignId")
+        assertThat(list[0].href).isEqualTo("/campaigns/$campaignId?commentId=$commentId")
     }
 
     @Test

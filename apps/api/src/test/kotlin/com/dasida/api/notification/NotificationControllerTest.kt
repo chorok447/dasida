@@ -33,6 +33,7 @@ class NotificationControllerTest(
         read: Boolean = false,
         seq: Long = System.nanoTime(),
         type: String = NotificationType.POST_COMMENT_CREATED,
+        href: String = "/posts/p1",
     ): String {
         repo.saveAndFlush(
             Notification(
@@ -41,7 +42,7 @@ class NotificationControllerTest(
                 type = type,
                 title = "제목",
                 body = "본문",
-                href = "/posts/p1",
+                href = href,
                 readAt = if (read) Instant.now() else null,
                 createdAt = Instant.now(),
                 time = "방금 전",
@@ -75,6 +76,17 @@ class NotificationControllerTest(
             jsonPath("$.content.length()") { value(1) }
             jsonPath("$.content[0].id") { value(mine) }
             jsonPath("$.content[0].userId") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `알림 목록은 댓글 query string이 포함된 href를 보존한다`() {
+        val href = "/posts/p1?commentId=pc-123"
+        save(me, id = "noti-deeplink", href = href)
+
+        list().andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].href") { value(href) }
         }
     }
 
