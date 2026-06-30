@@ -1,5 +1,5 @@
 // 알림은 백엔드(/api/notifications, 인증 필수)가 source of truth. 사용자별 데이터.
-import { apiGet, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPost } from "@/lib/api";
 
 export type NotificationItem = {
   id: string;
@@ -28,6 +28,16 @@ export type NotificationUnreadCountResponse = {
 
 export type NotificationReadAllResponse = {
   updatedCount: number;
+  unreadCount: number;
+};
+
+export type NotificationDeleteResponse = {
+  deleted: boolean;
+  unreadCount: number;
+};
+
+export type NotificationDeleteReadResponse = {
+  deletedCount: number;
   unreadCount: number;
 };
 
@@ -63,6 +73,23 @@ export async function markNotificationRead(id: string): Promise<NotificationItem
 
 export async function markAllNotificationsRead(): Promise<NotificationReadAllResponse> {
   const res = await apiPost<NotificationReadAllResponse>("/api/notifications/read-all", {});
+  emitNotificationsChanged();
+  return res;
+}
+
+export async function deleteNotification(
+  id: string,
+  token: string,
+): Promise<NotificationDeleteResponse> {
+  const res = await apiDelete<NotificationDeleteResponse>(`/api/notifications/${id}`, token);
+  emitNotificationsChanged();
+  return res;
+}
+
+export async function deleteReadNotifications(
+  token: string,
+): Promise<NotificationDeleteReadResponse> {
+  const res = await apiDelete<NotificationDeleteReadResponse>("/api/notifications/read", token);
   emitNotificationsChanged();
   return res;
 }
