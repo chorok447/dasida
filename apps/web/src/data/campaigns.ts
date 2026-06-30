@@ -1,5 +1,5 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
-import { apiDelete, apiGet } from "@/lib/api";
+import { apiDelete, apiGet, apiPut } from "@/lib/api";
 import type { CommentPageLocationResponse } from "@/data/comments";
 
 export type CampaignStatus = "open" | "upcoming" | "closed";
@@ -178,7 +178,11 @@ export type CampaignComment = {
   text: string;
   createdAt: string;
   ownedByMe: boolean;
+  edited: boolean;
+  updatedAt: string | null;
 };
+
+export type UpdateCampaignCommentRequest = { text: string };
 
 export type CampaignCommentsResponse = {
   content: CampaignComment[];
@@ -197,6 +201,19 @@ export function fetchCampaignCommentPageLocation(
   return apiGet<CommentPageLocationResponse>(
     `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}/page?${query.toString()}`,
     null,
+  );
+}
+
+export function updateCampaignComment(
+  campaignId: string,
+  commentId: string,
+  body: UpdateCampaignCommentRequest,
+  token: string,
+): Promise<CampaignComment> {
+  return apiPut<CampaignComment>(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}`,
+    body,
+    token,
   );
 }
 
