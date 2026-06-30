@@ -10,6 +10,17 @@ export type ChangePasswordResponse = {
   token: string | null;
 };
 
+export type ChangeEmailRequest = {
+  currentPassword: string;
+  newEmail: string;
+};
+
+export type ChangeEmailResponse = {
+  email: string;
+  name: string;
+  token: string;
+};
+
 export type DeleteAccountRequest = {
   currentPassword: string;
   confirmText: string;
@@ -28,6 +39,16 @@ export type PasswordPolicyState = {
 };
 
 export const PASSWORD_POLICY_MESSAGE = "비밀번호는 8~15자이며 영문, 숫자, 특수문자를 포함해야 합니다.";
+
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function isValidEmail(email: string): boolean {
+  return EMAIL_PATTERN.test(normalizeEmail(email));
+}
 
 export function getPasswordPolicyState(password: string): PasswordPolicyState {
   const hasLetter = /[a-zA-Z]/.test(password);
@@ -48,6 +69,13 @@ export function changePassword(
   token: string,
 ): Promise<ChangePasswordResponse> {
   return apiPut<ChangePasswordResponse>("/api/auth/password", body, token);
+}
+
+export function changeEmail(
+  body: ChangeEmailRequest,
+  token: string,
+): Promise<ChangeEmailResponse> {
+  return apiPut<ChangeEmailResponse>("/api/auth/email", body, token);
 }
 
 export function deleteAccount(
