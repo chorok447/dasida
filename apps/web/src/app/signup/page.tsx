@@ -8,7 +8,7 @@ import { AuthShell, FieldInput } from "@/components/auth-shell";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
 import { setSession } from "@/lib/auth";
-import { getPasswordPolicyState } from "@/data/auth";
+import { getPasswordPolicyState, isValidEmail } from "@/data/auth";
 
 type AuthResponse = { token: string; name: string; verified: boolean };
 
@@ -36,7 +36,7 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const passwordPolicy = getPasswordPolicyState(password);
-  const canSubmit = email.trim() && passwordPolicy.valid && password === passwordConfirm && nickname.trim();
+  const canSubmit = isValidEmail(email) && passwordPolicy.valid && password === passwordConfirm && nickname.trim();
 
   const submit = async () => {
     if (!canSubmit || submitting) return;
