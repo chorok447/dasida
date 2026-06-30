@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
@@ -78,6 +79,10 @@ interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
 
     @Transactional
     fun deleteByCampaignId(campaignId: String)
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update CampaignComment c set c.author.name = :name, c.author.verified = false where c.authorUserId = :userId")
+    fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }
 
 data class CampaignCommentResponse(

@@ -1,5 +1,9 @@
 package com.dasida.api.auth
 
+import com.dasida.api.campaign.CampaignCommentRepository
+import com.dasida.api.campaign.CampaignRepository
+import com.dasida.api.post.PostCommentRepository
+import com.dasida.api.post.PostRepository
 import com.dasida.api.security.AuthUser
 import com.dasida.api.security.JwtService
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -15,6 +19,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -23,15 +28,19 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(name = "users")
 class User(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) val id: Long? = null,
-    @Column(unique = true) val email: String,
+    @Column(unique = true) var email: String,
     @JsonIgnore var passwordHash: String,
     var name: String,
     val verified: Boolean = false,
+    @Column(name = "deleted_at") @JsonIgnore var deletedAt: Instant? = null,
 )
 
 interface UserRepository : JpaRepository<User, Long> {
@@ -47,6 +56,8 @@ data class UpdateProfileRequest(val name: String)
 data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)
 data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
 data class ChangePasswordResponse(val changed: Boolean, val token: String?)
+data class DeleteAccountRequest(val currentPassword: String, val confirmText: String)
+data class DeleteAccountResponse(val deleted: Boolean)
 
 @RestController
 @RequestMapping("/api/auth")
@@ -54,6 +65,11 @@ class AuthController(
     private val repo: UserRepository,
     private val encoder: PasswordEncoder,
     private val jwt: JwtService,
+    private val posts: PostRepository,
+    private val postComments: PostCommentRepository,
+    private val campaigns: CampaignRepository,
+    private val campaignComments: CampaignCommentRepository,
+    private val clock: Clock,
 ) {
     // 유저 없을 때 BCrypt 시간을 맞추기 위한 더미 해시(1회 계산). 타이밍 기반 가입여부 노출 방지용.
     private val dummyHash = encoder.encode("__no_such_user__")
@@ -84,9 +100,9 @@ class AuthController(
     @PostMapping("/login")
     fun login(@RequestBody req: LoginRequest): AuthResponse {
         val user = repo.findByEmail(req.email.trim().lowercase())
-        if (user == null) {
+        if (user == null || user.deletedAt != null) {
             // ponytail: 유저가 없어도 BCrypt 1회 실행 → 응답시간 차이로 가입 여부가 새는 것을 방지
-            encoder.matches(req.password, dummyHash)
+            encoder.matches(req.password, user?.passwordHash ?: dummyHash)
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid credentials")
         }
         if (!encoder.matches(req.password, user.passwordHash)) {
@@ -131,12 +147,47 @@ class AuthController(
         return ChangePasswordResponse(changed = true, token = jwt.issue(user))
     }
 
+    @DeleteMapping("/me")
+    @Transactional
+    fun deleteAccount(
+        @AuthenticationPrincipal principal: AuthUser?,
+        @RequestBody req: DeleteAccountRequest,
+    ): DeleteAccountResponse {
+        val user = currentUser(principal)
+        if (req.currentPassword.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
+        }
+        if (req.confirmText.isBlank() || req.confirmText != DELETE_CONFIRM_TEXT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "delete confirmation is incorrect")
+        }
+        if (!encoder.matches(req.currentPassword, user.passwordHash)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is incorrect")
+        }
+
+        val userId = requireNotNull(user.id)
+        user.email = "deleted-$userId-${UUID.randomUUID()}@deleted.local"
+        user.name = DELETED_USER_NAME
+        user.passwordHash = encoder.encode(UUID.randomUUID().toString())
+        user.deletedAt = Instant.now(clock)
+        repo.saveAndFlush(user)
+
+        posts.anonymizeAuthor(userId, DELETED_USER_NAME)
+        postComments.anonymizeAuthor(userId, DELETED_USER_NAME)
+        campaigns.anonymizeAuthor(userId, DELETED_USER_NAME)
+        campaignComments.anonymizeAuthor(userId, DELETED_USER_NAME)
+        return DeleteAccountResponse(deleted = true)
+    }
+
     private fun currentUser(principal: AuthUser?): User {
         val userId = principal?.id
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
-        return repo.findById(userId).orElseThrow {
+        val user = repo.findById(userId).orElseThrow {
             ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
         }
+        if (user.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+        }
+        return user
     }
 
     private fun User.toProfile() = UserProfileResponse(
@@ -166,6 +217,8 @@ class AuthController(
 
     companion object {
         private const val MAX_NAME_LENGTH = 30
+        private const val DELETED_USER_NAME = "탈퇴한 사용자"
+        private const val DELETE_CONFIRM_TEXT = "탈퇴합니다"
 
         // ponytail: 형식 sanity 체크만(RFC 5322 아님). local@domain.tld 수준이면 통과.
         private val EMAIL_RE = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
