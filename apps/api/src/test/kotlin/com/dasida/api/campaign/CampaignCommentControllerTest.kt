@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.auth.User
+import com.dasida.api.notification.NotificationRepository
 import com.dasida.api.post.Author
 import com.dasida.api.security.JwtService
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
@@ -28,6 +30,7 @@ class CampaignCommentControllerTest(
     @Autowired private val mapper: ObjectMapper,
     @Autowired private val campaignRepo: CampaignRepository,
     @Autowired private val commentRepo: CampaignCommentRepository,
+    @Autowired private val notificationRepo: NotificationRepository,
 ) {
     private val ownerToken = jwt.issue(
         User(id = 1, email = "comment@test.com", passwordHash = "x", name = "댓글 작성자", verified = true),
@@ -66,12 +69,13 @@ class CampaignCommentControllerTest(
 
     private fun saveComment(
         campaignId: String,
-        authorUserId: Long = 1,
+        authorUserId: Long? = 1,
         id: String = "cc-${UUID.randomUUID()}",
         text: String = "댓글 본문",
         createdAt: Instant = Instant.now(),
         authorName: String = "댓글 작성자",
         verified: Boolean = authorUserId == 1L,
+        updatedAt: Instant? = null,
     ): String {
         commentRepo.saveAndFlush(
             CampaignComment(
@@ -81,6 +85,7 @@ class CampaignCommentControllerTest(
                 text = text,
                 createdAt = createdAt,
                 authorUserId = authorUserId,
+                updatedAt = updatedAt,
             ),
         )
         return id
@@ -113,6 +118,17 @@ class CampaignCommentControllerTest(
         bearer: String? = ownerToken,
     ) = mvc.delete("/api/campaigns/$campaignId/comments/$commentId") {
         if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+    }
+
+    private fun updateComment(
+        campaignId: String,
+        commentId: String,
+        text: String,
+        bearer: String? = ownerToken,
+    ) = mvc.put("/api/campaigns/$campaignId/comments/$commentId") {
+        if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        contentType = MediaType.APPLICATION_JSON
+        content = mapper.writeValueAsString(UpdateCampaignCommentRequest(text))
     }
 
     private fun commentLocation(campaignId: String, commentId: String, size: Int = 20) =
@@ -150,15 +166,19 @@ class CampaignCommentControllerTest(
         val campaignId = saveCampaign()
         val mine = saveComment(campaignId, authorUserId = 1)
         val other = saveComment(campaignId, authorUserId = 2)
+        val legacy = saveComment(campaignId, authorUserId = null)
 
         listComments(campaignId).andExpect {
             status { isOk() }
             jsonPath("$.content[*].ownedByMe") { value(Matchers.everyItem(Matchers.equalTo(false))) }
+            jsonPath("$.content[*].edited") { value(Matchers.everyItem(Matchers.equalTo(false))) }
+            jsonPath("$.content[*].updatedAt") { value(Matchers.everyItem(Matchers.nullValue())) }
         }
         listComments(campaignId, bearer = ownerToken).andExpect {
             status { isOk() }
             jsonPath("$.content[?(@.id == '$mine')].ownedByMe") { value(Matchers.hasItem(true)) }
             jsonPath("$.content[?(@.id == '$other')].ownedByMe") { value(Matchers.hasItem(false)) }
+            jsonPath("$.content[?(@.id == '$legacy')].ownedByMe") { value(Matchers.hasItem(false)) }
         }
     }
 
@@ -270,6 +290,8 @@ class CampaignCommentControllerTest(
             jsonPath("$.text") { value("상태와 무관한 댓글") }
             jsonPath("$.createdAt") { exists() }
             jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.edited") { value(false) }
+            jsonPath("$.updatedAt") { value(null) }
             jsonPath("$.authorUserId") { doesNotExist() }
         }.andReturn()
 
@@ -280,6 +302,84 @@ class CampaignCommentControllerTest(
         assertThat(saved.author.verified).isTrue()
         assertThat(saved.text).isEqualTo("상태와 무관한 댓글")
         assertThat(saved.createdAt).isAfterOrEqualTo(before)
+    }
+
+    @Test
+    fun `댓글 작성자는 text만 수정하고 edited 정보를 받는다`() {
+        val campaignId = saveCampaign()
+        val createdAt = Instant.parse("2026-06-28T01:00:00Z")
+        val commentId = saveComment(campaignId, text = "원래 댓글", createdAt = createdAt)
+        val notificationCount = notificationRepo.count()
+
+        updateComment(campaignId, commentId, "  수정된 댓글  ").andExpect {
+            status { isOk() }
+            jsonPath("$.id") { value(commentId) }
+            jsonPath("$.campaignId") { value(campaignId) }
+            jsonPath("$.text") { value("수정된 댓글") }
+            jsonPath("$.createdAt") { value(createdAt.toString()) }
+            jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.edited") { value(true) }
+            jsonPath("$.updatedAt") { exists() }
+            jsonPath("$.authorUserId") { doesNotExist() }
+        }
+        updateComment(campaignId, commentId, "수정된 댓글").andExpect { status { isOk() } }
+
+        val saved = commentRepo.findById(commentId).orElseThrow()
+        assertThat(saved.text).isEqualTo("수정된 댓글")
+        assertThat(saved.updatedAt).isNotNull()
+        assertThat(saved.createdAt).isEqualTo(createdAt)
+        assertThat(saved.author.name).isEqualTo("댓글 작성자")
+        assertThat(saved.authorUserId).isEqualTo(1)
+        assertThat(commentRepo.countByCampaignId(campaignId)).isEqualTo(1)
+        assertThat(notificationRepo.count()).isEqualTo(notificationCount)
+        listComments(campaignId, bearer = ownerToken).andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].text") { value("수정된 댓글") }
+            jsonPath("$.content[0].edited") { value(true) }
+            jsonPath("$.content[0].updatedAt") { exists() }
+        }
+        commentLocation(campaignId, commentId).andExpect {
+            status { isOk() }
+            jsonPath("$.page") { value(0) }
+        }
+    }
+
+    @Test
+    fun `댓글 수정은 blank와 500자 초과를 거부하고 기존 내용을 유지한다`() {
+        val campaignId = saveCampaign()
+        val commentId = saveComment(campaignId, text = "원래 댓글")
+
+        updateComment(campaignId, commentId, "   ").andExpect { status { isBadRequest() } }
+        updateComment(campaignId, commentId, "가".repeat(501)).andExpect { status { isBadRequest() } }
+
+        val saved = commentRepo.findById(commentId).orElseThrow()
+        assertThat(saved.text).isEqualTo("원래 댓글")
+        assertThat(saved.updatedAt).isNull()
+    }
+
+    @Test
+    fun `댓글 수정은 인증과 작성자 소유권을 검증한다`() {
+        val campaignId = saveCampaign()
+        val mine = saveComment(campaignId, authorUserId = 1)
+        val legacy = saveComment(campaignId, authorUserId = null)
+
+        updateComment(campaignId, mine, "수정", bearer = null).andExpect { status { isUnauthorized() } }
+        updateComment(campaignId, mine, "수정", bearer = otherToken).andExpect { status { isForbidden() } }
+        updateComment(campaignId, legacy, "수정").andExpect { status { isForbidden() } }
+        assertThat(commentRepo.findById(mine).orElseThrow().updatedAt).isNull()
+        assertThat(commentRepo.findById(legacy).orElseThrow().updatedAt).isNull()
+    }
+
+    @Test
+    fun `댓글 수정은 캠페인과 댓글 관계를 검증한다`() {
+        val campaignId = saveCampaign()
+        val otherCampaignId = saveCampaign()
+        val otherCommentId = saveComment(otherCampaignId)
+
+        updateComment("missing", otherCommentId, "수정").andExpect { status { isNotFound() } }
+        updateComment(campaignId, "missing", "수정").andExpect { status { isNotFound() } }
+        updateComment(campaignId, otherCommentId, "수정").andExpect { status { isNotFound() } }
+        assertThat(commentRepo.findById(otherCommentId).orElseThrow().updatedAt).isNull()
     }
 
     @Test

@@ -15,6 +15,13 @@ export class ApiError extends Error {
   }
 }
 
+export function apiErrorMessage(error: ApiError, fallback: string): string {
+  if (!error.body || typeof error.body !== "object") return fallback;
+  const body = error.body as { detail?: unknown; message?: unknown };
+  const message = typeof body.detail === "string" ? body.detail : body.message;
+  return typeof message === "string" && message.trim() ? message : fallback;
+}
+
 /** 토큰이 있으면 Authorization 헤더. 서버 컴포넌트에서는 getToken()=null 이라 자동으로 비공개 GET 처리. */
 function authHeaders(): Record<string, string> {
   const token = getToken();
@@ -64,10 +71,15 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 /** 백엔드 PUT 호출(JSON). 로그인 토큰이 있으면 Authorization 헤더 부착. 실패 시 ApiError. */
-export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+export async function apiPut<T>(path: string, body: unknown, token?: string | null): Promise<T> {
+  const headers = token === undefined
+    ? authHeaders()
+    : token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
   const res = await fetch(`${BASE}${path}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
     cache: "no-store",
   });

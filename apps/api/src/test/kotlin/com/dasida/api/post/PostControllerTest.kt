@@ -1,6 +1,7 @@
 package com.dasida.api.post
 
 import com.dasida.api.auth.User
+import com.dasida.api.notification.NotificationRepository
 import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 @SpringBootTest
@@ -27,6 +29,7 @@ class PostControllerTest(
     @Autowired val likeRepo: PostLikeRepository,
     @Autowired val bookmarkRepo: PostBookmarkRepository,
     @Autowired val commentRepo: PostCommentRepository,
+    @Autowired val notificationRepo: NotificationRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     // 다른 사용자(authorUserId=2) 권한 테스트용 토큰.
@@ -58,19 +61,33 @@ class PostControllerTest(
         authorName: String = "테스터",
         id: String = "itc-${UUID.randomUUID()}",
         seq: Long = System.currentTimeMillis(),
+        text: String = "테스트 댓글",
+        updatedAt: Instant? = null,
     ): String {
         commentRepo.saveAndFlush(
             PostComment(
                 id = id,
                 postId = postId,
                 author = Author(authorName, false),
-                text = "테스트 댓글",
+                text = text,
                 time = "방금",
                 seq = seq,
                 authorUserId = authorUserId,
+                updatedAt = updatedAt,
             ),
         )
         return id
+    }
+
+    private fun updateComment(
+        postId: String,
+        commentId: String,
+        text: String,
+        bearer: String? = token,
+    ) = mvc.put("/api/posts/$postId/comments/$commentId") {
+        if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"text":"$text"}"""
     }
 
     @Test
@@ -721,6 +738,8 @@ class PostControllerTest(
             jsonPath("$.totalPages") { value(1) }
             jsonPath("$.content[0].id") { value(commentId) }
             jsonPath("$.content[0].ownedByMe") { value(false) }
+            jsonPath("$.content[0].edited") { value(false) }
+            jsonPath("$.content[0].updatedAt") { value(null) }
             jsonPath("$.content[0].authorUserId") { doesNotExist() }
         }
     }
@@ -860,6 +879,8 @@ class PostControllerTest(
             status { isOk() }
             jsonPath("$") { isArray() }
             jsonPath("$[*].id") { value(Matchers.contains(oldest, newest)) }
+            jsonPath("$[0].edited") { value(false) }
+            jsonPath("$[0].updatedAt") { value(null) }
         }
     }
 
@@ -928,6 +949,8 @@ class PostControllerTest(
             jsonPath("$.text") { value("좋은 글이네요") }
             jsonPath("$.author.name") { value("테스터") }
             jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.edited") { value(false) }
+            jsonPath("$.updatedAt") { value(null) }
         }
         mvc.get("/api/posts/$id").andExpect { jsonPath("$.comments") { value(1) } }
     }
@@ -964,6 +987,95 @@ class PostControllerTest(
             contentType = MediaType.APPLICATION_JSON
             content = """{"text":"댓글"}"""
         }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `댓글 작성자는 text만 수정하고 edited 정보를 받는다`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, seq = 123, text = "원래 댓글")
+        val before = commentRepo.findById(commentId).orElseThrow()
+        val notificationCount = notificationRepo.count()
+
+        updateComment(postId, commentId, "  수정된 댓글  ").andExpect {
+            status { isOk() }
+            jsonPath("$.id") { value(commentId) }
+            jsonPath("$.postId") { value(postId) }
+            jsonPath("$.text") { value("수정된 댓글") }
+            jsonPath("$.time") { value("방금") }
+            jsonPath("$.ownedByMe") { value(true) }
+            jsonPath("$.edited") { value(true) }
+            jsonPath("$.updatedAt") { exists() }
+            jsonPath("$.authorUserId") { doesNotExist() }
+        }
+        updateComment(postId, commentId, "수정된 댓글").andExpect { status { isOk() } }
+
+        val saved = commentRepo.findById(commentId).orElseThrow()
+        assertThat(saved.text).isEqualTo("수정된 댓글")
+        assertThat(saved.updatedAt).isNotNull()
+        assertThat(saved.author.name).isEqualTo(before.author.name)
+        assertThat(saved.authorUserId).isEqualTo(before.authorUserId)
+        assertThat(saved.time).isEqualTo(before.time)
+        assertThat(saved.seq).isEqualTo(before.seq)
+        assertThat(posts.findById(postId).orElseThrow().comments).isEqualTo(1)
+        assertThat(notificationRepo.count()).isEqualTo(notificationCount)
+        mvc.get("/api/posts/$postId/comments") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].text") { value("수정된 댓글") }
+            jsonPath("$[0].edited") { value(true) }
+            jsonPath("$[0].updatedAt") { exists() }
+        }
+        mvc.get("/api/posts/$postId/comments/page") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].text") { value("수정된 댓글") }
+            jsonPath("$.content[0].edited") { value(true) }
+            jsonPath("$.content[0].updatedAt") { exists() }
+        }
+        mvc.get("/api/posts/$postId/comments/$commentId/page").andExpect {
+            status { isOk() }
+            jsonPath("$.page") { value(0) }
+        }
+    }
+
+    @Test
+    fun `댓글 수정은 blank와 500자 초과를 거부하고 기존 내용을 유지한다`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, text = "원래 댓글")
+
+        updateComment(postId, commentId, "   ").andExpect { status { isBadRequest() } }
+        updateComment(postId, commentId, "가".repeat(501)).andExpect { status { isBadRequest() } }
+
+        val saved = commentRepo.findById(commentId).orElseThrow()
+        assertThat(saved.text).isEqualTo("원래 댓글")
+        assertThat(saved.updatedAt).isNull()
+    }
+
+    @Test
+    fun `댓글 수정은 인증과 작성자 소유권을 검증한다`() {
+        val postId = savePost(comments = 2)
+        val mine = saveComment(postId, authorUserId = 1)
+        val legacy = saveComment(postId, authorUserId = null)
+
+        updateComment(postId, mine, "수정", bearer = null).andExpect { status { isUnauthorized() } }
+        updateComment(postId, mine, "수정", bearer = token2).andExpect { status { isForbidden() } }
+        updateComment(postId, legacy, "수정").andExpect { status { isForbidden() } }
+        assertThat(commentRepo.findById(mine).orElseThrow().updatedAt).isNull()
+        assertThat(commentRepo.findById(legacy).orElseThrow().updatedAt).isNull()
+    }
+
+    @Test
+    fun `댓글 수정은 게시글과 댓글 관계를 검증한다`() {
+        val postId = savePost(comments = 1)
+        val otherPostId = savePost(comments = 1)
+        val otherCommentId = saveComment(otherPostId)
+
+        updateComment("missing", otherCommentId, "수정").andExpect { status { isNotFound() } }
+        updateComment(postId, "missing", "수정").andExpect { status { isNotFound() } }
+        updateComment(postId, otherCommentId, "수정").andExpect { status { isNotFound() } }
+        assertThat(commentRepo.findById(otherCommentId).orElseThrow().updatedAt).isNull()
     }
 
     private fun deleteComment(postId: String, commentId: String, bearer: String? = token) =
