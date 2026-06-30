@@ -8,6 +8,7 @@ import { AuthShell, FieldInput } from "@/components/auth-shell";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
 import { setSession } from "@/lib/auth";
+import { getPasswordPolicyState } from "@/data/auth";
 
 type AuthResponse = { token: string; name: string; verified: boolean };
 
@@ -34,12 +35,8 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const hasLetter = /[a-zA-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[^a-zA-Z0-9]/.test(password);
-  const lenOk = password.length >= 8 && password.length <= 15;
-  const passwordValid = hasLetter && hasNumber && hasSpecial && lenOk;
-  const canSubmit = email.trim() && passwordValid && password === passwordConfirm && nickname.trim();
+  const passwordPolicy = getPasswordPolicyState(password);
+  const canSubmit = email.trim() && passwordPolicy.valid && password === passwordConfirm && nickname.trim();
 
   const submit = async () => {
     if (!canSubmit || submitting) return;
@@ -71,10 +68,10 @@ export default function SignupPage() {
       <FieldInput icon={<Mail size={18} />} placeholder="이메일을 입력하세요" value={email} onChange={setEmail} error={error} />
       <FieldInput icon={<Lock size={18} />} type="password" placeholder="비밀번호를 입력하세요" value={password} onChange={setPassword} />
       <div className="flex gap-3 px-1">
-        <Rule ok={hasLetter} label="영문" />
-        <Rule ok={hasNumber} label="숫자" />
-        <Rule ok={hasSpecial} label="특수문자" />
-        <Rule ok={lenOk} label="8~15자리" />
+        <Rule ok={passwordPolicy.hasLetter} label="영문" />
+        <Rule ok={passwordPolicy.hasNumber} label="숫자" />
+        <Rule ok={passwordPolicy.hasSpecial} label="특수문자" />
+        <Rule ok={passwordPolicy.lengthValid} label="8~15자리" />
       </div>
       <FieldInput
         icon={<Lock size={18} />}
