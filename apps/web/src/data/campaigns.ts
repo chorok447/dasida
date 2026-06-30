@@ -1,5 +1,6 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
 import { apiDelete, apiGet } from "@/lib/api";
+import type { CommentPageLocationResponse } from "@/data/comments";
 
 export type CampaignStatus = "open" | "upcoming" | "closed";
 export type CampaignSearchSort = "latest" | "popular" | "deadline";
@@ -186,6 +187,18 @@ export type CampaignCommentsResponse = {
   totalElements: number;
   totalPages: number;
 };
+
+export function fetchCampaignCommentPageLocation(
+  campaignId: string,
+  commentId: string,
+  size = 20,
+): Promise<CommentPageLocationResponse> {
+  const query = new URLSearchParams({ size: String(size) });
+  return apiGet<CommentPageLocationResponse>(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}/page?${query.toString()}`,
+    null,
+  );
+}
 
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {
   open: { label: "모집중", color: "#7dd3a3", fg: "#0f1f22" },

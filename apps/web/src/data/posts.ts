@@ -1,5 +1,6 @@
 // 게시물 데이터는 백엔드(GET /api/posts)가 source of truth. 여기엔 타입 + 마이페이지 page fetcher.
 import { apiGet } from "@/lib/api";
+import type { CommentPageLocationResponse } from "@/data/comments";
 
 export type PostSearchSort = "latest" | "popular" | "discussed";
 
@@ -75,5 +76,17 @@ export function fetchPostCommentsPage(
   return apiGet<PostCommentsPageResponse>(
     `/api/posts/${encodeURIComponent(postId)}/comments/page?${query.toString()}`,
     token,
+  );
+}
+
+export function fetchPostCommentPageLocation(
+  postId: string,
+  commentId: string,
+  size = 20,
+): Promise<CommentPageLocationResponse> {
+  const query = new URLSearchParams({ size: String(size) });
+  return apiGet<CommentPageLocationResponse>(
+    `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}/page?${query.toString()}`,
+    null,
   );
 }

@@ -801,6 +801,56 @@ class PostControllerTest(
     }
 
     @Test
+    fun `댓글 location API는 page 목록과 같은 최신순 및 tie breaker를 사용한다`() {
+        val postId = savePost(comments = 4)
+        val newest = saveComment(postId, id = "location-new", seq = 300)
+        val tieA = saveComment(postId, id = "location-a", seq = 200)
+        val tieB = saveComment(postId, id = "location-b", seq = 200)
+        val oldest = saveComment(postId, id = "location-old", seq = 100)
+
+        fun expectPage(commentId: String, size: Int, page: Int) {
+            mvc.get("/api/posts/$postId/comments/$commentId/page") {
+                param("size", size.toString())
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.commentId") { value(commentId) }
+                jsonPath("$.page") { value(page) }
+                jsonPath("$.size") { value(size) }
+            }
+        }
+
+        expectPage(newest, size = 2, page = 0)
+        expectPage(tieA, size = 2, page = 0)
+        expectPage(tieB, size = 2, page = 1)
+        expectPage(oldest, size = 2, page = 1)
+        expectPage(tieB, size = 1, page = 2)
+    }
+
+    @Test
+    fun `댓글 location API는 게시글 관계와 size 및 삭제 상태를 검증한다`() {
+        val postId = savePost(comments = 1)
+        val otherPostId = savePost(comments = 1)
+        val commentId = saveComment(postId)
+        val otherCommentId = saveComment(otherPostId)
+
+        mvc.get("/api/posts/missing/comments/$commentId/page")
+            .andExpect { status { isNotFound() } }
+        mvc.get("/api/posts/$postId/comments/missing/page")
+            .andExpect { status { isNotFound() } }
+        mvc.get("/api/posts/$postId/comments/$otherCommentId/page")
+            .andExpect { status { isNotFound() } }
+        mvc.get("/api/posts/$postId/comments/$commentId/page") { param("size", "0") }
+            .andExpect { status { isBadRequest() } }
+        mvc.get("/api/posts/$postId/comments/$commentId/page") { param("size", "101") }
+            .andExpect { status { isBadRequest() } }
+
+        commentRepo.deleteById(commentId)
+        commentRepo.flush()
+        mvc.get("/api/posts/$postId/comments/$commentId/page")
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
     fun `기존 댓글 배열 API는 오래된 순 배열 계약을 유지한다`() {
         val postId = savePost(comments = 2)
         val oldest = saveComment(postId, seq = 100)

@@ -115,6 +115,11 @@ class CampaignCommentControllerTest(
         if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
     }
 
+    private fun commentLocation(campaignId: String, commentId: String, size: Int = 20) =
+        mvc.get("/api/campaigns/$campaignId/comments/$commentId/page") {
+            param("size", size.toString())
+        }
+
     @Test
     fun `없는 캠페인 댓글 목록은 404`() {
         listComments("missing").andExpect { status { isNotFound() } }
@@ -191,6 +196,49 @@ class CampaignCommentControllerTest(
         listComments(campaignId, size = 101).andExpect { status { isBadRequest() } }
         listComments(campaignId, size = 1).andExpect { status { isOk() } }
         listComments(campaignId, size = 100).andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `댓글 location API는 목록과 같은 최신순 및 tie breaker를 사용한다`() {
+        val campaignId = saveCampaign()
+        val tiedAt = Instant.parse("2026-06-28T01:00:00Z")
+        val newest = saveComment(campaignId, id = "location-new", createdAt = tiedAt.plusSeconds(1))
+        val tieA = saveComment(campaignId, id = "location-a", createdAt = tiedAt)
+        val tieB = saveComment(campaignId, id = "location-b", createdAt = tiedAt)
+        val oldest = saveComment(campaignId, id = "location-old", createdAt = tiedAt.minusSeconds(1))
+
+        fun expectPage(commentId: String, size: Int, page: Int) {
+            commentLocation(campaignId, commentId, size).andExpect {
+                status { isOk() }
+                jsonPath("$.commentId") { value(commentId) }
+                jsonPath("$.page") { value(page) }
+                jsonPath("$.size") { value(size) }
+            }
+        }
+
+        expectPage(newest, size = 2, page = 0)
+        expectPage(tieA, size = 2, page = 0)
+        expectPage(tieB, size = 2, page = 1)
+        expectPage(oldest, size = 2, page = 1)
+        expectPage(tieB, size = 1, page = 2)
+    }
+
+    @Test
+    fun `댓글 location API는 캠페인 관계와 size 및 삭제 상태를 검증한다`() {
+        val campaignId = saveCampaign()
+        val otherCampaignId = saveCampaign()
+        val commentId = saveComment(campaignId)
+        val otherCommentId = saveComment(otherCampaignId)
+
+        commentLocation("missing", commentId).andExpect { status { isNotFound() } }
+        commentLocation(campaignId, "missing").andExpect { status { isNotFound() } }
+        commentLocation(campaignId, otherCommentId).andExpect { status { isNotFound() } }
+        commentLocation(campaignId, commentId, size = 0).andExpect { status { isBadRequest() } }
+        commentLocation(campaignId, commentId, size = 101).andExpect { status { isBadRequest() } }
+
+        commentRepo.deleteById(commentId)
+        commentRepo.flush()
+        commentLocation(campaignId, commentId).andExpect { status { isNotFound() } }
     }
 
     @Test
