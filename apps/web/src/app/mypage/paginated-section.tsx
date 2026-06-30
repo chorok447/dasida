@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 
 export type PageResponse<T> = {
   content: T[];
@@ -21,23 +23,6 @@ type Store<T> = {
   status: "success" | "error" | "forbidden";
   data: PageResponse<T> | null;
 };
-
-function StatePanel({ children }: { children: ReactNode }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="min-h-64 rounded-2xl border flex flex-col items-center justify-center gap-4 px-6 text-center"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.7)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 /**
  * 마이페이지 탭 공통 paginated 목록. token identity + generation 으로 stale 응답을 방어하고
@@ -165,9 +150,6 @@ export function PaginatedSection<T>({
 
   const fg = dark ? "#f9f7f2" : "#0f1f22";
   const subtle = dark ? "rgba(255,255,255,0.07)" : "rgba(28,64,68,0.07)";
-  const currentPage = data.page + 1;
-  const totalPages = Math.max(1, data.totalPages);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3" style={{ color: fg }}>
@@ -191,27 +173,13 @@ export function PaginatedSection<T>({
 
       {renderItems(data.content, reload)}
 
-      <div className="flex items-center justify-center gap-3" style={{ color: fg }}>
-        <button
-          type="button"
-          onClick={() => onPageChange(Math.max(0, page - 1))}
-          disabled={loading || data.page <= 0}
-          className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ background: subtle }}
-        >
-          <ChevronLeft size={14} /> 이전
-        </button>
-        <span className="text-[12px] opacity-65">{currentPage} / {totalPages} 페이지</span>
-        <button
-          type="button"
-          onClick={() => onPageChange(data.page + 1)}
-          disabled={loading || data.page + 1 >= data.totalPages}
-          className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ background: "#7dd3a3", color: "#0f1f22" }}
-        >
-          다음 <ChevronRight size={14} />
-        </button>
-      </div>
+      <Pagination
+        page={data.page}
+        totalPages={Math.max(1, data.totalPages)}
+        totalElements={data.totalElements}
+        disabled={loading}
+        onPageChange={onPageChange}
+      />
     </div>
   );
 }

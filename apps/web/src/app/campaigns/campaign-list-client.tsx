@@ -4,8 +4,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
-import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Search, Users } from "lucide-react";
+import { Calendar, RefreshCw, Search, Users } from "lucide-react";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 import {
   appendCampaignDateRangeFilters,
   campaignDateRangeError,
@@ -358,10 +360,6 @@ function buildCampaignsHref(state: UrlState): string {
   return `/campaigns?${params.toString()}`;
 }
 
-function StatePanel({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center text-[14px]">{children}</div>;
-}
-
 export default function CampaignListClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -570,29 +568,13 @@ export default function CampaignListClient() {
         ) : null}
 
         {currentState.status === "success" && response && response.totalElements > 0 ? (
-          <div className="mt-10 flex items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={() => updateUrl({ page: Math.max(0, response.page - 1) })}
-              disabled={response.page === 0}
-              className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-            >
-              <ChevronLeft size={15} /> 이전
-            </button>
-            <span className="min-w-20 text-center text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
-              {response.page + 1} / {response.totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => updateUrl({ page: response.page + 1 })}
-              disabled={response.page + 1 >= response.totalPages}
-              className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-            >
-              다음 <ChevronRight size={15} />
-            </button>
-          </div>
+          <Pagination
+            page={response.page}
+            totalPages={response.totalPages}
+            totalElements={response.totalElements}
+            className="mt-10"
+            onPageChange={(page) => updateUrl({ page })}
+          />
         ) : null}
       </div>
     </section>

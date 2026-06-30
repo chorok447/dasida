@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { CalendarDays, Users } from "lucide-react";
+import { StatePanel } from "@/components/ui/state-panel";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import {
@@ -35,23 +36,6 @@ const LIST_META: Record<
     ctaLabel: "캠페인 개설하기",
   },
 };
-
-function StatePanel({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="min-h-64 rounded-2xl border flex flex-col items-center justify-center gap-4 px-6 text-center"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.7)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 function StatusBadge({ campaign }: { campaign: Campaign }) {
   const m = campaignRecruitMeta(campaign);
@@ -165,7 +149,7 @@ export function UserCampaignsList({
       loadingLabel={meta.loading}
       errorLabel={meta.error}
       empty={
-        <StatePanel>
+        <StatePanel className="min-h-64 rounded-2xl">
           <CalendarDays size={28} className="text-[#7dd3a3]" />
           <p>{meta.empty}</p>
           <Link href={meta.ctaHref} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
