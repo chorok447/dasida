@@ -2,14 +2,15 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Loader2, MessageCircle, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, MessageCircle, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import {
   fetchCampaignCommentPageLocation,
+  updateCampaignComment,
   type CampaignComment,
   type CampaignCommentsResponse,
 } from "@/data/campaigns";
-import { ApiError, apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
+import { ApiError, apiDeleteVoid, apiErrorMessage, apiGet, apiPost } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
@@ -45,12 +46,28 @@ function CommentStatePanel({ children }: { children: React.ReactNode }) {
 function CommentItem({
   comment,
   deleting,
+  editing,
+  saving,
+  editText,
+  editError,
   highlighted,
+  onEdit,
+  onEditTextChange,
+  onSave,
+  onCancel,
   onDelete,
 }: {
   comment: CampaignComment;
   deleting: boolean;
+  editing: boolean;
+  saving: boolean;
+  editText: string;
+  editError: string;
   highlighted: boolean;
+  onEdit: (comment: CampaignComment) => void;
+  onEditTextChange: (value: string) => void;
+  onSave: (comment: CampaignComment) => void;
+  onCancel: () => void;
   onDelete: (comment: CampaignComment) => void;
 }) {
   const { theme } = useTheme();
@@ -87,30 +104,91 @@ function CommentItem({
                 <span className="rounded-full bg-[#7dd3a3]/20 px-2 py-0.5 text-[10px] text-[#148a90]">인증</span>
               ) : null}
             </div>
-            <time className="text-[11px] opacity-55" dateTime={comment.createdAt} style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-              {formatCreatedAt(comment.createdAt)}
-            </time>
+            <div className="flex flex-wrap items-center gap-1 text-[11px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              <time dateTime={comment.createdAt}>{formatCreatedAt(comment.createdAt)}</time>
+              {comment.edited ? <span>· 수정됨</span> : null}
+            </div>
           </div>
         </div>
         {comment.ownedByMe ? (
-          <button
-            type="button"
-            aria-label={`${comment.author.name} 댓글 삭제`}
-            onClick={() => onDelete(comment)}
-            disabled={deleting}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#ed5c48] disabled:cursor-not-allowed disabled:opacity-45"
-            style={{ background: "rgba(237,92,72,0.12)" }}
-          >
-            {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {!editing ? (
+              <button
+                type="button"
+                aria-label={`${comment.author.name} 댓글 수정`}
+                onClick={() => onEdit(comment)}
+                disabled={deleting || saving}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
+                style={{ background: "rgba(125,211,163,0.14)", color: dark ? "#7dd3a3" : "#148a90" }}
+              >
+                <Pencil size={15} />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              aria-label={`${comment.author.name} 댓글 삭제`}
+              onClick={() => onDelete(comment)}
+              disabled={deleting || saving}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#ed5c48] disabled:cursor-not-allowed disabled:opacity-45"
+              style={{ background: "rgba(237,92,72,0.12)" }}
+            >
+              {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+            </button>
+          </div>
         ) : null}
       </div>
-      <p
-        className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7"
-        style={{ color: dark ? "rgba(255,255,255,0.78)" : "rgba(28,64,68,0.82)" }}
-      >
-        {comment.text}
-      </p>
+      {editing ? (
+        <form
+          className="mt-4 space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSave(comment);
+          }}
+        >
+          <textarea
+            autoFocus
+            value={editText}
+            onChange={(event) => onEditTextChange(event.target.value)}
+            maxLength={500}
+            rows={4}
+            disabled={saving}
+            className="w-full resize-none rounded-xl border bg-transparent px-3 py-3 text-[14px] outline-none disabled:opacity-50"
+            style={{ borderColor: dark ? "rgba(255,255,255,0.14)" : "rgba(28,64,68,0.14)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              {editText.length} / 500
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={saving}
+                className="rounded-full px-4 py-2 text-[12px] disabled:opacity-40"
+                style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={saving || !editText.trim()}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#7dd3a3] px-4 py-2 text-[12px] text-[#0f1f22] disabled:opacity-40"
+              >
+                {saving ? <Loader2 size={13} className="animate-spin" /> : null}
+                {saving ? "저장 중…" : "저장"}
+              </button>
+            </div>
+          </div>
+          {editError ? <p role="alert" className="text-[12px] text-[#ed5c48]">{editError}</p> : null}
+        </form>
+      ) : (
+        <p
+          className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7"
+          style={{ color: dark ? "rgba(255,255,255,0.78)" : "rgba(28,64,68,0.82)" }}
+        >
+          {comment.text}
+        </p>
+      )}
     </article>
   );
 }
@@ -134,6 +212,12 @@ export function CampaignComments({
   const submittingRef = useRef(false);
   const deletingRef = useRef(new Set<string>());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
+  const savingCommentIdRef = useRef<string | null>(null);
+  const editGenerationRef = useRef(0);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
+  const [editError, setEditError] = useState("");
   const [mutationError, setMutationError] = useState("");
   const generationRef = useRef(0);
   const targetGenerationRef = useRef(0);
@@ -373,6 +457,90 @@ export function CampaignComments({
     }
   };
 
+  const startEditing = (comment: CampaignComment) => {
+    if (savingCommentIdRef.current) return;
+    setMutationError("");
+    setEditingCommentId(comment.id);
+    setEditText(comment.text);
+    setEditError("");
+  };
+
+  const cancelEditing = () => {
+    if (savingCommentIdRef.current) return;
+    editGenerationRef.current += 1;
+    setEditingCommentId(null);
+    setEditText("");
+    setEditError("");
+  };
+
+  const saveEditing = async (comment: CampaignComment) => {
+    if (savingCommentIdRef.current) return;
+    const normalized = editText.trim();
+    if (!normalized || normalized.length > 500) {
+      setEditError("댓글은 1자 이상 500자 이하로 입력해주세요.");
+      return;
+    }
+    const requestToken = getToken();
+    if (!requestToken) {
+      clearSession();
+      setEditingCommentId(null);
+      router.push("/login");
+      return;
+    }
+
+    const generation = ++editGenerationRef.current;
+    savingCommentIdRef.current = comment.id;
+    setSavingCommentId(comment.id);
+    setEditError("");
+    try {
+      const updated = await updateCampaignComment(
+        campaignId,
+        comment.id,
+        { text: normalized },
+        requestToken,
+      );
+      if (getToken() !== requestToken || generation !== editGenerationRef.current) return;
+      if (!currentState.response?.content.some((item) => item.id === comment.id)) {
+        setEditingCommentId(null);
+        reload();
+        return;
+      }
+      setListState((current) => current.identity === requestIdentity && current.response
+        ? {
+            ...current,
+            response: {
+              ...current.response,
+              content: current.response.content.map((item) => item.id === comment.id ? updated : item),
+            },
+          }
+        : current);
+      setEditingCommentId(null);
+      setEditText("");
+    } catch (error) {
+      if (getToken() !== requestToken || generation !== editGenerationRef.current) return;
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        setEditingCommentId(null);
+        router.push("/login");
+      } else if (error instanceof ApiError && error.status === 403) {
+        setMutationError("댓글을 수정할 권한이 없습니다.");
+        setEditingCommentId(null);
+        reload();
+      } else if (error instanceof ApiError && error.status === 404) {
+        setMutationError("댓글을 찾을 수 없습니다.");
+        setEditingCommentId(null);
+        reload();
+      } else if (error instanceof ApiError && error.status === 400) {
+        setEditError(apiErrorMessage(error, "댓글 내용을 확인해주세요."));
+      } else {
+        setEditError("댓글 수정에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      if (savingCommentIdRef.current === comment.id) savingCommentIdRef.current = null;
+      setSavingCommentId((current) => current === comment.id ? null : current);
+    }
+  };
+
   const response = currentState.response;
 
   return (
@@ -479,7 +647,15 @@ export function CampaignComments({
             key={comment.id}
             comment={comment}
             deleting={deletingIds.has(comment.id)}
+            editing={editingCommentId === comment.id && comment.ownedByMe}
+            saving={savingCommentId === comment.id}
+            editText={editingCommentId === comment.id ? editText : comment.text}
+            editError={editingCommentId === comment.id ? editError : ""}
             highlighted={comment.id === targetCommentId}
+            onEdit={startEditing}
+            onEditTextChange={setEditText}
+            onSave={saveEditing}
+            onCancel={cancelEditing}
             onDelete={deleteComment}
           />
         )) : null}

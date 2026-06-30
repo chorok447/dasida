@@ -40,6 +40,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 
 @Embeddable
@@ -141,7 +143,7 @@ class PostComment(
     @Id val id: String,
     @Column(name = "post_id") val postId: String,
     @Embedded val author: Author,
-    @Column(columnDefinition = "TEXT") val text: String,
+    @Column(columnDefinition = "TEXT") var text: String,
     @Column(name = "time_label") val time: String,
     @JsonIgnore var seq: Long = 0,
     // 권한 판정용. author.name 은 작성 시점의 표시 이름 snapshot 이므로 사용하지 않는다.
@@ -149,6 +151,8 @@ class PostComment(
     @Column(name = "author_user_id")
     @JsonIgnore
     val authorUserId: Long? = null,
+    @Column(name = "updated_at")
+    var updatedAt: Instant? = null,
 )
 
 interface PostCommentRepository : JpaRepository<PostComment, String> {
@@ -235,6 +239,7 @@ data class UpdatePostRequest(
 )
 
 data class CreateCommentRequest(val text: String)
+data class UpdatePostCommentRequest(val text: String)
 
 /** 댓글 응답. authorUserId 자체는 노출하지 않고 현재 사용자 기준 소유 여부만 제공한다. */
 data class PostCommentResponse(
@@ -244,6 +249,8 @@ data class PostCommentResponse(
     val text: String,
     val time: String,
     val ownedByMe: Boolean,
+    val edited: Boolean,
+    val updatedAt: Instant?,
 )
 
 data class PostCommentsPageResponse(
@@ -297,6 +304,7 @@ class PostController(
     private val commentRepo: PostCommentRepository,
     private val postSearch: PostSearchRepository,
     private val notifications: NotificationService,
+    private val clock: Clock,
 ) {
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<PostResponse> {
@@ -576,6 +584,8 @@ class PostController(
         text = text,
         time = time,
         ownedByMe = authorUserId != null && authorUserId == viewerId,
+        edited = updatedAt != null,
+        updatedAt = updatedAt,
     )
 
     @GetMapping("/{id}/comments")
@@ -654,9 +664,7 @@ class PostController(
         // write lock 으로 직렬화 → 서로 다른 유저의 동시 댓글 작성에서도 comments 증가가 유실되지 않음.
         val post = repo.findByIdForUpdate(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        val text = req.text.trim()
-        if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is required")
-        if (text.length > MAX_COMMENT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is too long")
+        val text = normalizeCommentText(req.text)
         val comment = commentRepo.save(
             PostComment(
                 id = "pc-${UUID.randomUUID()}",
@@ -678,6 +686,28 @@ class PostController(
             body = text,
             href = "/posts/$id?commentId=${comment.id}",
         )
+        return comment.toResponse(user.id)
+    }
+
+    /** 댓글 수정은 생성 순서와 카운터를 유지하고 text와 updatedAt만 갱신한다. */
+    @PutMapping("/{postId}/comments/{commentId}")
+    @Transactional
+    fun updateComment(
+        @PathVariable postId: String,
+        @PathVariable commentId: String,
+        @RequestBody req: UpdatePostCommentRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PostCommentResponse {
+        if (!repo.existsById(postId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+        val comment = commentRepo.findByIdAndPostId(commentId, postId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (comment.authorUserId == null || comment.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment author")
+        }
+        comment.text = normalizeCommentText(req.text)
+        comment.updatedAt = Instant.now(clock)
         return comment.toResponse(user.id)
     }
 
@@ -828,6 +858,15 @@ class PostController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "image must be http(s) url")
         }
         return normalized
+    }
+
+    private fun normalizeCommentText(value: String): String {
+        val text = value.trim()
+        if (text.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is required")
+        if (text.length > MAX_COMMENT_LENGTH) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "comment is too long")
+        }
+        return text
     }
 
     private fun validatePageParams(page: Int, size: Int) {
