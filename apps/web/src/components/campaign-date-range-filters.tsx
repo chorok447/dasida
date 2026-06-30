@@ -43,7 +43,7 @@ function DateRangeGroup({
             value={from}
             onChange={(event) => onChange(fromField, event.target.value)}
             disabled={disabled}
-            className="mt-1 w-full rounded-xl border px-3 py-2 text-[13px] outline-none disabled:opacity-50"
+            className="ui-control mt-1 px-3 py-2 text-[13px]"
             style={inputStyle}
           />
         </label>
@@ -54,7 +54,7 @@ function DateRangeGroup({
             value={to}
             onChange={(event) => onChange(toField, event.target.value)}
             disabled={disabled}
-            className="mt-1 w-full rounded-xl border px-3 py-2 text-[13px] outline-none disabled:opacity-50"
+            className="ui-control mt-1 px-3 py-2 text-[13px]"
             style={inputStyle}
           />
         </label>

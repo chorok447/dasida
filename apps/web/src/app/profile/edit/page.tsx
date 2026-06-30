@@ -9,25 +9,9 @@ import { clearSession, getToken, setSession } from "@/lib/auth";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useTheme } from "@/lib/theme-context";
 import type { UpdateProfileResponse, UserProfile } from "@/data/users";
+import { StatePanel } from "@/components/ui/state-panel";
 
 const MAX_NAME_LENGTH = 30;
-
-function PageState({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="mx-auto flex min-h-72 max-w-2xl flex-col items-center justify-center gap-4 rounded-3xl border px-6 text-center"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 function ProfileEditForm({ profile }: { profile: UserProfile }) {
   const router = useRouter();
@@ -136,7 +120,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               maxLength={MAX_NAME_LENGTH}
               autoComplete="name"
               disabled={submitting}
-              className="w-full rounded-xl border px-4 py-3 outline-none transition-colors focus:border-[#7dd3a3] disabled:opacity-60"
+              className="ui-control"
               style={{
                 background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
                 borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
@@ -157,7 +141,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               value={profile.email}
               readOnly
               aria-readonly="true"
-              className="w-full rounded-xl border px-4 py-3 opacity-65 outline-none"
+              className="ui-control opacity-65"
               style={{
                 background: dark ? "rgba(255,255,255,0.03)" : "rgba(28,64,68,0.04)",
                 borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
@@ -217,25 +201,25 @@ export default function ProfileEditPage() {
 
       <div className="relative">
         {!isLoggedIn ? (
-          <PageState>
+          <StatePanel className="mx-auto min-h-72 max-w-2xl">
             <LogIn size={30} className="text-[#7dd3a3]" />
             <p>프로필을 수정하려면 로그인이 필요합니다.</p>
             <Link href="/login" className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               로그인 페이지로 이동
             </Link>
-          </PageState>
+          </StatePanel>
         ) : loading ? (
-          <PageState>
+          <StatePanel className="mx-auto min-h-72 max-w-2xl">
             <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
             <p>사용자 정보를 불러오는 중입니다.</p>
-          </PageState>
+          </StatePanel>
         ) : error || !profile ? (
-          <PageState>
+          <StatePanel className="mx-auto min-h-72 max-w-2xl" role="alert">
             <p>{error || "사용자 정보를 불러오지 못했습니다."}</p>
             <button type="button" onClick={retry} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               다시 시도
             </button>
-          </PageState>
+          </StatePanel>
         ) : (
           <ProfileEditForm key={`${profile.id}:${profile.name}`} profile={profile} />
         )}

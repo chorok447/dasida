@@ -6,6 +6,7 @@ import { apiGet, apiPut, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
+import { StatePanel } from "@/components/ui/state-panel";
 import type { Campaign } from "@/data/campaigns";
 import {
   CampaignForm,
@@ -33,16 +34,9 @@ function PageState({ children }: { children: React.ReactNode }) {
           : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
       }}
     >
-      <div
-        className="relative mx-auto flex min-h-72 max-w-2xl flex-col items-center justify-center gap-4 rounded-3xl border px-6 text-center"
-        style={{
-          background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-          color: dark ? "#f9f7f2" : "#0f1f22",
-        }}
-      >
+      <StatePanel className="relative mx-auto min-h-72 max-w-2xl">
         {children}
-      </div>
+      </StatePanel>
     </section>
   );
 }

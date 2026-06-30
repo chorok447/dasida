@@ -80,7 +80,7 @@ export function SiteHeader() {
         <nav className="hidden md:flex items-center gap-1">
           {items.map((it) => {
             const isActive = it.href === pathname;
-            const className = "relative px-4 py-2 text-[14px] transition-opacity";
+            const className = "relative rounded-lg px-4 py-2 text-[14px] transition-opacity hover:opacity-100";
             const style = { color: dark ? "#f9f7f2" : "#1c4044", opacity: isActive ? 1 : 0.7 };
             const dot = isActive && (
               <motion.div
@@ -104,7 +104,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/search"
-            className="flex h-9 items-center justify-center gap-2 rounded-full px-3"
+            className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
             style={{
               background: pathname === "/search" ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
               color: pathname === "/search" ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
@@ -116,7 +116,7 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/notifications"
-            className="w-9 h-9 rounded-full flex items-center justify-center relative"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
             style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
             aria-label={unread > 0 ? `알림 ${unread > 99 ? "99+" : unread}개` : "알림"}
           >
@@ -138,7 +138,7 @@ export function SiteHeader() {
               </span>
               <button
                 onClick={onLogout}
-                className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
+                className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-white/10"
                 style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
               >
                 로그아웃
@@ -148,14 +148,14 @@ export function SiteHeader() {
             <>
               <Link
                 href="/login"
-                className="text-[13px] px-3 py-1.5 rounded-full transition-colors"
+                className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-white/10"
                 style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
               >
                 로그인
               </Link>
               <Link
                 href="/signup"
-                className="text-[13px] px-3 py-1.5 rounded-full font-medium"
+                className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
                 style={{ background: "#7dd3a3", color: "#0f1f22" }}
               >
                 회원가입

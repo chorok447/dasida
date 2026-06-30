@@ -6,6 +6,8 @@ import { motion } from "motion/react";
 import { Bell, MessageCircle, Users, CheckCheck, Check, Trash2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 import { ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import {
@@ -288,30 +290,29 @@ export default function NotificationsClient() {
         {actionError ? <p role="alert" className="mb-4 text-[13px] text-[#ed5c48]">{actionError}</p> : null}
 
         {loading ? (
-          <div className="py-20 text-center text-[14px] opacity-60" style={{ color: fg }}>
-            불러오는 중…
-          </div>
+          <StatePanel compact>알림을 불러오는 중입니다.</StatePanel>
         ) : error ? (
-          <div className="py-20 text-center" style={{ color: fg }}>
-            <p className="text-[14px] mb-4 opacity-80">알림을 불러오지 못했습니다.</p>
+          <StatePanel compact role="alert">
+            <p className="opacity-80">알림을 불러오지 못했습니다.</p>
             <button
+              type="button"
               onClick={() => setRetryTick((t) => t + 1)}
-              className="text-[13px] px-4 py-2 rounded-full font-medium"
+              className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
               style={{ background: "#7dd3a3", color: "#0f1f22" }}
             >
               다시 시도
             </button>
-          </div>
+          </StatePanel>
         ) : list.length === 0 ? (
-          <div className="py-20 text-center text-[14px] opacity-60" style={{ color: fg }}>
+          <StatePanel compact>
             {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
-          </div>
+          </StatePanel>
         ) : (
           <div className="space-y-2">
             {list.map((n) => (
               <div
                 key={n.id}
-                className="flex items-center gap-3 p-4 rounded-2xl border transition-colors"
+                className="flex items-center gap-3 rounded-2xl border p-4 transition-[background-color,border-color,box-shadow] hover:shadow-md"
                 style={{
                   background: n.read ? cardBg : dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.12)",
                   borderColor: cardBorder,
@@ -320,7 +321,7 @@ export default function NotificationsClient() {
                 <button
                   type="button"
                   onClick={() => open(n.id, n.href, n.read)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-colors hover:bg-[#7dd3a3]/10"
                 >
                   <div className="relative flex-shrink-0">
                     <div
@@ -335,7 +336,7 @@ export default function NotificationsClient() {
                     <div className="text-[14px] truncate" style={{ color: fg }}>{n.title}</div>
                     <div className="text-[12px] opacity-70 truncate" style={{ color: fg }}>{n.body}</div>
                   </div>
-                  <span className="text-[11px] opacity-60 flex-shrink-0" style={{ color: fg }}>
+                  <span className="hidden flex-shrink-0 text-[11px] opacity-60 sm:inline" style={{ color: fg }}>
                     {relativeTime(n)}
                   </span>
                 </button>
@@ -371,29 +372,16 @@ export default function NotificationsClient() {
           </div>
         )}
 
-        {!loading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-8" style={{ color: fg }}>
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page <= 0}
-              className="text-[13px] px-4 py-2 rounded-full disabled:opacity-40"
-              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
-            >
-              이전
-            </button>
-            <span className="text-[13px] opacity-70">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => (p + 1 < totalPages ? p + 1 : p))}
-              disabled={page + 1 >= totalPages}
-              className="text-[13px] px-4 py-2 rounded-full disabled:opacity-40"
-              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
-            >
-              다음
-            </button>
-          </div>
-        )}
+        {!loading && !error && totalPages > 1 ? (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalElements={data?.totalElements}
+            compact
+            className="mt-8"
+            onPageChange={setPage}
+          />
+        ) : null}
       </div>
     </section>
   );

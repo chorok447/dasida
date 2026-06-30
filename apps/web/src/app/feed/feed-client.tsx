@@ -6,8 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import {
   Bookmark,
-  ChevronLeft,
-  ChevronRight,
   Heart,
   Image as ImageIcon,
   MessageCircle,
@@ -24,6 +22,8 @@ import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 
@@ -146,10 +146,6 @@ function FeedControls({
       </div>
     </div>
   );
-}
-
-function StatePanel({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center text-[14px]">{children}</div>;
 }
 
 function PostCard({
@@ -312,15 +308,15 @@ function PostCard({
         </div>
 
         {p.images.length === 1 ? (
-          <div className="aspect-[4/3] overflow-hidden cursor-pointer" onClick={onOpen}>
+          <button type="button" className="block aspect-[4/3] w-full overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
-          </div>
+          </button>
         ) : (
-          <div className="grid grid-cols-2 gap-0.5 aspect-[4/3] cursor-pointer" onClick={onOpen}>
+          <button type="button" className="grid aspect-[4/3] w-full grid-cols-2 gap-0.5 overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             {p.images.map((src, i) => (
               <img key={i} src={src} alt="" className="w-full h-full object-cover" />
             ))}
-          </div>
+          </button>
         )}
 
         <div className="p-4 space-y-3">
@@ -691,29 +687,14 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           ) : null}
 
           {response && response.totalElements > 0 ? (
-            <div className="mt-8 flex items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => updateUrl({ page: Math.max(0, response.page - 1) })}
-                disabled={refreshing || response.page === 0}
-                className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-              >
-                <ChevronLeft size={15} /> 이전
-              </button>
-              <span className="min-w-20 text-center text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
-                {response.page + 1} / {response.totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => updateUrl({ page: response.page + 1 })}
-                disabled={refreshing || response.page + 1 >= response.totalPages}
-                className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-              >
-                다음 <ChevronRight size={15} />
-              </button>
-            </div>
+            <Pagination
+              page={response.page}
+              totalPages={response.totalPages}
+              totalElements={response.totalElements}
+              disabled={refreshing}
+              className="mt-8"
+              onPageChange={(page) => updateUrl({ page })}
+            />
           ) : null}
         </main>
 

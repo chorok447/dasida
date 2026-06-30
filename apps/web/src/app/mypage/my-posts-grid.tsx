@@ -3,26 +3,10 @@
 
 import Link from "next/link";
 import { FileText, Heart, MessageCircle, PenLine } from "lucide-react";
+import { StatePanel } from "@/components/ui/state-panel";
 import { useTheme } from "@/lib/theme-context";
 import { fetchMyPostsPage, type Post } from "@/data/posts";
 import { PaginatedSection } from "./paginated-section";
-
-function StatePanel({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="min-h-64 rounded-2xl border flex flex-col items-center justify-center gap-4 px-6 text-center"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.7)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 function MyPostCard({ post }: { post: Post }) {
   const { theme } = useTheme();
@@ -99,7 +83,7 @@ export function MyPostsGrid({ page, onPageChange }: { page: number; onPageChange
       loadingLabel="내 게시글을 불러오는 중입니다."
       errorLabel="내 게시글을 불러오지 못했습니다."
       empty={
-        <StatePanel>
+        <StatePanel className="min-h-64 rounded-2xl">
           <FileText size={28} className="text-[#7dd3a3]" />
           <p>작성한 게시글이 없습니다.</p>
           <Link
