@@ -12,6 +12,7 @@ import { MyPostsGrid } from "./my-posts-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { UserCampaignsList } from "./joined-campaigns-list";
 import { ChangePasswordForm } from "./change-password-form";
+import { DeleteAccountForm } from "./delete-account-form";
 
 type Tab = "posts" | "campaigns" | "created" | "saved";
 
@@ -227,6 +228,7 @@ export default function MyPageClient() {
               {tab === "created" ? <UserCampaignsList mode="created" page={page} onPageChange={onPageChange} /> : null}
               {tab === "saved" ? <SavedPostsGrid page={page} onPageChange={onPageChange} /> : null}
             </div>
+            <DeleteAccountForm key={`delete-${profile.id}`} />
           </>
         )}
       </div>

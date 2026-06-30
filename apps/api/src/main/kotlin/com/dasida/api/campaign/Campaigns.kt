@@ -24,6 +24,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
@@ -83,6 +84,10 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Campaign c set c.author.name = :name, c.author.verified = false where c.authorUserId = :userId")
+    fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }
 
 /** 캠페인 참여자. (campaign_id, user_id) unique 로 중복 참여를 막는다. */
