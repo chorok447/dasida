@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, ShieldCheck, UserMinus, Users } from "lucide-react";
+import { ArrowLeft, RefreshCw, ShieldCheck, UserMinus, Users } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 import { apiGet, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -35,16 +37,9 @@ function StateShell({ children }: { children: React.ReactNode }) {
           : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
       }}
     >
-      <div
-        className="mx-auto flex min-h-72 max-w-2xl flex-col items-center justify-center gap-4 rounded-3xl border px-6 text-center"
-        style={{
-          background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.76)",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-          color: dark ? "#f9f7f2" : "#0f1f22",
-        }}
-      >
+      <StatePanel className="mx-auto min-h-72 max-w-2xl">
         {children}
-      </div>
+      </StatePanel>
     </section>
   );
 }
@@ -204,9 +199,6 @@ export default function ParticipantsClient({ id }: { id: string }) {
 
   const { data } = currentLoad;
   const status = statusMeta[data.status];
-  const displayPage = data.totalPages === 0 ? 1 : data.page + 1;
-  const displayTotalPages = Math.max(1, data.totalPages);
-
   return (
     <section
       className="relative min-h-screen px-4 pb-20 pt-28 transition-colors sm:px-6"
@@ -280,9 +272,9 @@ export default function ParticipantsClient({ id }: { id: string }) {
             ) : (
               <ul className="divide-y" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
                 {data.participants.map((participant) => (
-                  <li key={participant.participantId} className="flex min-h-14 items-center justify-between gap-4 py-3">
+                  <li key={participant.participantId} className="flex min-h-14 flex-col items-start justify-between gap-3 py-3 sm:flex-row sm:items-center sm:gap-4">
                     <span className="min-w-0 truncate text-[14px] font-medium">{participant.name}</span>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex w-full shrink-0 flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
                       {participant.verified ? (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#7dd3a3]/20 px-2.5 py-1 text-[11px] text-[#2f9c68]">
                           <ShieldCheck size={12} /> 인증 사용자
@@ -306,29 +298,13 @@ export default function ParticipantsClient({ id }: { id: string }) {
               </ul>
             )}
 
-            <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t pt-5 sm:flex-row" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
-              <span className="text-[12px] opacity-60">{displayPage} / {displayTotalPages} 페이지</span>
-              <div className="flex w-full gap-2 sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => movePage(data.page - 1)}
-                  disabled={data.page === 0}
-                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-35 sm:flex-none"
-                  style={{ background: dark ? "rgba(255,255,255,0.07)" : "rgba(28,64,68,0.07)" }}
-                >
-                  <ChevronLeft size={14} /> 이전
-                </button>
-                <button
-                  type="button"
-                  onClick={() => movePage(data.page + 1)}
-                  disabled={data.totalPages === 0 || data.page + 1 >= data.totalPages}
-                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-35 sm:flex-none"
-                  style={{ background: "#7dd3a3", color: "#0f1f22" }}
-                >
-                  다음 <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+            <Pagination
+              page={data.page}
+              totalPages={Math.max(1, data.totalPages)}
+              totalElements={data.totalElements}
+              className="mt-6 border-t pt-5"
+              onPageChange={movePage}
+            />
           </div>
         </div>
       </div>

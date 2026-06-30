@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 
@@ -39,7 +39,7 @@ export function AuthShell({
         mx.set(0);
         my.set(0);
       }}
-      className="relative min-h-screen flex items-center justify-center px-6 py-32 overflow-hidden transition-colors"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-28 transition-colors sm:px-6 sm:py-32"
       style={{
         position: "relative",
         perspective: 1400,
@@ -60,7 +60,7 @@ export function AuthShell({
       >
         <motion.div
           style={{ transform: "translateZ(60px)" }}
-          className="rounded-3xl p-10 backdrop-blur-xl border shadow-[0_40px_80px_-30px_rgba(0,0,0,0.5)]"
+          className="rounded-3xl border p-6 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:p-10"
         >
           <div
             style={{
@@ -94,7 +94,7 @@ export function AuthShell({
 
         <motion.div
           style={{ transform: "translateZ(120px)" }}
-          className="absolute -top-6 -right-6 w-20 h-20 rounded-2xl flex items-center justify-center shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4)]"
+          className="absolute -right-2 -top-6 flex h-20 w-20 items-center justify-center rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4)] sm:-right-6"
         >
           <div className="absolute inset-0 rounded-2xl bg-[#7dd3a3]" />
           <span
@@ -112,14 +112,20 @@ export function AuthShell({
 
 export function FieldInput({
   icon,
+  label,
+  name,
   type = "text",
+  autoComplete,
   placeholder,
   error,
   value,
   onChange,
 }: {
   icon: React.ReactNode;
+  label: string;
+  name?: string;
   type?: string;
+  autoComplete?: string;
   placeholder: string;
   error?: string;
   value?: string;
@@ -127,26 +133,34 @@ export function FieldInput({
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const id = useId();
+  const errorId = error ? `${id}-error` : undefined;
   return (
     <div>
+      <label htmlFor={id} className="sr-only">{label}</label>
       <div
-        className="relative flex items-center gap-3 rounded-xl px-4 py-3.5 transition-colors"
+        className="relative flex items-center gap-3 rounded-xl border px-4 py-3.5 transition-[border-color,box-shadow,background-color] focus-within:border-[#7dd3a3] focus-within:ring-2 focus-within:ring-[#7dd3a3]/20"
         style={{
           background: dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-          border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
+          borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
         }}
       >
         <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>{icon}</span>
         <input
+          id={id}
+          name={name}
           type={type}
+          autoComplete={autoComplete}
           placeholder={placeholder}
           value={value}
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+          aria-invalid={Boolean(error)}
+          aria-describedby={errorId}
           className="flex-1 bg-transparent outline-none placeholder:opacity-50"
           style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
         />
       </div>
-      {error && <p className="mt-1.5 text-[12px] text-[#ed5c48] pl-1">{error}</p>}
+      {error && <p id={errorId} role="alert" className="mt-1.5 pl-1 text-[12px] text-[#ed5c48]">{error}</p>}
     </div>
   );
 }

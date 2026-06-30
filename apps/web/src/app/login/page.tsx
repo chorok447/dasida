@@ -54,32 +54,43 @@ export default function LoginPage() {
         </p>
       }
     >
-      <FieldInput icon={<Mail size={18} />} placeholder="이메일을 입력하세요" value={email} onChange={setEmail} />
-      <FieldInput
-        icon={<Lock size={18} />}
-        type="password"
-        placeholder="비밀번호를 입력하세요"
-        value={password}
-        onChange={setPassword}
-        error={error}
-      />
-
-      <div className="flex items-center justify-between text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" className="w-4 h-4 accent-[#7dd3a3]" />
-          이메일 기억하기
-        </label>
-        <a href="#" style={{ color: "#7dd3a3" }}>비밀번호 찾기</a>
-      </div>
-
-      <button
-        onClick={submit}
-        disabled={submitting || !email.trim() || !password}
-        className="w-full mt-2 py-3.5 rounded-xl flex items-center justify-center gap-2 font-medium transition-transform hover:-translate-y-0.5 disabled:opacity-40"
-        style={{ background: "#7dd3a3", color: "#0f1f22" }}
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
       >
-        {submitting ? "로그인 중…" : "로그인"} <ArrowRight size={16} />
-      </button>
+        <FieldInput label="이메일" name="email" autoComplete="email" icon={<Mail size={18} />} placeholder="이메일을 입력하세요" value={email} onChange={setEmail} />
+        <FieldInput
+          label="비밀번호"
+          name="password"
+          autoComplete="current-password"
+          icon={<Lock size={18} />}
+          type="password"
+          placeholder="비밀번호를 입력하세요"
+          value={password}
+          onChange={setPassword}
+          error={error}
+        />
+
+        <div className="flex items-center justify-between text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" className="h-4 w-4 accent-[#7dd3a3]" />
+            이메일 기억하기
+          </label>
+          <span className="opacity-60">비밀번호 찾기 준비 중</span>
+        </div>
+
+        <button
+          type="submit"
+          disabled={submitting || !email.trim() || !password}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:opacity-40 motion-reduce:transform-none"
+          style={{ background: "#7dd3a3", color: "#0f1f22" }}
+        >
+          {submitting ? "로그인 중…" : "로그인"} <ArrowRight size={16} aria-hidden="true" />
+        </button>
+      </form>
     </AuthShell>
   );
 }

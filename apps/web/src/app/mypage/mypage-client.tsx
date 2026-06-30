@@ -14,6 +14,7 @@ import { UserCampaignsList } from "./joined-campaigns-list";
 import { ChangePasswordForm } from "./change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { DeleteAccountForm } from "./delete-account-form";
+import { StatePanel } from "@/components/ui/state-panel";
 
 type Tab = "posts" | "campaigns" | "created" | "saved";
 
@@ -33,23 +34,6 @@ function parseTab(value: string | null): Tab {
 function parsePage(value: string | null): number {
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : 0;
-}
-
-function PageState({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="mx-auto flex min-h-72 max-w-3xl flex-col items-center justify-center gap-4 rounded-3xl border px-6 text-center"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.72)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 function ProfileHeader({ profile }: { profile: UserProfile }) {
@@ -198,29 +182,29 @@ export default function MyPageClient() {
       <div className="relative pb-20">
         {!isLoggedIn ? (
           <div className="px-6 pt-32">
-            <PageState>
+            <StatePanel className="mx-auto min-h-72 max-w-3xl">
               <LogIn size={30} className="text-[#7dd3a3]" />
               <p>마이페이지를 보려면 로그인이 필요합니다.</p>
               <Link href="/login" className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
                 로그인 페이지로 이동
               </Link>
-            </PageState>
+            </StatePanel>
           </div>
         ) : loading ? (
           <div className="px-6 pt-32">
-            <PageState>
+            <StatePanel className="mx-auto min-h-72 max-w-3xl">
               <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
               <p>사용자 정보를 불러오는 중입니다.</p>
-            </PageState>
+            </StatePanel>
           </div>
         ) : error || !profile ? (
           <div className="px-6 pt-32">
-            <PageState>
+            <StatePanel className="mx-auto min-h-72 max-w-3xl" role="alert">
               <p>{error || "사용자 정보를 불러오지 못했습니다."}</p>
               <button type="button" onClick={retry} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
                 다시 시도
               </button>
-            </PageState>
+            </StatePanel>
           </div>
         ) : (
           <>

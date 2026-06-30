@@ -136,7 +136,7 @@ export function ChangePasswordForm({ profileName }: { profileName: string }) {
               onChange={(event) => setCurrentPassword(event.target.value)}
               autoComplete="current-password"
               disabled={submitting}
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-[14px] outline-none focus:border-[#7dd3a3] disabled:opacity-50"
+              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>
@@ -150,7 +150,7 @@ export function ChangePasswordForm({ profileName }: { profileName: string }) {
               minLength={8}
               maxLength={15}
               disabled={submitting}
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-[14px] outline-none focus:border-[#7dd3a3] disabled:opacity-50"
+              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>
@@ -164,7 +164,7 @@ export function ChangePasswordForm({ profileName }: { profileName: string }) {
               minLength={8}
               maxLength={15}
               disabled={submitting}
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-[14px] outline-none focus:border-[#7dd3a3] disabled:opacity-50"
+              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>

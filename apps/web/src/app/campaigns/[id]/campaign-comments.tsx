@@ -2,8 +2,10 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Loader2, MessageCircle, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, MessageCircle, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 import {
   fetchCampaignCommentPageLocation,
   updateCampaignComment,
@@ -37,10 +39,6 @@ const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
 function formatCreatedAt(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date);
-}
-
-function CommentStatePanel({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center text-[13px]">{children}</div>;
 }
 
 function CommentItem({
@@ -146,13 +144,14 @@ function CommentItem({
           }}
         >
           <textarea
+            aria-label="댓글 수정 내용"
             autoFocus
             value={editText}
             onChange={(event) => onEditTextChange(event.target.value)}
             maxLength={500}
             rows={4}
             disabled={saving}
-            className="w-full resize-none rounded-xl border bg-transparent px-3 py-3 text-[14px] outline-none disabled:opacity-50"
+            className="ui-control resize-none bg-transparent px-3 py-3"
             style={{ borderColor: dark ? "rgba(255,255,255,0.14)" : "rgba(28,64,68,0.14)", color: dark ? "#f9f7f2" : "#0f1f22" }}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -585,7 +584,7 @@ export function CampaignComments({
               maxLength={500}
               rows={4}
               placeholder="댓글을 입력해주세요."
-              className="mt-2 w-full resize-none rounded-xl border bg-transparent px-3 py-3 text-[14px] outline-none"
+              className="ui-control mt-2 resize-none bg-transparent px-3 py-3"
               style={{ borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)", color: dark ? "#f9f7f2" : "#0f1f22" }}
             />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
@@ -620,26 +619,26 @@ export function CampaignComments({
 
       <div className="mt-7 space-y-3">
         {currentState.status === "loading" ? (
-          <CommentStatePanel>
+          <StatePanel compact>
             <Loader2 size={24} className="animate-spin text-[#7dd3a3]" />
             <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>댓글을 불러오는 중입니다.</p>
-          </CommentStatePanel>
+          </StatePanel>
         ) : null}
 
         {currentState.status === "error" ? (
-          <CommentStatePanel>
+          <StatePanel compact role="alert">
             <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>{currentState.error}</p>
             <button type="button" onClick={reload} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               다시 시도
             </button>
-          </CommentStatePanel>
+          </StatePanel>
         ) : null}
 
         {currentState.status === "success" && response?.content.length === 0 ? (
-          <CommentStatePanel>
+          <StatePanel compact>
             <MessageCircle size={26} className="opacity-35" />
             <p style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>아직 작성된 댓글이 없습니다.</p>
-          </CommentStatePanel>
+          </StatePanel>
         ) : null}
 
         {currentState.status === "success" && response ? response.content.map((comment) => (
@@ -662,29 +661,14 @@ export function CampaignComments({
       </div>
 
       {currentState.status === "success" && response && response.totalElements > 0 ? (
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => changePage(page - 1)}
-            disabled={response.page === 0}
-            className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-          >
-            <ChevronLeft size={14} /> 이전
-          </button>
-          <span className="min-w-16 text-center text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            {response.page + 1} / {response.totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => changePage(page + 1)}
-            disabled={response.page + 1 >= response.totalPages}
-            className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-          >
-            다음 <ChevronRight size={14} />
-          </button>
-        </div>
+        <Pagination
+          page={response.page}
+          totalPages={response.totalPages}
+          totalElements={response.totalElements}
+          compact
+          className="mt-7"
+          onPageChange={changePage}
+        />
       ) : null}
     </div>
   );
