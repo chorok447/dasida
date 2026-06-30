@@ -1,4 +1,4 @@
-import { apiPut } from "@/lib/api";
+import { apiDeleteWithBody, apiPut } from "@/lib/api";
 
 export type ChangePasswordRequest = {
   currentPassword: string;
@@ -8,6 +8,15 @@ export type ChangePasswordRequest = {
 export type ChangePasswordResponse = {
   changed: boolean;
   token: string | null;
+};
+
+export type DeleteAccountRequest = {
+  currentPassword: string;
+  confirmText: string;
+};
+
+export type DeleteAccountResponse = {
+  deleted: boolean;
 };
 
 export type PasswordPolicyState = {
@@ -39,4 +48,11 @@ export function changePassword(
   token: string,
 ): Promise<ChangePasswordResponse> {
   return apiPut<ChangePasswordResponse>("/api/auth/password", body, token);
+}
+
+export function deleteAccount(
+  body: DeleteAccountRequest,
+  token: string,
+): Promise<DeleteAccountResponse> {
+  return apiDeleteWithBody<DeleteAccountResponse>("/api/auth/me", body, token);
 }

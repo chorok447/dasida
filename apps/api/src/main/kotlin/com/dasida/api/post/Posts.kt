@@ -24,6 +24,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
@@ -90,6 +91,10 @@ interface PostRepository : JpaRepository<Post, String> {
 
     /** 캠페인 삭제 시 연결 게시글 존재 확인용. campaign_id 인덱스를 탄다. */
     fun existsByCampaignId(campaignId: String): Boolean
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.author.name = :name, p.author.verified = false where p.authorUserId = :userId")
+    fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }
 
 /** 사용자별 좋아요. (post_id, user_id) unique 로 중복 좋아요를 막는다. */
@@ -177,6 +182,10 @@ interface PostCommentRepository : JpaRepository<PostComment, String> {
 
     @Transactional
     fun deleteByPostId(postId: String)
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update PostComment c set c.author.name = :name, c.author.verified = false where c.authorUserId = :userId")
+    fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }
 
 /**

@@ -98,6 +98,27 @@ export async function apiDelete<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** JSON body가 필요한 DELETE 호출. 계정 탈퇴처럼 민감값을 query string에 노출하지 않는다. */
+export async function apiDeleteWithBody<T>(
+  path: string,
+  body: unknown,
+  token?: string | null,
+): Promise<T> {
+  const headers = token === undefined
+    ? authHeaders()
+    : token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
+  const res = await fetch(`${BASE}${path}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
+  return res.json() as Promise<T>;
+}
+
 /** 본문 없는 DELETE(204). apiDelete<T>는 JSON 파싱을 기대하므로 204 응답엔 이 헬퍼를 쓴다. */
 export async function apiDeleteVoid(path: string): Promise<void> {
   const res = await fetch(`${BASE}${path}`, {
