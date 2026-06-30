@@ -6,8 +6,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bookmark,
-  ChevronLeft,
-  ChevronRight,
   Heart,
   MessageCircle,
   RefreshCw,
@@ -16,6 +14,8 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
+import { Pagination } from "@/components/ui/pagination";
+import { StatePanel } from "@/components/ui/state-panel";
 import {
   appendCampaignDateRangeFilters,
   campaignDateRangeError,
@@ -243,52 +243,6 @@ function PostResultCard({ post }: { post: Post }) {
         </div>
       </div>
     </Link>
-  );
-}
-
-function StatePanel({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center text-[14px]">{children}</div>;
-}
-
-function Pagination({
-  page,
-  totalPages,
-  loading,
-  onPage,
-}: {
-  page: number;
-  totalPages: number;
-  loading: boolean;
-  onPage: (page: number) => void;
-}) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  if (totalPages === 0) return null;
-
-  return (
-    <div className="mt-10 flex items-center justify-center gap-4">
-      <button
-        type="button"
-        onClick={() => onPage(Math.max(0, page - 1))}
-        disabled={loading || page === 0}
-        className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-        style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-      >
-        <ChevronLeft size={15} /> 이전
-      </button>
-      <span className="min-w-20 text-center text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
-        {page + 1} / {totalPages}
-      </span>
-      <button
-        type="button"
-        onClick={() => onPage(page + 1)}
-        disabled={loading || page + 1 >= totalPages}
-        className="flex items-center gap-1 rounded-full border px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-        style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-      >
-        다음 <ChevronRight size={15} />
-      </button>
-    </div>
   );
 }
 
@@ -651,8 +605,9 @@ export default function SearchClient() {
           <Pagination
             page={campaignResponse.page}
             totalPages={campaignResponse.totalPages}
-            loading={false}
-            onPage={(page) => updateUrl({ page })}
+            totalElements={campaignResponse.totalElements}
+            className="mt-10"
+            onPageChange={(page) => updateUrl({ page })}
           />
         ) : null}
 
@@ -660,8 +615,9 @@ export default function SearchClient() {
           <Pagination
             page={postResponse.page}
             totalPages={postResponse.totalPages}
-            loading={false}
-            onPage={(page) => updateUrl({ page })}
+            totalElements={postResponse.totalElements}
+            className="mt-10"
+            onPageChange={(page) => updateUrl({ page })}
           />
         ) : null}
 

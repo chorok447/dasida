@@ -113,7 +113,7 @@ export function DeleteAccountForm() {
               onChange={(event) => setCurrentPassword(event.target.value)}
               autoComplete="current-password"
               disabled={submitting}
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-[14px] outline-none focus:border-red-500 disabled:opacity-50"
+              className="ui-control mt-2 focus-visible:border-red-500 focus-visible:ring-red-500/20"
               style={inputStyle}
             />
           </label>
@@ -126,7 +126,7 @@ export function DeleteAccountForm() {
               autoComplete="off"
               disabled={submitting}
               placeholder={CONFIRM_TEXT}
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-[14px] outline-none focus:border-red-500 disabled:opacity-50"
+              className="ui-control mt-2 focus-visible:border-red-500 focus-visible:ring-red-500/20"
               style={inputStyle}
             />
           </label>

@@ -12,6 +12,7 @@ import { getToken, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { Pagination } from "@/components/ui/pagination";
 import {
   fetchPostCommentPageLocation,
   fetchPostCommentsPage,
@@ -702,7 +703,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
         <div
           ref={commentSectionRef}
-          className="mt-8 rounded-3xl border p-8 scroll-mt-24"
+          className="mt-8 scroll-mt-24 rounded-3xl border p-5 sm:p-8"
           style={{
             background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
             borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
@@ -717,6 +718,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
           >
             <Avatar name="나" />
             <input
+              aria-label="댓글 내용"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => {
@@ -733,6 +735,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
             />
             <button
+              type="button"
               onClick={submitComment}
               disabled={submittingComment || visibleCommentsLoading || !!commentsError || !commentText.trim()}
               aria-label="댓글 등록"
@@ -821,13 +824,14 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                         }}
                       >
                         <textarea
+                          aria-label="댓글 수정 내용"
                           autoFocus
                           value={editCommentText}
                           onChange={(event) => setEditCommentText(event.target.value)}
                           maxLength={MAX_COMMENT_LENGTH}
                           rows={3}
                           disabled={savingCommentId === c.id}
-                          className="w-full resize-none rounded-xl border bg-transparent px-3 py-2 text-[14px] outline-none disabled:opacity-50"
+                          className="ui-control resize-none bg-transparent px-3 py-2"
                           style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
                         />
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -868,29 +872,14 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
           {currentCommentsState.status === "success" &&
           currentCommentsState.response &&
           currentCommentsState.response.totalElements > 0 ? (
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => updateCommentsPage(commentsPage - 1)}
-                disabled={currentCommentsState.response.page === 0}
-                className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-              >
-                <ChevronLeft size={14} /> 이전
-              </button>
-              <span className="min-w-20 text-center text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                {currentCommentsState.response.page + 1} / {currentCommentsState.response.totalPages} 페이지
-              </span>
-              <button
-                type="button"
-                onClick={() => updateCommentsPage(commentsPage + 1)}
-                disabled={currentCommentsState.response.page + 1 >= currentCommentsState.response.totalPages}
-                className="inline-flex items-center gap-1 rounded-full border px-4 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-              >
-                다음 <ChevronRight size={14} />
-              </button>
-            </div>
+            <Pagination
+              page={currentCommentsState.response.page}
+              totalPages={currentCommentsState.response.totalPages}
+              totalElements={currentCommentsState.response.totalElements}
+              compact
+              className="mt-7"
+              onPageChange={updateCommentsPage}
+            />
           ) : null}
         </div>
       </div>

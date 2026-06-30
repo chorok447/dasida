@@ -65,33 +65,44 @@ export default function SignupPage() {
         </p>
       }
     >
-      <FieldInput icon={<Mail size={18} />} placeholder="이메일을 입력하세요" value={email} onChange={setEmail} error={error} />
-      <FieldInput icon={<Lock size={18} />} type="password" placeholder="비밀번호를 입력하세요" value={password} onChange={setPassword} />
-      <div className="flex gap-3 px-1">
-        <Rule ok={passwordPolicy.hasLetter} label="영문" />
-        <Rule ok={passwordPolicy.hasNumber} label="숫자" />
-        <Rule ok={passwordPolicy.hasSpecial} label="특수문자" />
-        <Rule ok={passwordPolicy.lengthValid} label="8~15자리" />
-      </div>
-      <FieldInput
-        icon={<Lock size={18} />}
-        type="password"
-        placeholder="비밀번호를 다시 입력하세요"
-        value={passwordConfirm}
-        onChange={setPasswordConfirm}
-        error={passwordConfirm && password !== passwordConfirm ? "비밀번호가 일치하지 않습니다." : undefined}
-      />
-      <FieldInput icon={<IdCard size={18} />} placeholder="이름을 입력하세요" value={realName} onChange={setRealName} />
-      <FieldInput icon={<User size={18} />} placeholder="닉네임을 입력하세요" value={nickname} onChange={setNickname} />
-
-      <button
-        onClick={submit}
-        disabled={submitting || !canSubmit}
-        className="w-full mt-2 py-3.5 rounded-xl flex items-center justify-center gap-2 font-medium transition-transform hover:-translate-y-0.5 disabled:opacity-40"
-        style={{ background: "#7dd3a3", color: "#0f1f22" }}
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
       >
-        {submitting ? "가입 중…" : "회원가입"} <ArrowRight size={16} />
-      </button>
+        <FieldInput label="이메일" name="email" autoComplete="email" icon={<Mail size={18} />} placeholder="이메일을 입력하세요" value={email} onChange={setEmail} error={error} />
+        <FieldInput label="비밀번호" name="password" autoComplete="new-password" icon={<Lock size={18} />} type="password" placeholder="비밀번호를 입력하세요" value={password} onChange={setPassword} />
+        <div className="flex flex-wrap gap-3 px-1">
+          <Rule ok={passwordPolicy.hasLetter} label="영문" />
+          <Rule ok={passwordPolicy.hasNumber} label="숫자" />
+          <Rule ok={passwordPolicy.hasSpecial} label="특수문자" />
+          <Rule ok={passwordPolicy.lengthValid} label="8~15자리" />
+        </div>
+        <FieldInput
+          label="비밀번호 확인"
+          name="password-confirm"
+          autoComplete="new-password"
+          icon={<Lock size={18} />}
+          type="password"
+          placeholder="비밀번호를 다시 입력하세요"
+          value={passwordConfirm}
+          onChange={setPasswordConfirm}
+          error={passwordConfirm && password !== passwordConfirm ? "비밀번호가 일치하지 않습니다." : undefined}
+        />
+        <FieldInput label="이름" name="real-name" autoComplete="name" icon={<IdCard size={18} />} placeholder="이름을 입력하세요" value={realName} onChange={setRealName} />
+        <FieldInput label="닉네임" name="nickname" icon={<User size={18} />} placeholder="닉네임을 입력하세요" value={nickname} onChange={setNickname} />
+
+        <button
+          type="submit"
+          disabled={submitting || !canSubmit}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:opacity-40 motion-reduce:transform-none"
+          style={{ background: "#7dd3a3", color: "#0f1f22" }}
+        >
+          {submitting ? "가입 중…" : "회원가입"} <ArrowRight size={16} aria-hidden="true" />
+        </button>
+      </form>
     </AuthShell>
   );
 }

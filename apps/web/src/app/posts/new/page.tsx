@@ -114,7 +114,7 @@ export default function PostCreatePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div
-            className="rounded-3xl border p-8 space-y-6"
+            className="space-y-6 rounded-3xl border p-5 sm:p-8"
             style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
           >
             <div>
@@ -134,9 +134,11 @@ export default function PostCreatePage() {
                 {sampleImages.map((src) => (
                   <button
                     key={src}
+                    type="button"
                     onClick={() => setImages(images.includes(src) ? images.filter((s) => s !== src) : [...images, src])}
                     className="aspect-square rounded-lg overflow-hidden border-2 relative"
                     style={{ borderColor: images.includes(src) ? "#7dd3a3" : "transparent" }}
+                    aria-label={images.includes(src) ? "선택한 이미지 해제" : "이미지 선택"}
                   >
                     <img src={src} alt="" className="w-full h-full object-cover" />
                     {images.includes(src) && (
@@ -148,15 +150,16 @@ export default function PostCreatePage() {
             </div>
 
             <div>
-              <label className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+              <label htmlFor="post-text" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
                 내용
               </label>
               <textarea
+                id="post-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={5}
                 placeholder="어떤 업사이클을 하고 계신가요?"
-                className="w-full rounded-2xl p-4 outline-none resize-none placeholder:opacity-50"
+                className="ui-control resize-none rounded-2xl p-4 placeholder:opacity-50"
                 style={{
                   background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
                   border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
@@ -165,15 +168,16 @@ export default function PostCreatePage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+                <label htmlFor="post-category" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
                   카테고리
                 </label>
                 <select
+                  id="post-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl outline-none"
+                  className="ui-control px-3 py-2.5"
                   style={{
                     background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
                     border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
@@ -186,13 +190,14 @@ export default function PostCreatePage() {
                 </select>
               </div>
               <div>
-                <label className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+                <label htmlFor="post-campaign" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
                   캠페인 연결
                 </label>
                 <select
+                  id="post-campaign"
                   value={campaign}
                   onChange={(e) => setCampaign(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl outline-none"
+                  className="ui-control px-3 py-2.5"
                   style={{
                     background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
                     border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
@@ -208,7 +213,7 @@ export default function PostCreatePage() {
             </div>
 
             <div>
-              <label className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+              <label htmlFor="post-tag" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
                 태그
               </label>
               <div
@@ -221,12 +226,13 @@ export default function PostCreatePage() {
                 {tags.map((t) => (
                   <span key={t} className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full" style={{ background: dark ? "rgba(125,211,163,0.15)" : "rgba(125,211,163,0.25)", color: dark ? "#7dd3a3" : "#1c4044" }}>
                     {t}
-                    <button onClick={() => setTags(tags.filter((x) => x !== t))}>
+                    <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`${t} 태그 제거`}>
                       <X size={10} />
                     </button>
                   </span>
                 ))}
                 <input
+                  id="post-tag"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
@@ -237,8 +243,9 @@ export default function PostCreatePage() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <button
+                type="button"
                 onClick={goBack}
                 className="flex-1 py-3 rounded-xl"
                 style={{
@@ -249,6 +256,7 @@ export default function PostCreatePage() {
                 임시저장
               </button>
               <button
+                type="button"
                 onClick={submit}
                 disabled={submitting || !text.trim()}
                 className="flex-1 py-3 rounded-xl font-medium inline-flex items-center justify-center gap-2 disabled:opacity-40"

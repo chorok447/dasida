@@ -118,12 +118,14 @@ const steps = [
 ];
 
 function Input({
+  id,
   value,
   onChange,
   placeholder,
   type = "text",
   disabled,
 }: {
+  id: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -134,12 +136,13 @@ function Input({
   const dark = theme === "dark";
   return (
     <input
+      id={id}
       type={type}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full rounded-xl px-4 py-3 outline-none placeholder:opacity-50 disabled:opacity-60"
+      className="ui-control placeholder:opacity-50"
       style={{
         background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
         border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
@@ -259,18 +262,18 @@ export function CampaignForm({
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <form
             onSubmit={submit}
-            className="space-y-5 rounded-3xl border p-8"
+            className="space-y-5 rounded-3xl border p-5 sm:p-8"
             style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
           >
             {step === 0 ? (
               <>
                 <div>
-                  <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>제목</label>
-                  <Input value={values.title} onChange={(value) => setField("title", value)} placeholder="예) 한강공원 플로깅 데이" disabled={submitting} />
+                  <label htmlFor="campaign-title" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>제목</label>
+                  <Input id="campaign-title" value={values.title} onChange={(value) => setField("title", value)} placeholder="예) 한강공원 플로깅 데이" disabled={submitting} />
                 </div>
                 <div>
-                  <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>한 줄 요약</label>
-                  <Input value={values.summary} onChange={(value) => setField("summary", value)} placeholder="짧게 캠페인을 소개해 주세요" disabled={submitting} />
+                  <label htmlFor="campaign-summary" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>한 줄 요약</label>
+                  <Input id="campaign-summary" value={values.summary} onChange={(value) => setField("summary", value)} placeholder="짧게 캠페인을 소개해 주세요" disabled={submitting} />
                 </div>
                 <div>
                   <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>썸네일</label>
@@ -295,24 +298,24 @@ export function CampaignForm({
 
             {step === 1 ? (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 시작</label>
-                    <Input value={values.recruitStart} onChange={(value) => setField("recruitStart", value)} type="date" disabled={submitting} />
+                    <label htmlFor="campaign-recruit-start" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 시작</label>
+                    <Input id="campaign-recruit-start" value={values.recruitStart} onChange={(value) => setField("recruitStart", value)} type="date" disabled={submitting} />
                   </div>
                   <div>
-                    <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 종료</label>
-                    <Input value={values.recruitEnd} onChange={(value) => setField("recruitEnd", value)} type="date" disabled={submitting} />
+                    <label htmlFor="campaign-recruit-end" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 종료</label>
+                    <Input id="campaign-recruit-end" value={values.recruitEnd} onChange={(value) => setField("recruitEnd", value)} type="date" disabled={submitting} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>진행 시작</label>
-                    <Input value={values.runStart} onChange={(value) => setField("runStart", value)} type="date" disabled={submitting} />
+                    <label htmlFor="campaign-run-start" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>진행 시작</label>
+                    <Input id="campaign-run-start" value={values.runStart} onChange={(value) => setField("runStart", value)} type="date" disabled={submitting} />
                   </div>
                   <div>
-                    <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>진행 종료</label>
-                    <Input value={values.runEnd} onChange={(value) => setField("runEnd", value)} type="date" disabled={submitting} />
+                    <label htmlFor="campaign-run-end" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>진행 종료</label>
+                    <Input id="campaign-run-end" value={values.runEnd} onChange={(value) => setField("runEnd", value)} type="date" disabled={submitting} />
                   </div>
                 </div>
               </>
@@ -321,8 +324,8 @@ export function CampaignForm({
             {step === 2 ? (
               <>
                 <div>
-                  <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 인원</label>
-                  <Input value={values.capacity} onChange={(value) => setField("capacity", value)} placeholder="숫자" type="number" disabled={submitting} />
+                  <label htmlFor="campaign-capacity" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>모집 인원</label>
+                  <Input id="campaign-capacity" value={values.capacity} onChange={(value) => setField("capacity", value)} placeholder="숫자" type="number" disabled={submitting} />
                   {values.capacity !== "" && (!validation.ok && validation.message.includes("모집 인원")) ? (
                     <p className="mt-1.5 text-[12px]" style={{ color: "#ed5c48" }}>{validation.message}</p>
                   ) : null}
@@ -335,14 +338,15 @@ export function CampaignForm({
 
             {step === 3 ? (
               <div>
-                <label className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>본문</label>
+                <label htmlFor="campaign-body" className="mb-2 block text-[12px] uppercase tracking-[0.2em] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>본문</label>
                 <textarea
+                  id="campaign-body"
                   value={values.body}
                   onChange={(event) => setField("body", event.target.value)}
                   rows={10}
                   disabled={submitting}
                   placeholder="캠페인의 배경과 진행 방식, 참여자에게 제공되는 것 등을 자세히 적어주세요."
-                  className="w-full resize-none rounded-xl px-4 py-3 outline-none placeholder:opacity-50 disabled:opacity-60"
+                  className="ui-control resize-none placeholder:opacity-50"
                   style={{
                     background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
                     border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
