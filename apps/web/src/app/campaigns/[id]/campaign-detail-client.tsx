@@ -3,7 +3,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Pencil, Trash2, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
@@ -366,10 +366,13 @@ function ContentTab({ c }: { c: Campaign }) {
 
 export default function CampaignDetailClient({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const targetCommentId = searchParams.get("commentId")?.trim() || null;
   const { token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const [tab, setTab] = useState<Tab>("content");
+  const [tab, setTab] = useState<Tab>(() => targetCommentId ? "comments" : "content");
+  const activeTab: Tab = targetCommentId ? "comments" : tab;
   const [c, setC] = useState(campaign);
   const [ownershipToken, setOwnershipToken] = useState<string | null>(null);
   // join/leave 는 하나의 participation mutation 으로 묶어 동시 실행을 막고, 진행 중 문구를 구분한다.
@@ -379,6 +382,15 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const deletingRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
+
+  const selectTab = (next: Tab) => {
+    setTab(next);
+    if (next !== "content" || !targetCommentId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("commentId");
+    const query = params.toString();
+    router.replace(`/campaigns/${encodeURIComponent(campaign.id)}${query ? `?${query}` : ""}`, { scroll: false });
+  };
 
   // 새로고침·로그인/로그아웃 시 참여·소유 상태를 함께 동기화한다.
   // identity 변경 시 사용자별 상태만 즉시 neutral(false), joined 숫자는 유지한다.
@@ -613,11 +625,11 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
             { id: "content", label: "캠페인 내용", icon: <FileText size={14} /> },
             { id: "comments", label: "댓글", icon: <MessageCircle size={14} /> },
           ] as { id: Tab; label: string; icon: React.ReactNode }[]).map((t) => {
-            const active = tab === t.id;
+            const active = activeTab === t.id;
             return (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => selectTab(t.id)}
                 className="relative px-5 py-3 inline-flex items-center gap-2 text-[14px]"
                 style={{ color: active ? (dark ? "#f9f7f2" : "#0f1f22") : dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}
               >
@@ -636,7 +648,11 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         </div>
 
         <div className="mt-8">
-          {tab === "content" ? <ContentTab c={c} /> : <CampaignComments campaignId={c.id} />}
+          {activeTab === "content" ? (
+            <ContentTab c={c} />
+          ) : (
+            <CampaignComments campaignId={c.id} targetCommentId={targetCommentId} />
+          )}
         </div>
       </div>
     </section>

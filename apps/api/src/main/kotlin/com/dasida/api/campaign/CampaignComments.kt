@@ -1,5 +1,6 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.post.Author
@@ -16,6 +17,8 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.transaction.annotation.Transactional
@@ -54,6 +57,20 @@ class CampaignComment(
 interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
     fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignComment>
     fun findByIdAndCampaignId(id: String, campaignId: String): CampaignComment?
+
+    @Query(
+        """
+        select count(c) from CampaignComment c
+        where c.campaignId = :campaignId
+          and (c.createdAt > :createdAt or (c.createdAt = :createdAt and c.id < :id))
+        """,
+    )
+    fun countBeforeInNewestOrder(
+        @Param("campaignId") campaignId: String,
+        @Param("createdAt") createdAt: Instant,
+        @Param("id") id: String,
+    ): Long
+
     fun countByCampaignId(campaignId: String): Long
 
     @Transactional
@@ -116,6 +133,30 @@ class CampaignCommentController(
         )
     }
 
+    /** 최신순 댓글 pagination과 같은 정렬 기준으로 대상 댓글이 속한 page를 계산한다. */
+    @GetMapping("/{commentId}/page")
+    @Transactional(readOnly = true)
+    fun location(
+        @PathVariable campaignId: String,
+        @PathVariable commentId: String,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): CommentPageLocationResponse {
+        if (size !in 1..MAX_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
+        }
+        if (!campaigns.existsById(campaignId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        val target = comments.findByIdAndCampaignId(commentId, campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        val commentsBefore = comments.countBeforeInNewestOrder(campaignId, target.createdAt, target.id)
+        return CommentPageLocationResponse(
+            commentId = target.id,
+            page = (commentsBefore / size).toInt(),
+            size = size,
+        )
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
@@ -146,7 +187,7 @@ class CampaignCommentController(
             type = NotificationType.CAMPAIGN_COMMENT_CREATED,
             title = "${user.name}님이 캠페인에 댓글을 남겼습니다",
             body = campaign.title,
-            href = "/campaigns/$campaignId",
+            href = "/campaigns/$campaignId?commentId=${saved.id}",
         )
         return saved.toResponse(user.id)
     }

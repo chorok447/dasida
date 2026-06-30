@@ -1,6 +1,7 @@
 package com.dasida.api.post
 
 import com.dasida.api.campaign.CampaignRepository
+import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.Photos
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
@@ -153,6 +154,21 @@ class PostComment(
 interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun findByPostIdOrderBySeqAsc(postId: String): List<PostComment>
     fun findByPostId(postId: String, pageable: Pageable): Page<PostComment>
+    fun findByIdAndPostId(id: String, postId: String): PostComment?
+
+    @Query(
+        """
+        select count(c) from PostComment c
+        where c.postId = :postId
+          and (c.seq > :seq or (c.seq = :seq and c.id < :id))
+        """,
+    )
+    fun countBeforeInNewestOrder(
+        @Param("postId") postId: String,
+        @Param("seq") seq: Long,
+        @Param("id") id: String,
+    ): Long
+
     fun countByPostId(postId: String): Long
 
     @Transactional
@@ -603,6 +619,30 @@ class PostController(
         )
     }
 
+    /** 최신순 댓글 pagination과 같은 정렬 기준으로 대상 댓글이 속한 page를 계산한다. */
+    @GetMapping("/{postId}/comments/{commentId}/page")
+    @Transactional(readOnly = true)
+    fun commentPageLocation(
+        @PathVariable postId: String,
+        @PathVariable commentId: String,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): CommentPageLocationResponse {
+        if (size !in 1..MAX_COMMENT_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_COMMENT_PAGE_SIZE")
+        }
+        if (!repo.existsById(postId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+        val target = commentRepo.findByIdAndPostId(commentId, postId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        val commentsBefore = commentRepo.countBeforeInNewestOrder(postId, target.seq, target.id)
+        return CommentPageLocationResponse(
+            commentId = target.id,
+            page = (commentsBefore / size).toInt(),
+            size = size,
+        )
+    }
+
     @PostMapping("/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
@@ -636,7 +676,7 @@ class PostController(
             type = NotificationType.POST_COMMENT_CREATED,
             title = "${user.name}님이 내 게시글에 댓글을 남겼습니다",
             body = text,
-            href = "/posts/$id",
+            href = "/posts/$id?commentId=${comment.id}",
         )
         return comment.toResponse(user.id)
     }
