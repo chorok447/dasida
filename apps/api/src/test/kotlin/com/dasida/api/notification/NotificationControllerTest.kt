@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
@@ -220,5 +221,96 @@ class NotificationControllerTest(
         }
         // 남의 알림은 건드리지 않는다.
         assertThat(repo.findById(othersUnread).orElseThrow().readAt).isNull()
+    }
+
+    @Test
+    fun `비로그인 알림 삭제는 401`() {
+        val id = save(me)
+
+        mvc.delete("/api/notifications/$id").andExpect { status { isUnauthorized() } }
+        mvc.delete("/api/notifications/read").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `내 unread 알림 삭제는 목록과 unread count에서 제외한다`() {
+        val id = save(me, read = false)
+
+        mvc.delete("/api/notifications/$id") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deleted") { value(true) }
+            jsonPath("$.unreadCount") { value(0) }
+        }
+
+        assertThat(repo.existsById(id)).isFalse()
+        list().andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(0) }
+            jsonPath("$.unreadCount") { value(0) }
+        }
+        mvc.get("/api/notifications/unread-count") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.unreadCount") { value(0) }
+        }
+    }
+
+    @Test
+    fun `read 알림 삭제는 기존 unread count를 유지한다`() {
+        val readId = save(me, read = true)
+        val unreadId = save(me, read = false)
+
+        mvc.delete("/api/notifications/$readId") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deleted") { value(true) }
+            jsonPath("$.unreadCount") { value(1) }
+        }
+
+        assertThat(repo.existsById(readId)).isFalse()
+        assertThat(repo.existsById(unreadId)).isTrue()
+    }
+
+    @Test
+    fun `없는 알림과 다른 사용자 알림 삭제는 404이고 데이터를 유지한다`() {
+        val othersId = save(other, read = false)
+
+        mvc.delete("/api/notifications/noti-missing") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect { status { isNotFound() } }
+        mvc.delete("/api/notifications/$othersId") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect { status { isNotFound() } }
+
+        assertThat(repo.existsById(othersId)).isTrue()
+    }
+
+    @Test
+    fun `읽은 알림 정리는 내 read만 삭제하고 unread와 다른 사용자 알림을 유지하며 멱등하다`() {
+        save(me, read = true)
+        save(me, read = true)
+        val myUnread = save(me, read = false)
+        val othersRead = save(other, read = true)
+
+        mvc.delete("/api/notifications/read") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deletedCount") { value(2) }
+            jsonPath("$.unreadCount") { value(1) }
+        }
+        mvc.delete("/api/notifications/read") {
+            headers { add("Authorization", "Bearer $meToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deletedCount") { value(0) }
+            jsonPath("$.unreadCount") { value(1) }
+        }
+
+        assertThat(repo.existsById(myUnread)).isTrue()
+        assertThat(repo.existsById(othersRead)).isTrue()
     }
 }

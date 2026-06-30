@@ -88,10 +88,15 @@ export async function apiPut<T>(path: string, body: unknown, token?: string | nu
 }
 
 /** 백엔드 DELETE 호출. 로그인 토큰 부착. 실패 시 ApiError. */
-export async function apiDelete<T>(path: string): Promise<T> {
+export async function apiDelete<T>(path: string, token?: string | null): Promise<T> {
+  const headers = token === undefined
+    ? authHeaders()
+    : token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
   const res = await fetch(`${BASE}${path}`, {
     method: "DELETE",
-    headers: authHeaders(),
+    headers,
     cache: "no-store",
   });
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
