@@ -56,6 +56,8 @@ data class UpdateProfileRequest(val name: String)
 data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)
 data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
 data class ChangePasswordResponse(val changed: Boolean, val token: String?)
+data class ChangeEmailRequest(val currentPassword: String, val newEmail: String)
+data class ChangeEmailResponse(val email: String, val name: String, val token: String)
 data class DeleteAccountRequest(val currentPassword: String, val confirmText: String)
 data class DeleteAccountResponse(val deleted: Boolean)
 
@@ -77,12 +79,8 @@ class AuthController(
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     fun signup(@RequestBody req: SignupRequest): AuthResponse {
-        val email = req.email.trim().lowercase()
-        if (email.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "email is required")
+        val email = normalizeEmail(req.email)
         val name = normalizeName(req.name)
-        if (!email.matches(EMAIL_RE)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid email format")
-        }
         validatePassword(req.password)
         // 빠른 실패용 사전 체크. 동시 가입 경쟁은 아래 unique 제약 위반 catch 로 처리.
         if (repo.existsByEmail(email)) {
@@ -147,6 +145,38 @@ class AuthController(
         return ChangePasswordResponse(changed = true, token = jwt.issue(user))
     }
 
+    @PutMapping("/email")
+    @Transactional
+    fun changeEmail(
+        @AuthenticationPrincipal principal: AuthUser?,
+        @RequestBody req: ChangeEmailRequest,
+    ): ChangeEmailResponse {
+        val user = currentUser(principal)
+        if (req.currentPassword.isBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
+        }
+        if (!encoder.matches(req.currentPassword, user.passwordHash)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is incorrect")
+        }
+
+        val email = normalizeEmail(req.newEmail)
+        if (email == user.email) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "new email must be different")
+        }
+        if (repo.existsByEmail(email)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
+        }
+
+        user.email = email
+        try {
+            repo.saveAndFlush(user)
+        } catch (_: DataIntegrityViolationException) {
+            // 사전 중복 체크 뒤 발생한 동시 변경 경쟁도 DB unique 제약 기준으로 409 처리한다.
+            throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
+        }
+        return ChangeEmailResponse(email = user.email, name = user.name, token = jwt.issue(user))
+    }
+
     @DeleteMapping("/me")
     @Transactional
     fun deleteAccount(
@@ -204,6 +234,15 @@ class AuthController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "name is too long")
         }
         return name
+    }
+
+    private fun normalizeEmail(rawEmail: String): String {
+        val email = rawEmail.trim().lowercase()
+        if (email.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "email is required")
+        if (!email.matches(EMAIL_RE)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid email format")
+        }
+        return email
     }
 
     private fun validatePassword(password: String) {

@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,6 +61,18 @@ class AuthControllerTest(
         if (authenticated) headers { add("Authorization", authorization(user)) }
         contentType = MediaType.APPLICATION_JSON
         content = objectMapper.writeValueAsString(ChangePasswordRequest(currentPassword, newPassword))
+    }
+
+    private fun changeEmail(
+        user: User,
+        currentPassword: String,
+        newEmail: String,
+        authenticated: Boolean = true,
+        bearer: String = authorization(user),
+    ) = mvc.put("/api/auth/email") {
+        if (authenticated) headers { add("Authorization", bearer) }
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(ChangeEmailRequest(currentPassword, newEmail))
     }
 
     private fun login(email: String, password: String) = mvc.post("/api/auth/login") {
@@ -277,6 +290,99 @@ class AuthControllerTest(
             jsonPath("$.verified") { value(true) }
             jsonPath("$.passwordHash") { doesNotExist() }
         }
+    }
+
+    // ---- 이메일 변경 ----
+
+    @Test
+    fun `비로그인 이메일 변경은 401`() {
+        val user = savePasswordUser(email = "email-unauthorized@dasida.com")
+
+        changeEmail(user, "Current1!", "changed@dasida.com", authenticated = false)
+            .andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `이메일 변경은 비밀번호와 이메일 형식과 현재 이메일을 검증한다`() {
+        val originalEmail = "email-validation@dasida.com"
+        val user = savePasswordUser(email = originalEmail)
+        val invalidRequests = listOf(
+            "" to "changed@dasida.com",
+            "Current1!" to "",
+            "Current1!" to "not-an-email",
+            "Current1!" to "  EMAIL-VALIDATION@DASIDA.COM  ",
+            "Wrong1!x" to "changed@dasida.com",
+        )
+
+        invalidRequests.forEach { (password, email) ->
+            changeEmail(user, password, email).andExpect { status { isBadRequest() } }
+        }
+        assertThat(repo.findById(requireNotNull(user.id)).orElseThrow().email).isEqualTo(originalEmail)
+        login(originalEmail, "Current1!").andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `이미 사용 중인 이메일 변경은 409이고 기존 이메일을 유지한다`() {
+        val originalEmail = "email-conflict-source@dasida.com"
+        val user = savePasswordUser(email = originalEmail)
+        savePasswordUser(email = "email-conflict-target@dasida.com")
+
+        changeEmail(user, "Wrong1!x", "email-conflict-target@dasida.com")
+            .andExpect { status { isBadRequest() } }
+        changeEmail(user, "Current1!", "  EMAIL-CONFLICT-TARGET@DASIDA.COM ")
+            .andExpect { status { isConflict() } }
+
+        assertThat(repo.findById(requireNotNull(user.id)).orElseThrow().email).isEqualTo(originalEmail)
+    }
+
+    @Test
+    fun `이메일 변경은 정규화해 저장하고 기존 프로필과 비밀번호를 유지한다`() {
+        val originalEmail = "email-success-old@dasida.com"
+        val changedEmail = "new.email@example.com"
+        val user = savePasswordUser(
+            email = originalEmail,
+            name = "이름유지",
+            verified = true,
+        )
+        val originalHash = user.passwordHash
+
+        val response = changeEmail(user, "Current1!", "  New.Email@Example.COM  ").andExpect {
+            status { isOk() }
+            jsonPath("$.email") { value(changedEmail) }
+            jsonPath("$.name") { value("이름유지") }
+            jsonPath("$.token") { isNotEmpty() }
+            jsonPath("$.passwordHash") { doesNotExist() }
+            jsonPath("$.currentPassword") { doesNotExist() }
+        }.andReturn().response
+
+        val changed = repo.findById(requireNotNull(user.id)).orElseThrow()
+        assertThat(changed.email).isEqualTo(changedEmail)
+        assertThat(changed.name).isEqualTo("이름유지")
+        assertThat(changed.verified).isTrue()
+        assertThat(changed.passwordHash).isEqualTo(originalHash)
+        login(originalEmail, "Current1!").andExpect { status { isUnauthorized() } }
+        login(changedEmail, "Current1!").andExpect { status { isOk() } }
+
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        mvc.get("/api/auth/me") {
+            headers { add("Authorization", "Bearer $newToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.email") { value(changedEmail) }
+            jsonPath("$.name") { value("이름유지") }
+            jsonPath("$.verified") { value(true) }
+        }
+    }
+
+    @Test
+    fun `탈퇴 계정 JWT로 이메일을 변경할 수 없다`() {
+        val user = savePasswordUser(email = "email-deleted@dasida.com")
+        val bearer = authorization(user)
+        user.deletedAt = Instant.parse("2026-06-30T00:00:00Z")
+        repo.saveAndFlush(user)
+
+        changeEmail(user, "Current1!", "email-after-delete@dasida.com", bearer = bearer)
+            .andExpect { status { isUnauthorized() } }
     }
 
     @Test
