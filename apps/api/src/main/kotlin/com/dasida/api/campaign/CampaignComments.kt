@@ -26,12 +26,14 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
@@ -49,9 +51,10 @@ class CampaignComment(
     @Id val id: String,
     @Column(name = "campaign_id") val campaignId: String,
     @Embedded val author: Author,
-    @Column(columnDefinition = "TEXT") val text: String,
+    @Column(columnDefinition = "TEXT") var text: String,
     @Column(name = "created_at") val createdAt: Instant,
-    @Column(name = "author_user_id") @JsonIgnore val authorUserId: Long,
+    @Column(name = "author_user_id") @JsonIgnore val authorUserId: Long? = null,
+    @Column(name = "updated_at") var updatedAt: Instant? = null,
 )
 
 interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
@@ -84,6 +87,8 @@ data class CampaignCommentResponse(
     val text: String,
     val createdAt: Instant,
     val ownedByMe: Boolean,
+    val edited: Boolean,
+    val updatedAt: Instant?,
 )
 
 data class CampaignCommentsResponse(
@@ -95,6 +100,7 @@ data class CampaignCommentsResponse(
 )
 
 data class CreateCampaignCommentRequest(val text: String)
+data class UpdateCampaignCommentRequest(val text: String)
 
 @RestController
 @RequestMapping("/api/campaigns/{campaignId}/comments")
@@ -102,6 +108,7 @@ class CampaignCommentController(
     private val campaigns: CampaignRepository,
     private val comments: CampaignCommentRepository,
     private val notifications: NotificationService,
+    private val clock: Clock,
 ) {
     @GetMapping
     @Transactional(readOnly = true)
@@ -176,7 +183,7 @@ class CampaignCommentController(
                 campaignId = campaignId,
                 author = Author(user.name, user.verified),
                 text = text,
-                createdAt = Instant.now(),
+                createdAt = Instant.now(clock),
                 authorUserId = user.id,
             ),
         )
@@ -192,6 +199,28 @@ class CampaignCommentController(
         return saved.toResponse(user.id)
     }
 
+    /** 댓글 수정은 생성 시각과 정렬을 유지하고 text와 updatedAt만 갱신한다. */
+    @PutMapping("/{commentId}")
+    @Transactional
+    fun update(
+        @PathVariable campaignId: String,
+        @PathVariable commentId: String,
+        @RequestBody request: UpdateCampaignCommentRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignCommentResponse {
+        if (!campaigns.existsById(campaignId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        val comment = comments.findByIdAndCampaignId(commentId, campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (comment.authorUserId == null || comment.authorUserId != user.id) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
+        }
+        comment.text = normalizeText(request.text)
+        comment.updatedAt = Instant.now(clock)
+        return comment.toResponse(user.id)
+    }
+
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional
@@ -205,7 +234,7 @@ class CampaignCommentController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         val comment = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
-        if (comment.authorUserId != user.id) {
+        if (comment.authorUserId == null || comment.authorUserId != user.id) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
         }
         comments.delete(comment)
@@ -233,7 +262,9 @@ class CampaignCommentController(
         author = author,
         text = text,
         createdAt = createdAt,
-        ownedByMe = authorUserId == viewerId,
+        ownedByMe = authorUserId != null && authorUserId == viewerId,
+        edited = updatedAt != null,
+        updatedAt = updatedAt,
     )
 
     private companion object {
