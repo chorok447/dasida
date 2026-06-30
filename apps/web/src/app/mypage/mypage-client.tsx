@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
@@ -12,6 +12,7 @@ import { MyPostsGrid } from "./my-posts-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { UserCampaignsList } from "./joined-campaigns-list";
 import { ChangePasswordForm } from "./change-password-form";
+import { ChangeEmailForm } from "./change-email-form";
 import { DeleteAccountForm } from "./delete-account-form";
 
 type Tab = "posts" | "campaigns" | "created" | "saved";
@@ -159,9 +160,13 @@ export default function MyPageClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { profile, loading, error, isLoggedIn, retry } = useCurrentUserProfile();
+  const [emailOverride, setEmailOverride] = useState<{ userId: number; email: string } | null>(null);
 
   const tab = parseTab(searchParams.get("tab"));
   const page = parsePage(searchParams.get("page"));
+  const displayedProfile = profile && emailOverride?.userId === profile.id
+    ? { ...profile, email: emailOverride.email }
+    : profile;
 
   const navigate = useCallback(
     (nextTab: Tab, nextPage: number) => {
@@ -219,7 +224,11 @@ export default function MyPageClient() {
           </div>
         ) : (
           <>
-            <ProfileHeader profile={profile} />
+            <ProfileHeader profile={displayedProfile ?? profile} />
+            <ChangeEmailForm
+              currentEmail={(displayedProfile ?? profile).email}
+              onChanged={(email) => setEmailOverride({ userId: profile.id, email })}
+            />
             <ChangePasswordForm key={profile.id} profileName={profile.name} />
             <Tabs tab={tab} onSelect={onSelectTab} />
             <div className="mx-auto max-w-5xl px-6 py-10 sm:px-8">
