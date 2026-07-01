@@ -65,6 +65,8 @@ class SecurityConfig(
                 // 알림은 사용자별 데이터 → 일반 GET permitAll 보다 먼저 보호한다.
                 it.requestMatchers(HttpMethod.GET, "/api/notifications/**").authenticated()
                 it.requestMatchers(HttpMethod.POST, "/api/notifications/**").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/reports/mine").authenticated()
+                it.requestMatchers(HttpMethod.POST, "/api/reports").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
             }
