@@ -421,12 +421,13 @@ class CampaignCommentControllerTest(
     }
 
     @Test
-    fun `같은 댓글을 반복 삭제하면 404`() {
+    fun `삭제한 댓글의 반복 삭제와 수정은 404`() {
         val campaignId = saveCampaign()
         val commentId = saveComment(campaignId)
 
         deleteComment(campaignId, commentId).andExpect { status { isNoContent() } }
         deleteComment(campaignId, commentId).andExpect { status { isNotFound() } }
+        updateComment(campaignId, commentId, "수정 시도").andExpect { status { isNotFound() } }
     }
 
     @Test
