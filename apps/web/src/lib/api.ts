@@ -59,10 +59,15 @@ export async function apiGetOrNull<T>(path: string): Promise<T | null> {
 }
 
 /** 백엔드 POST 호출(JSON). 로그인 토큰이 있으면 Authorization 헤더 부착. 실패 시 ApiError. */
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, token?: string | null): Promise<T> {
+  const headers = token === undefined
+    ? authHeaders()
+    : token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
     cache: "no-store",
   });

@@ -22,6 +22,7 @@ import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
@@ -329,7 +330,7 @@ function PostCard({
             ))}
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-            <div className="flex gap-4 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+            <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
               <button onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
                 <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
               </button>
@@ -339,6 +340,7 @@ function PostCard({
               <button className="flex items-center gap-1">
                 <Share2 size={14} />
               </button>
+              <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
             </div>
             <button
               onClick={onBookmark}

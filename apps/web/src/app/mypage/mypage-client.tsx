@@ -14,15 +14,17 @@ import { UserCampaignsList } from "./joined-campaigns-list";
 import { ChangePasswordForm } from "./change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { DeleteAccountForm } from "./delete-account-form";
+import { ReportsList } from "./reports-list";
 import { StatePanel } from "@/components/ui/state-panel";
 
-type Tab = "posts" | "campaigns" | "created" | "saved";
+type Tab = "posts" | "campaigns" | "created" | "saved" | "reports";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "posts", label: "내 게시글" },
   { id: "campaigns", label: "참여 캠페인" },
   { id: "created", label: "개설 캠페인" },
   { id: "saved", label: "저장됨" },
+  { id: "reports", label: "신고 내역" },
 ];
 
 const DEFAULT_TAB: Tab = "posts";
@@ -220,6 +222,7 @@ export default function MyPageClient() {
               {tab === "campaigns" ? <UserCampaignsList mode="joined" page={page} onPageChange={onPageChange} /> : null}
               {tab === "created" ? <UserCampaignsList mode="created" page={page} onPageChange={onPageChange} /> : null}
               {tab === "saved" ? <SavedPostsGrid page={page} onPageChange={onPageChange} /> : null}
+              {tab === "reports" ? <ReportsList page={page} onPageChange={onPageChange} /> : null}
             </div>
             <DeleteAccountForm key={`delete-${profile.id}`} />
           </>

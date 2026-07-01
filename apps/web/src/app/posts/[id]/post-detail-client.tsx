@@ -12,6 +12,7 @@ import { getToken, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import {
   fetchPostCommentPageLocation,
@@ -544,7 +545,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             <ArrowLeft size={14} /> 피드로 돌아가기
           </button>
 
-          {owned && (
+          {owned ? (
             <div className="flex items-center gap-2">
               <Link
                 href={`/posts/${p.id}/edit`}
@@ -562,6 +563,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 <Trash2 size={13} /> {deleting ? "삭제 중…" : "삭제"}
               </button>
             </div>
+          ) : (
+            <ReportButton targetType="POST" targetId={p.id} ownedByMe={false} />
           )}
         </div>
 
@@ -814,6 +817,14 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                           </button>
                         </div>
                       )}
+                      {!c.ownedByMe ? (
+                        <ReportButton
+                          targetType="POST_COMMENT"
+                          targetId={c.id}
+                          ownedByMe={false}
+                          className="ml-auto !px-2.5 !py-1.5"
+                        />
+                      ) : null}
                     </div>
                     {c.ownedByMe && editingCommentId === c.id ? (
                       <form
