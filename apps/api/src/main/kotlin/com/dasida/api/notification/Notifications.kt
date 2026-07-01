@@ -121,11 +121,75 @@ fun Notification.toResponse() = NotificationResponse(
 )
 
 /**
- * 알림 생성 helper. 도메인 이벤트(댓글/참여) 트랜잭션 안에서 호출되어 같은 트랜잭션에 참여한다.
- * 수신자가 없거나 actor==receiver 이면 생성하지 않는다. 그 외에는 저장하며, DB 제약 위반은 삼키지 않는다.
+ * 알림 도메인 서비스. 두 가지 책임을 가진다.
+ * 1) 도메인 이벤트(댓글/참여)에서 호출되는 알림 생성 helper. 호출자 트랜잭션에 참여한다(notify/notifyUser).
+ * 2) 알림 조회/읽음/삭제 비즈니스 정책. Controller 에서 옮겨온 검증·트랜잭션·소유권 확인을 담당한다.
  */
 @Service
 class NotificationService(private val repo: NotificationRepository) {
+
+    @Transactional(readOnly = true)
+    fun getNotifications(userId: Long, page: Int, size: Int, unreadOnly: Boolean): NotificationsResponse {
+        validatePageable(page, size)
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("seq"), Sort.Order.asc("id")))
+        val result = if (unreadOnly) {
+            repo.findByUserIdAndReadAtIsNull(userId, pageable)
+        } else {
+            repo.findByUserId(userId, pageable)
+        }
+        return NotificationsResponse(
+            content = result.content.map { it.toResponse() },
+            page = result.number,
+            size = result.size,
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+            unreadCount = repo.countByUserIdAndReadAtIsNull(userId),
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getUnreadCount(userId: Long): NotificationUnreadCountResponse =
+        NotificationUnreadCountResponse(repo.countByUserIdAndReadAtIsNull(userId))
+
+    @Transactional
+    fun markAsRead(userId: Long, notificationId: String): NotificationResponse {
+        val notification = ownedOrNotFound(userId, notificationId)
+        if (notification.readAt == null) notification.readAt = Instant.now()
+        return notification.toResponse()
+    }
+
+    @Transactional
+    fun markAllAsRead(userId: Long): NotificationReadAllResponse {
+        val updated = repo.markAllRead(userId, Instant.now())
+        return NotificationReadAllResponse(updatedCount = updated.toLong(), unreadCount = 0)
+    }
+
+    @Transactional
+    fun deleteNotification(userId: Long, notificationId: String): NotificationDeleteResponse {
+        repo.delete(ownedOrNotFound(userId, notificationId))
+        return NotificationDeleteResponse(deleted = true, unreadCount = repo.countByUserIdAndReadAtIsNull(userId))
+    }
+
+    @Transactional
+    fun deleteReadNotifications(userId: Long): NotificationDeleteReadResponse {
+        val deleted = repo.deleteReadByUserId(userId)
+        return NotificationDeleteReadResponse(
+            deletedCount = deleted.toLong(),
+            unreadCount = repo.countByUserIdAndReadAtIsNull(userId),
+        )
+    }
+
+    private fun ownedOrNotFound(userId: Long, notificationId: String): Notification =
+        repo.findByIdAndUserId(notificationId, userId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "notification $notificationId not found")
+
+    private fun validatePageable(page: Int, size: Int) {
+        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
+        if (size !in 1..MAX_PAGE_SIZE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
+        }
+    }
+
     fun notify(
         recipientUserId: Long?,
         actorUserId: Long,
@@ -167,88 +231,40 @@ class NotificationService(private val repo: NotificationRepository) {
 
     private companion object {
         const val MAX_BODY = 200
+        const val MAX_PAGE_SIZE = 100
     }
 }
 
+/** HTTP adapter. 인증 사용자 추출 후 Service 위임과 status code 반환만 담당한다. */
 @RestController
 @RequestMapping("/api/notifications")
-class NotificationController(private val repo: NotificationRepository) {
+class NotificationController(private val service: NotificationService) {
 
     @GetMapping
-    @Transactional(readOnly = true)
     fun list(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(defaultValue = "false") unreadOnly: Boolean,
         @AuthenticationPrincipal user: AuthUser,
-    ): NotificationsResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
-        }
-        val pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("seq"), Sort.Order.asc("id")))
-        val result = if (unreadOnly) {
-            repo.findByUserIdAndReadAtIsNull(user.id, pageable)
-        } else {
-            repo.findByUserId(user.id, pageable)
-        }
-        return NotificationsResponse(
-            content = result.content.map { it.toResponse() },
-            page = result.number,
-            size = result.size,
-            totalElements = result.totalElements,
-            totalPages = result.totalPages,
-            unreadCount = repo.countByUserIdAndReadAtIsNull(user.id),
-        )
-    }
+    ): NotificationsResponse = service.getNotifications(user.id, page, size, unreadOnly)
 
     @GetMapping("/unread-count")
-    @Transactional(readOnly = true)
     fun unreadCount(@AuthenticationPrincipal user: AuthUser): NotificationUnreadCountResponse =
-        NotificationUnreadCountResponse(repo.countByUserIdAndReadAtIsNull(user.id))
+        service.getUnreadCount(user.id)
 
     @PostMapping("/{id}/read")
-    @Transactional
-    fun read(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): NotificationResponse {
-        val notification = repo.findByIdAndUserId(id, user.id)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "notification $id not found")
-        if (notification.readAt == null) notification.readAt = Instant.now()
-        return notification.toResponse()
-    }
+    fun read(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): NotificationResponse =
+        service.markAsRead(user.id, id)
 
     @PostMapping("/read-all")
-    @Transactional
-    fun readAll(@AuthenticationPrincipal user: AuthUser): NotificationReadAllResponse {
-        val updated = repo.markAllRead(user.id, Instant.now())
-        return NotificationReadAllResponse(updatedCount = updated.toLong(), unreadCount = 0)
-    }
+    fun readAll(@AuthenticationPrincipal user: AuthUser): NotificationReadAllResponse =
+        service.markAllAsRead(user.id)
 
     @DeleteMapping("/read")
-    @Transactional
-    fun deleteRead(@AuthenticationPrincipal user: AuthUser): NotificationDeleteReadResponse {
-        val deleted = repo.deleteReadByUserId(user.id)
-        return NotificationDeleteReadResponse(
-            deletedCount = deleted.toLong(),
-            unreadCount = repo.countByUserIdAndReadAtIsNull(user.id),
-        )
-    }
+    fun deleteRead(@AuthenticationPrincipal user: AuthUser): NotificationDeleteReadResponse =
+        service.deleteReadNotifications(user.id)
 
     @DeleteMapping("/{id}")
-    @Transactional
-    fun delete(
-        @PathVariable id: String,
-        @AuthenticationPrincipal user: AuthUser,
-    ): NotificationDeleteResponse {
-        val notification = repo.findByIdAndUserId(id, user.id)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "notification $id not found")
-        repo.delete(notification)
-        return NotificationDeleteResponse(
-            deleted = true,
-            unreadCount = repo.countByUserIdAndReadAtIsNull(user.id),
-        )
-    }
-
-    private companion object {
-        const val MAX_PAGE_SIZE = 100
-    }
+    fun delete(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): NotificationDeleteResponse =
+        service.deleteNotification(user.id, id)
 }
