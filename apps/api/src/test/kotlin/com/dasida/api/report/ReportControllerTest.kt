@@ -244,6 +244,11 @@ class ReportControllerTest(
 
         createReport("POST", target.postId).andExpect { status { isCreated() } }
         createReport("POST", target.postId).andExpect { status { isConflict() } }
+        assertThat(
+            reports.findAll().count {
+                it.reporterUserId == 1L && it.targetType == "POST" && it.targetId == target.postId
+            },
+        ).isEqualTo(1)
         createReport("POST", target.postId, bearer = otherToken).andExpect { status { isCreated() } }
         createReport("CAMPAIGN", target.campaignId).andExpect { status { isCreated() } }
         createReport("POST", sameId).andExpect { status { isCreated() } }
