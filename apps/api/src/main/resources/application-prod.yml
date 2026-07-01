@@ -1,0 +1,9 @@
+# prod 프로파일 전용 설정.
+# 운영 환경에서는 API 문서를 외부에 노출하지 않는다. springdoc endpoint 자체를 비활성화해
+# /v3/api-docs, /swagger-ui/** 가 404 가 되도록 한다. (SecurityConfig 의 permitAll 은 그대로 두어도
+# 핸들러가 없어 문서 내용이 노출되지 않는다.) dev/default/test 프로파일에서는 문서가 계속 열린다.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
