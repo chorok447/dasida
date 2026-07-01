@@ -7,3 +7,9 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+# CORS: 운영 프론트 origin 을 반드시 명시 주입한다(comma-separated 가능). 미설정/‘*’/localhost 는
+# CorsProperties.assertProdSafe() 가 기동 시점에 차단한다. dev 기본값(localhost)을 상속하지 않도록 여기서 비운다.
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
