@@ -56,6 +56,16 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 
 `Authorization`/`Content-Type` 헤더와 credentials 를 허용하지만, CORS 허용은 인증 우회가 아니다. 인증 필수 API 는 여전히 JWT Bearer 토큰이 필요하다(예: `GET /api/auth/me` 는 토큰 없으면 401).
 
+### Actuator 노출 정책
+
+외부에 공개되는 Actuator endpoint 는 헬스체크용 `/actuator/health` 로 제한한다.
+
+- 공개: `/actuator/health` (SecurityConfig 에서 이 경로만 permitAll)
+- 비공개/미노출: `/actuator/env`, `/actuator/beans`, `/actuator/configprops`, `/actuator/mappings` 등 (`management.endpoints.web.exposure.include=health`)
+- `health` 응답에 `details`/`components` 미노출 (`management.endpoint.health.show-details=never`)
+
+로드밸런서/배포 헬스체크는 `/actuator/health` 를 사용한다. liveness/readiness probe 는 현재 미사용이며 배포 환경 확정 후 별도 PR 에서 검토한다.
+
 ### 에러 응답
 
 기존 응답 포맷을 그대로 사용한다. 주요 status code:
