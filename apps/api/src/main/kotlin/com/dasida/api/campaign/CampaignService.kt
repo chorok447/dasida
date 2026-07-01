@@ -1,5 +1,6 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.common.checkPageParams
 import com.dasida.api.post.Author
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.AuthUser
@@ -51,10 +52,7 @@ class CampaignService(
         runStartFrom: String?,
         runStartTo: String?,
     ): CampaignSearchResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size < 1 || size > MAX_SEARCH_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
-        }
+        checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)
 
         val query = q?.trim()?.takeIf { it.isNotEmpty() }
         if (query != null && query.length > MAX_SEARCH_QUERY_LENGTH) {
@@ -344,12 +342,7 @@ class CampaignService(
         repo.delete(campaign)
     }
 
-    private fun validatePageParams(page: Int, size: Int) {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size < 1 || size > MAX_SEARCH_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
-        }
-    }
+    private fun validatePageParams(page: Int, size: Int) = checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)
 
     /** 현재 page 의 campaignId 만 대상으로 참여 상태 bulk 조회. 비로그인/빈 page 면 query 생략. */
     private fun joinedByPage(userId: Long?, campaignIds: List<String>): Set<String> =

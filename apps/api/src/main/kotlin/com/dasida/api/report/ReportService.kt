@@ -2,6 +2,7 @@ package com.dasida.api.report
 
 import com.dasida.api.campaign.CampaignCommentRepository
 import com.dasida.api.campaign.CampaignRepository
+import com.dasida.api.common.checkPageParams
 import com.dasida.api.post.PostCommentRepository
 import com.dasida.api.post.PostRepository
 import org.springframework.dao.DataIntegrityViolationException
@@ -72,10 +73,7 @@ class ReportService(
 
     @Transactional(readOnly = true)
     fun getMyReports(reporterUserId: Long, page: Int, size: Int): ReportsPageResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
-        }
+        checkPageParams(page, size, MAX_PAGE_SIZE)
         val result = reports.findByReporterUserId(
             reporterUserId,
             PageRequest.of(
