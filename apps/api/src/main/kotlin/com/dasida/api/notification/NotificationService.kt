@@ -1,5 +1,6 @@
 package com.dasida.api.notification
 
+import com.dasida.api.common.checkPageParams
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
@@ -72,12 +73,7 @@ class NotificationService(private val repo: NotificationRepository) {
         repo.findByIdAndUserId(notificationId, userId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "notification $notificationId not found")
 
-    private fun validatePageable(page: Int, size: Int) {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
-        }
-    }
+    private fun validatePageable(page: Int, size: Int) = checkPageParams(page, size, MAX_PAGE_SIZE)
 
     /**
      * 알림 생성 helper. 도메인 이벤트(댓글/참여) 트랜잭션 안에서 호출되어 같은 트랜잭션에 참여한다.
