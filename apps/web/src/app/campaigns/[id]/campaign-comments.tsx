@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, MessageCircle, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
@@ -133,7 +134,14 @@ function CommentItem({
               {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
             </button>
           </div>
-        ) : null}
+        ) : (
+          <ReportButton
+            targetType="CAMPAIGN_COMMENT"
+            targetId={comment.id}
+            ownedByMe={false}
+            className="shrink-0 !px-2.5 !py-1.5"
+          />
+        )}
       </div>
       {editing ? (
         <form

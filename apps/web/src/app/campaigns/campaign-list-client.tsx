@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
 import { Calendar, RefreshCw, Search, Users } from "lucide-react";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
+import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
@@ -114,7 +115,13 @@ function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => 
   const rotateX = useTransform(springY, [-0.5, 0.5], [10, -10]);
 
   return (
-    <div style={{ perspective: 1000 }}>
+    <div className="relative" style={{ perspective: 1000 }}>
+      <ReportButton
+        targetType="CAMPAIGN"
+        targetId={campaign.id}
+        ownedByMe={campaign.ownedByMe}
+        className="absolute left-3 top-3 z-20 bg-[#0f1f22]/75 !text-white backdrop-blur-sm"
+      />
       <motion.button
         type="button"
         ref={ref}
