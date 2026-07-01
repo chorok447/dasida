@@ -90,3 +90,8 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 - `403` 권한 없음 (소유자/개설자 아님 등)
 - `404` 리소스 없음
 - `409` 상태 충돌 또는 중복 (모집 상태 전이, 중복 참여/신고 등)
+
+응답 body 는 Spring 기본 동작을 그대로 사용한다(별도 전역 에러 포맷은 도입하지 않음).
+
+- `400`/`403`/`404`/`409` 등 `ResponseStatusException` 계열은 기본 `/error` 로 처리되어 `status` 를 담은 JSON 을 반환하고, stacktrace·예외 클래스·내부 reason 메시지는 노출하지 않는다.
+- 미인증 `401` 은 `HttpStatusEntryPoint` 로 status 전용 응답이라 에러 본문을 만들지 않는다.
