@@ -22,6 +22,13 @@ API 명세는 `springdoc-openapi` 로 코드에서 자동 생성된다. Controll
 - Swagger UI: http://localhost:8080/swagger-ui/index.html
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 
+### OpenAPI 문서 노출 정책
+
+- **local/dev/test**: `/swagger-ui/index.html`, `/v3/api-docs` 사용 가능.
+- **prod**: `application-prod.yml` 에서 springdoc `api-docs.enabled=false`, `swagger-ui.enabled=false` 로 문서 endpoint 를 비활성화한다. 해당 경로는 핸들러가 없어 404 가 되고, 문서 내용이 외부에 노출되지 않는다.
+
+운영 환경에서 문서를 노출해야 하는 경우, 별도 인증/네트워크 제한 정책을 추가한 뒤 활성화해야 한다.
+
 ### 인증 사용법
 
 인증이 필요한 API 는 문서에서 자물쇠 아이콘(`bearerAuth`)으로 표시된다.

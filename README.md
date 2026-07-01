@@ -73,6 +73,8 @@ cd apps/api
 
 인증 필수 API 는 문서에서 `bearerAuth` 자물쇠로 표시되며, Swagger UI 의 **Authorize** 에 로그인/회원가입으로 받은 JWT 를 입력해 호출한다. 자세한 내용은 [`apps/api/README.md`](apps/api/README.md) 참고.
 
+> 노출 정책: local/dev/test 에서는 문서가 열려 있고, **`prod` 프로파일에서는 springdoc(api-docs·swagger-ui)을 비활성화**해 외부에 노출되지 않는다.
+
 ## 헬스 체크
 
 Spring Actuator: `GET /actuator/health` (health 만 공개).
