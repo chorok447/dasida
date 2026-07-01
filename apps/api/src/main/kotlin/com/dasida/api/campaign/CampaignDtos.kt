@@ -1,33 +1,56 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.post.Author
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.Instant
 
+@Schema(description = "캠페인 작성 요청. 날짜는 yyyy-MM-dd 또는 yyyy.MM.dd 를 허용한다.")
 data class CreateCampaignRequest(
+    @field:Schema(description = "제목")
     val title: String,
+    @field:Schema(description = "요약")
     val summary: String = "",
+    @field:Schema(description = "본문")
     val body: String = "",
+    @field:Schema(description = "썸네일 URL")
     val thumb: String = "",
+    @field:Schema(description = "모집 시작일", example = "2026-07-01")
     val recruitStart: String = "",
+    @field:Schema(description = "모집 종료일", example = "2026-07-10")
     val recruitEnd: String = "",
+    @field:Schema(description = "진행 시작일", example = "2026-07-15")
     val runStart: String = "",
+    @field:Schema(description = "진행 종료일", example = "2026-07-20")
     val runEnd: String = "",
+    @field:Schema(description = "모집 정원", example = "20")
     val capacity: Int = 0,
 )
 
+@Schema(description = "캠페인 수정 요청. status 가 upcoming 일 때만 허용된다.")
 data class UpdateCampaignRequest(
+    @field:Schema(description = "제목")
     val title: String,
+    @field:Schema(description = "요약")
     val summary: String = "",
+    @field:Schema(description = "본문")
     val body: String = "",
+    @field:Schema(description = "썸네일 URL")
     val thumb: String = "",
+    @field:Schema(description = "모집 시작일", example = "2026-07-01")
     val recruitStart: String = "",
+    @field:Schema(description = "모집 종료일", example = "2026-07-10")
     val recruitEnd: String = "",
+    @field:Schema(description = "진행 시작일", example = "2026-07-15")
     val runStart: String = "",
+    @field:Schema(description = "진행 종료일", example = "2026-07-20")
     val runEnd: String = "",
+    @field:Schema(description = "모집 정원", example = "20")
     val capacity: Int = 0,
 )
 
+@Schema(description = "모집 상태 변경 요청")
 data class UpdateCampaignStatusRequest(
+    @field:Schema(description = "목표 상태", example = "open", allowableValues = ["upcoming", "open", "closed"])
     val status: String,
 )
 
@@ -116,5 +139,14 @@ data class CampaignCommentsResponse(
     val totalPages: Int,
 )
 
-data class CreateCampaignCommentRequest(val text: String)
-data class UpdateCampaignCommentRequest(val text: String)
+@Schema(description = "캠페인 댓글 작성 요청")
+data class CreateCampaignCommentRequest(
+    @field:Schema(description = "댓글 본문(최대 500자)")
+    val text: String,
+)
+
+@Schema(description = "캠페인 댓글 수정 요청")
+data class UpdateCampaignCommentRequest(
+    @field:Schema(description = "댓글 본문(최대 500자)")
+    val text: String,
+)

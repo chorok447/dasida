@@ -1,23 +1,43 @@
 package com.dasida.api.post
 
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.Instant
 
+@Schema(description = "게시글 작성 요청")
 data class CreatePostRequest(
+    @field:Schema(description = "본문(최대 1000자)")
     val text: String,
+    @field:Schema(description = "이미지 URL 목록(최대 4개, http/https)")
     val images: List<String> = emptyList(),
+    @field:Schema(description = "태그 목록(최대 10개)", example = "[\"#업사이클링\"]")
     val tags: List<String> = emptyList(),
+    @field:Schema(description = "연결할 캠페인 id(선택)")
     val campaignId: String? = null,
 )
 
+@Schema(description = "게시글 수정 요청")
 data class UpdatePostRequest(
+    @field:Schema(description = "본문(최대 1000자)")
     val text: String,
+    @field:Schema(description = "이미지 URL 목록(최대 4개, http/https)")
     val images: List<String> = emptyList(),
+    @field:Schema(description = "태그 목록(최대 10개)")
     val tags: List<String> = emptyList(),
+    @field:Schema(description = "연결할 캠페인 id(선택)")
     val campaignId: String? = null,
 )
 
-data class CreateCommentRequest(val text: String)
-data class UpdatePostCommentRequest(val text: String)
+@Schema(description = "게시글 댓글 작성 요청")
+data class CreateCommentRequest(
+    @field:Schema(description = "댓글 본문(최대 500자)")
+    val text: String,
+)
+
+@Schema(description = "게시글 댓글 수정 요청")
+data class UpdatePostCommentRequest(
+    @field:Schema(description = "댓글 본문(최대 500자)")
+    val text: String,
+)
 
 /** 댓글 응답. authorUserId 자체는 노출하지 않고 현재 사용자 기준 소유 여부만 제공한다. */
 data class PostCommentResponse(

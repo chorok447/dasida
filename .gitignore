@@ -3,3 +3,17 @@ node_modules
 .vite/
 
 .bkit*
+
+.vscode*
+
+.cursor*
+
+.cursorrules*
+
+.cursorignore*
+
+.pnpm-store*
+
+.claude*
+
+.worktrees*
