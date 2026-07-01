@@ -93,6 +93,12 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 
 프론트는 JWT 를 `Authorization` 헤더로 보내므로 `Authorization`/`Content-Type` 헤더와 credentials 를 허용한다. CORS 허용은 브라우저 origin 정책일 뿐 **인증을 우회하지 않는다** — 인증이 필요한 API 는 여전히 JWT Bearer 토큰이 필요하다.
 
-## 헬스 체크
+## 헬스 체크 / Actuator 노출 정책
 
-Spring Actuator: `GET /actuator/health` (health 만 공개).
+외부에 공개되는 Actuator endpoint 는 헬스체크용 `/actuator/health` 로 제한한다. 로드밸런서/배포 헬스체크는 이 경로를 사용한다.
+
+- 공개: `GET /actuator/health` (SecurityConfig 에서 이 경로만 permitAll)
+- 미노출: `/actuator/env`, `/actuator/beans`, `/actuator/configprops`, `/actuator/mappings`, `/actuator/metrics`, `/actuator/loggers` 등 (web exposure 를 `health` 로만 제한)
+- `health` 응답에 `details`/`components` 는 노출하지 않는다 (`management.endpoint.health.show-details=never`).
+
+liveness/readiness probe 는 현재 사용하지 않으며, 배포 환경이 확정된 뒤 별도 PR 에서 검토한다.
