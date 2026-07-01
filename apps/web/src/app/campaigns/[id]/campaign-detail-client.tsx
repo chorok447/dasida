@@ -14,6 +14,7 @@ import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
+import { ReportButton } from "@/components/report-button";
 import { CampaignComments } from "./campaign-comments";
 
 type Tab = "content" | "comments";
@@ -91,6 +92,7 @@ function HeaderCard({ c }: { c: Campaign }) {
                 {c.title}
               </h1>
               <div className="flex gap-2 flex-shrink-0">
+                <ReportButton targetType="CAMPAIGN" targetId={c.id} ownedByMe={c.ownedByMe} className="!h-9 !px-3" />
                 <button
                   className="w-9 h-9 rounded-full flex items-center justify-center"
                   style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: "#ed5c48" }}

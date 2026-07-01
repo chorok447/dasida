@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
+import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
@@ -137,55 +138,63 @@ function CampaignResultCard({ campaign }: { campaign: Campaign }) {
   const meta = campaignRecruitMeta(campaign);
 
   return (
-    <Link
-      href={`/campaigns/${campaign.id}`}
-      className="group overflow-hidden rounded-2xl border transition-transform hover:-translate-y-1"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
-    >
-      <div className="relative aspect-[16/9] overflow-hidden">
-        {campaign.thumb ? (
-          <img
-            src={campaign.thumb}
-            alt={campaign.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#1c4044] to-[#148a90] text-[12px] text-white/70">
-            캠페인 이미지 없음
-          </div>
-        )}
-        <span
-          className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] tracking-[0.15em]"
-          style={{ background: meta.color, color: meta.fg }}
-        >
-          {meta.label}
-        </span>
-      </div>
-      <div className="space-y-3 p-5">
-        <div>
-          <h3 className="line-clamp-1 text-[17px] font-semibold" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            {campaign.title}
-          </h3>
-          <p className="mt-1.5 line-clamp-2 text-[13px] leading-6 opacity-65" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            {campaign.summary}
-          </p>
+    <div className="relative">
+      <ReportButton
+        targetType="CAMPAIGN"
+        targetId={campaign.id}
+        ownedByMe={campaign.ownedByMe}
+        className="absolute left-3 top-3 z-20 !px-2.5 !py-1.5"
+      />
+      <Link
+        href={`/campaigns/${campaign.id}`}
+        className="group block overflow-hidden rounded-2xl border transition-transform hover:-translate-y-1"
+        style={{
+          background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
+          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        }}
+      >
+        <div className="relative aspect-[16/9] overflow-hidden">
+          {campaign.thumb ? (
+            <img
+              src={campaign.thumb}
+              alt={campaign.title}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#1c4044] to-[#148a90] text-[12px] text-white/70">
+              캠페인 이미지 없음
+            </div>
+          )}
+          <span
+            className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] tracking-[0.15em]"
+            style={{ background: meta.color, color: meta.fg }}
+          >
+            {meta.label}
+          </span>
         </div>
-        <div>
-          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
-            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: meta.color }} />
+        <div className="space-y-3 p-5">
+          <div>
+            <h3 className="line-clamp-1 text-[17px] font-semibold" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              {campaign.title}
+            </h3>
+            <p className="mt-1.5 line-clamp-2 text-[13px] leading-6 opacity-65" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              {campaign.summary}
+            </p>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            <span className="flex items-center gap-1.5">
-              <Users size={12} /> {campaign.joined} / {campaign.capacity}명
-            </span>
-            <span>{campaign.daysLeftLabel}</span>
+          <div>
+            <div className="h-1.5 overflow-hidden rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
+              <div className="h-full rounded-full" style={{ width: `${progress}%`, background: meta.color }} />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              <span className="flex items-center gap-1.5">
+                <Users size={12} /> {campaign.joined} / {campaign.capacity}명
+              </span>
+              <span>{campaign.daysLeftLabel}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
