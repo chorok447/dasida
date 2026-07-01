@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -117,9 +118,12 @@ private fun Report.toResponse() = ReportResponse(
     time = time,
 )
 
-@RestController
-@RequestMapping("/api/reports")
-class ReportController(
+/**
+ * 신고 도메인 서비스. 신고 생성/조회 비즈니스 정책(입력 검증, 대상 존재·소유권 확인,
+ * 중복 방지, 트랜잭션)을 담당한다. Controller 에서 옮겨온 로직.
+ */
+@Service
+class ReportService(
     private val reports: ReportRepository,
     private val posts: PostRepository,
     private val postComments: PostCommentRepository,
@@ -127,12 +131,8 @@ class ReportController(
     private val campaignComments: CampaignCommentRepository,
     private val clock: Clock,
 ) {
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    fun create(
-        @RequestBody request: CreateReportRequest,
-        @AuthenticationPrincipal user: AuthUser,
-    ): ReportResponse {
+    @Transactional
+    fun createReport(reporterUserId: Long, request: CreateReportRequest): ReportResponse {
         val targetType = enumValue<ReportTargetType>(request.targetType, "invalid report target type")
         val reason = enumValue<ReportReason>(request.reason, "invalid report reason")
         val targetId = request.targetId.trim()
@@ -148,17 +148,17 @@ class ReportController(
         }
 
         val authorUserId = targetAuthorUserId(targetType, targetId)
-        if (authorUserId == user.id) {
+        if (authorUserId == reporterUserId) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "cannot report own content")
         }
-        if (reports.existsByReporterUserIdAndTargetTypeAndTargetId(user.id, targetType.name, targetId)) {
+        if (reports.existsByReporterUserIdAndTargetTypeAndTargetId(reporterUserId, targetType.name, targetId)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "report already exists")
         }
 
         val now = Instant.now(clock)
         val report = Report(
             id = "report-${UUID.randomUUID()}",
-            reporterUserId = user.id,
+            reporterUserId = reporterUserId,
             targetType = targetType.name,
             targetId = targetId,
             reason = reason.name,
@@ -173,19 +173,14 @@ class ReportController(
         }
     }
 
-    @GetMapping("/mine")
     @Transactional(readOnly = true)
-    fun mine(
-        @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int,
-        @AuthenticationPrincipal user: AuthUser,
-    ): ReportsPageResponse {
+    fun getMyReports(reporterUserId: Long, page: Int, size: Int): ReportsPageResponse {
         if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
         if (size !in 1..MAX_PAGE_SIZE) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
         }
         val result = reports.findByReporterUserId(
-            user.id,
+            reporterUserId,
             PageRequest.of(
                 page,
                 size,
@@ -227,4 +222,24 @@ class ReportController(
         const val MAX_DETAIL_LENGTH = 500
         const val MAX_PAGE_SIZE = 100
     }
+}
+
+/** HTTP adapter. 인증 사용자 추출 후 Service 위임과 status code 반환만 담당한다. */
+@RestController
+@RequestMapping("/api/reports")
+class ReportController(private val service: ReportService) {
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun create(
+        @RequestBody request: CreateReportRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): ReportResponse = service.createReport(user.id, request)
+
+    @GetMapping("/mine")
+    fun mine(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): ReportsPageResponse = service.getMyReports(user.id, page, size)
 }
