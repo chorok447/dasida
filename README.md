@@ -42,6 +42,7 @@ pnpm dev:api        # Spring Boot (http://localhost:8080)
 | `JWT_SECRET` | api | JWT 서명 시크릿(최소 32바이트). prod 에서는 필수 — 미설정 시 기동 실패. |
 | `JWT_TTL_MS` | api | 토큰 만료(ms). 기본 86400000(24h). |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | api | MySQL 접속 정보. 기본은 docker-compose 값. |
+| `APP_CORS_ALLOWED_ORIGINS` | api | **prod 필수.** 허용할 프론트 origin(comma-separated). prod 에서 미설정/`*`/localhost 면 기동 실패. |
 | `NEXT_PUBLIC_API_URL` | web | 백엔드 베이스 URL. 기본 `http://localhost:8080`. |
 
 ## 빌드
@@ -74,6 +75,23 @@ cd apps/api
 인증 필수 API 는 문서에서 `bearerAuth` 자물쇠로 표시되며, Swagger UI 의 **Authorize** 에 로그인/회원가입으로 받은 JWT 를 입력해 호출한다. 자세한 내용은 [`apps/api/README.md`](apps/api/README.md) 참고.
 
 > 노출 정책: local/dev/test 에서는 문서가 열려 있고, **`prod` 프로파일에서는 springdoc(api-docs·swagger-ui)을 비활성화**해 외부에 노출되지 않는다.
+
+## CORS 설정
+
+CORS 는 `app.cors.*` property(`CorsProperties`)로 관리하며 `/api/**` 에 적용된다.
+
+로컬 개발 환경에서는 Next.js 개발 서버를 위해 다음 origin 을 허용한다.
+
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
+
+운영 환경(`prod`)에서는 `APP_CORS_ALLOWED_ORIGINS` 를 반드시 명시해야 하며, `*`(wildcard)와 localhost 는 허용하지 않는다(미설정/위반 시 기동 실패).
+
+```bash
+APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
+```
+
+프론트는 JWT 를 `Authorization` 헤더로 보내므로 `Authorization`/`Content-Type` 헤더와 credentials 를 허용한다. CORS 허용은 브라우저 origin 정책일 뿐 **인증을 우회하지 않는다** — 인증이 필요한 API 는 여전히 JWT Bearer 토큰이 필요하다.
 
 ## 헬스 체크
 

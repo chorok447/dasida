@@ -42,6 +42,20 @@ API 명세는 `springdoc-openapi` 로 코드에서 자동 생성된다. Controll
 - **public**: 대부분의 `GET` 목록/상세/검색 API. JWT 가 있으면 응답에 사용자별 상태(`likedByMe`, `joinedByMe`, `ownedByMe` 등)가 채워진다.
 - **bearerAuth**: 작성/수정/삭제, 좋아요/북마크/참여, 알림, 신고, 마이페이지(`/mine`, `/bookmarks`, `/joined`), 참가자 관리 등 사용자별 데이터/행위 API.
 
+### CORS 설정
+
+CORS 는 `app.cors.*`(`CorsProperties`)로 관리하며 `/api/**` 에 적용된다.
+
+- **local/dev/test**: `http://localhost:3000`, `http://127.0.0.1:3000` 허용(기본값).
+- **prod**: `application-prod.yml` 에서 `app.cors.allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}` 로 주입한다. 미설정/`*`/localhost 면 `CorsProperties.assertProdSafe()` 가 기동을 실패시킨다.
+
+```bash
+# comma-separated 로 복수 origin 지정 가능
+APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
+```
+
+`Authorization`/`Content-Type` 헤더와 credentials 를 허용하지만, CORS 허용은 인증 우회가 아니다. 인증 필수 API 는 여전히 JWT Bearer 토큰이 필요하다(예: `GET /api/auth/me` 는 토큰 없으면 401).
+
 ### 에러 응답
 
 기존 응답 포맷을 그대로 사용한다. 주요 status code:
