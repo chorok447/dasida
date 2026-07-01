@@ -1,12 +1,20 @@
 package com.dasida.api.report
 
+import io.swagger.v3.oas.annotations.media.Schema
+
+@Schema(description = "콘텐츠 신고 요청")
 data class CreateReportRequest(
+    @field:Schema(description = "신고 대상 종류", example = "POST", allowableValues = ["POST", "POST_COMMENT", "CAMPAIGN", "CAMPAIGN_COMMENT"])
     val targetType: String,
+    @field:Schema(description = "신고 대상 id")
     val targetId: String,
+    @field:Schema(description = "신고 사유")
     val reason: String,
+    @field:Schema(description = "상세 사유(선택, 최대 500자)")
     val detail: String? = null,
 )
 
+@Schema(description = "신고 응답")
 data class ReportResponse(
     val id: String,
     val targetType: String,
