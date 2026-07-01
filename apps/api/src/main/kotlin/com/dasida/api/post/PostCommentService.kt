@@ -1,6 +1,8 @@
 package com.dasida.api.post
 
 import com.dasida.api.common.CommentPageLocationResponse
+import com.dasida.api.common.checkPageParams
+import com.dasida.api.common.checkPageSize
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
@@ -34,10 +36,7 @@ class PostCommentService(
     /** 기존 배열 API는 유지하고 상세 화면용 최신순 pagination을 별도 경로로 제공한다. */
     @Transactional(readOnly = true)
     fun listCommentsPage(postId: String, currentUserId: Long?, page: Int, size: Int): PostCommentsPageResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_COMMENT_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_COMMENT_PAGE_SIZE")
-        }
+        checkPageParams(page, size, MAX_COMMENT_PAGE_SIZE)
         if (!repo.existsById(postId)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
 
         val result = commentRepo.findByPostId(
@@ -60,9 +59,7 @@ class PostCommentService(
     /** 최신순 댓글 pagination과 같은 정렬 기준으로 대상 댓글이 속한 page를 계산한다. */
     @Transactional(readOnly = true)
     fun getCommentPageLocation(postId: String, commentId: String, size: Int): CommentPageLocationResponse {
-        if (size !in 1..MAX_COMMENT_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_COMMENT_PAGE_SIZE")
-        }
+        checkPageSize(size, MAX_COMMENT_PAGE_SIZE)
         if (!repo.existsById(postId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
         }
