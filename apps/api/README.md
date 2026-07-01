@@ -13,6 +13,21 @@ pnpm dev:api          # gradlew bootRun
 
 기본 포트는 `8080` 이다.
 
+## 운영(prod) 보안 설정 요약
+
+운영 환경에서 위험한 기본값/누락 설정이 들어가지 않도록 다음 정책을 코드/설정으로 고정하고 회귀 테스트로 보장한다.
+
+| 항목 | local/dev/test | prod | 강제 지점 |
+|---|---|---|---|
+| OpenAPI/Swagger | 사용 가능 | 비활성화(`/v3/api-docs`·`/swagger-ui` 404) | `application-prod.yml` springdoc disabled |
+| CORS origin | localhost/127.0.0.1 허용 | `APP_CORS_ALLOWED_ORIGINS` 명시 필수, `*`·localhost 금지 | `CorsProperties.assertProdSafe()` (미충족 시 기동 실패) |
+| Actuator | health-only, details 미노출 | 동일 | `management.*` 설정 + SecurityConfig |
+| JWT secret | dev 기본값 허용 | `dev-insecure` 기본값이면 기동 실패 | `JwtService` init guard |
+
+JWT secret(`JWT_SECRET`), DB 접속 정보, CORS origin 등 민감 설정은 운영에서 **환경변수/secret manager 로 주입**해야 하며 저장소에 커밋하지 않는다. 기본값(`dev-insecure...`)으로 prod 를 기동하면 `JwtService` 가 이를 거부한다.
+
+관련 회귀 테스트: `OpenApiProdProfileTest`, `CorsPropertiesTest`, `CorsProdProfileTest`, `CorsConfigProdGuardTest`, `ActuatorProdProfileTest`, `ActuatorSecurityTest`, `JwtServiceTest`.
+
 ## API 문서 (OpenAPI / Swagger)
 
 API 명세는 `springdoc-openapi` 로 코드에서 자동 생성된다. Controller/DTO 를 그대로 반영하므로 별도 수기 문서와 어긋나지 않는다.
