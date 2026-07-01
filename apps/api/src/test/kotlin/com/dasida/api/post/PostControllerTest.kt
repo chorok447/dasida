@@ -1162,12 +1162,13 @@ class PostControllerTest(
     }
 
     @Test
-    fun `같은 댓글을 다시 삭제하면 404`() {
+    fun `삭제한 댓글의 반복 삭제와 수정은 404`() {
         val postId = savePost(comments = 1)
         val commentId = saveComment(postId, authorUserId = 1)
 
         deleteComment(postId, commentId).andExpect { status { isNoContent() } }
         deleteComment(postId, commentId).andExpect { status { isNotFound() } }
+        updateComment(postId, commentId, "수정 시도").andExpect { status { isNotFound() } }
 
         assertThat(posts.findById(postId).get().comments).isZero()
     }

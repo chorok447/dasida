@@ -1182,15 +1182,17 @@ class CampaignControllerTest(
     }
 
     @Test
-    fun `closed 캠페인은 다시 open으로 변경할 수 없다`() {
+    fun `closed 캠페인은 다시 open으로 변경할 수 없고 기존 상태를 유지한다`() {
         val id = saveCampaign(status = "closed", authorUserId = 1)
         updateStatus(id, "open").andExpect { status { isConflict() } }
+        assertThat(campaignRepo.findById(id).orElseThrow().status).isEqualTo("closed")
     }
 
     @Test
-    fun `upcoming 캠페인은 바로 closed로 변경할 수 없다`() {
+    fun `upcoming 캠페인은 바로 closed로 변경할 수 없고 기존 상태를 유지한다`() {
         val id = saveCampaign(status = "upcoming", authorUserId = 1)
         updateStatus(id, "closed").andExpect { status { isConflict() } }
+        assertThat(campaignRepo.findById(id).orElseThrow().status).isEqualTo("upcoming")
     }
 
     @Test
