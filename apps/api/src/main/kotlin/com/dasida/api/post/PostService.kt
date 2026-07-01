@@ -1,6 +1,7 @@
 package com.dasida.api.post
 
 import com.dasida.api.campaign.CampaignRepository
+import com.dasida.api.common.checkPageParams
 import com.dasida.api.security.AuthUser
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -44,10 +45,7 @@ class PostService(
         page: Int,
         size: Int,
     ): PostSearchResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_SEARCH_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
-        }
+        checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)
 
         val query = q?.trim()?.takeIf { it.isNotEmpty() }
         if (query != null && query.length > MAX_SEARCH_QUERY_LENGTH) {
@@ -337,12 +335,7 @@ class PostService(
         val campaignId: String?,
     )
 
-    private fun validatePageParams(page: Int, size: Int) {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_SEARCH_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_SEARCH_PAGE_SIZE")
-        }
-    }
+    private fun validatePageParams(page: Int, size: Int) = checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)
 
     /** 현재 page 의 postId 만 대상으로 좋아요 bulk 조회. 비로그인/빈 page 면 query 생략. */
     private fun likedByPage(userId: Long?, postIds: List<String>): Set<String> =

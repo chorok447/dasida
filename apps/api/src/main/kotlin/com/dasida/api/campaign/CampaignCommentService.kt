@@ -1,6 +1,8 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.common.CommentPageLocationResponse
+import com.dasida.api.common.checkPageParams
+import com.dasida.api.common.checkPageSize
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.post.Author
@@ -28,10 +30,7 @@ class CampaignCommentService(
 ) {
     @Transactional(readOnly = true)
     fun listComments(campaignId: String, currentUserId: Long?, page: Int, size: Int): CampaignCommentsResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size !in 1..MAX_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
-        }
+        checkPageParams(page, size, MAX_PAGE_SIZE)
         if (!campaigns.existsById(campaignId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         }
@@ -56,9 +55,7 @@ class CampaignCommentService(
     /** 최신순 댓글 pagination과 같은 정렬 기준으로 대상 댓글이 속한 page를 계산한다. */
     @Transactional(readOnly = true)
     fun getCommentPageLocation(campaignId: String, commentId: String, size: Int): CommentPageLocationResponse {
-        if (size !in 1..MAX_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PAGE_SIZE")
-        }
+        checkPageSize(size, MAX_PAGE_SIZE)
         if (!campaigns.existsById(campaignId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         }

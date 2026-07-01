@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.auth.UserRepository
+import com.dasida.api.common.checkPageParams
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
@@ -101,10 +102,7 @@ class CampaignParticipantService(
     /** 개설자용 참가자 목록. 참가자 page와 사용자 bulk 조회만 수행하며 campaign row lock은 사용하지 않는다. */
     @Transactional(readOnly = true)
     fun getParticipants(ownerUserId: Long, campaignId: String, page: Int, size: Int): CampaignParticipantsResponse {
-        if (page < 0) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must not be negative")
-        if (size < 1 || size > MAX_PARTICIPANT_PAGE_SIZE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and $MAX_PARTICIPANT_PAGE_SIZE")
-        }
+        checkPageParams(page, size, MAX_PARTICIPANT_PAGE_SIZE)
 
         val campaign = repo.findById(campaignId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
