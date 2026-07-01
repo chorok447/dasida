@@ -51,6 +51,8 @@ class SecurityConfig(
                 // 아래 anyRequest().authenticated() 에 걸려 401 로 차단된다.
                 it.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
+                // OpenAPI JSON / Swagger UI 는 문서 확인용으로 공개한다. /api/** 인증 정책과 무관한 별도 경로다.
+                it.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/mine").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/mine/page").authenticated()

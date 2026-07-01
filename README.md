@@ -64,6 +64,15 @@ cd apps/api
 ./gradlew build --no-daemon
 ```
 
+## API 문서 (OpenAPI / Swagger)
+
+백엔드 API 명세는 `springdoc-openapi` 로 코드에서 자동 생성된다. `pnpm dev:api` 실행 후 확인한다.
+
+- Swagger UI: http://localhost:8080/swagger-ui/index.html
+- OpenAPI JSON: http://localhost:8080/v3/api-docs
+
+인증 필수 API 는 문서에서 `bearerAuth` 자물쇠로 표시되며, Swagger UI 의 **Authorize** 에 로그인/회원가입으로 받은 JWT 를 입력해 호출한다. 자세한 내용은 [`apps/api/README.md`](apps/api/README.md) 참고.
+
 ## 헬스 체크
 
 Spring Actuator: `GET /actuator/health` (health 만 공개).
