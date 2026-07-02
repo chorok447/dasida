@@ -1,7 +1,8 @@
-# Spring Boot 4.1 마이그레이션 검증 (spike)
+# Spring Boot 4.1 마이그레이션 검증
 
-> 목적: 실제 머지가 아니라 **마이그레이션 가능성·필수 수정 범위·깨지는 지점**을 확인하는 검증 spike.
-> 브랜치: `spike/spring-boot-4-1-migration-check` / 기준 develop HEAD: `ead3ecd`
+> 원래 spike(`spike/spring-boot-4-1-migration-check`)로 검증했으나, **PR #121**이 develop에 merge됨 (merge commit `f1874e6`, 2026-07-02).
+> develop HEAD: `f1874e6` — Spring Boot **4.1.0** / Kotlin **2.3.21** / springdoc **3.0.3** 이 기본 상태.
+> spike 당시 기준 develop HEAD: `ead3ecd` (Boot 3.5.0).
 
 ## 1. 현재 버전 (검증 전, develop 기준)
 
@@ -108,7 +109,7 @@
 - **미실행**: `test` 가 실패하므로 `test build` 단계로 진행하지 않음(build 는 test 단계에서 동일하게 실패).
 
 ### runtime smoke (`--spring.profiles.active=local`)
-- **미실행**: build 가 test 에서 막혀 실행 조건 미충족. 다만 test 실행 중 **413개 통합 테스트가 Spring context 를 정상 로드**했으므로 context 기동 자체는 Boot 4.1 에서 문제없음이 간접 확인됨(local profile 은 MySQL/Docker 필요).
+- **실행 완료** (2026-07-02, 섹션 11 참조). develop merge 이후 post-merge 재확인 포함.
 
 ### git diff --check
 - **통과** (whitespace/conflict 없음). 프론트엔드/lockfile/workspace 변경 없음.
@@ -151,7 +152,7 @@
 - `clean test`: **532/542 통과**, 10 실패 (TestRestTemplate만)
 - `clean test build`: **미실행** (test 10건 실패로 build 단계 동일 실패 예상)
 - `git diff --check`: **통과**
-- springdoc runtime smoke: **미실행** (후속)
+- springdoc runtime smoke: **실행 완료** (섹션 11)
 - `spring-boot-jackson2` compatibility module: **추가하지 않음** (Jackson 3 native migration 유지)
 
 ## 10. TestRestTemplate 자동구성 작업 (2026-07-02, spike 브랜치 후속)
@@ -184,29 +185,109 @@
 - `clean test`: **542/542 통과**
 - `clean test build`: **성공**
 - `git diff --check`: **통과**
-- springdoc runtime smoke: **미실행** (후속)
+- springdoc runtime smoke: **실행 완료** (섹션 11)
 
 ---
 
-## 6. 미해결 / 후속 관찰 항목 (TestRestTemplate 작업 후 갱신)
-- ~~**[블로커] Jackson 2 → Jackson 3 마이그레이션**~~ → **Jackson HTTP/테스트 경로 해소** (129→10 실패). Hibernate JSON 컬럼은 Jackson 2 kotlin module 병행 유지.
-- ~~**`@AutoConfigureTestRestTemplate` 추가**~~ → **해소** (10→0 실패, 전체 542 테스트 통과).
-- **springdoc 3.0.3 런타임 검증 미완** — 컴파일/context-load 는 통과했으나 Swagger UI/`/v3/api-docs` local 노출·prod 비활성·JWT scheme·PathPattern·Kotlin nullable schema 는 smoke 단계(미실행)에서 확인 예정.
-- **3.5.x 최신화(3.5.16) 선행 여부** — 현재 3.5.0. Boot 4.1 직행 전에 3.5.16 으로 올려 deprecation 경고를 먼저 정리하는 단계적 접근 권장.
-- **Hibernate JSON → Jackson 3 FormatMapper 통합 검토** — 현재 Hibernate JSON 컬럼 경로는 Jackson 2 kotlin module 을 병행 유지한다.
-- Kotlin KT-73255 경고 정리(`-Xannotation-default-target` 또는 `@param:`) — 선택.
+## 11. Runtime smoke (2026-07-02, post-merge 검증)
 
-## 7. 실제 migration PR 로 진행 가능 여부 & 판단
-- **결론: 전체 542 테스트와 build 는 통과했지만, 이 spike 를 바로 실제 migration PR 로 머지하기에는 이르다.**
-  - 근거(가능성 긍정): Spring Framework 7 / Hibernate 7 / Security 7 / Servlet 6.1(Tomcat 11) / JPA·H2 / Actuator / CORS 관점에서 **전체 542 테스트와 build 통과**로 주요 계약 회귀가 없음을 확인했다.
-  - 근거(보류 사유): springdoc 3.x runtime smoke, Boot 3.5.16 선행 최신화 여부, Hibernate JSON의 Jackson 3 FormatMapper 통합 검토가 남아 있다.
-- **권장 순서(후속 실제 migration PR 분할):**
-  1. (선택·선행) Boot 3.5.16 최신화 + deprecation 정리.
-  2. Boot 4.1 + Kotlin 2.3.21 + test slice 모듈 분리 대응(본 spike 의 A~D) + `@AutoConfigureTestRestTemplate`.
-  3. **Jackson 3 마이그레이션**(kotlin 모듈 v3 교체 + 테스트 ObjectMapper 타입 교체) 후 전체 테스트 green 확인. 이 단계가 계약 회귀 게이트.
-  4. springdoc 3.0.3 런타임/prod 정책 smoke 확인.
+검증-only. SecurityConfig/CORS/OpenAPI/Actuator **정책 코드 변경 없음**. production code 변경 없음.
 
-## 8. rollback plan
-- 이 spike 는 별도 브랜치(`spike/...`)이며 develop 에 머지하지 않는다. 폐기 시 브랜치 삭제로 원복.
-- 실제 migration 진행 시: build.gradle.kts 버전 6줄 + 의존성 1줄 + 소스 nullability/import 치환이 전부이므로,
-  `git revert` 또는 브랜치 되돌리기로 즉시 3.5.0 상태 복귀 가능. DB schema/API contract 변경이 없어 데이터 rollback 불필요.
+### merge / 검증 기준
+| 항목 | 값 |
+| --- | --- |
+| PR | **#121** `chore: Spring Boot 4.1 마이그레이션 검증` — **merged** (draft 아님) |
+| merge commit | `f1874e6` |
+| smoke 수행 기준 | develop `f1874e6` (PR #121 merge 이후) |
+| spike 브랜치 | `spike/spring-boot-4-1-migration-check` (head `d841b59`) |
+
+### 사전 검증 (develop 기준)
+| 항목 | 결과 |
+| --- | --- |
+| `./gradlew clean test build --no-daemon` | **성공** (542/542) |
+| `git diff --check` | **통과** |
+
+### local profile `bootRun` (`--spring.profiles.active=local`)
+- **기동 성공** (포트 8080). MySQL docker(`dasida-mysql`) 연결 정상.
+- Spring Boot **4.1.0**, Tomcat **11.0.22**, Hibernate ORM **7.4.1.Final**, MySQL **8.4.10**, HikariCP 정상.
+- Security filter chain·springdoc bean 기동 시 runtime exception 없음.
+- springdoc 기동 WARN(prod 비활성 권고)만 출력 — local 에서는 정상.
+
+| endpoint | HTTP | 비고 |
+| --- | --- | --- |
+| `/actuator/health` | **200** | body: `{"groups":["liveness","readiness"],"status":"UP"}` — `details`/`components` **미노출** |
+| `/v3/api-docs` | **200** | springdoc 3.0.3 정상 |
+| `/swagger-ui/index.html` | **200** | |
+| `/actuator/env` | **401** | |
+| `/actuator/beans` | **401** | |
+| `/actuator/configprops` | **401** | |
+| `/actuator/mappings` | **401** | |
+| `/actuator/metrics` | **401** | |
+| `/actuator/loggers` | **401** | |
+| `/actuator/threaddump` | **401** | |
+| `/actuator/heapdump` | **401** | |
+
+민감 actuator endpoint **200 노출 없음** (401 = SecurityConfig deny).
+
+### prod profile `bootRun`
+- **기동 성공**. 필수 env (실제 비밀값 문서 미기록):
+  - `APP_CORS_ALLOWED_ORIGINS=https://example.com` (prod CORS guard 통과용 더미 origin)
+  - `JWT_SECRET` = 테스트용 더미 값(≥32바이트, `dev-insecure` 접두사 아님 — `JwtService` prod guard 와 동일 패턴)
+  - DB: `application.properties` 기본 MySQL(docker) 사용
+- prod 기동 불가 사유: **없음** (로컬 docker MySQL + 위 env 로 smoke 가능)
+
+| endpoint | HTTP | 비고 |
+| --- | --- | --- |
+| `/actuator/health` | **200** | `details`/`components` 미노출 |
+| `/v3/api-docs` | **404** | `application-prod.yml` springdoc 비활성 — **정책 준수** |
+| `/swagger-ui/index.html` | **404** | **정책 준수** |
+| 민감 actuator (`env`/`beans`/…) | **401** | local 과 동일 |
+
+### CORS smoke
+| profile | Origin | 결과 |
+| --- | --- | --- |
+| local | `http://localhost:3000` | **200**, `Access-Control-Allow-Origin` 반환, `Allow-Credentials: true` |
+| local | `http://127.0.0.1:3000` | **200**, 동일 |
+| local | preflight `Authorization, Content-Type, Accept` | **Allow-Headers** 에 포함 |
+| prod | `https://example.com` (설정 origin) | **200**, `Access-Control-Allow-Origin: https://example.com` |
+| prod | `http://localhost:3000` | **403**, localhost **미허용** — prod 정책 유지 |
+
+wildcard `*` 사용 없음. 기존 CORS profile 정책과 일치.
+
+### OpenAPI `/v3/api-docs` sanity (local)
+| 항목 | 결과 |
+| --- | --- |
+| JWT Bearer scheme | **`bearerAuth`** (`scheme: bearer`, `bearerFormat: JWT`) 유지 |
+| 총 path 수 | **40** |
+| auth paths | 5 |
+| posts paths | 13 |
+| campaigns paths | 14 |
+| notifications paths | 6 |
+| reports paths | 2 |
+| Page response schemas | `PostPageResponse`, `CampaignPageResponse`, `ReportsPageResponse` 등 — `content`/`page`/`size`/`totalElements`/`totalPages` 필드 유지 |
+| `nullable: true` schema | **0건** — OpenAPI 3.1 / Jackson 3 nullable 표현 변화 가능성, 프론트 codegen 영향은 후속 관찰 |
+
+springdoc 3.x **runtime 문제 없음**.
+
+---
+
+## 6. 미해결 / 후속 관찰 항목 (post-merge, runtime smoke 후 갱신)
+- ~~**[블로커] Jackson 2 → Jackson 3 마이그레이션**~~ → **해소** (develop merge 완료). Hibernate JSON 컬럼은 Jackson 2 kotlin module 병행 유지.
+- ~~**`@AutoConfigureTestRestTemplate` 추가**~~ → **해소** (542/542 통과).
+- ~~**springdoc 3.0.3 런타임 검증**~~ → **해소** (섹션 11: local 200 / prod 404, JWT scheme·주요 path·Page schema sanity OK).
+- **Boot 3.5.16 최신화** — Boot 4.1 이 이미 develop 에 들어갔으므로 “선행” 단계는 해당 없음. rollback·비교 검토가 필요할 때만 별도 판단.
+- **Hibernate JSON → Jackson 3 FormatMapper 통합** — Jackson 2 kotlin module 병행 제거 검토.
+- **OpenAPI nullable 표현 변화** — 프론트 codegen 영향 확인.
+- **Kotlin KT-73255 경고 정리** (`-Xannotation-default-target` 또는 `@param:`) — 선택.
+- **Dependabot PR #113** (next 16.2.10) — `minimumReleaseAge` cutoff 미충족으로 **보류 유지**. 정책 우회 없음.
+
+## 7. develop merge 이후 상태 & 판단
+- **결론: PR #121 merge + runtime smoke 완료. develop 은 Boot 4.1 기준으로 안정화 검증됨.**
+  - 542 test + build 통과, local/prod runtime smoke 통과, springdoc·Actuator·CORS 정책 회귀 없음.
+  - spike 단계에서 계획했던 migration 항목(A~D, Jackson 3, TestRestTemplate, springdoc smoke)은 develop 에 반영 완료.
+- **남은 후속은 운영 안정화·관찰 항목**(섹션 6)이며, 별도 PR 로 분할 진행 권장.
+
+## 8. rollback plan (post-merge 갱신)
+- Boot 4.1 은 **이미 develop 에 merge**됨 (`f1874e6`). 평소 spike 폐기(브랜치 삭제)와 달리, 되돌리려면 `git revert f1874e6`(또는 PR #121 revert PR)이 필요.
+- revert 범위: build.gradle.kts 버전·의존성 + nullability/import 치환. DB schema/API contract 변경 없어 데이터 rollback 불필요.
+- runtime smoke 결과(섹션 11)는 rollback 판단 시 “Boot 4.1 이 develop 에서 실제로 기동·노출 정책을 유지하는지” 근거로 사용.
