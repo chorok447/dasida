@@ -63,3 +63,5 @@ data class DeleteAccountRequest(
 )
 
 data class DeleteAccountResponse(val deleted: Boolean)
+
+data class LogoutResponse(val loggedOut: Boolean)
