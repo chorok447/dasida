@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -61,7 +61,7 @@ class AccountDeletionTest(
     ): User = users.saveAndFlush(
         User(
             email = email,
-            passwordHash = encoder.encode(password),
+            passwordHash = encoder.encode(password)!!,
             name = "탈퇴 전 사용자",
             verified = true,
             deletedAt = deletedAt,
