@@ -1,5 +1,6 @@
 package com.dasida.api.query
 
+import com.dasida.api.mapElements
 import com.dasida.api.auth.User
 import com.dasida.api.campaign.Campaign
 import com.dasida.api.campaign.CampaignBody
@@ -11,11 +12,11 @@ import com.dasida.api.post.Author
 import com.dasida.api.post.Post
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -38,7 +39,7 @@ import java.util.UUID
 @Transactional
 class PaginationContractTest(
     @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val jwt: JwtService,
     @Autowired private val posts: PostRepository,
     @Autowired private val campaigns: CampaignRepository,
@@ -98,7 +99,7 @@ class PaginationContractTest(
             param("page", page.toString())
             param("size", size.toString())
         }.andReturn().response.contentAsString
-        return mapper.readTree(body)["content"].map { it["id"].asText() }
+        return mapper.readTree(body)["content"].mapElements { it["id"].asText() }
     }
 
     /** 3개 항목을 size=2 로 나누면 page0(2개) + page1(1개) 이 disjoint 하고 합치면 전체를 덮는지 확인한다. */

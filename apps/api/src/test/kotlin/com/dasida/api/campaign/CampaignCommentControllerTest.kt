@@ -4,12 +4,12 @@ import com.dasida.api.auth.User
 import com.dasida.api.notification.NotificationRepository
 import com.dasida.api.post.Author
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -27,7 +27,7 @@ import java.util.UUID
 class CampaignCommentControllerTest(
     @Autowired private val mvc: MockMvc,
     @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val campaignRepo: CampaignRepository,
     @Autowired private val commentRepo: CampaignCommentRepository,
     @Autowired private val notificationRepo: NotificationRepository,

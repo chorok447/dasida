@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 /** 기존 통합 테스트의 고정 userId JWT가 실제 활성 사용자 row를 가리키게 한다. */
 @Component
 class TestUserSeed(private val jdbc: JdbcTemplate) : CommandLineRunner {
-    override fun run(vararg args: String?) {
+    override fun run(vararg args: String) {
         TEST_USER_IDS.forEach { id ->
             val exists = jdbc.queryForObject("select count(*) from users where id = ?", Long::class.java, id) != 0L
             if (!exists) {

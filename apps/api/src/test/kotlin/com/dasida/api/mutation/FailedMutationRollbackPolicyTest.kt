@@ -22,11 +22,11 @@ import com.dasida.api.post.PostRepository
 import com.dasida.api.report.CreateReportRequest
 import com.dasida.api.report.ReportRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
@@ -51,7 +51,7 @@ import java.util.UUID
 class FailedMutationRollbackPolicyTest(
     @Autowired private val mvc: MockMvc,
     @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val posts: PostRepository,
     @Autowired private val postComments: PostCommentRepository,
     @Autowired private val likes: PostLikeRepository,

@@ -1,5 +1,6 @@
 package com.dasida.api.query
 
+import com.dasida.api.mapElements
 import com.dasida.api.auth.User
 import com.dasida.api.campaign.Campaign
 import com.dasida.api.campaign.CampaignBody
@@ -10,11 +11,11 @@ import com.dasida.api.post.PostRepository
 import com.dasida.api.report.Report
 import com.dasida.api.report.ReportRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -35,7 +36,7 @@ import java.util.UUID
 @Transactional
 class ListOrderingBoundaryTest(
     @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val jwt: JwtService,
     @Autowired private val posts: PostRepository,
     @Autowired private val campaigns: CampaignRepository,
@@ -89,7 +90,7 @@ class ListOrderingBoundaryTest(
 
     /** 응답 JSON 배열에서 id 순서를 뽑는다. 시드 데이터가 섞여도 내가 넣은 항목의 상대 순서만 검증한다. */
     private fun idOrder(body: String): List<String> =
-        mapper.readTree(body).map { it["id"].asText() }
+        mapper.readTree(body).mapElements { it["id"].asText() }
 
     @Test
     fun `게시글 목록은 seq 내림차순 기본 정렬을 유지한다`() {
@@ -130,7 +131,7 @@ class ListOrderingBoundaryTest(
         val body = mvc.get("/api/reports/mine") {
             headers { add("Authorization", "Bearer $reporterToken") }
         }.andReturn().response.contentAsString
-        val ids = mapper.readTree(body)["content"].map { it["id"].asText() }
+        val ids = mapper.readTree(body)["content"].mapElements { it["id"].asText() }
 
         assertThat(ids).containsExactly("ord-report-top", "ord-report-a", "ord-report-b")
     }
