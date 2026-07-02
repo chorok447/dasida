@@ -6,29 +6,50 @@
 
 ```
 apps/web   # Next.js (App Router) + TypeScript + Tailwind v4 프론트엔드
-apps/api   # Kotlin + Spring Boot 3.5 백엔드 (JWT 인증, MySQL/JPA)
+apps/api   # Kotlin + Spring Boot 4.1 백엔드 (JWT 인증, MySQL/JPA)
 packages/  # 공유 TS 패키지 (필요 시)
 design-reference/  # Figma Make 익스포트(디자인 참고용, 실행 대상 아님)
 ```
 
 - **프론트엔드**: `apps/web` — Next.js, 토큰은 `localStorage` 기반.
-- **백엔드**: `apps/api` — Kotlin/Spring Boot, JWT(jjwt) + Spring Security(stateless), MySQL 8(JPA/Hibernate). 테스트는 H2 인메모리(MySQL 모드)라 Docker 불필요.
+- **백엔드**: `apps/api` — Kotlin/Spring Boot 4.1, JWT(jjwt) + Spring Security(stateless), MySQL 8(JPA/Hibernate). 테스트는 H2 인메모리(MySQL 모드)라 Docker 불필요.
 
 ## 로컬 실행
 
-### 1. 의존성 설치
+### Docker Compose (MySQL + API + Web 한 번에)
+
+로컬 개발용으로 MySQL, Spring Boot API, Next.js Web 을 컨테이너로 빌드·실행한다. **운영 배포용이 아니다.**
+
+```bash
+docker compose -f compose.local.yml up --build
+```
+
+| 서비스 | URL |
+|--------|-----|
+| Web | http://localhost:3000 |
+| API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui/index.html |
+| MySQL | `localhost:3306` (DB `dasida`, user `dasida`) |
+
+- 종료: `Ctrl+C` 후 `docker compose -f compose.local.yml down` (DB 데이터는 volume `dasida-mysql-data` 에 보존)
+- volume까지 삭제: `docker compose -f compose.local.yml down -v`
+- `compose.local.yml` 의 DB/JWT 값은 **로컬 전용 placeholder**이며 운영 secret 이 아니다.
+
+### 호스트에서 직접 실행 (기존 방식)
+
+#### 1. 의존성 설치
 
 ```bash
 pnpm install        # JS 워크스페이스(web + packages). apps/api 는 Gradle 전용.
 ```
 
-### 2. DB 실행 (백엔드용)
+#### 2. DB 실행 (백엔드용)
 
 ```bash
 docker compose up -d   # 루트 docker-compose.yml 의 MySQL 8
 ```
 
-### 3. 개발 서버
+#### 3. 개발 서버
 
 ```bash
 pnpm dev:web        # Next.js dev (http://localhost:3000)
