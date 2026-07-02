@@ -19,12 +19,18 @@ import org.springframework.web.filter.OncePerRequestFilter
 class JwtAuthFilter(
     private val jwt: JwtService,
     private val users: UserRepository,
+    private val denylist: TokenDenylistStore,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
         val header = req.getHeader("Authorization")
         if (header != null && header.startsWith("Bearer ")) {
             try {
-                val user = jwt.parse(header.substring(7))
+                val token = header.substring(7)
+                val user = jwt.parse(token)
+                // 로그아웃된 토큰은 만료 전이라도 거절. 서명·형식 검증 이후에만 조회한다.
+                if (denylist.isDenied(hashToken(token))) {
+                    throw IllegalArgumentException("denylisted token")
+                }
                 val storedUser = users.findById(user.id).orElse(null)
                 if (storedUser == null || storedUser.deletedAt != null) {
                     throw IllegalArgumentException("inactive token user")
