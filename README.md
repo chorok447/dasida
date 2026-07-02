@@ -2,6 +2,19 @@
 
 한국형 업사이클링 / 소셜 캠페인 앱. pnpm + Gradle 모노레포.
 
+![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js)
+![React](https://img.shields.io/badge/React-19.2.7-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-7F52FF?logo=kotlin&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
+![JDK](https://img.shields.io/badge/JDK-21-437291?logo=openjdk&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-jjwt%200.13.0-black?logo=jsonwebtokens)
+![pnpm](https://img.shields.io/badge/pnpm-11.9.0-F69220?logo=pnpm&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-Kotlin%20DSL-02303A?logo=gradle&logoColor=white)
+![Valkey](https://img.shields.io/badge/Valkey-8_(compose%20local)-DC382D?logo=redis&logoColor=white)
+
 ## 구조
 
 ```
@@ -32,8 +45,8 @@ docker compose -f compose.local.yml up --build
 | MySQL | `localhost:3306` (DB `dasida`, user `dasida`) |
 | Redis-compatible store | `localhost:6379` (compose 서비스명 `redis`, 이미지 `valkey/valkey`) |
 
-- API 는 `local` 프로파일로 Valkey(`redis` 호스트)에 연결한다. 캐싱·세션·JWT 정책은 이 PR에서 변경하지 않는다.
-- 인증 mutation(`POST /api/auth/login`, `POST /api/auth/signup`)에는 IP 기준 rate limit 이 적용된다(초과 시 HTTP 429). compose `local` 프로파일에서는 Redis-compatible store 를 사용한다.
+- API 는 `local` 프로파일로 Valkey(`redis` 호스트)에 연결한다. 캐싱·세션·JWT 정책은 변경하지 않는다.
+- rate limit 버킷 store 로 Valkey 를 사용한다(`app.rate-limit.store=redis`). 정책 상세는 아래 [Rate limit](#rate-limit) 및 [`apps/api/README.md`](apps/api/README.md) 참고.
 - Redis 연결 smoke test(선택): compose 기동 후 `REDIS_SMOKE=true ./gradlew test --tests RedisCompatibleStoreConnectionTest` (`apps/api`)
 
 - 종료: `Ctrl+C` 후 `docker compose -f compose.local.yml down` (DB 데이터는 volume `dasida-mysql-data` 에 보존)
@@ -69,7 +82,7 @@ pnpm dev:api        # Spring Boot (http://localhost:8080)
 | `JWT_TTL_MS` | api | 토큰 만료(ms). 기본 86400000(24h). |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | api | MySQL 접속 정보. 기본은 docker-compose 값. |
 | `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` | api | Redis-compatible store 접속(compose `local` 프로파일). 기본 `localhost:6379`. |
-| `APP_RATE_LIMIT_*` / `app.rate-limit.*` | api | 인증 mutation rate limit(기본 in-memory). compose `local` 은 `app.rate-limit.store=redis`. |
+| `APP_RATE_LIMIT_*` / `app.rate-limit.*` | api | rate limit 정책·store. 기본 `memory`, compose `local` 은 `redis`. 상세는 [Rate limit](#rate-limit) 참고. |
 | `APP_CORS_ALLOWED_ORIGINS` | api | **prod 필수.** 허용할 프론트 origin(comma-separated). prod 에서 미설정/`*`/localhost 면 기동 실패. |
 | `NEXT_PUBLIC_API_URL` | web | 백엔드 베이스 URL. 기본 `http://localhost:8080`. |
 
@@ -130,3 +143,21 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 - `health` 응답에 `details`/`components` 는 노출하지 않는다 (`management.endpoint.health.show-details=never`).
 
 liveness/readiness probe 는 현재 사용하지 않으며, 배포 환경이 확정된 뒤 별도 PR 에서 검토한다.
+
+## Rate limit
+
+특정 mutation endpoint 에 **클라이언트 IP 기준 fixed-window** rate limit 을 적용한다. 글로벌 API rate limit 은 없다.
+
+| Endpoint | limit / window |
+|----------|----------------|
+| `POST /api/auth/login` | 20 / 60초 |
+| `POST /api/auth/signup` | 10 / 60초 |
+| `POST /api/posts/{id}/comments` | 20 / 60초 (댓글 작성 공유 버킷) |
+| `POST /api/campaigns/{id}/comments` | 20 / 60초 (댓글 작성 공유 버킷) |
+| `POST /api/reports` | 10 / 60초 |
+
+- **초과 응답**: HTTP `429`, `Retry-After` 헤더, Spring 기본 `/error` JSON body
+- **Redis key prefix**: `rate-limit:auth:login:ip:`, `rate-limit:auth:signup:ip:`, `rate-limit:comment:create:ip:`, `rate-limit:report:create:ip:` + `{clientIp}`
+- **store**: 기본·테스트는 `memory`(`app.rate-limit.store=memory`). compose local(`SPRING_PROFILES_ACTIVE=local`)은 Valkey(`valkey/valkey:8`, compose 서비스명 `redis`)에 `app.rate-limit.store=redis` 로 연결한다.
+
+endpoint·property·회귀 테스트 상세는 [`apps/api/README.md`](apps/api/README.md#rate-limit) 참고.
