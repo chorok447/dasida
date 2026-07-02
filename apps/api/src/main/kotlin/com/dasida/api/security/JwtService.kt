@@ -40,4 +40,10 @@ class JwtService(
         val c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
         return AuthUser(c.subject.toLong(), c["name"] as String, c["verified"] as Boolean)
     }
+
+    /** 토큰의 남은 만료 시간(초). 이미 만료면 0. denylist TTL 산정에 쓴다. 유효하지 않으면 예외. */
+    fun remainingTtlSeconds(token: String): Long {
+        val exp = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload.expiration
+        return ((exp.time - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
+    }
 }
