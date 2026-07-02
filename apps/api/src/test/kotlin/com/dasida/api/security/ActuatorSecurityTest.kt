@@ -16,7 +16,7 @@ import org.springframework.test.web.servlet.get
 @SpringBootTest
 @AutoConfigureMockMvc
 class ActuatorSecurityTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `health 는 인증 없이 200 이고 status 만 노출한다`() {

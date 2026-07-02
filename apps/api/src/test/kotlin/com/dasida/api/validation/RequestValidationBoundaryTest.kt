@@ -13,8 +13,8 @@ import org.springframework.test.web.servlet.post
 @SpringBootTest
 @AutoConfigureMockMvc
 class RequestValidationBoundaryTest(
-    @Autowired private val mockMvc: MockMvc,
-    @Autowired private val jwtService: JwtService,
+    @param:Autowired private val mockMvc: MockMvc,
+    @param:Autowired private val jwtService: JwtService,
 ) {
     private val token: String by lazy {
         jwtService.issue(

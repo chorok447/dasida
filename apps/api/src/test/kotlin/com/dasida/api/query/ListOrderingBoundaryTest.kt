@@ -35,12 +35,12 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class ListOrderingBoundaryTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val reports: ReportRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val reports: ReportRepository,
 ) {
     private val reporterToken = jwt.issue(User(id = 1, email = "reporter@test.com", passwordHash = "x", name = "신고자"))
 

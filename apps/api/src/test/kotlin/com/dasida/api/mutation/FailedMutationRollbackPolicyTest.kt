@@ -49,17 +49,17 @@ import java.util.UUID
 @Transactional
 @Import(FixedClockTestConfiguration::class)
 class FailedMutationRollbackPolicyTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val postComments: PostCommentRepository,
-    @Autowired private val likes: PostLikeRepository,
-    @Autowired private val bookmarks: PostBookmarkRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val campaignComments: CampaignCommentRepository,
-    @Autowired private val participants: CampaignParticipantRepository,
-    @Autowired private val reports: ReportRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val postComments: PostCommentRepository,
+    @param:Autowired private val likes: PostLikeRepository,
+    @param:Autowired private val bookmarks: PostBookmarkRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val campaignComments: CampaignCommentRepository,
+    @param:Autowired private val participants: CampaignParticipantRepository,
+    @param:Autowired private val reports: ReportRepository,
 ) {
     private val actor = 2L
     private val actorToken = jwt.issue(

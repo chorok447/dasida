@@ -20,9 +20,9 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class NotificationControllerTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val repo: NotificationRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val repo: NotificationRepository,
 ) {
     private val meToken = jwt.issue(User(id = 1, email = "me@test.com", passwordHash = "x", name = "나", verified = true))
     private val me = 1L

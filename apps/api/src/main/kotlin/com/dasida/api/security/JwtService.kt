@@ -9,9 +9,9 @@ import java.util.Date
 
 @Service
 class JwtService(
-    @Value("\${app.jwt.secret}") secret: String,
-    @Value("\${app.jwt.ttl-millis}") private val ttlMillis: Long,
-    @Value("\${spring.profiles.active:}") activeProfiles: String,
+    @param:Value("\${app.jwt.secret}") secret: String,
+    @param:Value("\${app.jwt.ttl-millis}") private val ttlMillis: Long,
+    @param:Value("\${spring.profiles.active:}") activeProfiles: String,
 ) {
     init {
         // prod 에서 dev 플레이스홀더 시크릿으로 기동 차단. JWT_SECRET 누락 시 토큰 위조 방지로 기동 실패.

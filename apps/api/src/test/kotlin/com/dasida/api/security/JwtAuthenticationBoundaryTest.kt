@@ -12,7 +12,7 @@ import org.springframework.test.web.servlet.get
 @SpringBootTest
 @AutoConfigureMockMvc
 class JwtAuthenticationBoundaryTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `잘못된 Authorization 형식과 malformed Bearer는 내부 정보 없이 401`() {

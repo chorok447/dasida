@@ -30,8 +30,8 @@ import java.util.UUID
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class ErrorResponseBodyContractTest(
-    @Autowired val rest: TestRestTemplate,
-    @Autowired val mapper: JsonMapper,
+    @param:Autowired val rest: TestRestTemplate,
+    @param:Autowired val mapper: JsonMapper,
 ) {
     private fun jsonGet(path: String) =
         rest.exchange(path, HttpMethod.GET, HttpEntity<Void>(jsonHeaders()), String::class.java)

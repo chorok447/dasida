@@ -22,11 +22,11 @@ import java.util.UUID
 @Transactional
 @Import(FixedClockTestConfiguration::class)
 class CampaignParticipantRemovalControllerTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val campaignRepo: CampaignRepository,
-    @Autowired private val participantRepo: CampaignParticipantRepository,
-    @Autowired private val notifications: NotificationRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val campaignRepo: CampaignRepository,
+    @param:Autowired private val participantRepo: CampaignParticipantRepository,
+    @param:Autowired private val notifications: NotificationRepository,
 ) {
     private val owner = 1L
     private val ownerToken = jwt.issue(User(id = owner, email = "owner@t.com", passwordHash = "x", name = "개설자", verified = true))

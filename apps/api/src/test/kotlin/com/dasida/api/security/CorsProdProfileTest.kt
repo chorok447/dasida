@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.options
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
 class CorsProdProfileTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `prod 명시 origin preflight 는 CORS 헤더를 포함한다`() {

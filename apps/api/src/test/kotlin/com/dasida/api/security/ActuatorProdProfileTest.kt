@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.get
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
 class ActuatorProdProfileTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `prod 에서도 health 는 200 이고 details 를 노출하지 않는다`() {

@@ -22,11 +22,11 @@ import java.time.Instant
 @AutoConfigureMockMvc
 @Transactional
 class AuthControllerTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val repo: UserRepository,
-    @Autowired val jwt: JwtService,
-    @Autowired val objectMapper: JsonMapper,
-    @Autowired val passwordEncoder: PasswordEncoder,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val repo: UserRepository,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val objectMapper: JsonMapper,
+    @param:Autowired val passwordEncoder: PasswordEncoder,
 ) {
 
     private fun saveUser(
