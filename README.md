@@ -16,9 +16,9 @@ design-reference/  # Figma Make 익스포트(디자인 참고용, 실행 대상 
 
 ## 로컬 실행
 
-### Docker Compose (MySQL + API + Web 한 번에)
+### Docker Compose (MySQL + Redis-compatible store + API + Web 한 번에)
 
-로컬 개발용으로 MySQL, Spring Boot API, Next.js Web 을 컨테이너로 빌드·실행한다. **운영 배포용이 아니다.**
+로컬 개발용으로 MySQL, Redis-compatible store(Valkey), Spring Boot API, Next.js Web 을 컨테이너로 빌드·실행한다. **운영 배포용이 아니다.**
 
 ```bash
 docker compose -f compose.local.yml up --build
@@ -30,6 +30,10 @@ docker compose -f compose.local.yml up --build
 | API | http://localhost:8080 |
 | Swagger UI | http://localhost:8080/swagger-ui/index.html |
 | MySQL | `localhost:3306` (DB `dasida`, user `dasida`) |
+| Redis-compatible store | `localhost:6379` (compose 서비스명 `redis`, 이미지 `valkey/valkey`) |
+
+- API 는 `local` 프로파일로 Valkey(`redis` 호스트)에 연결한다. 캐싱·세션·JWT 정책은 이 PR에서 변경하지 않는다.
+- Redis 연결 smoke test(선택): compose 기동 후 `REDIS_SMOKE=true ./gradlew test --tests RedisCompatibleStoreConnectionTest` (`apps/api`)
 
 - 종료: `Ctrl+C` 후 `docker compose -f compose.local.yml down` (DB 데이터는 volume `dasida-mysql-data` 에 보존)
 - volume까지 삭제: `docker compose -f compose.local.yml down -v`
@@ -63,6 +67,7 @@ pnpm dev:api        # Spring Boot (http://localhost:8080)
 | `JWT_SECRET` | api | JWT 서명 시크릿(최소 32바이트). prod 에서는 필수 — 미설정 시 기동 실패. |
 | `JWT_TTL_MS` | api | 토큰 만료(ms). 기본 86400000(24h). |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | api | MySQL 접속 정보. 기본은 docker-compose 값. |
+| `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` | api | Redis-compatible store 접속(compose `local` 프로파일). 기본 `localhost:6379`. |
 | `APP_CORS_ALLOWED_ORIGINS` | api | **prod 필수.** 허용할 프론트 origin(comma-separated). prod 에서 미설정/`*`/localhost 면 기동 실패. |
 | `NEXT_PUBLIC_API_URL` | web | 백엔드 베이스 URL. 기본 `http://localhost:8080`. |
 
