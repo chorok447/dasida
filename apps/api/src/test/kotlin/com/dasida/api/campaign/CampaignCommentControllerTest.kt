@@ -25,12 +25,12 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class CampaignCommentControllerTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val campaignRepo: CampaignRepository,
-    @Autowired private val commentRepo: CampaignCommentRepository,
-    @Autowired private val notificationRepo: NotificationRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val campaignRepo: CampaignRepository,
+    @param:Autowired private val commentRepo: CampaignCommentRepository,
+    @param:Autowired private val notificationRepo: NotificationRepository,
 ) {
     private val ownerToken = jwt.issue(
         User(id = 1, email = "comment@test.com", passwordHash = "x", name = "댓글 작성자", verified = true),

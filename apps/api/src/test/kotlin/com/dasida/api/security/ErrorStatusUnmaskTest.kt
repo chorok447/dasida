@@ -23,7 +23,7 @@ import java.util.UUID
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-class ErrorStatusUnmaskTest(@Autowired val rest: TestRestTemplate) {
+class ErrorStatusUnmaskTest(@param:Autowired val rest: TestRestTemplate) {
 
     private fun jsonPost(path: String, body: String, token: String? = null) =
         rest.exchange(

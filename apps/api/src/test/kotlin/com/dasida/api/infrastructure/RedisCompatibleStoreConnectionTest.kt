@@ -17,7 +17,7 @@ import org.springframework.test.context.ActiveProfiles
 @ActiveProfiles("local")
 @EnabledIfEnvironmentVariable(named = "REDIS_SMOKE", matches = "true")
 class RedisCompatibleStoreConnectionTest(
-    @Autowired private val redis: StringRedisTemplate,
+    @param:Autowired private val redis: StringRedisTemplate,
 ) {
     @Test
     fun `set and get round-trip`() {

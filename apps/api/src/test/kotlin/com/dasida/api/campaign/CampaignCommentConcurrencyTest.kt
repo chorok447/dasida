@@ -21,11 +21,11 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest
 @AutoConfigureMockMvc
 class CampaignCommentConcurrencyTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val campaignRepo: CampaignRepository,
-    @Autowired private val participantRepo: CampaignParticipantRepository,
-    @Autowired private val commentRepo: CampaignCommentRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val campaignRepo: CampaignRepository,
+    @param:Autowired private val participantRepo: CampaignParticipantRepository,
+    @param:Autowired private val commentRepo: CampaignCommentRepository,
 ) {
     private fun tokenFor(userId: Long) = jwt.issue(
         User(id = userId, email = "comment-$userId@test.com", passwordHash = "x", name = "유저$userId", verified = false),

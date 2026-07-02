@@ -37,11 +37,11 @@ import java.util.UUID
     ],
 )
 class ContentWriteRateLimitTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val campaignRepo: CampaignRepository,
-    @Autowired private val postRepo: PostRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val campaignRepo: CampaignRepository,
+    @param:Autowired private val postRepo: PostRepository,
 ) {
     private val token = jwt.issue(
         User(id = 1, email = "content-rate@test.com", passwordHash = "x", name = "작성자", verified = true),

@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.get
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
 class OpenApiProdProfileTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `prod 프로파일에서 OpenAPI JSON 은 노출되지 않는다`() {

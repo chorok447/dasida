@@ -41,13 +41,13 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class CascadeDeleteConsistencyTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val bookmarks: PostBookmarkRepository,
-    @Autowired private val postComments: PostCommentRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val campaignComments: CampaignCommentRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val bookmarks: PostBookmarkRepository,
+    @param:Autowired private val postComments: PostCommentRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val campaignComments: CampaignCommentRepository,
 ) {
     private val ownerToken = jwt.issue(User(id = 1, email = "owner@test.com", passwordHash = "x", name = "개설자"))
     private val otherToken = jwt.issue(User(id = 2, email = "other@test.com", passwordHash = "x", name = "다른이"))
