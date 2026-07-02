@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.options
 @SpringBootTest
 @AutoConfigureMockMvc
 class CorsConfigTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `허용 origin localhost preflight 는 CORS 헤더를 포함한다`() {

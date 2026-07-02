@@ -33,10 +33,10 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class DeletedResourceVisibilityTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "me@test.com", passwordHash = "x", name = "나"))
 

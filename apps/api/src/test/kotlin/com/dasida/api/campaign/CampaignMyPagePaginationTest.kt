@@ -17,10 +17,10 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class CampaignMyPagePaginationTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val campaignRepo: CampaignRepository,
-    @Autowired val participantRepo: CampaignParticipantRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val campaignRepo: CampaignRepository,
+    @param:Autowired val participantRepo: CampaignParticipantRepository,
 ) {
     private val me = 1L
     private val token = jwt.issue(User(id = me, email = "me@t.com", passwordHash = "x", name = "나", verified = false))

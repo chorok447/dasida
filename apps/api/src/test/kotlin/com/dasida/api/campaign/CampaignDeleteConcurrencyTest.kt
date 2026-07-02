@@ -28,11 +28,11 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest
 @AutoConfigureMockMvc
 class CampaignDeleteConcurrencyTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val campaignRepo: CampaignRepository,
-    @Autowired val participantRepo: CampaignParticipantRepository,
-    @Autowired val postRepo: PostRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val campaignRepo: CampaignRepository,
+    @param:Autowired val participantRepo: CampaignParticipantRepository,
+    @param:Autowired val postRepo: PostRepository,
 ) {
     private fun tokenFor(userId: Long) = jwt.issue(
         User(id = userId, email = "u$userId@t.com", passwordHash = "x", name = "유저$userId", verified = false),

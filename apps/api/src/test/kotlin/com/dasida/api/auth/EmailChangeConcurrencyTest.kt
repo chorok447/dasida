@@ -20,11 +20,11 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest
 @AutoConfigureMockMvc
 class EmailChangeConcurrencyTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val users: UserRepository,
-    @Autowired private val encoder: PasswordEncoder,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: JsonMapper,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val users: UserRepository,
+    @param:Autowired private val encoder: PasswordEncoder,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val mapper: JsonMapper,
 ) {
     @Test
     fun `두 사용자가 같은 이메일로 동시에 변경하면 하나만 200이고 다른 요청은 409`() {

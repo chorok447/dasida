@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.get
 @SpringBootTest
 @AutoConfigureMockMvc
 class OpenApiDocsTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `OpenAPI JSON 은 제목과 주요 path, bearerAuth scheme 를 포함한다`() {
