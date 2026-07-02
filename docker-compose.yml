@@ -1,0 +1,17 @@
+# 로컬 개발용 MySQL. 백엔드가 영속성을 필요로 하면서 도입(인증).
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: dasida-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: dasida
+      MYSQL_USER: dasida
+      MYSQL_PASSWORD: dasida
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - dasida-mysql:/var/lib/mysql
+
+volumes:
+  dasida-mysql:
