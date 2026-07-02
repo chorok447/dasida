@@ -16,7 +16,7 @@ class SeedRunner(
     private val posts: PostRepository,
     private val campaigns: CampaignRepository,
 ) : CommandLineRunner {
-    override fun run(vararg args: String?) {
+    override fun run(vararg args: String) {
         if (posts.count() == 0L) {
             posts.saveAll(PostSeed.posts.reversed().onEachIndexed { i, p -> p.seq = (i + 1).toLong() })
         }

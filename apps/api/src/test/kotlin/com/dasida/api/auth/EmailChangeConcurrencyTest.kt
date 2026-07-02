@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -31,10 +31,10 @@ class EmailChangeConcurrencyTest(
         val suffix = UUID.randomUUID().toString()
         val password = "Current1!"
         val first = users.saveAndFlush(
-            User(email = "email-race-a-$suffix@dasida.com", passwordHash = encoder.encode(password), name = "A"),
+            User(email = "email-race-a-$suffix@dasida.com", passwordHash = encoder.encode(password)!!, name = "A"),
         )
         val second = users.saveAndFlush(
-            User(email = "email-race-b-$suffix@dasida.com", passwordHash = encoder.encode(password), name = "B"),
+            User(email = "email-race-b-$suffix@dasida.com", passwordHash = encoder.encode(password)!!, name = "B"),
         )
         val target = "email-race-target-$suffix@dasida.com"
         val barrier = CyclicBarrier(2)
