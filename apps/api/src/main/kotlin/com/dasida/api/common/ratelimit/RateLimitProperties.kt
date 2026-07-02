@@ -8,11 +8,17 @@ data class RateLimitProperties(
     /** `memory`(기본·테스트) 또는 `redis`(compose local). */
     val store: String = "memory",
     val auth: AuthRateLimitRules = AuthRateLimitRules(),
+    val content: ContentWriteRateLimitRules = ContentWriteRateLimitRules(),
 )
 
 data class AuthRateLimitRules(
     val login: RateLimitRuleConfig = RateLimitRuleConfig(limit = 20, windowSeconds = 60),
     val signup: RateLimitRuleConfig = RateLimitRuleConfig(limit = 10, windowSeconds = 60),
+)
+
+data class ContentWriteRateLimitRules(
+    val comment: RateLimitRuleConfig = RateLimitRuleConfig(limit = 20, windowSeconds = 60),
+    val report: RateLimitRuleConfig = RateLimitRuleConfig(limit = 10, windowSeconds = 60),
 )
 
 data class RateLimitRuleConfig(
