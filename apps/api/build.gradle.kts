@@ -25,6 +25,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("tools.jackson.module:jackson-module-kotlin")
+	// [spike] Boot 4 Jackson 3 기본 매퍼와 정렬. com.fasterxml.jackson.module:jackson-module-kotlin(v2)는
+	// Kotlin DTO 역직렬화가 Jackson 3 JsonMapper에 적용되지 않아 POST 400 회귀를 유발한다.
+	// Hibernate @JdbcTypeCode(JSON) 은 내부 Jackson 2 FormatMapper 를 사용하므로 v2 모듈도 유지한다.
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	// OpenAPI 3 문서 자동 생성 + Swagger UI.

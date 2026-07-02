@@ -1,6 +1,6 @@
 package com.dasida.api.security
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,7 +29,7 @@ import java.util.UUID
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ErrorResponseBodyContractTest(
     @Autowired val rest: TestRestTemplate,
-    @Autowired val mapper: ObjectMapper,
+    @Autowired val mapper: JsonMapper,
 ) {
     private fun jsonGet(path: String) =
         rest.exchange(path, HttpMethod.GET, HttpEntity<Void>(jsonHeaders()), String::class.java)
