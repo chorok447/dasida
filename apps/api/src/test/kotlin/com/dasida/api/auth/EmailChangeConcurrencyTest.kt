@@ -1,7 +1,7 @@
 package com.dasida.api.auth
 
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -24,7 +24,7 @@ class EmailChangeConcurrencyTest(
     @Autowired private val users: UserRepository,
     @Autowired private val encoder: PasswordEncoder,
     @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
 ) {
     @Test
     fun `두 사용자가 같은 이메일로 동시에 변경하면 하나만 200이고 다른 요청은 409`() {

@@ -20,7 +20,7 @@ import com.dasida.api.post.PostLike
 import com.dasida.api.post.PostLikeRepository
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -41,7 +41,7 @@ import java.util.UUID
 @Transactional
 class AccountDeletionTest(
     @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val users: UserRepository,
     @Autowired private val encoder: PasswordEncoder,
     @Autowired private val jwt: JwtService,

@@ -11,7 +11,7 @@ import com.dasida.api.post.CreateCommentRequest
 import com.dasida.api.post.Post
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -32,7 +32,7 @@ import java.util.UUID
 class NotificationEventTest(
     @Autowired private val mvc: MockMvc,
     @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val posts: PostRepository,
     @Autowired private val campaigns: CampaignRepository,
     @Autowired private val notifications: NotificationRepository,

@@ -1,7 +1,7 @@
 package com.dasida.api.auth
 
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -25,7 +25,7 @@ class AuthControllerTest(
     @Autowired val mvc: MockMvc,
     @Autowired val repo: UserRepository,
     @Autowired val jwt: JwtService,
-    @Autowired val objectMapper: ObjectMapper,
+    @Autowired val objectMapper: JsonMapper,
     @Autowired val passwordEncoder: PasswordEncoder,
 ) {
 

@@ -14,7 +14,7 @@ import com.dasida.api.post.PostComment
 import com.dasida.api.post.PostCommentRepository
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -33,7 +33,7 @@ import java.util.UUID
 @Transactional
 class ReportControllerTest(
     @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val jwt: JwtService,
     @Autowired private val reports: ReportRepository,
     @Autowired private val posts: PostRepository,

@@ -110,13 +110,52 @@
 ### git diff --check
 - **통과** (whitespace/conflict 없음). 프론트엔드/lockfile/workspace 변경 없음.
 
-## 6. 미해결 / 후속 관찰 항목 (이 spike 에서 고치지 않음)
-- **[블로커] Jackson 2 → Jackson 3 마이그레이션** — Boot 4 의 핵심 변경. 직렬화 계약(request/response) 표면을 건드리므로 별도 전용 작업으로 분리.
-  - 런타임: `com.fasterxml.jackson.module:jackson-module-kotlin`(v2) → `tools.jackson.module:jackson-module-kotlin`(v3, 3.2.0 존재) 로 교체해야 Kotlin DTO (de)serialization 복구.
-  - 테스트: `com.fasterxml.jackson.databind.ObjectMapper` 주입부(약 15개 파일)를 `tools.jackson.databind.ObjectMapper` 로 교체.
-  - jjwt-jackson 은 자체 Jackson 2 사용 → 별개(현행 유지 가능).
-  - 계약 회귀 위험(직렬화 포맷/null 처리/날짜 포맷) 있으므로 교체 후 error contract·Page 응답·viewer 필드 회귀 테스트 전수 재확인 필요.
-- **`@AutoConfigureTestRestTemplate` 추가** (ErrorStatusUnmaskTest, ErrorResponseBodyContractTest 2개 파일).
+## 9. Jackson 3 호환 작업 (2026-07-02, spike 브랜치 후속)
+
+### 작업 전 / 후 test 결과
+| 시점 | 통과 | 실패 | 비고 |
+| --- | --- | --- | --- |
+| Jackson 작업 전 | 413 | **129** | ObjectMapper 주입 ~99 + POST 400 ~20 + TestRestTemplate 10 |
+| Jackson 작업 후 | **532** | **10** | TestRestTemplate 자동구성만 잔존 |
+
+### 적용한 변경 (앱 코드/DTO/status/API contract 변경 없음)
+
+**dependency (`apps/api/build.gradle.kts`)**
+- `com.fasterxml.jackson.module:jackson-module-kotlin` → **`tools.jackson.module:jackson-module-kotlin`** (3.1.4, Boot BOM) 추가
+- Hibernate `@JdbcTypeCode(JSON)` 은 내부 **Jackson 2 FormatMapper** 를 사용하므로 **`com.fasterxml.jackson.module:jackson-module-kotlin`(v2) 유지** (제거 시 SeedRunner/CampaignBody 역직렬화 실패)
+
+**테스트 ObjectMapper → JsonMapper (13 파일)**
+- `com.fasterxml.jackson.databind.ObjectMapper` → **`tools.jackson.databind.json.JsonMapper`**
+- Boot 4 auto-configured `JsonMapper` bean 주입으로 `NoSuchBeanDefinitionException` 제거
+
+**JsonNode 배열 순회 helper (신규)**
+- `apps/api/src/test/kotlin/com/dasida/api/JacksonTestExtensions.kt`
+- Jackson 3 `JsonNode` 는 Iterable `.map`/`.first` 확장이 없어 `toElementList()` / `mapElements()` helper 추가
+- 사용: `ListOrderingBoundaryTest`, `PaginationContractTest`, `AggregateCountConsistencyTest`
+
+### Kotlin DTO 역직렬화 (POST 400) 처리
+- **원인**: Jackson 2 kotlin module 만 classpath 에 있으면 Boot 4 Jackson 3 `JsonMapper` 에 Kotlin module 미적용
+- **조치**: `tools.jackson.module:jackson-module-kotlin` 추가 → PostControllerTest(117), CampaignControllerTest(143) 등 POST mutation 테스트 **전부 통과**
+- DTO 필드/validation/request body contract 변경 없음
+
+### 남은 실패 (10건, Jackson 외 — 후속 작업)
+| 그룹 | 건수 | 클래스 | root cause |
+| --- | --- | --- | --- |
+| TestRestTemplate 자동구성 | 10 | `ErrorStatusUnmaskTest`(6), `ErrorResponseBodyContractTest`(4) | Boot 4: `@AutoConfigureTestRestTemplate` 필요 |
+
+### 검증 (Jackson 작업 후)
+- `compileKotlin` / `compileTestKotlin`: **성공**
+- `clean test`: **532/542 통과**, 10 실패 (TestRestTemplate만)
+- `clean test build`: **미실행** (test 10건 실패로 build 단계 동일 실패 예상)
+- `git diff --check`: **통과**
+- springdoc runtime smoke: **미실행** (후속)
+- `spring-boot-jackson2` compatibility module: **추가하지 않음** (Jackson 3 native migration 유지)
+
+---
+
+## 6. 미해결 / 후속 관찰 항목 (Jackson 작업 후 갱신)
+- ~~**[블로커] Jackson 2 → Jackson 3 마이그레이션**~~ → **Jackson HTTP/테스트 경로 해소** (129→10 실패). Hibernate JSON 컬럼은 Jackson 2 kotlin module 병행 유지.
+- **`@AutoConfigureTestRestTemplate` 추가** (ErrorStatusUnmaskTest, ErrorResponseBodyContractTest 2개 파일) — **남은 10건**.
 - **springdoc 3.0.3 런타임 검증 미완** — 컴파일/context-load 는 통과했으나 Swagger UI/`/v3/api-docs` local 노출·prod 비활성·JWT scheme·PathPattern·Kotlin nullable schema 는 smoke 단계(미실행)에서 확인 예정.
 - **3.5.x 최신화(3.5.16) 선행 여부** — 현재 3.5.0. Boot 4.1 직행 전에 3.5.16 으로 올려 deprecation 경고를 먼저 정리하는 단계적 접근 권장.
 - Kotlin KT-73255 경고 정리(`-Xannotation-default-target` 또는 `@param:`) — 선택.
