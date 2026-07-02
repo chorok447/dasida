@@ -16,11 +16,11 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class PostMyPagePaginationTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val posts: PostRepository,
-    @Autowired val likeRepo: PostLikeRepository,
-    @Autowired val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val posts: PostRepository,
+    @param:Autowired val likeRepo: PostLikeRepository,
+    @param:Autowired val bookmarkRepo: PostBookmarkRepository,
 ) {
     private val me = 1L
     private val token = jwt.issue(User(id = me, email = "me@t.com", passwordHash = "x", name = "나", verified = false))

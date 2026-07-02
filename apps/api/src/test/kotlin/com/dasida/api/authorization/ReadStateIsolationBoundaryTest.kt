@@ -36,13 +36,13 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class ReadStateIsolationBoundaryTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val likes: PostLikeRepository,
-    @Autowired private val bookmarks: PostBookmarkRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val participants: CampaignParticipantRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val likes: PostLikeRepository,
+    @param:Autowired private val bookmarks: PostBookmarkRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val participants: CampaignParticipantRepository,
 ) {
     private val viewerToken = jwt.issue(User(id = 1, email = "viewer@test.com", passwordHash = "x", name = "조회자"))
     private val other = 2L

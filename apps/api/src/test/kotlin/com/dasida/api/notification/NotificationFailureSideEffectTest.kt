@@ -39,12 +39,12 @@ import java.util.UUID
 @Transactional
 @Import(FixedClockTestConfiguration::class)
 class NotificationFailureSideEffectTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val notifications: NotificationRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val notifications: NotificationRepository,
 ) {
     private val owner = 1L
     private val actor = 2L

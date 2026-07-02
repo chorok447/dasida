@@ -26,12 +26,12 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest
 @AutoConfigureMockMvc
 class PostInteractionConcurrencyTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val postRepo: PostRepository,
-    @Autowired val likeRepo: PostLikeRepository,
-    @Autowired val bookmarkRepo: PostBookmarkRepository,
-    @Autowired val commentRepo: PostCommentRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val postRepo: PostRepository,
+    @param:Autowired val likeRepo: PostLikeRepository,
+    @param:Autowired val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired val commentRepo: PostCommentRepository,
 ) {
     private fun tokenFor(userId: Long) = jwt.issue(
         User(id = userId, email = "u$userId@t.com", passwordHash = "x", name = "유저$userId", verified = false),

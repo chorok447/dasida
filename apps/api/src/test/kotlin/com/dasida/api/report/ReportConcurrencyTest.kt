@@ -23,11 +23,11 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest
 @AutoConfigureMockMvc
 class ReportConcurrencyTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val reports: ReportRepository,
-    @Autowired private val posts: PostRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val reports: ReportRepository,
+    @param:Autowired private val posts: PostRepository,
 ) {
     @Test
     fun `같은 사용자의 동시 중복 신고는 하나만 생성하고 다른 요청은 409`() {

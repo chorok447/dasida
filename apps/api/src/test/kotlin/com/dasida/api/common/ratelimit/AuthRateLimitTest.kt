@@ -22,7 +22,7 @@ import java.util.UUID
     ],
 )
 class AuthRateLimitTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `로그인은 IP당 limit 초과 시 429를 반환한다`() {
@@ -67,7 +67,7 @@ class AuthRateLimitTest(
 @AutoConfigureMockMvc
 @TestPropertySource(properties = ["app.rate-limit.enabled=false"])
 class AuthRateLimitDisabledTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `rate limit 비활성화 시 로그인 요청이 429로 차단되지 않는다`() {

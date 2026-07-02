@@ -28,13 +28,13 @@ import java.util.UUID
 @Transactional
 @Import(FixedClockTestConfiguration::class)
 class CampaignControllerTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val campaignRepo: CampaignRepository,
-    @Autowired val participantRepo: CampaignParticipantRepository,
-    @Autowired val postRepo: PostRepository,
-    @Autowired val userRepo: UserRepository,
-    @Autowired val notificationRepo: NotificationRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val campaignRepo: CampaignRepository,
+    @param:Autowired val participantRepo: CampaignParticipantRepository,
+    @param:Autowired val postRepo: PostRepository,
+    @param:Autowired val userRepo: UserRepository,
+    @param:Autowired val notificationRepo: NotificationRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))

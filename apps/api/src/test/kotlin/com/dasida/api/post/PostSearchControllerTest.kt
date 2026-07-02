@@ -17,11 +17,11 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class PostSearchControllerTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val postRepo: PostRepository,
-    @Autowired private val likeRepo: PostLikeRepository,
-    @Autowired private val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val postRepo: PostRepository,
+    @param:Autowired private val likeRepo: PostLikeRepository,
+    @param:Autowired private val bookmarkRepo: PostBookmarkRepository,
 ) {
     private val token = jwt.issue(
         User(id = 1, email = "post-search@test.com", passwordHash = "x", name = "검색 사용자", verified = true),

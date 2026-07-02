@@ -40,19 +40,19 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class AccountDeletionTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: JsonMapper,
-    @Autowired private val users: UserRepository,
-    @Autowired private val encoder: PasswordEncoder,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val postComments: PostCommentRepository,
-    @Autowired private val likes: PostLikeRepository,
-    @Autowired private val bookmarks: PostBookmarkRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val campaignComments: CampaignCommentRepository,
-    @Autowired private val participants: CampaignParticipantRepository,
-    @Autowired private val notifications: NotificationRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val users: UserRepository,
+    @param:Autowired private val encoder: PasswordEncoder,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val postComments: PostCommentRepository,
+    @param:Autowired private val likes: PostLikeRepository,
+    @param:Autowired private val bookmarks: PostBookmarkRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val campaignComments: CampaignCommentRepository,
+    @param:Autowired private val participants: CampaignParticipantRepository,
+    @param:Autowired private val notifications: NotificationRepository,
 ) {
     private fun saveUser(
         email: String,
