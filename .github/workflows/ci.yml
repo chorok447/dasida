@@ -43,7 +43,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build
         working-directory: apps/api
         run: ./gradlew build --no-daemon
