@@ -1,5 +1,6 @@
 package com.dasida.api.query
 
+import com.dasida.api.toElementList
 import com.dasida.api.auth.User
 import com.dasida.api.campaign.Campaign
 import com.dasida.api.campaign.CampaignBody
@@ -8,11 +9,11 @@ import com.dasida.api.post.Author
 import com.dasida.api.post.Post
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -35,7 +36,7 @@ import java.util.UUID
 @Transactional
 class AggregateCountConsistencyTest(
     @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val jwt: JwtService,
     @Autowired private val posts: PostRepository,
     @Autowired private val campaigns: CampaignRepository,
@@ -74,7 +75,7 @@ class AggregateCountConsistencyTest(
     /** 최상위 배열 목록에서 id 로 항목을 찾아 정수 필드를 읽는다. */
     private fun listField(listPath: String, id: String, field: String): Int {
         val body = mvc.get(listPath).andReturn().response.contentAsString
-        val node = mapper.readTree(body).first { it["id"].asText() == id }
+        val node = mapper.readTree(body).toElementList().first { it["id"].asText() == id }
         return node[field].asInt()
     }
 

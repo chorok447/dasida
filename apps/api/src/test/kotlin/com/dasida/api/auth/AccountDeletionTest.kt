@@ -20,11 +20,11 @@ import com.dasida.api.post.PostLike
 import com.dasida.api.post.PostLikeRepository
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -41,7 +41,7 @@ import java.util.UUID
 @Transactional
 class AccountDeletionTest(
     @Autowired private val mvc: MockMvc,
-    @Autowired private val mapper: ObjectMapper,
+    @Autowired private val mapper: JsonMapper,
     @Autowired private val users: UserRepository,
     @Autowired private val encoder: PasswordEncoder,
     @Autowired private val jwt: JwtService,
@@ -61,7 +61,7 @@ class AccountDeletionTest(
     ): User = users.saveAndFlush(
         User(
             email = email,
-            passwordHash = encoder.encode(password),
+            passwordHash = encoder.encode(password)!!,
             name = "탈퇴 전 사용자",
             verified = true,
             deletedAt = deletedAt,
