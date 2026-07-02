@@ -4,6 +4,7 @@ import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.http.HttpEntity
@@ -27,6 +28,7 @@ import java.util.UUID
  * MockMvc 는 ERROR 디스패치를 타지 않아 /error body 를 재현하지 못하므로 실제 서블릿 컨테이너(RANDOM_PORT)로 검증한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestRestTemplate
 class ErrorResponseBodyContractTest(
     @Autowired val rest: TestRestTemplate,
     @Autowired val mapper: JsonMapper,

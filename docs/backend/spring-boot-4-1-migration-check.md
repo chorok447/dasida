@@ -46,6 +46,8 @@
 - springdoc 2.8.14 → **3.0.3** (기존 2.8.14 고정 사유 주석 갱신)
 - `testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")` **추가**
   - Boot 4 에서 `spring-boot-starter-test` 가 더 이상 webmvc test slice 를 전이 포함하지 않음
+- `testImplementation("org.springframework.boot:spring-boot-starter-restclient")` **추가**
+  - Boot 4 `TestRestTemplate` 자동구성에 필요한 분리된 `RestTemplateBuilder` 모듈을 test classpath 에 제공
 
 ## 4. 깨진 항목 (마이그레이션 필수 수정) 과 원인
 
@@ -74,7 +76,8 @@
 - 구: `org.springframework.boot.test.web.client.TestRestTemplate`
 - 신: `org.springframework.boot.resttestclient.TestRestTemplate` (모듈 `spring-boot-resttestclient`, webmvc-test starter 가 전이 포함)
 - 영향: `ErrorResponseBodyContractTest.kt`, `ErrorStatusUnmaskTest.kt` (2개 파일)
-- 적용 수정: import 치환 (추가 의존성 불필요)
+- 적용 수정: import 치환 + `@AutoConfigureTestRestTemplate` 추가
+- 추가 test 의존성: `spring-boot-starter-restclient` (`RestTemplateBuilder` 제공)
 
 ## 5. 검증 결과
 
@@ -151,19 +154,52 @@
 - springdoc runtime smoke: **미실행** (후속)
 - `spring-boot-jackson2` compatibility module: **추가하지 않음** (Jackson 3 native migration 유지)
 
+## 10. TestRestTemplate 자동구성 작업 (2026-07-02, spike 브랜치 후속)
+
+### 원인
+- Boot 4 에서는 `@SpringBootTest(webEnvironment = RANDOM_PORT)` 만으로
+  `TestRestTemplate` bean 이 등록되지 않는다.
+- `@AutoConfigureTestRestTemplate` 적용 후에는 분리된
+  `org.springframework.boot.restclient.RestTemplateBuilder`가 test classpath 에 없어
+  `NoClassDefFoundError`가 발생했다.
+- 따라서 status/body assertion 문제가 아니라 Boot 4 테스트 자동구성과 모듈 분리가
+  원인이었다.
+
+### 적용 변경
+- `ErrorStatusUnmaskTest`, `ErrorResponseBodyContractTest`에
+  `org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate`
+  import와 annotation 추가
+- test scope에 `spring-boot-starter-restclient` 추가
+- 기존 status/body assertion, production code, Jackson helper는 변경하지 않음
+
+### 작업 전 / 후 test 결과
+| 시점 | 통과 | 실패 | 비고 |
+| --- | --- | --- | --- |
+| TestRestTemplate 작업 전 | 532 | **10** | 자동구성 실패 10건 |
+| TestRestTemplate 작업 후 | **542** | **0** | 전체 테스트 통과 |
+
+### 검증
+- `ErrorStatusUnmaskTest`: **6/6 통과**
+- `ErrorResponseBodyContractTest`: **4/4 통과**
+- `clean test`: **542/542 통과**
+- `clean test build`: **성공**
+- `git diff --check`: **통과**
+- springdoc runtime smoke: **미실행** (후속)
+
 ---
 
-## 6. 미해결 / 후속 관찰 항목 (Jackson 작업 후 갱신)
+## 6. 미해결 / 후속 관찰 항목 (TestRestTemplate 작업 후 갱신)
 - ~~**[블로커] Jackson 2 → Jackson 3 마이그레이션**~~ → **Jackson HTTP/테스트 경로 해소** (129→10 실패). Hibernate JSON 컬럼은 Jackson 2 kotlin module 병행 유지.
-- **`@AutoConfigureTestRestTemplate` 추가** (ErrorStatusUnmaskTest, ErrorResponseBodyContractTest 2개 파일) — **남은 10건**.
+- ~~**`@AutoConfigureTestRestTemplate` 추가**~~ → **해소** (10→0 실패, 전체 542 테스트 통과).
 - **springdoc 3.0.3 런타임 검증 미완** — 컴파일/context-load 는 통과했으나 Swagger UI/`/v3/api-docs` local 노출·prod 비활성·JWT scheme·PathPattern·Kotlin nullable schema 는 smoke 단계(미실행)에서 확인 예정.
 - **3.5.x 최신화(3.5.16) 선행 여부** — 현재 3.5.0. Boot 4.1 직행 전에 3.5.16 으로 올려 deprecation 경고를 먼저 정리하는 단계적 접근 권장.
+- **Hibernate JSON → Jackson 3 FormatMapper 통합 검토** — 현재 Hibernate JSON 컬럼 경로는 Jackson 2 kotlin module 을 병행 유지한다.
 - Kotlin KT-73255 경고 정리(`-Xannotation-default-target` 또는 `@param:`) — 선택.
 
 ## 7. 실제 migration PR 로 진행 가능 여부 & 판단
-- **결론: 지금 바로 단일 PR 로 머지하기에는 이르다. 단, 마이그레이션 경로는 명확하고 실현 가능하다.**
-  - 근거(가능성 긍정): Spring Framework 7 / Hibernate 7 / Security 7 / Servlet 6.1(Tomcat 11) / JPA·H2 / Actuator / CORS 관점에서는 **컴파일·context 기동·413개 테스트 통과**로 큰 구조적 장애가 없음. Boot/Kotlin/Gradle/Java 호환성도 확인됨(Gradle 8.14.5, Java 21 유지 가능).
-  - 근거(보류 사유): 유일한 실질 블로커가 **Jackson 2→3** 이며 이는 직렬화 계약에 직접 닿는 변경이라, 회귀 테스트를 통과시키는 전용 작업으로 분리해야 함.
+- **결론: 전체 542 테스트와 build 는 통과했지만, 이 spike 를 바로 실제 migration PR 로 머지하기에는 이르다.**
+  - 근거(가능성 긍정): Spring Framework 7 / Hibernate 7 / Security 7 / Servlet 6.1(Tomcat 11) / JPA·H2 / Actuator / CORS 관점에서 **전체 542 테스트와 build 통과**로 주요 계약 회귀가 없음을 확인했다.
+  - 근거(보류 사유): springdoc 3.x runtime smoke, Boot 3.5.16 선행 최신화 여부, Hibernate JSON의 Jackson 3 FormatMapper 통합 검토가 남아 있다.
 - **권장 순서(후속 실제 migration PR 분할):**
   1. (선택·선행) Boot 3.5.16 최신화 + deprecation 정리.
   2. Boot 4.1 + Kotlin 2.3.21 + test slice 모듈 분리 대응(본 spike 의 A~D) + `@AutoConfigureTestRestTemplate`.

@@ -48,6 +48,8 @@ dependencies {
 	// [spike] Boot 4 에서 test slice(@AutoConfigureMockMvc/MockMvc)가 기술별 모듈로 분리됨.
 	// spring-boot-starter-test 는 더 이상 webmvc test slice 를 전이 포함하지 않아 별도 추가한다.
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	// [spike] Boot 4 TestRestTemplate 자동구성은 분리된 RestTemplateBuilder 모듈을 요구한다.
+	testImplementation("org.springframework.boot:spring-boot-starter-restclient")
 	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("com.h2database:h2")
