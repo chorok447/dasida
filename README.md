@@ -2,18 +2,36 @@
 
 한국형 업사이클링 / 소셜 캠페인 앱. pnpm + Gradle 모노레포.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js)
-![React](https://img.shields.io/badge/React-19.2.7-61DAFB?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-7F52FF?logo=kotlin&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
-![JDK](https://img.shields.io/badge/JDK-21-437291?logo=openjdk&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-jjwt%200.13.0-black?logo=jsonwebtokens)
-![pnpm](https://img.shields.io/badge/pnpm-11.9.0-F69220?logo=pnpm&logoColor=white)
-![Gradle](https://img.shields.io/badge/Gradle-Kotlin%20DSL-02303A?logo=gradle&logoColor=white)
-![Valkey](https://img.shields.io/badge/Valkey-8_(compose%20local)-DC382D?logo=redis&logoColor=white)
+## 기술 스택
+
+### Frontend
+
+![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?style=for-the-badge&logo=next.js)
+![React](https://img.shields.io/badge/React-19.2.7-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![motion](https://img.shields.io/badge/motion-12.42.2-663399?style=for-the-badge)
+
+### Backend
+
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.0-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21-437291?style=for-the-badge&logo=openjdk&logoColor=white)
+![QueryDSL](https://img.shields.io/badge/QueryDSL-7.4.0-4479A1?style=for-the-badge)
+![JJWT](https://img.shields.io/badge/JJWT-0.13.0-black?style=for-the-badge&logo=jsonwebtokens)
+![Jackson](https://img.shields.io/badge/Jackson-3-232323?style=for-the-badge)
+![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)
+![JPA / Hibernate](https://img.shields.io/badge/JPA_%2F_Hibernate-59666C?style=for-the-badge&logo=hibernate&logoColor=white)
+
+### Infra and Database
+
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![Valkey](https://img.shields.io/badge/Valkey-8-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![H2](https://img.shields.io/badge/H2-0949BA?style=for-the-badge)
+![Gradle](https://img.shields.io/badge/Gradle-8.14.5-02303A?style=for-the-badge&logo=gradle&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-11.9.0-F69220?style=for-the-badge&logo=pnpm&logoColor=white)
 
 ## 구조
 
