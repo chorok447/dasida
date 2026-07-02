@@ -1,5 +1,6 @@
 package com.dasida.api.common.ratelimit
 
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
@@ -9,12 +10,21 @@ class RateLimitService(
     private val properties: RateLimitProperties,
     private val store: RateLimitBucketStore,
 ) {
+    private val log = LoggerFactory.getLogger(RateLimitService::class.java)
+
     fun check(rule: RateLimitRule, clientIp: String): RateLimitResult {
         if (!properties.enabled) {
             return RateLimitResult.unlimited(ruleConfig(rule).limit)
         }
         val config = ruleConfig(rule)
-        return store.tryConsume(rule.bucketKey(clientIp), config.limit, config.windowSeconds)
+        return try {
+            store.tryConsume(rule.bucketKey(clientIp), config.limit, config.windowSeconds)
+        } catch (ex: Exception) {
+            // fail-open: store(예: Redis) 장애로 제한을 확인할 수 없으면 요청을 막지 않는다(남용보다 가용성 우선).
+            // rate limit 초과(RateLimitExceededException) 와 달리 store 장애는 통과시키고 경고 로그만 남긴다.
+            log.warn("rate limit store unavailable, failing open for rule={} ip={}", rule, clientIp, ex)
+            RateLimitResult.unlimited(config.limit)
+        }
     }
 
     fun enforce(rule: RateLimitRule, clientIp: String) {
