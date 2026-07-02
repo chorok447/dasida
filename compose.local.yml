@@ -1,0 +1,53 @@
+# 로컬 개발용: MySQL + API + Web 을 한 번에 빌드/실행한다. 운영 배포용이 아니다.
+services:
+  mysql:
+    image: mysql:8.4
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: dasida
+      MYSQL_USER: dasida
+      MYSQL_PASSWORD: dasida-local-password
+      MYSQL_ROOT_PASSWORD: root-local-password
+    volumes:
+      - dasida-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dasida?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: dasida
+      SPRING_DATASOURCE_PASSWORD: dasida-local-password
+      JWT_SECRET: dev-local-change-me-please-change-me-32bytes-minimum
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # 브라우저(호스트)에서 API 로 접근하므로 컨테이너 서비스명이 아닌 localhost 를 사용한다.
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    depends_on:
+      - api
+
+volumes:
+  dasida-mysql-data:
