@@ -54,9 +54,9 @@ jobs:
     name: auto-merge
     needs: [web, api]
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false &&
-      (github.base_ref == 'develop' || github.base_ref == 'main')
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.draft == false &&
+        (github.base_ref == 'develop' || github.base_ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
