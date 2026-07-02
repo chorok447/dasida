@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap');
+@import "tailwindcss";
+
+html,
+body {
+  margin: 0;
+  background: #0f1f22;
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #7dd3a3;
+  outline-offset: 3px;
+}
+
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+
+.ui-control {
+  width: 100%;
+  border-width: 1px;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.ui-control:focus-visible {
+  border-color: #7dd3a3;
+  box-shadow: 0 0 0 3px rgb(125 211 163 / 18%);
+}
+
+.ui-control:disabled {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
