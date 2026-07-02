@@ -31,7 +31,7 @@ dependencies {
 	// 2.8.15 는 swagger-ui 리소스에 '/**/*swagger-initializer.js' 같은 '**' 중간 패턴을 넣는데,
 	// 그 파싱 수정(Spring Web #34986)은 6.2.8(Boot 3.5.1+)부터다. 현재 Boot 3.5.0(Spring 6.2.7)
 	// 에서는 PathPattern 파서가 이를 거부해 컨텍스트 기동이 실패한다. 해당 패턴이 없는 2.8.14 로 고정.
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 	implementation("io.github.openfeign.querydsl:querydsl-jpa:7.4.0")
 	kapt("io.github.openfeign.querydsl:querydsl-apt:7.4.0:jpa")
 	kapt("jakarta.persistence:jakarta.persistence-api")
