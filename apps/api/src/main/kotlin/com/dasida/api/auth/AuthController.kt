@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
@@ -30,6 +31,21 @@ class AuthController(private val authService: AuthService) {
     @Operation(summary = "로그인")
     @PostMapping("/login")
     fun login(@RequestBody req: LoginRequest): AuthResponse = authService.login(req)
+
+    @Operation(summary = "로그아웃")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/logout")
+    fun logout(
+        @AuthenticationPrincipal principal: AuthUser?,
+        @RequestHeader("Authorization", required = false) authHeader: String?,
+    ): LogoutResponse {
+        // principal 이 있으면 필터가 검증한 Bearer 토큰이 존재한다. 미인증이면 401.
+        requireUserId(principal)
+        val token = authHeader?.removePrefix("Bearer ")?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
+        return authService.logout(token)
+    }
 
     @Operation(summary = "내 정보 조회")
     @SecurityRequirement(name = "bearerAuth")
