@@ -45,55 +45,65 @@
 
 ## 4. 장애(Redis 다운) 시 정책
 
-### 4-1. 현재 de-facto 동작(의도된 정책이 아니라 코드 결과)
+### 4-1. 현재 구현된 동작 ✅ 구현됨
 
-- **rate limit**: `AuthRateLimitFilter`/`ContentWriteRateLimitFilter` 는 `RateLimitExceededException` 만 catch 한다. Redis 연결 실패 등 다른 예외는 catch 되지 않아 **요청이 5xx 로 실패**한다. → 명시적 fail-open 이 **없다**(장애 시 해당 mutation 이 막힘).
-- **denylist**: `JwtAuthFilter` 는 파싱·denylist·DB 조회를 하나의 `try { ... } catch (_: Exception)` 로 감싸고, 예외 시 **401** 로 처리한다. Redis 실패 시 `isDenied` 예외 → Bearer 토큰 요청이 전부 **401**(사실상 fail-closed, 단 "모든 인증 사용자 거절"이라는 부작용). 토큰 없는 public GET 은 영향 없음.
+과거에는 두 기능 모두 store 장애가 **우연히** fail-closed(요청 실패)로 처리됐다(설계된 정책이 아니라 예외 처리의 결과). 이를 아래처럼 **의도된 정책으로 명시화**했다.
 
-즉 현재는 **두 기능 모두 장애 시 사실상 fail-closed(요청 실패)** 이며, 이는 설계된 정책이 아니라 예외 처리의 결과다. prod 적용 전에 의도적으로 정해야 한다.
+- **rate limit → fail-open (구현됨)**: `RateLimitService.check` 가 `store.tryConsume` 를 try/catch 로 감싸, store(예: Redis) 장애 시 `RateLimitResult.unlimited(...)` 를 반환하고 경고 로그를 남긴다. 요청은 막히지 않고 기존 비즈니스 흐름으로 진행된다(5xx 아님). **rate limit 초과(`RateLimitExceededException` → 429 + `Retry-After`)와 store 장애를 구분**한다: 초과는 여전히 429, store 장애는 통과. login/signup/comment/report 의 limit/window/key 는 변경하지 않았다.
+- **denylist → fail-closed (구현됨)**: `JwtAuthFilter.isDeniedFailClosed` 가 `denylist.isDenied` 를 감싸, store 장애 시 "무효화된 것으로 간주"(true)하고 경고 로그를 남긴다. 결과적으로 Bearer 인증 요청은 **401** 로 거절된다. catch-all 에 우연히 묻히는 대신 unavailable 케이스를 코드에서 명시적으로 드러냈다. 응답은 기존 인증 실패 정책과 동일한 **401**, JWT claim/key/TTL 은 변경하지 않았다. 토큰 없는 public GET 은 denylist 를 조회하지 않으므로 영향 없음.
 
-### 4-2. 정책 후보와 장단점
+관련 테스트: `RateLimitServiceFailOpenTest`(모든 rule fail-open), `RateLimitStoreFailureIntegrationTest`(signup 201·login 401, 5xx 아님), `DenylistStoreFailureTest`(Bearer 401·public GET 200).
 
-**rate limit — 권장: fail-open**
+### 4-2. 정책 선택 배경(후보와 장단점)
+
+> 아래 표는 정책 선택의 근거다. 굵게 표시한 권장안(rate limit fail-open, denylist fail-closed)이 **4-1 에서 구현됨**.
+
+**rate limit — 채택: fail-open**
 
 | 후보 | 장점 | 단점 |
 |---|---|---|
-| fail-open (store 오류 시 통과 허용) | 가용성 우선. Redis 장애가 로그인·작성 전면 차단으로 번지지 않음 | 장애 동안 제한이 사라져 brute-force/스팸에 노출 |
-| fail-closed (현재 de-facto, 오류 시 요청 실패) | 장애 중에도 남용 차단 | Redis 장애 = 로그인/작성 장애로 전파(가용성 악화) |
+| fail-open (store 오류 시 통과 허용) ✅ 채택 | 가용성 우선. Redis 장애가 로그인·작성 전면 차단으로 번지지 않음 | 장애 동안 제한이 사라져 brute-force/스팸에 노출 |
+| fail-closed (과거 de-facto, 오류 시 요청 실패) | 장애 중에도 남용 차단 | Redis 장애 = 로그인/작성 장애로 전파(가용성 악화) |
 
 > rate limit 은 남용 완화가 목적이고 인증/인가의 최종 방어선이 아니므로 **fail-open** 을 권장. 단 장애 로그·알럿으로 무제한 구간을 관측 가능해야 한다.
 
-**logout denylist — 권장: fail-closed(+ degraded-mode 명시)**
+**logout denylist — 채택: fail-closed(명시적)**
 
 | 후보 | 장점 | 단점 |
 |---|---|---|
-| fail-closed (store 확인 불가 시 인증 거절) | 무효화됐을 수 있는 토큰을 통과시키지 않음(보안 우선) | Redis 장애 = 전 사용자 인증 불가(가용성 급락) |
+| fail-closed (store 확인 불가 시 인증 거절) ✅ 채택 | 무효화됐을 수 있는 토큰을 통과시키지 않음(보안 우선) | Redis 장애 = 전 사용자 인증 불가(가용성 급락) |
 | fail-open (store 확인 불가 시 denylist 무시하고 통과) | 가용성 우선 | 로그아웃/유출 토큰이 장애 동안 되살아남(보안 목적 무력화) |
-| degraded-mode(명시적) | 장애 시 동작을 의도적으로 선택·노출 | 별도 구현·플래그 필요 |
+| degraded-mode(정책 플래그) | 장애 시 동작을 런타임에 선택 | 별도 구현·플래그 필요(현재 미도입) |
 
-> denylist 는 보안 목적이므로 **fail-closed** 가 기본 권장. 다만 "Redis 장애 = 로그인 사용자 전체 401" 은 가용성 리스크가 크므로, 현재의 우발적 fail-closed 를 그대로 두지 말고 **의도적 degraded-mode**(예: denylist 확인 실패를 구분해 로깅·알럿하고, 정책 플래그로 fail-open/closed 선택 가능)로 명시하는 것을 권장한다. 정책은 서비스 위험도(토큰 TTL 24시간, 유출 리스크)에 따라 결정.
+> denylist 는 보안 목적이므로 **fail-closed** 를 채택했다. 우발적 catch-all 대신 `isDeniedFailClosed` 에서 store 장애를 명시적으로 잡아 로깅하고 거절한다. "Redis 장애 = 로그인 사용자 전체 401" 이라는 가용성 리스크가 실제로 크므로, 필요 시 fail-open/closed 를 런타임에 고르는 **degraded-mode(정책 플래그)** 는 후속 과제로 남긴다(아래 TODO). 정책은 서비스 위험도(토큰 TTL 24시간, 유출 리스크)에 따라 재검토.
 
 ## 5. prod 적용 전 필수 결정 사항
 
 1. **Redis/Valkey provisioning** — prod 용 관리형/자체 호스팅 인스턴스, 가용성(단일/replica/cluster), 용량 산정. `application-prod.yml` 에 `spring.data.redis.*` + `app.rate-limit.store=redis` + `app.auth.denylist.store=redis` 주입(이 문서 범위 밖, 구현 PR).
 2. **접속 보안** — TLS 사용 여부, AUTH(비밀번호)/ACL, 접속 정보의 secret manager/환경변수 주입(저장소 커밋 금지). 네트워크 격리(VPC/보안그룹).
-3. **장애 시 정책 확정** — 4-2 의 rate limit fail-open / denylist fail-closed(또는 degraded-mode) 를 코드로 구현하고 회귀 테스트 추가.
+3. **장애 시 정책 확정** — ✅ 완료: rate limit fail-open / denylist fail-closed 를 코드로 구현하고 회귀 테스트 추가함(4-1). degraded-mode 정책 플래그는 후속 과제(6 참조).
 4. **observability** — store 오류/타임아웃 메트릭, denylist 확인 실패·rate limit 무제한 구간 로깅, 알럿 임계값. (health 응답에 상세 노출은 하지 않는 기존 정책 유지.)
 5. **key TTL 검증** — denylist key TTL = 토큰 남은 만료, rate limit key TTL = window. prod 에서도 자동 소멸이 동작하고 키가 무한 증식하지 않는지 확인(대량 로그아웃/트래픽 시 메모리 사용량 포함).
 6. **성능/영향 범위** — 인증 요청마다 denylist 조회 1회 추가, rate limit 대상 mutation 마다 store 왕복 1회. Redis latency 가 인증/작성 경로 지연에 미치는 영향 확인.
 
-## 6. 구현 PR 로 넘길 TODO
+## 6. TODO
+
+완료:
+
+- [x] rate limit store 오류 시 **fail-open** 처리(`RateLimitService.check` 에서 잡아 통과 + 로깅) 및 테스트.
+- [x] denylist store 오류 시 **fail-closed** 정책 구현(`JwtAuthFilter.isDeniedFailClosed`, 우발적 catch-all 대신 의도적 처리) 및 테스트.
+
+남은 과제(구현 PR):
 
 - [ ] `application-prod.yml` 에 Redis 접속 + store=redis 설정 추가(secret 주입 방식 포함).
-- [ ] rate limit store 오류 시 **fail-open** 처리(store 예외를 필터에서 잡아 통과 + 로깅) 및 테스트.
-- [ ] denylist store 오류 시 **fail-closed / degraded-mode** 정책 구현(우발적 catch-all 대신 의도적 처리) 및 테스트.
-- [ ] store 오류·denylist miss/hit·rate limit 무제한 구간 로깅/메트릭/알럿 추가.
+- [ ] denylist degraded-mode 정책 플래그(장애 시 fail-open/closed 런타임 선택) 도입 검토.
+- [ ] store 오류·denylist miss/hit·rate limit 무제한 구간 메트릭/알럿 추가(로깅은 도입됨).
 - [ ] prod Redis 연결 smoke/health 확인 절차 문서화(기존 `RedisCompatibleStoreConnectionTest` 참고).
 - [ ] TLS/AUTH/네트워크 격리 등 접속 보안 설정 및 문서화.
 
-## 변경하지 않은 것(이 문서 작업 범위)
+## 이번 변경에서 하지 않은 것
 
-- 코드/설정/테스트 변경 없음. `application*.properties`, `application-prod.yml` 미변경.
-- prod Redis 설정 추가하지 않음(TODO 로만 기술).
-- 장애 시 fail-open/closed 미구현(후보·권장안만 정리).
-- SecurityConfig/CORS/OpenAPI/Actuator, JWT claim, DB schema 미변경.
+- prod Redis 설정 추가하지 않음(`application-prod.yml`·`application*.properties` 미변경, TODO 로만 유지).
+- degraded-mode 정책 플래그·메트릭/알럿 미도입(후속 과제).
+- SecurityConfig/CORS/OpenAPI/Actuator 정책, JWT claim, DB schema/entity/repository, frontend 미변경.
+- rate limit limit/window/key, denylist key/TTL 정책 미변경.

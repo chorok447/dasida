@@ -28,8 +28,8 @@ class JwtAuthFilter(
                 val token = header.substring(7)
                 val user = jwt.parse(token)
                 // 로그아웃된 토큰은 만료 전이라도 거절. 서명·형식 검증 이후에만 조회한다.
-                if (denylist.isDenied(hashToken(token))) {
-                    throw IllegalArgumentException("denylisted token")
+                if (isDeniedFailClosed(token)) {
+                    throw IllegalArgumentException("denylisted token or denylist unavailable")
                 }
                 val storedUser = users.findById(user.id).orElse(null)
                 if (storedUser == null || storedUser.deletedAt != null) {
@@ -45,5 +45,22 @@ class JwtAuthFilter(
             }
         }
         chain.doFilter(req, res)
+    }
+
+    /**
+     * denylist 등록 여부. store(예: Redis) 장애로 확인할 수 없으면 fail-closed:
+     * 무효화됐을 수 있는 토큰을 통과시키지 않고 거절한다(인증 보안 경로 → rate limit 의 fail-open 과 반대).
+     * catch-all 에 우연히 묻히지 않도록 unavailable 케이스를 여기서 명시적으로 처리·로깅한다.
+     */
+    private fun isDeniedFailClosed(token: String): Boolean =
+        try {
+            denylist.isDenied(hashToken(token))
+        } catch (ex: Exception) {
+            log.warn("denylist store unavailable, failing closed (denying request)", ex)
+            true
+        }
+
+    private companion object {
+        private val log = org.slf4j.LoggerFactory.getLogger(JwtAuthFilter::class.java)
     }
 }
