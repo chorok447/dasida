@@ -48,20 +48,36 @@ jobs:
         working-directory: apps/api
         run: ./gradlew build --no-daemon
 
-  # main/develop 대상의 Ready 상태 PR은 web/api 검사 통과 후 자동 머지한다.
+  # main/develop 대상 Ready PR은 web/api 검사 통과 후 자동 머지한다.
+  # Dependabot PR은 의존성 검증을 CI에서 돌리되 자동 머지는 하지 않는다(수동 검증 후 처리).
   # Draft PR과 push workflow에서는 auto-merge job을 실행하지 않는다.
   automerge:
     name: auto-merge
     needs: [web, api]
     if: >-
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.draft == false &&
-        (github.base_ref == 'develop' || github.base_ref == 'main')
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'app/dependabot' &&
+      (github.base_ref == 'develop' || github.base_ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+      checks: read
+      statuses: read
     steps:
+      - name: Inspect PR merge state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          echo "PR #$PR merge diagnostics"
+          gh pr view "$PR" \
+            --json number,title,isDraft,mergeable,mergeStateStatus,reviewDecision,baseRefName,headRefName,headRefOid,author \
+            --jq '.'
+
       - name: Merge PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
