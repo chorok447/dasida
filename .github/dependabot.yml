@@ -5,15 +5,54 @@ updates:
     schedule:
       interval: "weekly"
     target-branch: "develop"
+    open-pull-requests-limit: 3
+    groups:
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+      lint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "typescript-eslint*"
+      web-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
 
   - package-ecosystem: "gradle"
     directory: "/apps/api"
     schedule:
       interval: "weekly"
     target-branch: "develop"
+    open-pull-requests-limit: 3
+    groups:
+      jjwt:
+        patterns:
+          - "io.jsonwebtoken:*"
+      spring:
+        patterns:
+          - "org.springframework.boot*"
+          - "org.springframework*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "kapt"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     target-branch: "develop"
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns:
+          - "*"
