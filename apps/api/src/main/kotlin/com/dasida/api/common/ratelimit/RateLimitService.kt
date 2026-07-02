@@ -28,6 +28,8 @@ class RateLimitService(
         when (rule) {
             RateLimitRule.AUTH_LOGIN -> properties.auth.login
             RateLimitRule.AUTH_SIGNUP -> properties.auth.signup
+            RateLimitRule.COMMENT_CREATE -> properties.content.comment
+            RateLimitRule.REPORT_CREATE -> properties.content.report
         }
 }
 
