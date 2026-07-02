@@ -1,0 +1,15 @@
+# Web 이미지 build context (repo root) 용. API 는 apps/api/.dockerignore 를 사용한다.
+.git/
+.github/
+.idea/
+*.iml
+.DS_Store
+Dasida-boot35/
+design-reference/
+apps/api/
+docs/
+node_modules/
+apps/web/node_modules/
+apps/web/.next/
+apps/web/.env
+apps/web/.env.*
