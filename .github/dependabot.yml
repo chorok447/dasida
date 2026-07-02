@@ -26,6 +26,10 @@ updates:
           - "patch"
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "eslint"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "gradle"
     directory: "/apps/api"
@@ -41,10 +45,27 @@ updates:
         patterns:
           - "org.springframework.boot*"
           - "org.springframework*"
+          - "org.springdoc:*"
       kotlin:
         patterns:
           - "org.jetbrains.kotlin*"
           - "kapt"
+      gradle-tooling:
+        patterns:
+          - "org.gradle.toolchains.foojay-resolver-convention"
+    ignore:
+      - dependency-name: "org.springframework.boot*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "org.springdoc:springdoc-openapi-starter-webmvc-ui"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "kapt"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
