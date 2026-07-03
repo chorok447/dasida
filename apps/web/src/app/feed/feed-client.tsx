@@ -220,6 +220,7 @@ function PostCard({
   const [busy, setBusy] = useState(false);
 
   const requireLogin = () => {
+    clearSession();
     toast.error("로그인이 필요합니다.");
     router.push("/login");
   };

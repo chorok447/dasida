@@ -475,6 +475,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     } catch (e) {
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
+        clearSession();
         toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else {
@@ -504,6 +505,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     } catch (e) {
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
+        clearSession();
         toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else {
