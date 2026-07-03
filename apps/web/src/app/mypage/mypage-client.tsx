@@ -8,6 +8,7 @@ import { CheckCircle2, LogIn, Pencil, RefreshCw } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import type { UserProfile } from "@/data/users";
+import { ActivitySummary } from "./activity-summary";
 import { MyPostsGrid } from "./my-posts-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { UserCampaignsList } from "./joined-campaigns-list";
@@ -211,6 +212,7 @@ export default function MyPageClient() {
         ) : (
           <>
             <ProfileHeader profile={displayedProfile ?? profile} />
+            <ActivitySummary key={`summary-${profile.id}`} onSelectTab={onSelectTab} />
             <ChangeEmailForm
               currentEmail={(displayedProfile ?? profile).email}
               onChanged={(email) => setEmailOverride({ userId: profile.id, email })}

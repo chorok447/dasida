@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { animate, motion, useInView, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Area,
   AreaChart,
@@ -11,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ScrollReveal } from "@/components/scroll-reveal";
+import { CountUp, ScrollReveal } from "@/components/scroll-reveal";
 
 // 랜딩 스토리텔링용 수치. 시장 규모는 업계 추정 기반 근사치(억원), 재활용률은 환경부 통계 기반.
 const marketGrowth = [
@@ -35,31 +34,6 @@ const ACCENT = "#7dd3a3";
 const INK = "#f9f7f2";
 const MUTED = "rgba(249,247,242,0.6)";
 const HAIRLINE = "rgba(249,247,242,0.08)";
-
-function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !inView) return;
-    if (reduce) {
-      el.textContent = `${to.toLocaleString()}${suffix}`;
-      return;
-    }
-    const controls = animate(0, to, {
-      duration: 1.8,
-      ease: [0.16, 1, 0.3, 1],
-      onUpdate: (v) => {
-        el.textContent = `${Math.round(v).toLocaleString()}${suffix}`;
-      },
-    });
-    return () => controls.stop();
-  }, [inView, to, suffix, reduce]);
-
-  return <span ref={ref}>{`0${suffix}`}</span>;
-}
 
 function ChartTooltip({
   active,

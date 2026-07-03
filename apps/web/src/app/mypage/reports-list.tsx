@@ -1,5 +1,6 @@
 "use client";
 
+import { StaggerItem } from "@/components/scroll-reveal";
 import Link from "next/link";
 import { FileWarning, Flag } from "lucide-react";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -93,7 +94,11 @@ export function ReportsList({ page, onPageChange }: { page: number; onPageChange
           <div className="flex items-center gap-2 text-[13px] opacity-65">
             <Flag size={14} /> 내가 접수한 신고만 표시됩니다.
           </div>
-          {reports.map((report) => <ReportCard key={report.id} report={report} />)}
+          {reports.map((report, i) => (
+            <StaggerItem key={report.id} index={i}>
+              <ReportCard report={report} />
+            </StaggerItem>
+          ))}
         </div>
       )}
     />

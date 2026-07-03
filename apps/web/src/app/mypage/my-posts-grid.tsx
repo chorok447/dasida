@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { StaggerItem } from "@/components/scroll-reveal";
 import Link from "next/link";
 import { FileText, Heart, MessageCircle, PenLine } from "lucide-react";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -96,8 +97,10 @@ export function MyPostsGrid({ page, onPageChange }: { page: number; onPageChange
       }
       renderItems={(posts) => (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {posts.map((post) => (
-            <MyPostCard key={post.id} post={post} />
+          {posts.map((post, i) => (
+            <StaggerItem key={post.id} index={i}>
+              <MyPostCard post={post} />
+            </StaggerItem>
           ))}
         </div>
       )}
