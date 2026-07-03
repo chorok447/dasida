@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef } from "react";
+import { animate, motion, useInView, useReducedMotion } from "motion/react";
 
 // 공용 easing. 페이지 전환/리빌/스태거가 같은 곡선을 쓴다.
 export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
@@ -27,6 +28,32 @@ export function ScrollReveal({
       {children}
     </motion.div>
   );
+}
+
+// 뷰포트 진입 시 0 → to 카운트업. reduced-motion이면 즉시 최종값.
+export function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !inView) return;
+    if (reduce) {
+      el.textContent = `${to.toLocaleString()}${suffix}`;
+      return;
+    }
+    const controls = animate(0, to, {
+      duration: 1.8,
+      ease: EASE_OUT,
+      onUpdate: (v) => {
+        el.textContent = `${Math.round(v).toLocaleString()}${suffix}`;
+      },
+    });
+    return () => controls.stop();
+  }, [inView, to, suffix, reduce]);
+
+  return <span ref={ref}>{`0${suffix}`}</span>;
 }
 
 // 목록 아이템 순차 등장. 마운트 시 1회 재생, 페이지네이션으로 리마운트되면 다시 재생.

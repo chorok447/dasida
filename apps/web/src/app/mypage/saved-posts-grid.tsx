@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { StaggerItem } from "@/components/scroll-reveal";
 import { useState } from "react";
 import Link from "next/link";
 import { Bookmark, Heart, MessageCircle } from "lucide-react";
@@ -134,13 +135,14 @@ export function SavedPostsGrid({ page, onPageChange }: { page: number; onPageCha
             </div>
           ) : null}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post) => (
-              <SavedPostCard
-                key={post.id}
-                post={post}
-                removing={removingId === post.id}
-                onRemove={(id) => removeBookmark(id, reload)}
-              />
+            {posts.map((post, i) => (
+              <StaggerItem key={post.id} index={i}>
+                <SavedPostCard
+                  post={post}
+                  removing={removingId === post.id}
+                  onRemove={(id) => removeBookmark(id, reload)}
+                />
+              </StaggerItem>
             ))}
           </div>
         </div>

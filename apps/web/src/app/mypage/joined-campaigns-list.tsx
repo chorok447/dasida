@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { StaggerItem } from "@/components/scroll-reveal";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { CalendarDays, Users } from "lucide-react";
@@ -159,8 +160,10 @@ export function UserCampaignsList({
       }
       renderItems={(campaigns) => (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {campaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} />
+          {campaigns.map((campaign, i) => (
+            <StaggerItem key={campaign.id} index={i}>
+              <CampaignCard campaign={campaign} />
+            </StaggerItem>
           ))}
         </div>
       )}
