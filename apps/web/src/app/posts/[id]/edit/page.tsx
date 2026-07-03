@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { X, Send } from "lucide-react";
@@ -116,13 +117,13 @@ export default function PostEditPage() {
     if (!trimmedText || saving) return;
     const normalizedTags = normalizeTags(tags);
     const normalizedImages = Array.from(new Set(images.map((i) => i.trim()).filter(Boolean)));
-    if (trimmedText.length > MAX_TEXT_LENGTH) return alert(`내용은 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
-    if (normalizedTags.length > MAX_TAGS) return alert(`태그는 최대 ${MAX_TAGS}개까지 가능합니다.`);
-    if (normalizedImages.length > MAX_IMAGES) return alert(`이미지는 최대 ${MAX_IMAGES}개까지 가능합니다.`);
+    if (trimmedText.length > MAX_TEXT_LENGTH) return toast.error(`내용은 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
+    if (normalizedTags.length > MAX_TAGS) return toast.error(`태그는 최대 ${MAX_TAGS}개까지 가능합니다.`);
+    if (normalizedImages.length > MAX_IMAGES) return toast.error(`이미지는 최대 ${MAX_IMAGES}개까지 가능합니다.`);
 
     const requestToken = getToken();
     if (!requestToken) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -140,12 +141,12 @@ export default function PostEditPage() {
       if (getToken() !== requestToken) return; // 오래된 결과를 반영하지 않음
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("수정 권한이 없습니다.");
+        toast.error("수정 권한이 없습니다.");
       } else {
-        alert("게시글 수정에 실패했습니다.");
+        toast.error("게시글 수정에 실패했습니다.");
       }
     } finally {
       // 토큰 변경으로 무시한 경우에도 버튼이 영구 비활성화되지 않게 정리.

@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
@@ -24,6 +25,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { ReportButton } from "@/components/report-button";
 import { StaggerItem } from "@/components/scroll-reveal";
+import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
@@ -197,7 +199,7 @@ function PostCard({
   const [busy, setBusy] = useState(false);
 
   const requireLogin = () => {
-    alert("로그인이 필요합니다.");
+    toast.error("로그인이 필요합니다.");
     router.push("/login");
   };
 
@@ -216,7 +218,7 @@ function PostCard({
     } catch (e) {
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) requireLogin();
-      else alert("좋아요 처리에 실패했습니다.");
+      else toast.error("좋아요 처리에 실패했습니다.");
     } finally {
       setLiking(false);
     }
@@ -236,7 +238,7 @@ function PostCard({
     } catch (e) {
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) requireLogin();
-      else alert("북마크 처리에 실패했습니다.");
+      else toast.error("북마크 처리에 실패했습니다.");
     } finally {
       setBookmarking(false);
     }
@@ -261,7 +263,7 @@ function PostCard({
   const submitComment = async () => {
     const text = commentText.trim();
     if (!text || busy) return;
-    if (text.length > MAX_COMMENT_LENGTH) return alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
+    if (text.length > MAX_COMMENT_LENGTH) return toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
     if (!getToken()) return requireLogin();
     setBusy(true);
     try {
@@ -272,7 +274,7 @@ function PostCard({
     } catch (e) {
       setBusy(false);
       if (e instanceof ApiError && e.status === 401) requireLogin();
-      else alert("댓글 작성에 실패했습니다.");
+      else toast.error("댓글 작성에 실패했습니다.");
       return;
     }
     setBusy(false);
@@ -332,9 +334,9 @@ function PostCard({
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
             <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              <button onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
+              <motion.button whileTap={{ scale: 0.85 }} onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
                 <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
-              </button>
+              </motion.button>
               <button onClick={toggleComments} className="flex items-center gap-1">
                 <MessageCircle size={14} /> {commentCount}
               </button>
@@ -343,7 +345,8 @@ function PostCard({
               </button>
               <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
             </div>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.85 }}
               onClick={onBookmark}
               disabled={bookmarking || refreshing}
               aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
@@ -351,7 +354,7 @@ function PostCard({
               style={{ color: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
             >
               <Bookmark size={14} fill={bookmarked ? "#7dd3a3" : "transparent"} />
-            </button>
+            </motion.button>
           </div>
 
           {showComments && (
@@ -641,10 +644,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           />
 
           {requestStatus === "loading" && !response ? (
-            <StatePanel>
-              <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
-              <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>게시글을 검색하는 중입니다.</p>
-            </StatePanel>
+            <SkeletonCards count={4} className="grid grid-cols-1 gap-5 sm:grid-cols-2" />
           ) : null}
 
           {requestStatus === "error" && !response ? (
