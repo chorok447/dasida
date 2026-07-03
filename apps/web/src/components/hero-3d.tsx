@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
+import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 
 export function Hero3D() {
@@ -24,7 +24,10 @@ export function Hero3D() {
 
   const [hover, setHover] = useState(false);
 
+  const reduce = useReducedMotion();
+
   function handleMove(e: React.MouseEvent) {
+    if (reduce) return;
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
     mx.set((e.clientX - rect.left) / rect.width - 0.5);

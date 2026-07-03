@@ -16,6 +16,7 @@ import { Avatar } from "@/components/avatar";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
+import { StaggerItem } from "@/components/scroll-reveal";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
   appendCampaignDateRangeFilters,
@@ -576,7 +577,11 @@ export default function SearchClient() {
               <span className="text-[12px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{campaignResponse.totalElements.toLocaleString()}개</span>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {campaignResponse.content.map((campaign) => <CampaignResultCard key={campaign.id} campaign={campaign} />)}
+              {campaignResponse.content.map((campaign, i) => (
+                <StaggerItem key={campaign.id} index={i}>
+                  <CampaignResultCard campaign={campaign} />
+                </StaggerItem>
+              ))}
             </div>
             {urlState.type === "all" ? (
               <div className="mt-6 text-center">
@@ -598,7 +603,11 @@ export default function SearchClient() {
               <span className="text-[12px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{postResponse.totalElements.toLocaleString()}개</span>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {postResponse.content.map((post) => <PostResultCard key={post.id} post={post} />)}
+              {postResponse.content.map((post, i) => (
+                <StaggerItem key={post.id} index={i}>
+                  <PostResultCard post={post} />
+                </StaggerItem>
+              ))}
             </div>
             {urlState.type === "all" ? (
               <div className="mt-6 text-center">

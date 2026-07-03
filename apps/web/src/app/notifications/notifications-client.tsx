@@ -8,6 +8,7 @@ import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
+import { StaggerItem } from "@/components/scroll-reveal";
 import { ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import {
@@ -309,9 +310,9 @@ export default function NotificationsClient() {
           </StatePanel>
         ) : (
           <div className="space-y-2">
-            {list.map((n) => (
+            {list.map((n, i) => (
+              <StaggerItem key={n.id} index={i}>
               <div
-                key={n.id}
                 className="flex items-center gap-3 rounded-2xl border p-4 transition-[background-color,border-color,box-shadow] hover:shadow-md"
                 style={{
                   background: n.read ? cardBg : dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.12)",
@@ -368,6 +369,7 @@ export default function NotificationsClient() {
                   <Trash2 size={14} />
                 </button>
               </div>
+              </StaggerItem>
             ))}
           </div>
         )}
