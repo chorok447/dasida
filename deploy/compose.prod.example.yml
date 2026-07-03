@@ -1,0 +1,67 @@
+# Production Docker Compose template (예시). 실제 CD/deploy 는 미구현.
+# 로컬 개발은 루트 compose.local.yml 을 사용한다 — 이 파일은 운영 VM 배포 참고용이다.
+#
+# 전제:
+# - MySQL / Redis(Valkey) 는 external managed service (호스트·포트는 .env 에 주입)
+# - 같은 VM 에 DB/Redis 컨테이너를 넣으려면 compose.local.yml 의 mysql/redis 블록을 참고해
+#   별도 override compose 를 서버에만 두는 방식을 권장한다(이 template 에는 포함하지 않음).
+#
+# Docker Hub pull 전 서버에서 login (private repo 또는 rate limit 회피 시):
+#   echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+#
+# 사용:
+#   cp deploy/.env.prod.example deploy/.env.prod  # 서버에서만, git 제외
+#   docker compose -f deploy/compose.prod.example.yml --env-file deploy/.env.prod config
+#   docker compose -f deploy/compose.prod.example.yml --env-file deploy/.env.prod pull
+#   docker compose -f deploy/compose.prod.example.yml --env-file deploy/.env.prod up -d
+
+services:
+  api:
+    image: ${DOCKERHUB_USERNAME}/dasida-api:${DASIDA_IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      JWT_SECRET: ${JWT_SECRET}
+      DB_URL: ${DB_URL}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST}
+      SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT}
+      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 &&
+          printf "GET /actuator/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 &&
+          timeout 3 cat <&3 | grep -q "\"status\":\"UP\""' || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  web:
+    image: ${DOCKERHUB_USERNAME}/dasida-web:${DASIDA_IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          node -e "require('http').get('http://127.0.0.1:3000/',
+          (r) => { r.resume(); process.exit(r.statusCode < 500 ? 0 : 1); })
+          .on('error', () => process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

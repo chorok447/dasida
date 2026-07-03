@@ -1,12 +1,12 @@
 package com.dasida.api.auth
 
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.MediaType
@@ -22,11 +22,11 @@ import java.time.Instant
 @AutoConfigureMockMvc
 @Transactional
 class AuthControllerTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val repo: UserRepository,
-    @Autowired val jwt: JwtService,
-    @Autowired val objectMapper: ObjectMapper,
-    @Autowired val passwordEncoder: PasswordEncoder,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val repo: UserRepository,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val objectMapper: JsonMapper,
+    @param:Autowired val passwordEncoder: PasswordEncoder,
 ) {
 
     private fun saveUser(
@@ -49,7 +49,7 @@ class AuthControllerTest(
         email = email,
         name = name,
         verified = verified,
-        passwordHash = passwordEncoder.encode(password),
+        passwordHash = passwordEncoder.encode(password)!!,
     )
 
     private fun changePassword(
@@ -279,7 +279,7 @@ class AuthControllerTest(
         login(email, "Current1!").andExpect { status { isUnauthorized() } }
         login(email, "Changed2@").andExpect { status { isOk() } }
 
-        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asString()
         assertThat(newToken).isNotBlank()
         mvc.get("/api/auth/me") {
             headers { add("Authorization", "Bearer $newToken") }
@@ -363,7 +363,7 @@ class AuthControllerTest(
         login(originalEmail, "Current1!").andExpect { status { isUnauthorized() } }
         login(changedEmail, "Current1!").andExpect { status { isOk() } }
 
-        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asString()
         mvc.get("/api/auth/me") {
             headers { add("Authorization", "Bearer $newToken") }
         }.andExpect {
@@ -489,7 +489,7 @@ class AuthControllerTest(
             content = """{"name":"새토큰이름"}"""
         }.andExpect { status { isOk() } }.andReturn().response
 
-        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asString()
         assertThat(jwt.parse(newToken).name).isEqualTo("새토큰이름")
     }
 

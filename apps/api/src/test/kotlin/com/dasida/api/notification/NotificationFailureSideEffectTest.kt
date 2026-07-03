@@ -11,11 +11,11 @@ import com.dasida.api.post.CreateCommentRequest
 import com.dasida.api.post.Post
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
@@ -39,12 +39,12 @@ import java.util.UUID
 @Transactional
 @Import(FixedClockTestConfiguration::class)
 class NotificationFailureSideEffectTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val mapper: ObjectMapper,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val notifications: NotificationRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val mapper: JsonMapper,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val notifications: NotificationRepository,
 ) {
     private val owner = 1L
     private val actor = 2L

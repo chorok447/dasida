@@ -7,7 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -23,13 +23,13 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class PostControllerTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val posts: PostRepository,
-    @Autowired val likeRepo: PostLikeRepository,
-    @Autowired val bookmarkRepo: PostBookmarkRepository,
-    @Autowired val commentRepo: PostCommentRepository,
-    @Autowired val notificationRepo: NotificationRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val posts: PostRepository,
+    @param:Autowired val likeRepo: PostLikeRepository,
+    @param:Autowired val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired val commentRepo: PostCommentRepository,
+    @param:Autowired val notificationRepo: NotificationRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     // 다른 사용자(authorUserId=2) 권한 테스트용 토큰.

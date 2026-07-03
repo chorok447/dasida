@@ -5,6 +5,8 @@ import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.post.PostCommentRepository
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
+import com.dasida.api.security.TokenDenylistStore
+import com.dasida.api.security.hashToken
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -28,6 +30,7 @@ class AuthService(
     private val postComments: PostCommentRepository,
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
+    private val denylist: TokenDenylistStore,
     private val clock: Clock,
 ) {
     // 유저 없을 때 BCrypt 시간을 맞추기 위한 더미 해시(1회 계산). 타이밍 기반 가입여부 노출 방지용.
@@ -44,7 +47,8 @@ class AuthService(
         }
         val user = try {
             // saveAndFlush 로 트랜잭션 안에서 INSERT 를 강제해, unique 제약 위반을 이 자리에서 catch → 409 로 변환한다.
-            repo.saveAndFlush(User(email = email, passwordHash = encoder.encode(req.password), name = name))
+            // [spike] Spring Security 7 에서 PasswordEncoder.encode 반환이 @Nullable(String?) 로 변경 → non-null 보장.
+            repo.saveAndFlush(User(email = email, passwordHash = encoder.encode(req.password)!!, name = name))
         } catch (e: DataIntegrityViolationException) {
             // 동시 요청이 사전 체크를 둘 다 통과한 경우 → unique 제약 위반을 409 로 변환(500 방지)
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
@@ -64,6 +68,15 @@ class AuthService(
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid credentials")
         }
         return user.toAuthResponse(jwt.issue(user))
+    }
+
+    /**
+     * 로그아웃. 현재 access token 을 만료 시간까지 denylist 에 등록해 재사용을 막는다.
+     * 필터에서 이미 검증된 유효 토큰만 여기 도달한다. refresh token 은 없으므로 이 토큰만 처리한다.
+     */
+    fun logout(token: String): LogoutResponse {
+        denylist.deny(hashToken(token), jwt.remainingTtlSeconds(token))
+        return LogoutResponse(loggedOut = true)
     }
 
     @Transactional(readOnly = true)
@@ -89,7 +102,7 @@ class AuthService(
         if (encoder.matches(req.newPassword, user.passwordHash)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "new password must be different")
         }
-        user.passwordHash = encoder.encode(req.newPassword)
+        user.passwordHash = encoder.encode(req.newPassword)!!
         return ChangePasswordResponse(changed = true, token = jwt.issue(user))
     }
 
@@ -137,7 +150,7 @@ class AuthService(
         val id = requireNotNull(user.id)
         user.email = "deleted-$id-${UUID.randomUUID()}@deleted.local"
         user.name = DELETED_USER_NAME
-        user.passwordHash = encoder.encode(UUID.randomUUID().toString())
+        user.passwordHash = encoder.encode(UUID.randomUUID().toString())!!
         user.deletedAt = Instant.now(clock)
         repo.saveAndFlush(user)
 

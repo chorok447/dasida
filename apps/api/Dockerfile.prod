@@ -1,0 +1,24 @@
+# Production API image (GHCR build). 서버 배포·운영 secret 은 Dockerfile 에 넣지 않는다.
+# 로컬 개발용은 apps/api/Dockerfile + compose.local.yml 을 사용한다.
+FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /workspace
+
+COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts ./
+COPY gradle gradle
+COPY src src
+
+RUN chmod +x gradlew \
+  && ./gradlew bootJar --no-daemon -x test
+
+FROM eclipse-temurin:21-jre-jammy AS runtime
+WORKDIR /app
+
+RUN groupadd --system --gid 10001 app \
+  && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
+
+COPY --chown=app:app --from=build /workspace/build/libs/*.jar app.jar
+
+USER app
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

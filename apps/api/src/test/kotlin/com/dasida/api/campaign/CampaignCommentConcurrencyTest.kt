@@ -6,7 +6,7 @@ import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -21,11 +21,11 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest
 @AutoConfigureMockMvc
 class CampaignCommentConcurrencyTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val campaignRepo: CampaignRepository,
-    @Autowired private val participantRepo: CampaignParticipantRepository,
-    @Autowired private val commentRepo: CampaignCommentRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val campaignRepo: CampaignRepository,
+    @param:Autowired private val participantRepo: CampaignParticipantRepository,
+    @param:Autowired private val commentRepo: CampaignCommentRepository,
 ) {
     private fun tokenFor(userId: Long) = jwt.issue(
         User(id = userId, email = "comment-$userId@test.com", passwordHash = "x", name = "유저$userId", verified = false),

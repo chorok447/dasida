@@ -1,6 +1,13 @@
 # Dasida API
 
-다시,다(Dasida) 백엔드 API 서버 (Kotlin + Spring Boot 3.5).
+다시,다(Dasida) 백엔드 API 서버 (Kotlin + Spring Boot 4.1).
+
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-7F52FF?logo=kotlin&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
+![JDK](https://img.shields.io/badge/JDK-21-437291?logo=openjdk&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-jjwt%200.13.0-black?logo=jsonwebtokens)
+![Valkey](https://img.shields.io/badge/Valkey-8_(compose%20local)-DC382D?logo=redis&logoColor=white)
 
 ## 실행
 
@@ -57,6 +64,26 @@ API 명세는 `springdoc-openapi` 로 코드에서 자동 생성된다. Controll
 - **public**: 대부분의 `GET` 목록/상세/검색 API. JWT 가 있으면 응답에 사용자별 상태(`likedByMe`, `joinedByMe`, `ownedByMe` 등)가 채워진다.
 - **bearerAuth**: 작성/수정/삭제, 좋아요/북마크/참여, 알림, 신고, 마이페이지(`/mine`, `/bookmarks`, `/joined`), 참가자 관리 등 사용자별 데이터/행위 API.
 
+### 로그아웃과 토큰 무효화(denylist)
+
+stateless JWT 라 **refresh token 은 없고** access token 하나만 사용한다. 로그아웃은 서버가 해당 access token 을 만료 전까지 denylist 에 올려 재사용을 차단한다.
+
+- **`POST /api/auth/logout`** (bearerAuth): 현재 `Authorization: Bearer <access token>` 을 denylist 에 등록한다.
+  - 성공: `200 { "loggedOut": true }`
+  - 토큰 없음 / 깨진 토큰 / 이미 로그아웃(denylisted)된 토큰: `401`
+  - 로그아웃 후 **같은 access token** 으로 인증 API 호출 시 `401`
+- **refresh token 은 없다.** 토큰 재발급은 재로그인으로 한다(`updateProfile`/`changePassword`/`changeEmail` 은 응답에 새 토큰을 함께 반환).
+- 프론트엔드는 `localStorage` 토큰 삭제와 함께 이 `logout` API 를 호출할 수 있다(프론트 코드는 이 문서 범위 밖).
+
+**denylist 동작(요약)**:
+
+- 원본 JWT 는 저장하지 않고 **SHA-256 hash** 만 저장한다.
+- Redis key: `denylist:jwt:access:sha256:{tokenHash}`, value 는 placeholder, TTL = access token 남은 만료 시간(자동 소멸).
+- store 는 rate limit 과 동일 패턴: 기본/test 는 in-memory, compose local 은 Redis/Valkey. **prod Redis store 적용은 아직 TODO**.
+- Redis 장애 시 denylist 는 **fail-closed**(인증 거절)로 동작한다.
+
+상세: [logout/denylist 설계](docs/backend/auth-token-revocation.md), [Redis 보안 store 운영 정책](docs/backend/redis-security-store-policy.md).
+
 ### CORS 설정
 
 CORS 는 `app.cors.*`(`CorsProperties`)로 관리하며 `/api/**` 에 적용된다.
@@ -70,6 +97,63 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 ```
 
 `Authorization`/`Content-Type` 헤더와 credentials 를 허용하지만, CORS 허용은 인증 우회가 아니다. 인증 필수 API 는 여전히 JWT Bearer 토큰이 필요하다(예: `GET /api/auth/me` 는 토큰 없으면 401).
+
+### Rate limit
+
+특정 mutation endpoint 에 IP 기준 **fixed-window** rate limit 을 적용한다. 글로벌 API rate limit 은 없으며, 아래 endpoint 만 대상이다.
+
+#### 적용 endpoint
+
+| Endpoint | limit / window | Redis key prefix (`{clientIp}` = 클라이언트 IP) |
+|----------|----------------|------------------------------------------------|
+| `POST /api/auth/login` | 20 / 60초 | `rate-limit:auth:login:ip:{clientIp}` |
+| `POST /api/auth/signup` | 10 / 60초 | `rate-limit:auth:signup:ip:{clientIp}` |
+| `POST /api/posts/{id}/comments` | 20 / 60초 (게시글·캠페인 댓글 작성 공유 버킷) | `rate-limit:comment:create:ip:{clientIp}` |
+| `POST /api/campaigns/{id}/comments` | 20 / 60초 (게시글·캠페인 댓글 작성 공유 버킷) | `rate-limit:comment:create:ip:{clientIp}` |
+| `POST /api/reports` | 10 / 60초 | `rate-limit:report:create:ip:{clientIp}` |
+
+- **기준**: 클라이언트 IP. `X-Forwarded-For` 가 있으면 첫 hop 을 사용하고, 없으면 `remoteAddr` 를 사용한다.
+- **알고리즘**: fixed-window. window 는 `app.rate-limit.*.window-seconds`(기본 60초)로 설정한다.
+- **미적용**: 위 목록 외 endpoint(조회·수정·삭제·기타 mutation)에는 rate limit 이 없다.
+
+#### 초과 응답
+
+한도 초과 시 servlet filter 가 요청을 차단한다.
+
+- **status**: `429 Too Many Requests`
+- **header**: `Retry-After` (남은 window 초, 초 단위)
+- **body**: Spring 기본 `/error` JSON (`status`, `error`, `path` 등). stacktrace·내부 reason 은 노출하지 않는다.
+
+#### store (in-memory vs Redis-compatible)
+
+| 환경 | `app.rate-limit.store` | 비고 |
+|------|------------------------|------|
+| 기본(`application.properties`) | `memory` | 호스트에서 `bootRun` 시 in-memory 버킷 |
+| 테스트(`src/test/resources/application.properties`) | `memory` | CI·단위 테스트. auth/content limit 은 높게 설정해 기존 테스트 간섭을 줄인다 |
+| compose local(`application-local.properties`, `SPRING_PROFILES_ACTIVE=local`) | `redis` | `compose.local.yml` 의 Valkey(`redis` 서비스, `valkey/valkey:8`)에 연결 |
+
+compose local 스택(`docker compose -f compose.local.yml up`)은 MySQL·API·Web 과 함께 Valkey 를 기동한다. API 컨테이너는 `SPRING_DATA_REDIS_HOST=redis`, `SPRING_DATA_REDIS_PORT=6379` 로 연결하며, rate limit 버킷만 Redis-compatible store 를 사용한다(캐싱·세션·JWT 정책 변경 없음).
+
+Redis 연결 smoke test(선택): compose 기동 후 `REDIS_SMOKE=true ./gradlew test --tests RedisCompatibleStoreConnectionTest`
+
+#### 설정 property
+
+`app.rate-limit.*` (`RateLimitProperties`)로 제어한다. 환경변수 바인딩은 Spring Boot relaxed binding(`APP_RATE_LIMIT_*`)을 따른다.
+
+| property | 기본값 | 설명 |
+|----------|--------|------|
+| `app.rate-limit.enabled` | `true` | `false` 이면 rate limit 을 적용하지 않는다 |
+| `app.rate-limit.store` | `memory` | `memory` 또는 `redis` |
+| `app.rate-limit.auth.login.limit` | `20` | 로그인 limit |
+| `app.rate-limit.auth.login.window-seconds` | `60` | 로그인 window(초) |
+| `app.rate-limit.auth.signup.limit` | `10` | 회원가입 limit |
+| `app.rate-limit.auth.signup.window-seconds` | `60` | 회원가입 window(초) |
+| `app.rate-limit.content.comment.limit` | `20` | 댓글 작성 limit |
+| `app.rate-limit.content.comment.window-seconds` | `60` | 댓글 작성 window(초) |
+| `app.rate-limit.content.report.limit` | `10` | 신고 생성 limit |
+| `app.rate-limit.content.report.window-seconds` | `60` | 신고 생성 window(초) |
+
+관련 회귀 테스트: `AuthRateLimitTest`, `ContentWriteRateLimitTest`, `RateLimitServiceTest`.
 
 ### Actuator 노출 정책
 
@@ -90,6 +174,7 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 - `403` 권한 없음 (소유자/개설자 아님 등)
 - `404` 리소스 없음
 - `409` 상태 충돌 또는 중복 (모집 상태 전이, 중복 참여/신고 등)
+- `429` rate limit 초과 (`Retry-After` 헤더 포함)
 
 응답 body 는 Spring 기본 동작을 그대로 사용한다(별도 전역 에러 포맷은 도입하지 않음).
 

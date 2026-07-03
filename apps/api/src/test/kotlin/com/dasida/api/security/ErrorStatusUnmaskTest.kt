@@ -3,8 +3,9 @@ package com.dasida.api.security
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -21,7 +22,8 @@ import java.util.UUID
  * 픽스: dispatcherTypeMatchers(ERROR).permitAll() → 원래 상태 보존, 직접 /error 접근은 여전히 차단.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class ErrorStatusUnmaskTest(@Autowired val rest: TestRestTemplate) {
+@AutoConfigureTestRestTemplate
+class ErrorStatusUnmaskTest(@param:Autowired val rest: TestRestTemplate) {
 
     private fun jsonPost(path: String, body: String, token: String? = null) =
         rest.exchange(

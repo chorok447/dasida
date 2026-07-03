@@ -15,7 +15,7 @@ import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -36,12 +36,12 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class DomainAuthorizationBoundaryTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val postComments: PostCommentRepository,
-    @Autowired private val campaigns: CampaignRepository,
-    @Autowired private val campaignComments: CampaignCommentRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val postComments: PostCommentRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val campaignComments: CampaignCommentRepository,
 ) {
     private val user1Token = jwt.issue(User(id = 1, email = "owner@test.com", passwordHash = "x", name = "소유자", verified = false))
     private val user2Token = jwt.issue(User(id = 2, email = "commenter@test.com", passwordHash = "x", name = "댓글러", verified = false))

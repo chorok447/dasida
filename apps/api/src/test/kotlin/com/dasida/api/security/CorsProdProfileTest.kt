@@ -2,7 +2,7 @@ package com.dasida.api.security
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.test.context.ActiveProfiles
@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.options
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
 class CorsProdProfileTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `prod 명시 origin preflight 는 CORS 헤더를 포함한다`() {

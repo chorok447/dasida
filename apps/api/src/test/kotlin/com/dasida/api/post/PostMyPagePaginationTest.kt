@@ -5,7 +5,7 @@ import com.dasida.api.security.JwtService
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -16,11 +16,11 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class PostMyPagePaginationTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val posts: PostRepository,
-    @Autowired val likeRepo: PostLikeRepository,
-    @Autowired val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val posts: PostRepository,
+    @param:Autowired val likeRepo: PostLikeRepository,
+    @param:Autowired val bookmarkRepo: PostBookmarkRepository,
 ) {
     private val me = 1L
     private val token = jwt.issue(User(id = me, email = "me@t.com", passwordHash = "x", name = "나", verified = false))

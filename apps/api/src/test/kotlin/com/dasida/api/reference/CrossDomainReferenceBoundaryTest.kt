@@ -10,7 +10,7 @@ import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -34,10 +34,10 @@ import java.util.UUID
 @AutoConfigureMockMvc
 @Transactional
 class CrossDomainReferenceBoundaryTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val posts: PostRepository,
+    @param:Autowired private val campaigns: CampaignRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "me@test.com", passwordHash = "x", name = "나"))
 

@@ -6,7 +6,7 @@ import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
@@ -29,10 +29,10 @@ import java.util.concurrent.TimeUnit
 @AutoConfigureMockMvc
 @Import(FixedClockTestConfiguration::class)
 class CampaignLeaveConcurrencyTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val campaignRepo: CampaignRepository,
-    @Autowired val participantRepo: CampaignParticipantRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val campaignRepo: CampaignRepository,
+    @param:Autowired val participantRepo: CampaignParticipantRepository,
 ) {
     private fun tokenFor(userId: Long) = jwt.issue(
         User(id = userId, email = "u$userId@t.com", passwordHash = "x", name = "유저$userId", verified = false),

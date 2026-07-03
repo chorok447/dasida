@@ -7,7 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.web.servlet.MockMvc
@@ -20,10 +20,10 @@ import java.util.UUID
 @Transactional
 @Import(FixedClockTestConfiguration::class)
 class CampaignSearchControllerTest(
-    @Autowired private val mvc: MockMvc,
-    @Autowired private val jwt: JwtService,
-    @Autowired private val campaignRepo: CampaignRepository,
-    @Autowired private val participantRepo: CampaignParticipantRepository,
+    @param:Autowired private val mvc: MockMvc,
+    @param:Autowired private val jwt: JwtService,
+    @param:Autowired private val campaignRepo: CampaignRepository,
+    @param:Autowired private val participantRepo: CampaignParticipantRepository,
 ) {
     private val token = jwt.issue(
         User(id = 1, email = "search@test.com", passwordHash = "x", name = "검색 사용자", verified = true),

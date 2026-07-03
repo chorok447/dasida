@@ -6,7 +6,7 @@ import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
@@ -29,10 +29,10 @@ import java.util.concurrent.TimeUnit
 @AutoConfigureMockMvc
 @Import(FixedClockTestConfiguration::class)
 class CampaignParticipantRemovalConcurrencyTest(
-    @Autowired val mvc: MockMvc,
-    @Autowired val jwt: JwtService,
-    @Autowired val campaignRepo: CampaignRepository,
-    @Autowired val participantRepo: CampaignParticipantRepository,
+    @param:Autowired val mvc: MockMvc,
+    @param:Autowired val jwt: JwtService,
+    @param:Autowired val campaignRepo: CampaignRepository,
+    @param:Autowired val participantRepo: CampaignParticipantRepository,
 ) {
     private val ownerId = 801L
     private val ownerToken = jwt.issue(User(id = ownerId, email = "rmowner@t.com", passwordHash = "x", name = "개설자", verified = true))

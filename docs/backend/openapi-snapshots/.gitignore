@@ -1,0 +1,2 @@
+# 로컬 smoke 수집용 OpenAPI JSON. 분석 요약은 docs/backend/openapi-nullability-contract-check.md 에 기록한다.
+*.json

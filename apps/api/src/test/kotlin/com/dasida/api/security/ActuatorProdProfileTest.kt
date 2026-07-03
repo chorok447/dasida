@@ -3,7 +3,7 @@ package com.dasida.api.security
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.get
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
 class ActuatorProdProfileTest(
-    @Autowired private val mvc: MockMvc,
+    @param:Autowired private val mvc: MockMvc,
 ) {
     @Test
     fun `prod 에서도 health 는 200 이고 details 를 노출하지 않는다`() {
