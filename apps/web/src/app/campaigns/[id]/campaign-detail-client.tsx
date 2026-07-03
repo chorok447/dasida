@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -421,7 +422,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const join = async () => {
     if (mutationBusy()) return;
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -438,14 +439,14 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집 기간이 아니거나 정원이 마감되었습니다.");
+        toast.error("모집 기간이 아니거나 정원이 마감되었습니다.");
       } else if (e instanceof ApiError && e.status === 400) {
-        alert("현재 참여할 수 없는 캠페인입니다.");
+        toast.error("현재 참여할 수 없는 캠페인입니다.");
       } else {
-        alert("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } finally {
       participationUpdatingRef.current = false;
@@ -456,7 +457,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const leave = async () => {
     if (mutationBusy()) return;
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -471,20 +472,20 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       const updated = await apiDelete<Campaign>(`/api/campaigns/${c.id}/join`);
       if (getToken() !== requestToken) return;
       setC(updated); // joined/progress/joinedByMe 즉시 갱신
-      alert("참여가 취소되었습니다.");
+      toast.success("참여가 취소되었습니다.");
     } catch (e) {
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 404) {
-        alert("존재하지 않는 캠페인입니다.");
+        toast.error("존재하지 않는 캠페인입니다.");
         router.push("/campaigns");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집이 마감되어 참여를 취소할 수 없습니다.");
+        toast.error("모집이 마감되어 참여를 취소할 수 없습니다.");
       } else {
-        alert("참여 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("참여 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } finally {
       participationUpdatingRef.current = false;
@@ -495,7 +496,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const updateStatus = async (target: "open" | "closed") => {
     if (mutationBusy()) return; // 참여/취소·삭제와 동시 실행 금지
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -518,16 +519,16 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("캠페인 관리 권한이 없습니다.");
+        toast.error("캠페인 관리 권한이 없습니다.");
       } else if (e instanceof ApiError && e.status === 400) {
-        alert("요청한 모집 상태가 올바르지 않습니다.");
+        toast.error("요청한 모집 상태가 올바르지 않습니다.");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("현재 상태에서는 모집 상태를 변경할 수 없습니다.");
+        toast.error("현재 상태에서는 모집 상태를 변경할 수 없습니다.");
       } else {
-        alert("캠페인 상태 변경에 실패했습니다.");
+        toast.error("캠페인 상태 변경에 실패했습니다.");
       }
     } finally {
       statusUpdatingRef.current = false;
@@ -538,7 +539,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const deleteCampaign = async () => {
     if (mutationBusy()) return; // 참여/취소·모집 시작과 동시 실행 금지
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -558,17 +559,17 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("캠페인 삭제 권한이 없습니다.");
+        toast.error("캠페인 삭제 권한이 없습니다.");
       } else if (e instanceof ApiError && e.status === 404) {
-        alert("이미 삭제되었거나 존재하지 않는 캠페인입니다.");
+        toast.error("이미 삭제되었거나 존재하지 않는 캠페인입니다.");
         router.push("/campaigns");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집을 시작했거나 참여자 또는 연결 게시글이 있어 삭제할 수 없습니다.");
+        toast.error("모집을 시작했거나 참여자 또는 연결 게시글이 있어 삭제할 수 없습니다.");
       } else {
-        alert("캠페인 삭제에 실패했습니다.");
+        toast.error("캠페인 삭제에 실패했습니다.");
       }
     } finally {
       deletingRef.current = false;

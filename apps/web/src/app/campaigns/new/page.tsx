@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost, ApiError } from "@/lib/api";
@@ -19,7 +20,7 @@ export default function CampaignCreatePage() {
 
   useEffect(() => {
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.replace("/login");
     }
   }, [router]);
@@ -28,7 +29,7 @@ export default function CampaignCreatePage() {
     if (submittingRef.current) return;
     const requestToken = getToken();
     if (!requestToken) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -44,7 +45,7 @@ export default function CampaignCreatePage() {
       if (getToken() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 400) {
         setRequestError("입력값을 확인해주세요.");

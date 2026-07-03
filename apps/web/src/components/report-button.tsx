@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Flag, Loader2, X } from "lucide-react";
@@ -44,7 +45,7 @@ export function ReportButton({
 
   const open = () => {
     if (!getToken()) {
-      window.alert("신고하려면 로그인이 필요합니다.");
+      toast.error("신고하려면 로그인이 필요합니다.");
       goToLogin();
       return;
     }
@@ -91,7 +92,7 @@ export function ReportButton({
       setReason("");
       setDetail("");
       dialogRef.current?.close();
-      window.alert("신고가 접수되었습니다.");
+      toast.success("신고가 접수되었습니다.");
     } catch (caught) {
       if (getToken() !== requestToken) return;
       if (caught instanceof ApiError && caught.status === 401) {

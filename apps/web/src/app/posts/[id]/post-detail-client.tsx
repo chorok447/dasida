@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -84,7 +85,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     if (deleting) return;
     const requestToken = getToken();
     if (!requestToken) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -98,12 +99,12 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       if (getToken() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("삭제 권한이 없습니다.");
+        toast.error("삭제 권한이 없습니다.");
       } else {
-        alert("게시글 삭제에 실패했습니다.");
+        toast.error("게시글 삭제에 실패했습니다.");
       }
     } finally {
       // 토큰 변경으로 무시한 경우에도 버튼이 영구 비활성화되지 않게 정리.
@@ -260,7 +261,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         if (!isCurrent()) return;
         if (error instanceof ApiError && error.status === 401) {
           clearSession();
-          alert("로그인이 필요합니다.");
+          toast.error("로그인이 필요합니다.");
           router.push("/login");
           return;
         }
@@ -299,11 +300,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     // 목록 조회/에러 중에는 작성 금지 → 늦게 도착한 GET 이 방금 추가한 댓글을 덮는 경합 방지.
     if (!text || submittingComment || visibleCommentsLoading || commentsError) return;
     if (text.length > MAX_COMMENT_LENGTH) {
-      alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
+      toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
       return;
     }
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -323,10 +324,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else {
-        alert("댓글 작성에 실패했습니다.");
+        toast.error("댓글 작성에 실패했습니다.");
       }
     } finally {
       setSubmittingComment(false);
@@ -337,7 +338,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     const requestToken = getToken();
     if (!requestToken) {
       clearSession();
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -360,15 +361,15 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       if (getToken() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 403) {
-        alert("댓글 삭제 권한이 없습니다.");
+        toast.error("댓글 삭제 권한이 없습니다.");
       } else if (error instanceof ApiError && error.status === 404) {
-        alert("이미 삭제되었거나 존재하지 않는 댓글입니다.");
+        toast.error("이미 삭제되었거나 존재하지 않는 댓글입니다.");
         retryComments();
       } else {
-        alert("댓글 삭제에 실패했습니다.");
+        toast.error("댓글 삭제에 실패했습니다.");
       }
     } finally {
       deletingCommentIdsRef.current.delete(commentId);
@@ -436,11 +437,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         setEditingCommentId(null);
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 403) {
-        alert("댓글을 수정할 권한이 없습니다.");
+        toast.error("댓글을 수정할 권한이 없습니다.");
         setEditingCommentId(null);
         retryComments();
       } else if (error instanceof ApiError && error.status === 404) {
-        alert("댓글을 찾을 수 없습니다.");
+        toast.error("댓글을 찾을 수 없습니다.");
         setEditingCommentId(null);
         retryComments();
       } else if (error instanceof ApiError && error.status === 400) {
@@ -456,7 +457,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
   const onLike = async () => {
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -474,10 +475,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     } catch (e) {
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else {
-        alert("좋아요 처리에 실패했습니다.");
+        toast.error("좋아요 처리에 실패했습니다.");
       }
     } finally {
       setLiking(false);
@@ -487,7 +488,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const onBookmark = async () => {
     const requestToken = getToken();
     if (!requestToken) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -503,10 +504,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     } catch (e) {
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else {
-        alert("북마크 처리에 실패했습니다.");
+        toast.error("북마크 처리에 실패했습니다.");
       }
     } finally {
       setBookmarking(false);

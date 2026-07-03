@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
@@ -114,7 +115,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
       if (getToken() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 403) {
         setRequestError("캠페인 수정 권한이 없습니다.");

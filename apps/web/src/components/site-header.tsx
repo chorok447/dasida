@@ -122,12 +122,15 @@ export function SiteHeader() {
           >
             <Bell size={16} />
             {isLoggedIn && unread > 0 && (
-              <span
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 22 }}
                 className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-medium"
                 style={{ background: "#ed5c48", color: "#ffffff" }}
               >
                 {unread > 99 ? "99+" : unread}
-              </span>
+              </motion.span>
             )}
           </Link>
           {/* 서버 스냅샷은 항상 로그아웃 상태 → 비로그인 뷰로 hydration, 이후 클라이언트에서 갱신. */}

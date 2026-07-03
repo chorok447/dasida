@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, X, Send, Image as ImageIcon } from "lucide-react";
@@ -52,7 +53,7 @@ export default function PostCreatePage() {
   const authorName = name ?? "사용자";
   useEffect(() => {
     if (!getToken()) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
     }
   }, [router]);
@@ -64,9 +65,9 @@ export default function PostCreatePage() {
     if (!trimmedText || submitting) return;
     const normalizedTags = normalizeTags(tags);
     const normalizedImages = Array.from(new Set(images.map((i) => i.trim()).filter(Boolean)));
-    if (trimmedText.length > MAX_TEXT_LENGTH) return alert(`내용은 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
-    if (normalizedTags.length > MAX_TAGS) return alert(`태그는 최대 ${MAX_TAGS}개까지 가능합니다.`);
-    if (normalizedImages.length > MAX_IMAGES) return alert(`이미지는 최대 ${MAX_IMAGES}개까지 가능합니다.`);
+    if (trimmedText.length > MAX_TEXT_LENGTH) return toast.error(`내용은 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
+    if (normalizedTags.length > MAX_TAGS) return toast.error(`태그는 최대 ${MAX_TAGS}개까지 가능합니다.`);
+    if (normalizedImages.length > MAX_IMAGES) return toast.error(`이미지는 최대 ${MAX_IMAGES}개까지 가능합니다.`);
     setSubmitting(true);
     try {
       await apiPost("/api/posts", {
@@ -78,7 +79,7 @@ export default function PostCreatePage() {
       router.push("/feed");
     } catch (e) {
       setSubmitting(false);
-      alert(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다." : "게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      toast.error(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다." : "게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
   const addTag = () => {

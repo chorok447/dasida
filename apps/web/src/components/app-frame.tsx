@@ -1,5 +1,6 @@
 "use client";
 
+import { Toaster } from "sonner";
 import { useTheme } from "@/lib/theme-context";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -16,6 +17,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       <ThemeToggle />
       {children}
       <Footer />
+      <Toaster theme={theme === "dark" ? "dark" : "light"} position="bottom-center" toastOptions={{ style: { borderRadius: 16 } }} />
     </div>
   );
 }

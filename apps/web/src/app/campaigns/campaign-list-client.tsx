@@ -4,12 +4,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
-import { Calendar, RefreshCw, Search, Users } from "lucide-react";
+import { Calendar, Search, Users } from "lucide-react";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
+import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import {
   appendCampaignDateRangeFilters,
   campaignDateRangeError,
@@ -536,10 +537,7 @@ export default function CampaignListClient() {
         />
 
         {currentState.status === "loading" ? (
-          <StatePanel>
-            <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
-            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>캠페인을 검색하는 중입니다.</p>
-          </StatePanel>
+          <SkeletonCards count={6} className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" />
         ) : null}
 
         {currentState.status === "error" ? (
