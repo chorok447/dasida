@@ -106,7 +106,9 @@ function Tabs({ tab, onSelect }: { tab: Tab; onSelect: (tab: Tab) => void }) {
   const dark = theme === "dark";
   return (
     <div
-      className="mx-auto flex max-w-5xl gap-1 overflow-x-auto border-b px-4 sm:gap-2 sm:px-8"
+      role="tablist"
+      aria-label="마이페이지 콘텐츠"
+      className="mx-auto flex max-w-5xl gap-1 overflow-x-auto border-b px-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-2 sm:px-8 [&::-webkit-scrollbar]:hidden"
       style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}
     >
       {TABS.map((item) => {
@@ -115,12 +117,18 @@ function Tabs({ tab, onSelect }: { tab: Tab; onSelect: (tab: Tab) => void }) {
           <button
             key={item.id}
             type="button"
+            role="tab"
+            id={`mypage-tab-${item.id}`}
+            aria-selected={active}
+            aria-controls={`mypage-panel-${item.id}`}
+            tabIndex={active ? 0 : -1}
             onClick={() => onSelect(item.id)}
-            className="relative shrink-0 px-4 py-3 text-[13px] sm:px-6 sm:text-[14px]"
+            className="relative shrink-0 px-4 py-3 text-[13px] transition-colors sm:px-6 sm:text-[14px]"
             style={{
               color: active
                 ? dark ? "#f9f7f2" : "#0f1f22"
                 : dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)",
+              fontWeight: active ? 600 : 400,
             }}
           >
             {item.label}
@@ -218,11 +226,31 @@ export default function MyPageClient() {
             <ChangePasswordForm key={profile.id} profileName={profile.name} />
             <Tabs tab={tab} onSelect={onSelectTab} />
             <div className="mx-auto max-w-5xl px-6 py-10 sm:px-8">
-              {tab === "posts" ? <MyPostsGrid page={page} onPageChange={onPageChange} /> : null}
-              {tab === "campaigns" ? <UserCampaignsList mode="joined" page={page} onPageChange={onPageChange} /> : null}
-              {tab === "created" ? <UserCampaignsList mode="created" page={page} onPageChange={onPageChange} /> : null}
-              {tab === "saved" ? <SavedPostsGrid page={page} onPageChange={onPageChange} /> : null}
-              {tab === "reports" ? <ReportsList page={page} onPageChange={onPageChange} /> : null}
+              {tab === "posts" ? (
+                <div role="tabpanel" id="mypage-panel-posts" aria-labelledby="mypage-tab-posts">
+                  <MyPostsGrid page={page} onPageChange={onPageChange} />
+                </div>
+              ) : null}
+              {tab === "campaigns" ? (
+                <div role="tabpanel" id="mypage-panel-campaigns" aria-labelledby="mypage-tab-campaigns">
+                  <UserCampaignsList mode="joined" page={page} onPageChange={onPageChange} />
+                </div>
+              ) : null}
+              {tab === "created" ? (
+                <div role="tabpanel" id="mypage-panel-created" aria-labelledby="mypage-tab-created">
+                  <UserCampaignsList mode="created" page={page} onPageChange={onPageChange} />
+                </div>
+              ) : null}
+              {tab === "saved" ? (
+                <div role="tabpanel" id="mypage-panel-saved" aria-labelledby="mypage-tab-saved">
+                  <SavedPostsGrid page={page} onPageChange={onPageChange} />
+                </div>
+              ) : null}
+              {tab === "reports" ? (
+                <div role="tabpanel" id="mypage-panel-reports" aria-labelledby="mypage-tab-reports">
+                  <ReportsList page={page} onPageChange={onPageChange} />
+                </div>
+              ) : null}
             </div>
             <DeleteAccountForm key={`delete-${profile.id}`} />
           </>
