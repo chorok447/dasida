@@ -82,7 +82,7 @@ docker compose -f compose.local.yml up --build
 
 실제 서버 배포는 아직 미구현(CD workflow placeholder). 상세는 [`apps/api/docs/backend/container-images.md`](apps/api/docs/backend/container-images.md) 참고.
 
-**main merge 전** GitHub Secrets/Variables·GHCR·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다. Secrets/Environment 상세는 [`github-secrets-and-environments.md`](apps/api/docs/backend/github-secrets-and-environments.md). 운영 VM compose **예시 template** 은 [`deploy/compose.prod.example.yml`](deploy/compose.prod.example.yml) 참고.
+**main merge 전** GitHub Secrets/Variables·GHCR·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다. Secrets/Environment 상세는 [`github-secrets-and-environments.md`](apps/api/docs/backend/github-secrets-and-environments.md), 운영 값 수집은 [`production-env-values-template.md`](apps/api/docs/backend/production-env-values-template.md). 운영 VM compose **예시 template** 은 [`deploy/compose.prod.example.yml`](deploy/compose.prod.example.yml) 참고.
 
 ### 호스트에서 직접 실행 (기존 방식)
 
