@@ -152,6 +152,7 @@ function NotificationRow({
           type="button"
           onClick={() => onMarkRead(item.id)}
           disabled={pending || deleting}
+          aria-busy={pending}
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
           style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
           aria-label="읽음으로 표시"
@@ -427,10 +428,11 @@ export default function NotificationsClient() {
               type="button"
               onClick={removeRead}
               disabled={cleaningRead || busy || !hasReadNotifications}
-              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40"
+              aria-busy={cleaningRead}
+              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
               style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
             >
-              <Trash2 size={14} /> {cleaningRead ? "정리 중…" : "읽은 알림 정리"}
+              <Trash2 size={14} aria-hidden /> {cleaningRead ? "정리 중…" : "읽은 알림 정리"}
             </button>
           </div>
         </div>

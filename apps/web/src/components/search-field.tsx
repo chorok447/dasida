@@ -85,6 +85,8 @@ export function SearchField({
         type="button"
         onClick={() => commitNow(draft)}
         disabled={loading}
+        aria-busy={loading}
+        aria-label="검색"
         className="flex h-9 shrink-0 items-center justify-center rounded-full px-3 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f1f22]"
         style={{ background: "#7dd3a3", color: "#0f1f22" }}
       >

@@ -464,6 +464,7 @@ export default function SearchClient() {
             label="통합 검색"
             placeholder="캠페인과 게시글을 검색해보세요."
             loading={currentState.status === "loading"}
+            className="rounded-full"
           />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-1 overflow-x-auto rounded-full p-1" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
