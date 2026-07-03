@@ -177,12 +177,13 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
 2. ~~Single VM compose override~~ → [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
 3. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
-4. 서버 runbook: Docker Hub login, pull, deploy, rollback, DB backup — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
-5. CD workflow에 opt-in deploy job (명시 승인 후)
-6. prod Redis store 설정 PR (필요 시)
-7. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
-8. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
-9. (optional) `linux/arm64` multi-arch build
+4. 서버 runbook: Docker Hub login, pull, deploy, rollback — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
+5. MySQL backup/restore — [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md)
+6. CD workflow에 opt-in deploy job (명시 승인 후)
+7. prod Redis store 설정 PR (필요 시)
+8. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
+9. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
+10. (optional) `linux/arm64` multi-arch build
 
 ---
 
@@ -194,4 +195,5 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 - [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx ingress·TLS·도메인
 - [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 Compose·volume·스펙
 - [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) — amd64 VM 배포 runbook (문서만)
+- [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md) — MySQL backup/restore
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist

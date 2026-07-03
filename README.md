@@ -80,7 +80,7 @@ docker compose -f compose.local.yml up --build
 | `main` 대상 PR | API/Web image build 검증만 (`push=false`). **자동 머지 없음** — 수동 승인 후 merge |
 | `main` push | `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` push (`sha-<shortsha>`, `main` tag) |
 
-실제 서버 배포는 아직 미구현(CD workflow placeholder). **amd64 VM 배포 runbook**은 [`single-vm-production-deploy-runbook.md`](apps/api/docs/backend/single-vm-production-deploy-runbook.md). Docker Hub·Nginx 상세는 [`container-images.md`](apps/api/docs/backend/container-images.md), [`nginx-reverse-proxy-deployment.md`](apps/api/docs/backend/nginx-reverse-proxy-deployment.md).
+실제 서버 배포는 아직 미구현(CD workflow placeholder). **amd64 VM 배포 runbook** [`single-vm-production-deploy-runbook.md`](apps/api/docs/backend/single-vm-production-deploy-runbook.md), **MySQL backup/restore** [`mysql-backup-restore-runbook.md`](apps/api/docs/backend/mysql-backup-restore-runbook.md). Docker Hub·Nginx는 [`container-images.md`](apps/api/docs/backend/container-images.md), [`nginx-reverse-proxy-deployment.md`](apps/api/docs/backend/nginx-reverse-proxy-deployment.md).
 
 **main merge 전** GitHub Secrets/Variables·Docker Hub·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다. Secrets/Environment 상세는 [`github-secrets-and-environments.md`](apps/api/docs/backend/github-secrets-and-environments.md), 운영 값 수집은 [`production-env-values-template.md`](apps/api/docs/backend/production-env-values-template.md). 운영 VM compose **예시 template** 은 [`deploy/compose.prod.example.yml`](deploy/compose.prod.example.yml) 참고.
 

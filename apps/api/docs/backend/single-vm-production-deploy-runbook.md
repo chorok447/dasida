@@ -276,7 +276,7 @@ docker compose -f compose.prod.yml -f compose.single-vm.yml \
   > /opt/dasida/backups/dasida-$(date +%Y%m%d-%H%M).sql
 ```
 
-**restore 절차**는 후속 runbook 으로 분리 가능.
+**restore 절차**는 [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md) 참고.
 
 ---
 
@@ -322,7 +322,7 @@ docker compose -f compose.prod.yml -f compose.single-vm.yml --env-file .env.prod
 - **GitHub Secrets/Variables** 등록 (`NEXT_PUBLIC_API_URL` 포함)
 - **CD workflow** 자동 deploy
 - **managed MySQL/Redis** 이전 절차
-- **MySQL restore** 상세 runbook
+- **MySQL restore** 상세 runbook — [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md) (문서화 완료)
 - **라즈베리파이 / ARM / multi-arch** 빌드·배포
 - **DB schema migration** (Flyway/Liquibase) 정책
 
@@ -336,4 +336,5 @@ docker compose -f compose.prod.yml -f compose.single-vm.yml --env-file .env.prod
 - [github-secrets-setup-runbook.md](./github-secrets-setup-runbook.md)
 - [deploy/compose.prod.example.yml](../../../../deploy/compose.prod.example.yml)
 - [deploy/compose.single-vm.example.yml](../../../../deploy/compose.single-vm.example.yml)
+- [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md)
 - [deploy/.env.prod.example](../../../../deploy/.env.prod.example)
