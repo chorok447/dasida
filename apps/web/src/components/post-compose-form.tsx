@@ -29,16 +29,19 @@ type PostComposeFormProps = {
   showDraftSaved?: boolean;
 };
 
-function ImagePreview({ src, dark }: { src: string; dark: boolean }) {
+function ImagePreview({ src, dark, index }: { src: string; dark: boolean; index: number }) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
     return (
       <div
-        className="flex h-full w-full items-center justify-center"
+        className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px]"
         style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+        role="img"
+        aria-label="이미지를 불러올 수 없어요"
       >
-        <ImageIcon size={20} style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} aria-hidden />
+        <ImageIcon size={18} style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} aria-hidden />
+        <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>이미지를 불러올 수 없어요</span>
       </div>
     );
   }
@@ -46,7 +49,7 @@ function ImagePreview({ src, dark }: { src: string; dark: boolean }) {
   return (
     <img
       src={src}
-      alt=""
+      alt={`첨부 이미지 미리보기 ${index + 1}`}
       className="h-full w-full object-cover"
       onError={() => setFailed(true)}
     />
@@ -232,7 +235,7 @@ export function PostComposeForm({
 
         {values.images.length > 0 ? (
           <ul className="mt-3 space-y-2" aria-label="추가된 이미지 목록">
-            {values.images.map((url) => (
+            {values.images.map((url, index) => (
               <li
                 key={url}
                 className="flex items-center gap-3 rounded-xl p-2"
@@ -242,7 +245,7 @@ export function PostComposeForm({
                 }}
               >
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                  <ImagePreview src={url} dark={dark} />
+                  <ImagePreview src={url} dark={dark} index={index} />
                 </div>
                 <p className="min-w-0 flex-1 truncate text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }} title={url}>
                   {url}

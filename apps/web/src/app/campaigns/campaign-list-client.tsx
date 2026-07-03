@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,6 +9,7 @@ import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-c
 import { ListEmptyState } from "@/components/list-empty-state";
 import { SearchField } from "@/components/search-field";
 import { ReportButton } from "@/components/report-button";
+import { FallbackImage } from "@/components/fallback-image";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
@@ -152,7 +152,11 @@ function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => 
           className="border-0"
         >
           <div className="relative aspect-[4/3] overflow-hidden">
-            <img src={campaign.thumb} alt={campaign.title} className="h-full w-full object-cover" />
+            <FallbackImage
+              src={campaign.thumb}
+              alt={`${campaign.title} 캠페인 이미지`}
+              className="h-full w-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
             <div className="absolute right-3 top-3" style={{ transform: "translateZ(40px)" }}>
               <StatusBadge campaign={campaign} />

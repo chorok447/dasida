@@ -1,11 +1,11 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { StaggerItem } from "@/components/scroll-reveal";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { CalendarDays, Users } from "lucide-react";
 import { StatePanel } from "@/components/ui/state-panel";
+import { FallbackImage } from "@/components/fallback-image";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import {
@@ -94,7 +94,11 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
       }}
     >
       <div className="relative aspect-[4/3] overflow-hidden">
-        <img src={campaign.thumb} alt={campaign.title} className="h-full w-full object-cover" />
+        <FallbackImage
+          src={campaign.thumb}
+          alt={`${campaign.title} 캠페인 이미지`}
+          className="h-full w-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
         <div className="absolute top-3 right-3">
           <StatusBadge campaign={campaign} />

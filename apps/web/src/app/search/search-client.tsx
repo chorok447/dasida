@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -12,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
 import { ListEmptyState } from "@/components/list-empty-state";
@@ -167,9 +167,9 @@ function CampaignResultCard({ campaign }: { campaign: Campaign }) {
       >
         <div className="relative aspect-[16/9] overflow-hidden">
           {campaign.thumb ? (
-            <img
+            <FallbackImage
               src={campaign.thumb}
-              alt={campaign.title}
+              alt={`${campaign.title} 캠페인 이미지`}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
@@ -236,9 +236,9 @@ function PostResultCard({ post }: { post: Post }) {
       </div>
       {image ? (
         <div className="aspect-[16/9] overflow-hidden">
-          <img
+          <FallbackImage
             src={image}
-            alt=""
+            alt="게시글 미리보기 이미지"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
