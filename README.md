@@ -77,7 +77,7 @@ docker compose -f compose.local.yml up --build
 
 | 이벤트 | 동작 |
 |--------|------|
-| `main` 대상 PR | API/Web image build 검증만 (`push=false`) |
+| `main` 대상 PR | API/Web image build 검증만 (`push=false`). **자동 머지 없음** — 수동 승인 후 merge |
 | `main` push | `ghcr.io/chorok447/dasida-api`, `ghcr.io/chorok447/dasida-web` push (`sha-<shortsha>`, `main` tag) |
 
 실제 서버 배포는 아직 미구현(CD workflow placeholder). 상세는 [`apps/api/docs/backend/container-images.md`](apps/api/docs/backend/container-images.md) 참고.
