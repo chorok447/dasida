@@ -21,6 +21,7 @@ import {
   type CampaignComposeValues,
   validateCampaignCompose,
 } from "@/data/campaigns";
+import { CAMPAIGN_TEMPLATES, type CampaignTemplate } from "@/data/campaign-templates";
 
 function draftHasContent(values: CampaignComposeValues): boolean {
   return (
@@ -69,6 +70,18 @@ export default function CampaignCreatePage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [values]);
+
+  const applyTemplate = (template: CampaignTemplate) => {
+    if (
+      draftHasContent(values) &&
+      !window.confirm("작성 중인 내용이 있습니다. 템플릿으로 덮어쓸까요? (일정은 유지됩니다)")
+    ) {
+      return;
+    }
+    setValues((current) => ({ ...current, ...template.values }));
+    setFieldErrors({});
+    toast.success("템플릿을 적용했어요. 괄호 안 내용을 채워주세요.");
+  };
 
   const clearFieldError = (field: CampaignComposeField) => {
     setFieldErrors((current) => {
@@ -166,6 +179,35 @@ export default function CampaignCreatePage() {
               borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
             }}
           >
+            <div>
+              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+                템플릿으로 시작하기 <span className="normal-case tracking-normal opacity-70">(선택)</span>
+              </p>
+              <ul className="flex flex-wrap gap-2" aria-label="캠페인 템플릿 목록">
+                {CAMPAIGN_TEMPLATES.map((template) => (
+                  <li key={template.id}>
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(template)}
+                      disabled={submitting}
+                      className="rounded-full px-3.5 py-2 text-[13px] transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{
+                        background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                        border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
+                        color: dark ? "#f9f7f2" : "#0f1f22",
+                      }}
+                      aria-label={`${template.label} 템플릿 적용`}
+                    >
+                      {template.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                제목·요약·본문·썸네일·모집 인원이 초안으로 채워집니다. 자유롭게 수정하세요.
+              </p>
+            </div>
+
             <CampaignComposeForm
               values={values}
               onChange={setValues}
