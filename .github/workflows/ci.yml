@@ -50,7 +50,7 @@ jobs:
 
   # develop 대상 Ready PR은 web/api 검사 통과 후 자동 머지한다.
   # main 대상 PR은 release/deploy gate 이므로 자동 머지하지 않는다(CI + container image build 검증만).
-  #   main merge 는 수동 승인 후 수행하고, main push 시 GHCR image push 가 발생한다(container-images.yml).
+  #   main merge 는 수동 승인 후 수행하고, main push 시 Docker Hub image push 가 발생한다(container-images.yml).
   # Dependabot PR은 의존성 검증을 CI에서 돌리되 자동 머지는 하지 않는다(수동 검증 후 처리).
   # Draft PR과 push workflow에서는 auto-merge job을 실행하지 않는다.
   automerge:

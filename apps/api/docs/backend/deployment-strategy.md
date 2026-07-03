@@ -5,7 +5,7 @@
 
 ## 목적
 
-`develop` → `main` merge 및 GHCR image push **이후**, 운영 서버에 어떻게 배포할지 1차 전략을 고정한다.  
+`develop` → `main` merge 및 Docker Hub image push **이후**, 운영 서버에 어떻게 배포할지 1차 전략을 고정한다.
 현재 [PR #149](https://github.com/chorok447/dasida/pull/149)는 기술 gate와 별도로 **운영 준비 미완 시 merge 보류** 대상이다.
 
 ---
@@ -14,7 +14,7 @@
 
 | 방식 | 장점 | 단점 | Dasida 적합도 |
 |------|------|------|----------------|
-| **Docker Compose on VM** | GHCR image 그대로 사용; API/Web/MySQL/Redis를 한 서버에서 단순 기동; 로컬 `compose.local.yml`과 개념 유사 | 단일 VM SPOF; 수동/스크립트 운영 필요; secret은 서버 `.env` 관리 | **★ 1차 추천** |
+| **Docker Compose on VM** | Docker Hub image 그대로 사용; API/Web/MySQL/Redis를 한 서버에서 단순 기동; 로컬 `compose.local.yml`과 개념 유사 | 단일 VM SPOF; 수동/스크립트 운영 필요; secret은 서버 `.env` 관리 | **★ 1차 추천** |
 | **VM + systemd** | OS 서비스로 장기 운영에 익숙; jar 직접 실행도 가능 | image 기반일 때 compose 대비 이점 적음; Web(pnpm) 단위 관리가 번거로움 | 차선 |
 | **Managed container** (ECS, Cloud Run, App Service 등) | 오토스케일·관리형 LB·secret 연동 | 초기 설정·비용·벤더 lock-in; 현재 CD 미구현 | **추후 전환 후보** |
 | **Kubernetes** | 대규모·다중 리전·고가용 | 현재 팀/트래픽 규모 대비 과함; 운영 부담 큼 | **보류** |
@@ -26,16 +26,16 @@
 
 ### 추천 이유
 
-1. **GHCR image와 정합** — `ghcr.io/chorok447/dasida-api`, `dasida-web`를 서버에서 `docker compose pull` 후 기동하면 된다.
+1. **Docker Hub image와 정합** — `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web`를 서버에서 `docker compose pull` 후 기동하면 된다.
 2. **구성 단순** — MySQL, Redis/Valkey, API, Web을 하나의 compose stack으로 시작할 수 있다(로컬 `compose.local.yml` 패턴과 유사).
 3. **현재 규모에 적합** — 소규모 단일 서버로 시작하고, 트래픽·가용성 요구가 커지면 managed service로 이전 가능.
 4. **Kubernetes 불필요** — 당장 replica·HPA·service mesh가 필요하지 않다.
 
 ### 아직 구현되지 않은 것 (TODO)
 
-- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — GHCR pull·env 주입 참고용. **실제 서버 deploy/CD 는 아직 없음.**
+- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — Docker Hub pull·env 주입 참고용. **실제 서버 deploy/CD 는 아직 없음.**
 - CD workflow의 실제 deploy step — [`.github/workflows/cd.yml`](../../../../.github/workflows/cd.yml) placeholder
-- GHCR pull 인증(runner/서버 credential) — **미설정**
+- Docker Hub pull 인증(서버 credential) — **미설정**
 
 ---
 
@@ -44,11 +44,11 @@
 ### Image pull
 
 ```text
-ghcr.io/chorok447/dasida-api:<tag>
-ghcr.io/chorok447/dasida-web:<tag>
+docker.io/<DOCKERHUB_USERNAME>/dasida-api:<tag>
+docker.io/<DOCKERHUB_USERNAME>/dasida-web:<tag>
 ```
 
-서버에 GHCR read 권한(PAT 또는 deploy 전용 credential)을 두고 pull 한다. package visibility는 GitHub UI에서 정책 확정 필요.
+서버 `.env.prod` 의 `DOCKERHUB_USERNAME` 과 `DASIDA_IMAGE_TAG` 로 compose image 를 pin 한다. private repository 이면 서버에서 `docker login` 후 pull 한다.
 
 ### Tag 전략
 
@@ -57,7 +57,7 @@ ghcr.io/chorok447/dasida-web:<tag>
 | `sha-<shortsha>` | **배포 고정** — 롤백 단위 | **운영 배포는 이 tag를 pin** |
 | `main` | 최신 main 추적·참조용 | 자동 redeploy 트리거로만 쓰지 말 것(의도치 않은 업그레이드 방지) |
 
-main merge 후 GHCR에 `sha-*`와 `main`이 함께 push 된다([container-images.md](./container-images.md)).
+main merge 후 Docker Hub 에 `sha-*`와 `main`이 함께 push 된다([container-images.md](./container-images.md)).
 
 ### Runtime env 주입
 
@@ -104,6 +104,13 @@ prod 다중 API replica를 쓸 경우 rate limit·logout denylist는 **공유 Re
 
 `NODE_ENV=production`은 `Dockerfile.prod` 기본값.
 
+### Compose / image pull
+
+| 변수 | 비고 |
+|------|------|
+| `DOCKERHUB_USERNAME` | Docker Hub namespace ([`.env.prod.example`](../../../../deploy/.env.prod.example)) |
+| `DASIDA_IMAGE_TAG` | `sha-<shortsha>` pin 권장 |
+
 ---
 
 ## Release flow (현재 정책)
@@ -113,7 +120,7 @@ flowchart LR
   A[develop PR] -->|auto-merge| B[develop]
   B --> C[develop → main PR #149]
   C -->|수동 승인 merge| D[main push]
-  D --> E[GHCR push sha-* + main]
+  D --> E[Docker Hub push sha-* + main]
   E --> F[서버: image pull]
   F --> G[compose up / health check]
   G -->|실패| H[이전 sha-* 로 rollback]
@@ -123,13 +130,13 @@ flowchart LR
 |------|------|-----------|
 | develop PR | CI pass 후 **auto-merge** | 구현됨 |
 | develop → main PR | CI + container build 검증; **수동 merge** | PR #149 OPEN·보류 |
-| main push | GHCR `dasida-api` / `dasida-web` push | merge 후 자동 |
+| main push | Docker Hub `dasida-api` / `dasida-web` push | merge 후 자동 |
 | 서버 deploy | pull + compose + health | **미구현** |
 | rollback | 이전 `sha-<shortsha>` tag로 redeploy | runbook만(문서) |
 
 ### Post-deploy smoke (배포 구현 후)
 
-- GHCR image pull 성공
+- Docker Hub image pull 성공
 - container 기동(non-root)
 - `GET /actuator/health` → 200
 - signup / login / logout / rate limit 기본 smoke
@@ -150,7 +157,7 @@ flowchart LR
 ## 후속 작업 (코드/인프라 PR로 분리)
 
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
-2. 서버 runbook: GHCR login, pull, deploy, rollback
+2. 서버 runbook: Docker Hub login, pull, deploy, rollback
 3. CD workflow에 opt-in deploy job (명시 승인 후)
 4. prod Redis store 설정 PR (필요 시)
 5. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
@@ -161,5 +168,5 @@ flowchart LR
 
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables·Environment
 - [main-release-readiness.md](./main-release-readiness.md) — merge 전 체크리스트
-- [container-images.md](./container-images.md) — GHCR·CI
+- [container-images.md](./container-images.md) — Docker Hub·CI
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist

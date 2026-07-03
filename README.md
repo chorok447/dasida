@@ -71,18 +71,18 @@ docker compose -f compose.local.yml up --build
 - volume까지 삭제: `docker compose -f compose.local.yml down -v`
 - `compose.local.yml` 의 DB/JWT 값은 **로컬 전용 placeholder**이며 운영 secret 이 아니다.
 
-### Production container images (GHCR)
+### Production container images (Docker Hub)
 
-로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 와 GitHub Actions [`container-images.yml`](.github/workflows/container-images.yml) 로 빌드한다.
+로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 와 GitHub Actions [`container-images.yml`](.github/workflows/container-images.yml) 로 빌드한다. (기존 GHCR 계획에서 **Docker Hub**로 전환.)
 
 | 이벤트 | 동작 |
 |--------|------|
 | `main` 대상 PR | API/Web image build 검증만 (`push=false`). **자동 머지 없음** — 수동 승인 후 merge |
-| `main` push | `ghcr.io/chorok447/dasida-api`, `ghcr.io/chorok447/dasida-web` push (`sha-<shortsha>`, `main` tag) |
+| `main` push | `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` push (`sha-<shortsha>`, `main` tag) |
 
 실제 서버 배포는 아직 미구현(CD workflow placeholder). 상세는 [`apps/api/docs/backend/container-images.md`](apps/api/docs/backend/container-images.md) 참고.
 
-**main merge 전** GitHub Secrets/Variables·GHCR·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다. Secrets/Environment 상세는 [`github-secrets-and-environments.md`](apps/api/docs/backend/github-secrets-and-environments.md), 운영 값 수집은 [`production-env-values-template.md`](apps/api/docs/backend/production-env-values-template.md). 운영 VM compose **예시 template** 은 [`deploy/compose.prod.example.yml`](deploy/compose.prod.example.yml) 참고.
+**main merge 전** GitHub Secrets/Variables·Docker Hub·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다. Secrets/Environment 상세는 [`github-secrets-and-environments.md`](apps/api/docs/backend/github-secrets-and-environments.md), 운영 값 수집은 [`production-env-values-template.md`](apps/api/docs/backend/production-env-values-template.md). 운영 VM compose **예시 template** 은 [`deploy/compose.prod.example.yml`](deploy/compose.prod.example.yml) 참고.
 
 ### 호스트에서 직접 실행 (기존 방식)
 
