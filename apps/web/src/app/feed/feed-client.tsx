@@ -11,7 +11,6 @@ import {
   Image as ImageIcon,
   MessageCircle,
   RefreshCw,
-  Search,
   Send,
   Share2,
   Sparkles,
@@ -24,6 +23,9 @@ import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { ReportButton } from "@/components/report-button";
+import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
+import { ListEmptyState } from "@/components/list-empty-state";
+import { SearchField } from "@/components/search-field";
 import { StaggerItem } from "@/components/scroll-reveal";
 import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { Pagination } from "@/components/ui/pagination";
@@ -66,60 +68,77 @@ function neutralizeInteractions(response: PostSearchResponse): PostSearchRespons
   };
 }
 
-function DebouncedSearchInput({ value, onCommit }: { value: string; onCommit: (query: string) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const [draft, setDraft] = useState(value);
+function feedHasActiveFilters(state: UrlState): boolean {
+  return !!(state.query || state.campaignOnly || state.sort !== "latest");
+}
 
-  useEffect(() => {
-    const normalized = draft.trim();
-    if (normalized === value) return;
-    const timeout = window.setTimeout(() => onCommit(normalized), 300);
-    return () => window.clearTimeout(timeout);
-  }, [draft, onCommit, value]);
+const POST_SORT_LABELS: Record<PostSearchSort, string> = {
+  latest: "최신순",
+  popular: "인기순",
+  discussed: "댓글순",
+};
 
-  return (
-    <label
-      className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 py-2.5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-        border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
-      }}
-    >
-      <Search size={16} className="shrink-0 opacity-50" />
-      <span className="sr-only">게시글 검색</span>
-      <input
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        maxLength={100}
-        placeholder="본문 또는 작성자 검색..."
-        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:opacity-50"
-        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-      />
-    </label>
-  );
+function buildFeedFilterChips(state: UrlState, onPatch: (changes: Partial<UrlState>) => void): FilterChip[] {
+  const chips: FilterChip[] = [];
+  if (state.query) {
+    chips.push({
+      id: "q",
+      label: `검색: ${state.query}`,
+      onRemove: () => onPatch({ query: "" }),
+    });
+  }
+  if (state.campaignOnly) {
+    chips.push({
+      id: "campaignOnly",
+      label: "캠페인 게시글만",
+      onRemove: () => onPatch({ campaignOnly: false }),
+    });
+  }
+  if (state.sort !== "latest") {
+    chips.push({
+      id: "sort",
+      label: `정렬: ${POST_SORT_LABELS[state.sort]}`,
+      onRemove: () => onPatch({ sort: "latest" }),
+    });
+  }
+  return chips;
 }
 
 function FeedControls({
   state,
+  loading,
   onSearch,
   onSort,
   onCampaignOnly,
+  onPatch,
+  onResetAll,
 }: {
   state: UrlState;
+  loading: boolean;
   onSearch: (query: string) => void;
   onSort: (sort: PostSearchSort) => void;
   onCampaignOnly: (checked: boolean) => void;
+  onPatch: (changes: Partial<UrlState>) => void;
+  onResetAll: () => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const chips = buildFeedFilterChips(state, (changes) => onPatch({ ...changes, page: 0 }));
 
   return (
     <div className="mb-6 flex flex-col gap-3">
-      <DebouncedSearchInput key={state.query} value={state.query} onCommit={onSearch} />
+      <SearchField
+        key={state.query}
+        value={state.query}
+        onCommit={onSearch}
+        label="게시글 검색"
+        placeholder="본문 또는 작성자 검색..."
+        loading={loading}
+        className="rounded-full"
+      />
       <div className="flex flex-wrap items-center gap-3">
         <label
-          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
+          className="flex min-h-10 items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
           style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
         >
           <input
@@ -130,12 +149,12 @@ function FeedControls({
           />
           캠페인 게시글만
         </label>
-        <label className="ml-auto flex items-center gap-2 text-[13px]">
+        <label className="ml-auto flex min-h-10 items-center gap-2 text-[13px]">
           <span className="sr-only">게시글 정렬</span>
           <select
             value={state.sort}
             onChange={(event) => onSort(event.target.value as PostSearchSort)}
-            className="rounded-full border px-4 py-2.5 outline-none"
+            className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
             style={{
               color: dark ? "#f9f7f2" : "#0f1f22",
               background: dark ? "#1c4044" : "#ffffff",
@@ -148,6 +167,7 @@ function FeedControls({
           </select>
         </label>
       </div>
+      <ActiveFilterChips chips={chips} onClearAll={chips.length > 0 ? onResetAll : undefined} />
     </div>
   );
 }
@@ -655,9 +675,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
           <FeedControls
             state={urlState}
+            loading={refreshing}
             onSearch={commitSearch}
             onSort={(sort) => updateUrl({ sort, page: 0 })}
             onCampaignOnly={(campaignOnly) => updateUrl({ campaignOnly, page: 0 })}
+            onPatch={(changes) => updateUrl(changes)}
+            onResetAll={() => updateUrl({ query: "", campaignOnly: false, sort: "latest", page: 0 })}
           />
 
           {requestStatus === "loading" && !response ? (
@@ -687,9 +710,33 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           ) : null}
 
           {requestStatus === "success" && response?.content.length === 0 ? (
-            <StatePanel>
-              <p style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>조건에 맞는 게시글이 없습니다.</p>
-            </StatePanel>
+            <ListEmptyState
+              title={feedHasActiveFilters(urlState) ? "검색 결과가 없어요." : "아직 게시글이 없어요."}
+              description={
+                feedHasActiveFilters(urlState)
+                  ? "다른 검색어를 입력하거나 필터를 초기화해보세요."
+                  : "첫 업사이클 이야기를 남겨보세요."
+              }
+              action={
+                feedHasActiveFilters(urlState) ? (
+                  <button
+                    type="button"
+                    onClick={() => updateUrl({ query: "", campaignOnly: false, sort: "latest", page: 0 })}
+                    className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                  >
+                    전체 게시글 보기
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/posts/new")}
+                    className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                  >
+                    새 글 작성
+                  </button>
+                )
+              }
+            />
           ) : null}
 
           {response && response.content.length > 0 ? (
