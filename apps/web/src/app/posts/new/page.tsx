@@ -67,8 +67,8 @@ export default function PostCreatePage() {
 
   useEffect(() => {
     if (!getToken()) {
-      toast.error("로그인이 필요합니다.");
-      router.replace("/login");
+      toast.error("로그인 후 글을 작성할 수 있어요.");
+      router.replace("/login?next=/posts/new");
     }
   }, [router]);
 
@@ -110,8 +110,8 @@ export default function PostCreatePage() {
 
     const requestToken = getToken();
     if (!requestToken) {
-      toast.error("로그인이 필요합니다.");
-      router.push("/login");
+      toast.error("로그인 후 글을 작성할 수 있어요.");
+      router.push("/login?next=/posts/new");
       return;
     }
 
@@ -129,8 +129,8 @@ export default function PostCreatePage() {
       if (getToken() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
-        toast.error("로그인이 필요합니다.");
-        router.push("/login");
+        toast.error("로그인 후 글을 작성할 수 있어요.");
+        router.push("/login?next=/posts/new");
       } else {
         toast.error("게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }

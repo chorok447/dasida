@@ -219,14 +219,14 @@ function PostCard({
   const [commentText, setCommentText] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const requireLogin = () => {
-    clearSession();
-    toast.error("로그인이 필요합니다.");
+  const promptLogin = (message: string, expired = false) => {
+    if (expired) clearSession();
+    toast.error(message);
     router.push("/login");
   };
 
   const onLike = async () => {
-    if (!getToken()) return requireLogin();
+    if (!getToken()) return promptLogin("로그인 후 이용할 수 있어요.");
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
     const requestToken = getToken(); // 요청 identity 캡처
@@ -239,7 +239,7 @@ function PostCard({
       setLiked(updated.likedByMe);
     } catch (e) {
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
-      if (e instanceof ApiError && e.status === 401) requireLogin();
+      if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
       else toast.error("좋아요 처리에 실패했습니다.");
     } finally {
       setLiking(false);
@@ -248,7 +248,7 @@ function PostCard({
 
   const onBookmark = async () => {
     const requestToken = getToken();
-    if (!requestToken) return requireLogin();
+    if (!requestToken) return promptLogin("로그인 후 이용할 수 있어요.");
     if (bookmarking || refreshing) return;
     setBookmarking(true);
     try {
@@ -259,7 +259,7 @@ function PostCard({
       setBookmarked(updated.bookmarkedByMe);
     } catch (e) {
       if (getToken() !== requestToken) return;
-      if (e instanceof ApiError && e.status === 401) requireLogin();
+      if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
       else toast.error("북마크 처리에 실패했습니다.");
     } finally {
       setBookmarking(false);
@@ -286,7 +286,7 @@ function PostCard({
     const text = commentText.trim();
     if (!text || busy) return;
     if (text.length > MAX_COMMENT_LENGTH) return toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
-    if (!getToken()) return requireLogin();
+    if (!getToken()) return promptLogin("로그인해야 댓글을 작성할 수 있어요.");
     setBusy(true);
     try {
       const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
@@ -295,7 +295,7 @@ function PostCard({
       setCommentText("");
     } catch (e) {
       setBusy(false);
-      if (e instanceof ApiError && e.status === 401) requireLogin();
+      if (e instanceof ApiError && e.status === 401) promptLogin("로그인해야 댓글을 작성할 수 있어요.", true);
       else toast.error("댓글 작성에 실패했습니다.");
       return;
     }
@@ -569,6 +569,15 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
     updateUrl({ query, page: 0 }, true);
   }, [updateUrl]);
 
+  const goToNewPost = () => {
+    if (!getToken()) {
+      toast.error("로그인 후 글을 작성할 수 있어요.");
+      router.push("/login?next=/posts/new");
+      return;
+    }
+    router.push("/posts/new");
+  };
+
   const searchPath = useMemo(() => {
     const params = new URLSearchParams();
     if (urlState.query) params.set("q", urlState.query);
@@ -642,7 +651,9 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
       <div className="relative mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <main>
           <button
-            onClick={() => router.push("/posts/new")}
+            type="button"
+            onClick={goToNewPost}
+            aria-label="새 글 작성"
             className="w-full flex items-center gap-3 p-4 rounded-2xl border mb-6 hover:-translate-y-0.5 transition-transform text-left"
             style={{
               background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
@@ -730,7 +741,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => router.push("/posts/new")}
+                    onClick={goToNewPost}
                     className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
                   >
                     새 글 작성

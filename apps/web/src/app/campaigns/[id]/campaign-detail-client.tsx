@@ -494,7 +494,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        toast.error("로그인이 필요합니다.");
+        toast.error("로그인 후 캠페인에 참여할 수 있어요.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 409) {
         toast.error("모집 기간이 아니거나 정원이 마감되었습니다.");
@@ -512,7 +512,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const leave = async () => {
     if (mutationBusy()) return;
     if (!getToken()) {
-      toast.error("로그인이 필요합니다.");
+      toast.error("로그인 후 캠페인에 참여할 수 있어요.");
       router.push("/login");
       return;
     }
@@ -532,7 +532,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        toast.error("로그인이 필요합니다.");
+        toast.error("로그인 후 캠페인에 참여할 수 있어요.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 404) {
         toast.error("존재하지 않는 캠페인입니다.");

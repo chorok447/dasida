@@ -304,7 +304,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       return;
     }
     if (!getToken()) {
-      toast.error("로그인이 필요합니다.");
+      toast.error("로그인해야 댓글을 작성할 수 있어요.");
       router.push("/login");
       return;
     }
@@ -324,7 +324,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        toast.error("로그인이 필요합니다.");
+        toast.error("로그인해야 댓글을 작성할 수 있어요.");
         router.push("/login");
       } else {
         toast.error("댓글 작성에 실패했습니다.");
@@ -457,7 +457,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
   const onLike = async () => {
     if (!getToken()) {
-      toast.error("로그인이 필요합니다.");
+      toast.error("로그인 후 이용할 수 있어요.");
       router.push("/login");
       return;
     }
@@ -476,7 +476,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        toast.error("로그인이 필요합니다.");
+        toast.error("로그인 후 이용할 수 있어요.");
         router.push("/login");
       } else {
         toast.error("좋아요 처리에 실패했습니다.");
@@ -489,7 +489,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const onBookmark = async () => {
     const requestToken = getToken();
     if (!requestToken) {
-      toast.error("로그인이 필요합니다.");
+      toast.error("로그인 후 이용할 수 있어요.");
       router.push("/login");
       return;
     }
@@ -506,7 +506,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       if (getToken() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        toast.error("로그인이 필요합니다.");
+        toast.error("로그인 후 이용할 수 있어요.");
         router.push("/login");
       } else {
         toast.error("북마크 처리에 실패했습니다.");

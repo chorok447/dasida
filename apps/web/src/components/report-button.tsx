@@ -38,14 +38,17 @@ export function ReportButton({
 
   if (ownedByMe) return null;
 
+  const loginToast = "로그인 후 신고할 수 있어요.";
+
   const goToLogin = () => {
     const next = `${window.location.pathname}${window.location.search}`;
     router.push(`/login?next=${encodeURIComponent(next)}`);
   };
 
   const open = () => {
+    if (submitting) return;
     if (!getToken()) {
-      toast.error("신고하려면 로그인이 필요합니다.");
+      toast.error(loginToast);
       goToLogin();
       return;
     }
@@ -72,6 +75,7 @@ export function ReportButton({
     }
     const requestToken = getToken();
     if (!requestToken) {
+      toast.error(loginToast);
       goToLogin();
       return;
     }
@@ -98,6 +102,7 @@ export function ReportButton({
       if (caught instanceof ApiError && caught.status === 401) {
         clearSession();
         dialogRef.current?.close();
+        toast.error(loginToast);
         goToLogin();
       } else if (caught instanceof ApiError && caught.status === 409) {
         setError("이미 신고한 항목입니다.");
@@ -208,6 +213,8 @@ export function ReportButton({
             <button
               type="submit"
               disabled={submitting || !reason}
+              aria-busy={submitting}
+              aria-label={submitting ? "신고 접수 중" : "신고하기"}
               className="inline-flex items-center gap-2 rounded-full bg-[#ed5c48] px-5 py-2.5 text-[13px] text-white transition-colors hover:bg-[#d94e3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />}
