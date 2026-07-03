@@ -68,14 +68,15 @@ export function SiteHeader() {
     <header
       className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b transition-colors"
       style={{
-        background: dark ? "rgba(15,31,34,0.55)" : "rgba(249,247,242,0.7)",
+        // 히어로 그라데이션이 비쳐도 로고/태그라인 대비 4.5:1을 지키는 최소 불투명도
+        background: dark ? "rgba(15,31,34,0.82)" : "rgba(249,247,242,0.88)",
         borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" style={{ color: dark ? "#7dd3a3" : "#1c4044" }}>
           <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
-          <span className="hidden text-[10px] tracking-[0.3em] opacity-60 sm:inline">UPCYCLE</span>
+          <span className="hidden text-[10px] tracking-[0.3em] opacity-90 sm:inline">UPCYCLE</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1">
           {items.map((it) => {

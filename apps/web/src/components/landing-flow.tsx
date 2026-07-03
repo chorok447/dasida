@@ -55,9 +55,10 @@ export function LandingFlow() {
 
         <ol className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
           {steps.map((step, i) => (
-            <ScrollReveal key={step.title} delay={i * 0.15}>
-              <li
-                className="relative rounded-3xl border p-8 h-full list-none"
+            <li key={step.title} className="list-none">
+              <ScrollReveal
+                delay={i * 0.15}
+                className="relative rounded-3xl border p-8 h-full"
                 style={{
                   borderColor: dark ? "rgba(249,247,242,0.12)" : "rgba(28,64,68,0.12)",
                   background: dark ? "rgba(249,247,242,0.04)" : "#ffffff",
@@ -90,8 +91,8 @@ export function LandingFlow() {
                 >
                   {step.desc}
                 </p>
-              </li>
-            </ScrollReveal>
+              </ScrollReveal>
+            </li>
           ))}
         </ol>
 

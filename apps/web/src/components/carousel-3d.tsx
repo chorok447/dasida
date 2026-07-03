@@ -23,7 +23,18 @@ export function Carousel3D() {
   const dark = theme === "dark";
   const rotation = useMotionValue(0);
   const [paused, setPaused] = useState(false);
-  const radius = 420;
+  // 640px 미만에서는 반경·카드를 줄여 화면 밖 클리핑을 막는다.
+  const [small, setSmall] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setSmall(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const radius = small ? 210 : 420;
+  const cardW = small ? 180 : 260;
+  const cardH = small ? 240 : 340;
   const step = 360 / items.length;
 
   const reduce = useReducedMotion();
@@ -77,7 +88,7 @@ export function Carousel3D() {
 
       <div
         className="relative mx-auto"
-        style={{ perspective: 1600, height: 460 }}
+        style={{ perspective: 1600, height: small ? 330 : 460 }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
@@ -96,10 +107,10 @@ export function Carousel3D() {
                 key={it.title}
                 className="absolute top-1/2 left-1/2"
                 style={{
-                  width: 260,
-                  height: 340,
-                  marginLeft: -130,
-                  marginTop: -170,
+                  width: cardW,
+                  height: cardH,
+                  marginLeft: -cardW / 2,
+                  marginTop: -cardH / 2,
                   transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
                   transformStyle: "preserve-3d",
                 }}
@@ -135,7 +146,7 @@ export function Carousel3D() {
                       <h3
                         style={{
                           fontFamily: "'Black Han Sans', sans-serif",
-                          fontSize: 20,
+                          fontSize: small ? 15 : 20,
                           lineHeight: 1.3,
                         }}
                       >

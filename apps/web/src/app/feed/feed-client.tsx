@@ -340,7 +340,7 @@ function PostCard({
               <button onClick={toggleComments} className="flex items-center gap-1">
                 <MessageCircle size={14} /> {commentCount}
               </button>
-              <button className="flex items-center gap-1">
+              <button className="flex items-center gap-1" aria-label="공유하기">
                 <Share2 size={14} />
               </button>
               <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
