@@ -37,11 +37,12 @@ Nginx (host) :80 / :443
 | 항목 | 권장 |
 |------|------|
 | VM | **1대**로 시작 |
-| api / web | Docker Compose 로 실행 ([`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml)) |
-| Nginx | **호스트에 설치** (초기). compose service 로 넣는 방식은 후속 선택지 |
-| Public ingress | Nginx **80/443 만** 허용 |
-| api/web container port | 가능하면 **127.0.0.1** 또는 private network 로만 publish |
-| DB / Redis | **public 노출 금지** — compose 내부 또는 external managed ([single-vm-compose-deployment.md](./single-vm-compose-deployment.md)) |
+| Public ingress | Nginx **80/443** 만 인터넷에 허용 |
+| SSH | **22/tcp** — 관리자 IP 대역으로 제한 권장 (전 세계 개방 비권장) |
+| api / web | Docker Compose — [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (+ single VM 시 [`compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml)) |
+| Nginx | **호스트 설치** 1차 권장. compose service(Nginx container)는 후속 선택지 |
+| api/web container port | **`127.0.0.1` bind** (base compose template 기본값) — Nginx upstream `127.0.0.1:3000|8080` |
+| DB / Redis | **public 노출 금지** — compose internal 또는 external managed ([single-vm-compose-deployment.md](./single-vm-compose-deployment.md)) |
 
 ### Docker Hub image pin
 
@@ -68,6 +69,7 @@ Nginx (host) :80 / :443
 
 **정책**
 
+- Web origin(`https://example.com`)과 API origin(`https://api.example.com`)이 **다르므로** 브라우저 cross-origin 요청에 **CORS 설정 필수** (`APP_CORS_ALLOWED_ORIGINS`)
 - CORS **wildcard(`*`) 금지**
 - **`localhost` / `127.0.0.1` 금지** (prod)
 - trailing slash: base URL 은 **슬래시 없이** 통일 (`https://api.example.com` — 끝에 `/` 없음)
@@ -94,11 +96,15 @@ Nginx (host) :80 / :443
 | `example.com` | `127.0.0.1:3000` (또는 compose `web:3000`) | Next.js |
 | `api.example.com` | `127.0.0.1:8080` (또는 compose `api:8080`) | Spring Boot |
 
-**포트 노출 권장**
+**포트 · compose network**
 
-- compose template 은 현재 `8080:8080`, `3000:3000` publish 이다.
-- Nginx 가 같은 호스트에 있으면 compose ports 를 `127.0.0.1:8080:8080`, `127.0.0.1:3000:3000` 으로 바꾸는 **서버 측 override** 를 권장한다 (이 template 파일 자체는 후속 PR).
-- 방화벽에서 **3000/8080 을 인터넷에 열지 않는다**.
+| 접근 경로 | 권장 upstream | 비고 |
+|-----------|---------------|------|
+| Host Nginx (초기) | `127.0.0.1:3000` / `127.0.0.1:8080` | base [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) 가 **127.0.0.1 bind** |
+| Nginx in compose network (후속) | `http://web:3000` / `http://api:8080` | Nginx container 를 같은 compose stack 에 넣을 때 |
+
+- 방화벽/SG: 인터넷 → **80/443**(및 제한된 **22**)만. **3000/8080/3306/6379** 는 외부에 열지 않는다.
+- mysql/redis 는 compose **internal DNS**(`mysql`, `redis`)로만 api 가 접근 ([`compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml)).
 
 ---
 
@@ -206,9 +212,10 @@ Nginx 뒤에서 HTTPS origin 을 애플리케이션이 인식하려면 `X-Forwar
 
 | 구성 요소 | 역할 |
 |-----------|------|
-| [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) | api/web **container 실행** — image pull, env, healthcheck |
-| Host Nginx | **public ingress** — TLS 종료, vhost 라우팅 |
-| External / private MySQL·Redis | compose template 에 **포함하지 않음** — `.env` 로 endpoint 주입 |
+| [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) | api/web 실행 — `127.0.0.1:3000|8080` publish |
+| [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) | single VM 시 mysql/redis 추가( internal only ) |
+| Host Nginx | public ingress — TLS 종료, vhost 라우팅 |
+| External / compose MySQL·Redis | api env `DB_URL` / `SPRING_DATA_REDIS_*` 로 주입 |
 
 **권장**
 
@@ -229,13 +236,13 @@ Nginx 뒤에서 HTTPS origin 을 애플리케이션이 인식하려면 `X-Forwar
 
 - [ ] 실제 도메인 결정 (`example.com` → 운영 FQDN)
 - [ ] VM provider 결정
-- [ ] host Nginx install 절차·runbook 작성
+- [ ] host Nginx install vs Nginx container 결정·runbook
 - [ ] TLS 발급 방식 결정 (Let's Encrypt vs managed)
 - [ ] `NEXT_PUBLIC_API_URL` 등록 + Web image 재빌드 (도메인 확정 후)
 - [ ] `APP_CORS_ALLOWED_ORIGINS` 서버 env 준비 (Web 도메인 확정 후)
 - [ ] 서버 `.env.prod` 작성 (Git 제외)
 - [ ] production deploy runbook 작성
-- [ ] compose ports localhost bind override (서버 측)
+- [x] compose api/web `127.0.0.1` port bind — [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml)
 - [ ] (optional) `linux/arm64` multi-arch build
 - [ ] (optional) Nginx 를 compose service 로 통합
 
@@ -249,4 +256,5 @@ Nginx 뒤에서 HTTPS origin 을 애플리케이션이 인식하려면 `X-Forwar
 - [production-env-values-template.md](./production-env-values-template.md) — 운영 값 수집
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables 분류
 - [deploy/compose.prod.example.yml](../../../../deploy/compose.prod.example.yml) — api/web compose template
-- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 compose(mysql/redis 포함) 전략
+- [deploy/compose.single-vm.example.yml](../../../../deploy/compose.single-vm.example.yml) — single VM mysql/redis override
+- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 compose 전략
