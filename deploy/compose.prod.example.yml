@@ -52,6 +52,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # 브라우저용 API URL은 Web image build arg(NEXT_PUBLIC_API_URL)로 bake-in. SSR은 런타임 env.
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8080}
     depends_on:
       api:
         condition: service_healthy

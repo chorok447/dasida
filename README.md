@@ -70,6 +70,7 @@ docker compose -f compose.local.yml up --build
 - 종료: `Ctrl+C` 후 `docker compose -f compose.local.yml down` (DB 데이터는 volume `dasida-mysql-data` 에 보존)
 - volume까지 삭제: `docker compose -f compose.local.yml down -v`
 - `compose.local.yml` 의 DB/JWT 값은 **로컬 전용 placeholder**이며 운영 secret 이 아니다.
+- Web 컨테이너 SSR 은 compose 내부 `http://api:8080`(`API_INTERNAL_URL`)을, 브라우저는 `http://localhost:8080`(`NEXT_PUBLIC_API_URL`)을 사용한다. web 컨테이너 안에서 `127.0.0.1:8080`은 web 자신을 가리켜 API에 연결되지 않는다.
 
 ### Production container images (Docker Hub)
 
@@ -115,7 +116,8 @@ pnpm dev:api        # Spring Boot (http://localhost:8080)
 | `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` | api | Redis-compatible store 접속(compose `local` 프로파일). 기본 `localhost:6379`. |
 | `APP_RATE_LIMIT_*` / `app.rate-limit.*` | api | rate limit 정책·store. 기본 `memory`, compose `local` 은 `redis`. 상세는 [Rate limit](#rate-limit) 참고. |
 | `APP_CORS_ALLOWED_ORIGINS` | api | **prod 필수.** 허용할 프론트 origin(comma-separated). prod 에서 미설정/`*`/localhost 면 기동 실패. |
-| `NEXT_PUBLIC_API_URL` | web | 백엔드 베이스 URL. 기본 `http://localhost:8080`. |
+| `NEXT_PUBLIC_API_URL` | web | 브라우저(클라이언트) fetch용 API 베이스 URL. Web image build arg 로 bake-in. 기본 `http://localhost:8080`. |
+| `API_INTERNAL_URL` | web (런타임) | SSR·Server Components용 API 베이스 URL. Docker Compose 에서 `http://api:8080` 등 내부 DNS. 미설정 시 `NEXT_PUBLIC_API_URL` fallback. 클라이언트 번들에 노출하지 않음. |
 
 ## 빌드
 

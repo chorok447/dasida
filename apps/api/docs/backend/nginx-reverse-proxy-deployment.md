@@ -65,13 +65,15 @@ Nginx (host) :80 / :443
 | 변수 | 예시 값 | 주입 위치 |
 |------|---------|-----------|
 | `NEXT_PUBLIC_API_URL` | `https://api.example.com` | GitHub **Repository Variable** → Web image **build arg** |
+| `API_INTERNAL_URL` | `http://api:8080` | 서버 `.env.prod` → web 컨테이너 **런타임 env** (SSR 전용) |
 | `APP_CORS_ALLOWED_ORIGINS` | `https://example.com` | 서버 `.env.prod` / secret manager → API **runtime env** |
 
 **정책**
 
 - Web origin(`https://example.com`)과 API origin(`https://api.example.com`)이 **다르므로** 브라우저 cross-origin 요청에 **CORS 설정 필수** (`APP_CORS_ALLOWED_ORIGINS`)
 - CORS **wildcard(`*`) 금지**
-- **`localhost` / `127.0.0.1` 금지** (prod)
+- **`localhost` / `127.0.0.1` 금지** (prod CORS·public URL)
+- web 컨테이너 SSR 은 `API_INTERNAL_URL=http://api:8080`(compose 내부 DNS). `127.0.0.1:8080`은 web 자신을 가리켜 ECONNREFUSED 가 난다.
 - trailing slash: base URL 은 **슬래시 없이** 통일 (`https://api.example.com` — 끝에 `/` 없음)
 - Web origin 과 `APP_CORS_ALLOWED_ORIGINS` 는 **정확히 일치**해야 한다
 - 여러 origin 이 필요하면 comma-separated **명시 allowlist**

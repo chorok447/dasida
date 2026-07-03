@@ -32,6 +32,7 @@
 | name | GitHub target | required before main merge | required before deploy | validation rule | owner / decision needed |
 |------|---------------|---------------------------|------------------------|-----------------|-------------------------|
 | `NEXT_PUBLIC_API_URL` | Repository Variable | **no** (CI placeholder로 main PR 가능) | **yes** (Web image build) | 운영 API **public** URL (`https://` 권장). 예: `https://api.example.com` ([Nginx 배포안](./nginx-reverse-proxy-deployment.md)). localhost·내부 전용 URL만 있으면 Web 빌드 의미 없음. trailing slash 없이 base URL. **도메인 확정 전 등록 보류** | Web/API 도메인 확정 |
+| `API_INTERNAL_URL` | 서버 `.env.prod` (web runtime) | no | **yes** (compose SSR) | compose 내부 API URL. 예: `http://api:8080`. web 컨테이너 SSR 전용 — `NEXT_PUBLIC_` 접두 없음 | compose web env |
 | `DOCKERHUB_USERNAME` | Repository Variable | **no** (main PR build-only 가능) | **yes** (main push image publish) | Docker Hub **실제 계정명**. image: `docker.io/<username>/dasida-api|web` | Docker Hub 계정 확정 |
 
 ### API runtime (서버 `.env.prod` 1차 권장)
