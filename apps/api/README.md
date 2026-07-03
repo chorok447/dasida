@@ -64,6 +64,26 @@ API 명세는 `springdoc-openapi` 로 코드에서 자동 생성된다. Controll
 - **public**: 대부분의 `GET` 목록/상세/검색 API. JWT 가 있으면 응답에 사용자별 상태(`likedByMe`, `joinedByMe`, `ownedByMe` 등)가 채워진다.
 - **bearerAuth**: 작성/수정/삭제, 좋아요/북마크/참여, 알림, 신고, 마이페이지(`/mine`, `/bookmarks`, `/joined`), 참가자 관리 등 사용자별 데이터/행위 API.
 
+### 로그아웃과 토큰 무효화(denylist)
+
+stateless JWT 라 **refresh token 은 없고** access token 하나만 사용한다. 로그아웃은 서버가 해당 access token 을 만료 전까지 denylist 에 올려 재사용을 차단한다.
+
+- **`POST /api/auth/logout`** (bearerAuth): 현재 `Authorization: Bearer <access token>` 을 denylist 에 등록한다.
+  - 성공: `200 { "loggedOut": true }`
+  - 토큰 없음 / 깨진 토큰 / 이미 로그아웃(denylisted)된 토큰: `401`
+  - 로그아웃 후 **같은 access token** 으로 인증 API 호출 시 `401`
+- **refresh token 은 없다.** 토큰 재발급은 재로그인으로 한다(`updateProfile`/`changePassword`/`changeEmail` 은 응답에 새 토큰을 함께 반환).
+- 프론트엔드는 `localStorage` 토큰 삭제와 함께 이 `logout` API 를 호출할 수 있다(프론트 코드는 이 문서 범위 밖).
+
+**denylist 동작(요약)**:
+
+- 원본 JWT 는 저장하지 않고 **SHA-256 hash** 만 저장한다.
+- Redis key: `denylist:jwt:access:sha256:{tokenHash}`, value 는 placeholder, TTL = access token 남은 만료 시간(자동 소멸).
+- store 는 rate limit 과 동일 패턴: 기본/test 는 in-memory, compose local 은 Redis/Valkey. **prod Redis store 적용은 아직 TODO**.
+- Redis 장애 시 denylist 는 **fail-closed**(인증 거절)로 동작한다.
+
+상세: [logout/denylist 설계](docs/backend/auth-token-revocation.md), [Redis 보안 store 운영 정책](docs/backend/redis-security-store-policy.md).
+
 ### CORS 설정
 
 CORS 는 `app.cors.*`(`CorsProperties`)로 관리하며 `/api/**` 에 적용된다.
