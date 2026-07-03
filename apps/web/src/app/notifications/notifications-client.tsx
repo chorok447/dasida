@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Bell, MessageCircle, Users, CheckCheck, Check, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Bell, MessageCircle, Users, CheckCheck, Check, Trash2, Loader2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Pagination } from "@/components/ui/pagination";
@@ -18,6 +20,9 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   relativeTime,
+  notificationTypeLabel,
+  isNotificationNavigable,
+  type NotificationItem,
   type NotificationsResponse,
 } from "@/data/notifications";
 
@@ -29,9 +34,143 @@ const filters: { id: "all" | "unread"; label: string }[] = [
 ];
 
 function iconFor(type: string) {
-  if (type === "CAMPAIGN_JOINED") return <Users size={16} />;
-  if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} />;
-  return <Bell size={16} />;
+  if (type === "CAMPAIGN_JOINED") return <Users size={16} aria-hidden />;
+  if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} aria-hidden />;
+  return <Bell size={16} aria-hidden />;
+}
+
+function NotificationRow({
+  item,
+  dark,
+  fg,
+  cardBg,
+  cardBorder,
+  pending,
+  deleting,
+  onOpen,
+  onMarkRead,
+  onDelete,
+}: {
+  item: NotificationItem;
+  dark: boolean;
+  fg: string;
+  cardBg: string;
+  cardBorder: string;
+  pending: boolean;
+  deleting: boolean;
+  onOpen: (item: NotificationItem) => void;
+  onMarkRead: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const navigable = isNotificationNavigable(item.href);
+  const timeLabel = relativeTime(item);
+  const statusLabel = item.read ? "읽음" : "안 읽음";
+  const rowStyle = {
+    background: item.read ? cardBg : dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.12)",
+    borderColor: cardBorder,
+  };
+  const content = (
+    <>
+      <div className="relative flex-shrink-0">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl"
+          style={{ background: "rgba(20,138,144,0.14)", color: "#148a90" }}
+        >
+          {iconFor(item.type)}
+        </div>
+        {!item.read && (
+          <span
+            className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#7dd3a3] ring-2 ring-[#0f1f22]/10"
+            aria-hidden
+          />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span
+            className="text-[14px] font-medium line-clamp-1"
+            style={{ color: fg, opacity: item.read ? 0.72 : 1 }}
+          >
+            {item.title}
+          </span>
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{
+              background: item.read
+                ? dark
+                  ? "rgba(255,255,255,0.06)"
+                  : "rgba(28,64,68,0.06)"
+                : "rgba(125,211,163,0.22)",
+              color: item.read ? (dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)") : "#1c4044",
+            }}
+          >
+            {statusLabel}
+          </span>
+        </div>
+        <p
+          className="mt-0.5 text-[12px] line-clamp-2"
+          style={{ color: fg, opacity: item.read ? 0.55 : 0.75 }}
+        >
+          {item.body}
+        </p>
+        <p className="mt-1 text-[11px] opacity-60 sm:hidden" style={{ color: fg }}>
+          {timeLabel} · {notificationTypeLabel(item.type)}
+        </p>
+      </div>
+      <span className="hidden flex-shrink-0 text-[11px] opacity-60 sm:inline" style={{ color: fg }}>
+        {timeLabel}
+      </span>
+    </>
+  );
+
+  return (
+    <div
+      className="flex items-stretch gap-2 rounded-2xl border p-3 sm:gap-3 sm:p-4 transition-[background-color,border-color,box-shadow] hover:shadow-md"
+      style={rowStyle}
+    >
+      {navigable ? (
+        <Link
+          href={item.href}
+          onClick={(event) => {
+            if (!item.read) {
+              event.preventDefault();
+              onOpen(item);
+            }
+          }}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-colors hover:bg-[#7dd3a3]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3] py-1"
+          aria-label={`${item.title}, ${statusLabel}, ${timeLabel}`}
+        >
+          {content}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-3 py-1" role="group" aria-label={`${item.title}, ${statusLabel}`}>
+          {content}
+        </div>
+      )}
+      {!item.read && (
+        <button
+          type="button"
+          onClick={() => onMarkRead(item.id)}
+          disabled={pending || deleting}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+          style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
+          aria-label="읽음으로 표시"
+        >
+          {pending ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Check size={15} aria-hidden />}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => onDelete(item.id)}
+        disabled={deleting || pending}
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ed5c48]"
+        style={{ background: dark ? "rgba(237,92,72,0.12)" : "rgba(237,92,72,0.08)", color: "#ed5c48" }}
+        aria-label="알림 삭제"
+      >
+        {deleting ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Trash2 size={14} aria-hidden />}
+      </button>
+    </div>
+  );
 }
 
 type Result = { identity: string; status: "success" | "error"; data: NotificationsResponse | null };
@@ -113,11 +252,13 @@ export default function NotificationsClient() {
   const markAll = async () => {
     if (busy) return;
     setBusy(true);
+    setActionError("");
     try {
       await markAllNotificationsRead();
-      setRetryTick((t) => t + 1); // 목록·unreadCount 재조회
+      setRetryTick((t) => t + 1);
+      toast.success("모든 알림을 읽음 처리했습니다.");
     } catch {
-      /* 실패해도 화면 유지 — 다음 조회에서 정합 */
+      toast.error("읽음 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
       setBusy(false);
     }
@@ -126,11 +267,12 @@ export default function NotificationsClient() {
   const markOne = async (id: string) => {
     if (pendingIds.has(id)) return;
     setPendingIds((s) => new Set(s).add(id));
+    setActionError("");
     try {
       await markNotificationRead(id);
       setRetryTick((t) => t + 1);
     } catch {
-      /* noop */
+      toast.error("읽음 처리에 실패했습니다.");
     } finally {
       setPendingIds((s) => {
         const next = new Set(s);
@@ -140,13 +282,14 @@ export default function NotificationsClient() {
     }
   };
 
-  const open = async (id: string, href: string, read: boolean) => {
+  const open = async (item: NotificationItem) => {
+    if (!isNotificationNavigable(item.href)) return;
     try {
-      if (!read) await markNotificationRead(id);
+      if (!item.read) await markNotificationRead(item.id);
     } catch {
       /* 읽음 실패해도 이동은 진행 */
     }
-    router.push(href);
+    router.push(item.href);
   };
 
   const removeOne = async (id: string) => {
@@ -254,8 +397,10 @@ export default function NotificationsClient() {
               return (
                 <button
                   key={f.id}
+                  type="button"
                   onClick={() => changeFilter(f.id)}
-                  className="relative px-4 py-2 text-[13px] rounded-full"
+                  aria-pressed={active}
+                  className="relative px-4 py-2 text-[13px] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
                   style={{ color: active ? "#0f1f22" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
                 >
                   {active && (
@@ -271,10 +416,12 @@ export default function NotificationsClient() {
               type="button"
               onClick={markAll}
               disabled={busy || cleaningRead || unreadCount === 0}
-              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40"
+              aria-busy={busy}
+              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
               style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
             >
-              <CheckCheck size={15} /> 모두 읽음
+              {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <CheckCheck size={15} aria-hidden />}
+              {busy ? "처리 중…" : "모두 읽음"}
             </button>
             <button
               type="button"
@@ -291,84 +438,50 @@ export default function NotificationsClient() {
         {actionError ? <p role="alert" className="mb-4 text-[13px] text-[#ed5c48]">{actionError}</p> : null}
 
         {loading ? (
-          <StatePanel compact>알림을 불러오는 중입니다.</StatePanel>
+          <StatePanel compact>
+            <Loader2 size={28} className="animate-spin text-[#7dd3a3]" aria-hidden />
+            <p>알림을 불러오는 중입니다.</p>
+          </StatePanel>
         ) : error ? (
           <StatePanel compact role="alert">
+            <Bell size={28} className="opacity-40" aria-hidden />
             <p className="opacity-80">알림을 불러오지 못했습니다.</p>
             <button
               type="button"
               onClick={() => setRetryTick((t) => t + 1)}
-              className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
-              style={{ background: "#7dd3a3", color: "#0f1f22" }}
+              className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f1f22]"
             >
               다시 시도
             </button>
           </StatePanel>
         ) : list.length === 0 ? (
           <StatePanel compact>
-            {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
+            <Bell size={32} className="opacity-35" aria-hidden />
+            <p className="font-medium">
+              {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
+            </p>
+            <p className="text-[12px] opacity-60">
+              {filter === "unread"
+                ? "새 알림이 오면 이 목록에 표시됩니다."
+                : "댓글, 캠페인 참여 등 활동이 있으면 여기에 모입니다."}
+            </p>
           </StatePanel>
         ) : (
           <div className="space-y-2">
             {list.map((n, i) => (
               <StaggerItem key={n.id} index={i}>
-              <div
-                className="flex items-center gap-3 rounded-2xl border p-4 transition-[background-color,border-color,box-shadow] hover:shadow-md"
-                style={{
-                  background: n.read ? cardBg : dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.12)",
-                  borderColor: cardBorder,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => open(n.id, n.href, n.read)}
-                  className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-colors hover:bg-[#7dd3a3]/10"
-                >
-                  <div className="relative flex-shrink-0">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: "rgba(20,138,144,0.14)", color: "#148a90" }}
-                    >
-                      {iconFor(n.type)}
-                    </div>
-                    {!n.read && <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#7dd3a3]" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] truncate" style={{ color: fg }}>{n.title}</div>
-                    <div className="text-[12px] opacity-70 truncate" style={{ color: fg }}>{n.body}</div>
-                  </div>
-                  <span className="hidden flex-shrink-0 text-[11px] opacity-60 sm:inline" style={{ color: fg }}>
-                    {relativeTime(n)}
-                  </span>
-                </button>
-                {!n.read && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      markOne(n.id);
-                    }}
-                    disabled={pendingIds.has(n.id)}
-                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40"
-                    style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
-                    aria-label="읽음 처리"
-                  >
-                    <Check size={15} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    removeOne(n.id);
-                  }}
-                  disabled={deletingIds.has(n.id) || pendingIds.has(n.id)}
-                  className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40"
-                  style={{ background: dark ? "rgba(237,92,72,0.12)" : "rgba(237,92,72,0.08)", color: "#ed5c48" }}
-                  aria-label="알림 삭제"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
+                <NotificationRow
+                  item={n}
+                  dark={dark}
+                  fg={fg}
+                  cardBg={cardBg}
+                  cardBorder={cardBorder}
+                  pending={pendingIds.has(n.id)}
+                  deleting={deletingIds.has(n.id)}
+                  onOpen={open}
+                  onMarkRead={markOne}
+                  onDelete={removeOne}
+                />
               </StaggerItem>
             ))}
           </div>
