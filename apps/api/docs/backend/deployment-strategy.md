@@ -24,6 +24,8 @@
 
 ## 1차 추천: Docker Compose on VM
 
+**Public ingress**: 호스트 **Nginx** reverse proxy(80/443) — 상세 [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md).
+
 ### 추천 이유
 
 1. **Docker Hub image와 정합** — `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web`를 서버에서 `docker compose pull` 후 기동하면 된다.
@@ -171,12 +173,13 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 ## 후속 작업 (코드/인프라 PR로 분리)
 
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
-2. 서버 runbook: Docker Hub login, pull, deploy, rollback
-3. CD workflow에 opt-in deploy job (명시 승인 후)
-4. prod Redis store 설정 PR (필요 시)
-5. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
-6. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
-7. (optional) `linux/arm64` multi-arch build
+2. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
+3. 서버 runbook: Docker Hub login, pull, deploy, rollback
+4. CD workflow에 opt-in deploy job (명시 승인 후)
+5. prod Redis store 설정 PR (필요 시)
+6. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
+7. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
+8. (optional) `linux/arm64` multi-arch build
 
 ---
 
@@ -185,4 +188,5 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables·Environment
 - [main-release-readiness.md](./main-release-readiness.md) — merge 전 체크리스트
 - [container-images.md](./container-images.md) — Docker Hub·CI
+- [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx ingress·TLS·도메인
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist
