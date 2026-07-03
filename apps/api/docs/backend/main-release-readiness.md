@@ -202,7 +202,8 @@ main merge 는 완료되었으나 **실제 deploy 전** 아래가 남아 있다:
 - [ ] `NEXT_PUBLIC_API_URL` 운영 값·Web image 재빌드 미완
 - [ ] Docker Hub repository visibility·서버 pull 권한 최종 확인
 - [ ] prod MySQL·(필요 시) Redis 인프라 미구축 (single VM compose 또는 managed — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md))
-- [ ] 배포 방식·담당·runbook 미결정 (Nginx runbook: [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md))
+- [ ] 배포 runbook 확인: [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) (문서화 완료 — **실제 deploy 미실행**)
+- [ ] Nginx/TLS: [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
 - [ ] prod Redis store 전환이 필요한데 미구현
 - [ ] (optional) ARM 서버용 multi-arch build
 
@@ -216,7 +217,8 @@ main merge 는 완료되었으나 **실제 deploy 전** 아래가 남아 있다:
 - [ ] `NEXT_PUBLIC_API_URL` 운영 값·Web image build arg 미확정
 - [ ] Docker Hub repository visibility·pull 권한 미설정
 - [ ] prod MySQL·(필요 시) Redis 인프라 미구축 (single VM compose 또는 managed — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md))
-- [ ] 배포 방식·담당·runbook 미결정 (Nginx runbook: [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md))
+- [ ] 배포 runbook 확인: [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) (문서화 완료 — **실제 deploy 미실행**)
+- [ ] Nginx/TLS: [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
 - [ ] prod Redis store 전환이 필요한데 미구현
 - [ ] 실제 deploy를 main merge와 동시에 진행하려는 경우 (**분리 권장**)
 
@@ -230,6 +232,7 @@ main merge 는 완료되었으나 **실제 deploy 전** 아래가 남아 있다:
 - [deployment-strategy.md](./deployment-strategy.md) — production 배포 전략 결정안
 - [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx reverse proxy·TLS·도메인
 - [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 Docker Compose·volume·스펙
+- [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) — amd64 VM 배포 runbook
 - [container-images.md](./container-images.md) — Docker Hub image·CI 정책
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist·Redis 정책
 - [auth-token-revocation.md](./auth-token-revocation.md) — logout denylist

@@ -3,7 +3,7 @@
 > **용도**: GitHub Secrets/Variables·`production` Environment·서버 `.env.prod` 생성 **전** 운영 값을 안전하게 수집·검토하는 체크리스트.  
 > **이 문서에 실제 secret/credential 값을 적지 않는다.** 값은 1Password·비공개 시트·서버 전용 파일 등 **Git 제외 저장소**에만 기록한다.
 
-관련: [github-secrets-and-environments.md](./github-secrets-and-environments.md), [main-release-readiness.md](./main-release-readiness.md), [Secrets 설정 runbook](./github-secrets-setup-runbook.md), [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md), [deploy/.env.prod.example](../../../../deploy/.env.prod.example).
+관련: [github-secrets-and-environments.md](./github-secrets-and-environments.md), [main-release-readiness.md](./main-release-readiness.md), [Secrets 설정 runbook](./github-secrets-setup-runbook.md), [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md), [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md), [deploy/.env.prod.example](../../../../deploy/.env.prod.example).
 
 ---
 
