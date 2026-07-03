@@ -1,6 +1,9 @@
 import { getToken } from "./auth";
+import { getClientApiBaseUrl, getServerApiBaseUrl } from "./api-url";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+function getApiBaseUrl(): string {
+  return typeof window === "undefined" ? getServerApiBaseUrl() : getClientApiBaseUrl();
+}
 
 /** API 실패를 status 기반으로 분기할 수 있게 하는 에러. 호출부는 `e instanceof ApiError && e.status === 401` 로 처리. */
 export class ApiError extends Error {
@@ -45,14 +48,14 @@ export async function apiGet<T>(path: string, token?: string | null): Promise<T>
     : token
       ? { Authorization: `Bearer ${token}` }
       : {};
-  const res = await fetch(`${BASE}${path}`, { headers, cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}${path}`, { headers, cache: "no-store" });
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
   return res.json() as Promise<T>;
 }
 
 /** 404 등 not-found는 null, 그 외 오류는 ApiError. */
 export async function apiGetOrNull<T>(path: string): Promise<T | null> {
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders(), cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}${path}`, { headers: authHeaders(), cache: "no-store" });
   if (res.status === 404) return null;
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
   return res.json() as Promise<T>;
@@ -65,7 +68,7 @@ export async function apiPost<T>(path: string, body: unknown, token?: string | n
     : token
       ? { Authorization: `Bearer ${token}` }
       : {};
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
@@ -82,7 +85,7 @@ export async function apiPut<T>(path: string, body: unknown, token?: string | nu
     : token
       ? { Authorization: `Bearer ${token}` }
       : {};
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
@@ -99,7 +102,7 @@ export async function apiDelete<T>(path: string, token?: string | null): Promise
     : token
       ? { Authorization: `Bearer ${token}` }
       : {};
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "DELETE",
     headers,
     cache: "no-store",
@@ -119,7 +122,7 @@ export async function apiDeleteWithBody<T>(
     : token
       ? { Authorization: `Bearer ${token}` }
       : {};
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
@@ -131,7 +134,7 @@ export async function apiDeleteWithBody<T>(
 
 /** 본문 없는 DELETE(204). apiDelete<T>는 JSON 파싱을 기대하므로 204 응답엔 이 헬퍼를 쓴다. */
 export async function apiDeleteVoid(path: string): Promise<void> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "DELETE",
     headers: authHeaders(),
     cache: "no-store",

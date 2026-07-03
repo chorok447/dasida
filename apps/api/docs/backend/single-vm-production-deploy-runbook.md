@@ -117,6 +117,7 @@ Apple Silicon 로컬 검증 시 `--platform linux/amd64` 필요([container-image
 | `DOCKERHUB_USERNAME` | Docker Hub namespace | 예: `your-dockerhub-username` |
 | `DASIDA_IMAGE_TAG` | image pin | 예: `sha-xxxxxxxx` |
 | `NEXT_PUBLIC_API_URL` | Web image **build-time** (참고용 기록) | 예: `https://api.example.com` — **런타임 env 로 변경 불가** |
+| `API_INTERNAL_URL` | web 컨테이너 SSR (compose **런타임 env**) | 예: `http://api:8080` — compose 내부 api 서비스 |
 | `SPRING_PROFILES_ACTIVE` | Spring profile | `prod` |
 | `JWT_SECRET` | JWT 서명 | `replace-with-secret-minimum-32-bytes` |
 | `DB_URL` | JDBC (single VM override 가 internal URL 설정) | external 시 managed host |
@@ -135,6 +136,12 @@ Apple Silicon 로컬 검증 시 `--platform linux/amd64` 필요([container-image
 3. 해당 **`sha-*` Web image** 로 deploy
 
 **placeholder Web image** 로는 브라우저→API 연동 **운영 검증이 제한**된다.
+
+### `API_INTERNAL_URL` (web SSR)
+
+- web 컨테이너의 Server Components·SSR fetch 전용. compose 내부 `http://api:8080`.
+- `127.0.0.1:8080`은 web 컨테이너 loopback 이라 API에 닿지 않는다.
+- [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) web service `environment` 에 주입. 클라이언트 번들에 포함되지 않음.
 
 생성 예 (서버에서만):
 
