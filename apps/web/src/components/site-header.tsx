@@ -27,6 +27,7 @@ export function SiteHeader() {
   const dark = theme === "dark";
   const pathname = usePathname();
   const router = useRouter();
+  const onNotifications = pathname === "/notifications";
   const { isLoggedIn, name, logout, token } = useAuthSession();
   // 카운트를 조회 시점의 token 과 함께 보관 → 토큰이 바뀌면 이전 사용자 값을 표시하지 않는다(reset 용 동기 setState 회피).
   const [unreadState, setUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
@@ -117,18 +118,27 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
-            style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
-            aria-label={unread > 0 ? `알림 ${unread > 99 ? "99+" : unread}개` : "알림"}
+            className="relative flex h-10 w-10 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
+            style={{
+              background: onNotifications
+                ? "rgba(125,211,163,0.18)"
+                : dark
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(28,64,68,0.06)",
+              color: onNotifications ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+            }}
+            aria-label={unread > 0 ? `알림, 읽지 않음 ${unread > 99 ? "99+" : unread}개` : "알림"}
+            aria-current={onNotifications ? "page" : undefined}
           >
-            <Bell size={16} />
+            <Bell size={18} aria-hidden />
             {isLoggedIn && unread > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, damping: 22 }}
-                className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-medium"
+                className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[10px] font-semibold leading-none"
                 style={{ background: "#ed5c48", color: "#ffffff" }}
+                aria-hidden
               >
                 {unread > 99 ? "99+" : unread}
               </motion.span>
