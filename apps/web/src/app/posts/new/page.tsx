@@ -2,55 +2,69 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, X, Send, Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { fashionPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
+import {
+  PostComposeForm,
+  PostComposeSubmitButton,
+  usePostComposeDraft,
+} from "@/components/post-compose-form";
+import {
+  type PostComposeField,
+  type PostComposeValues,
+  validatePostCompose,
+} from "@/data/posts";
 
-const sampleImages = [fashionPhotos[0], naturePhotos[1], objectPhotos[0], workshopPhotos[2]];
-
-// 서버 제한과 동일하게 맞춤.
-const MAX_TEXT_LENGTH = 1000;
-const MAX_TAGS = 10;
-const MAX_IMAGES = 4;
-
-function normalizeTags(tags: string[]) {
-  return Array.from(
-    new Set(
-      tags
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .map((t) => (t.startsWith("#") ? t : `#${t}`)),
-    ),
-  );
-}
+const EMPTY_VALUES: PostComposeValues = {
+  text: "",
+  images: [],
+  tags: [],
+  campaign: "",
+};
 
 export default function PostCreatePage() {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const [text, setText] = useState("");
-  const [images, setImages] = useState<string[]>([fashionPhotos[0]]);
-  const [tags, setTags] = useState<string[]>(["#업사이클"]);
-  const [tagInput, setTagInput] = useState("");
-  const [campaign, setCampaign] = useState<string>("");
+  const submittingRef = useRef(false);
+  const restoredRef = useRef(false);
+
+  const [values, setValues] = useState<PostComposeValues>(EMPTY_VALUES);
   const [category, setCategory] = useState("패션");
-  // ponytail: 선택용 드롭다운이라 클라이언트 fetch로 충분(폼 전체 서버분리 불필요).
   const [campaigns, setCampaigns] = useState<{ id: string; title: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<PostComposeField, string>>>({});
+
+  const { name } = useAuthSession();
+  const authorName = name ?? "사용자";
+
+  const { draftSaved, clearDraft } = usePostComposeDraft(
+    { ...values, category },
+    (draft) => {
+      if (restoredRef.current) return;
+      restoredRef.current = true;
+      setValues({
+        text: draft.text,
+        images: draft.images,
+        tags: draft.tags,
+        campaign: draft.campaign,
+      });
+      if (draft.category) setCategory(draft.category);
+    },
+  );
+
   useEffect(() => {
     apiGet<{ id: string; title: string }[]>("/api/campaigns")
       .then(setCampaigns)
       .catch(() => setCampaigns([]));
   }, []);
 
-  // 미리보기 작성자명을 내 이름으로. 로그인하지 않았으면 작성 페이지 진입 차단.
-  const { name } = useAuthSession();
-  const authorName = name ?? "사용자";
   useEffect(() => {
     if (!getToken()) {
       toast.error("로그인이 필요합니다.");
@@ -58,40 +72,76 @@ export default function PostCreatePage() {
     }
   }, [router]);
 
-  const [submitting, setSubmitting] = useState(false);
-  const goBack = () => router.push("/feed");
-  const submit = async () => {
-    const trimmedText = text.trim();
-    if (!trimmedText || submitting) return;
-    const normalizedTags = normalizeTags(tags);
-    const normalizedImages = Array.from(new Set(images.map((i) => i.trim()).filter(Boolean)));
-    if (trimmedText.length > MAX_TEXT_LENGTH) return toast.error(`내용은 ${MAX_TEXT_LENGTH}자 이하여야 합니다.`);
-    if (normalizedTags.length > MAX_TAGS) return toast.error(`태그는 최대 ${MAX_TAGS}개까지 가능합니다.`);
-    if (normalizedImages.length > MAX_IMAGES) return toast.error(`이미지는 최대 ${MAX_IMAGES}개까지 가능합니다.`);
-    setSubmitting(true);
-    try {
-      await apiPost("/api/posts", {
-        text: trimmedText,
-        images: normalizedImages,
-        tags: normalizedTags,
-        campaignId: campaign.trim() || null,
-      });
-      router.push("/feed");
-    } catch (e) {
-      setSubmitting(false);
-      toast.error(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다." : "게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    }
+  useEffect(() => {
+    const hasContent =
+      values.text.trim().length > 0 ||
+      values.images.length > 0 ||
+      values.tags.length > 0 ||
+      values.campaign.trim().length > 0;
+    if (!hasContent) return;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [values]);
+
+  const clearFieldError = (field: PostComposeField) => {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
   };
-  const addTag = () => {
-    if (!tagInput.trim()) return;
-    const t = tagInput.startsWith("#") ? tagInput : `#${tagInput}`;
-    setTags([...tags, t]);
-    setTagInput("");
+
+  const submit = async () => {
+    if (submittingRef.current) return;
+
+    const validation = validatePostCompose(values);
+    if (!validation.ok) {
+      toast.error(validation.message);
+      if (validation.field) {
+        setFieldErrors({ [validation.field]: validation.message });
+      }
+      return;
+    }
+
+    const requestToken = getToken();
+    if (!requestToken) {
+      toast.error("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+
+    submittingRef.current = true;
+    setSubmitting(true);
+    setFieldErrors({});
+
+    try {
+      await apiPost("/api/posts", validation.payload);
+      if (getToken() !== requestToken) return;
+      clearDraft();
+      toast.success("게시글이 등록되었습니다.");
+      router.push("/feed");
+    } catch (error) {
+      if (getToken() !== requestToken) return;
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        toast.error("로그인이 필요합니다.");
+        router.push("/login");
+      } else {
+        toast.error("게시에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   };
 
   return (
     <section
-      className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
+      className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20 transition-colors"
       style={{
         position: "relative",
         backgroundImage: dark
@@ -99,13 +149,13 @@ export default function PostCreatePage() {
           : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
       }}
     >
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-32 left-1/4 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-20">
+        <div className="absolute top-32 left-1/4 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
       </div>
 
-      <div className="max-w-6xl mx-auto relative">
-        <div className="text-center mb-10">
-          <p className="tracking-[0.4em] uppercase mb-3" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+      <div className="relative mx-auto max-w-6xl">
+        <div className="mb-10 text-center">
+          <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
             New Post
           </p>
           <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
@@ -113,167 +163,75 @@ export default function PostCreatePage() {
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div
             className="space-y-6 rounded-3xl border p-5 sm:p-8"
-            style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
+            style={{
+              background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
+              borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+            }}
           >
             <div>
-              <label className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                사진
+              <label htmlFor="post-category" className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+                카테고리
               </label>
-              <div
-                className="border-2 border-dashed rounded-2xl p-6 text-center"
-                style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)" }}
-              >
-                <Upload size={28} className="mx-auto mb-2" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }} />
-                <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                  드래그하거나 클릭해 업로드
-                </p>
-              </div>
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {sampleImages.map((src) => (
-                  <button
-                    key={src}
-                    type="button"
-                    onClick={() => setImages(images.includes(src) ? images.filter((s) => s !== src) : [...images, src])}
-                    className="aspect-square rounded-lg overflow-hidden border-2 relative"
-                    style={{ borderColor: images.includes(src) ? "#7dd3a3" : "transparent" }}
-                    aria-label={images.includes(src) ? "선택한 이미지 해제" : "이미지 선택"}
-                  >
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    {images.includes(src) && (
-                      <div className="absolute inset-0 bg-[#7dd3a3]/20" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="post-text" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                내용
-              </label>
-              <textarea
-                id="post-text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={5}
-                placeholder="어떤 업사이클을 하고 계신가요?"
-                className="ui-control resize-none rounded-2xl p-4 placeholder:opacity-50"
+              <select
+                id="post-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="ui-control px-3 py-2.5"
                 style={{
                   background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
                   border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
                   color: dark ? "#f9f7f2" : "#0f1f22",
                 }}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label htmlFor="post-category" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                  카테고리
-                </label>
-                <select
-                  id="post-category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="ui-control px-3 py-2.5"
-                  style={{
-                    background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-                    border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-                    color: dark ? "#f9f7f2" : "#0f1f22",
-                  }}
-                >
-                  {["패션", "도시텃밭", "공방", "기증", "음식", "가구"].map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="post-campaign" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                  캠페인 연결
-                </label>
-                <select
-                  id="post-campaign"
-                  value={campaign}
-                  onChange={(e) => setCampaign(e.target.value)}
-                  className="ui-control px-3 py-2.5"
-                  style={{
-                    background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-                    border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-                    color: dark ? "#f9f7f2" : "#0f1f22",
-                  }}
-                >
-                  <option value="">없음</option>
-                  {campaigns.map((c) => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="post-tag" className="text-[12px] tracking-[0.2em] uppercase mb-2 block" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
-                태그
-              </label>
-              <div
-                className="flex flex-wrap items-center gap-2 p-2 rounded-xl"
-                style={{
-                  background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-                  border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-                }}
               >
-                {tags.map((t) => (
-                  <span key={t} className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full" style={{ background: dark ? "rgba(125,211,163,0.15)" : "rgba(125,211,163,0.25)", color: dark ? "#7dd3a3" : "#1c4044" }}>
-                    {t}
-                    <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`${t} 태그 제거`}>
-                      <X size={10} />
-                    </button>
-                  </span>
+                {["패션", "도시텃밭", "공방", "기증", "음식", "가구"].map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
-                <input
-                  id="post-tag"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                  placeholder="태그 추가"
-                  className="flex-1 min-w-[100px] bg-transparent outline-none text-[13px] placeholder:opacity-50 px-2"
-                  style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-                />
-              </div>
+              </select>
             </div>
+
+            <PostComposeForm
+              values={values}
+              onChange={setValues}
+              campaigns={campaigns}
+              dark={dark}
+              fieldErrors={fieldErrors}
+              onFieldErrorClear={clearFieldError}
+              showDraftSaved={draftSaved}
+            />
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <button
                 type="button"
-                onClick={goBack}
-                className="flex-1 py-3 rounded-xl"
+                onClick={() => router.push("/feed")}
+                className="flex-1 rounded-xl py-3"
                 style={{
                   background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
                   color: dark ? "#f9f7f2" : "#0f1f22",
                 }}
               >
-                임시저장
+                취소
               </button>
-              <button
-                type="button"
+              <PostComposeSubmitButton
+                submitting={submitting}
+                disabled={!values.text.trim()}
                 onClick={submit}
-                disabled={submitting || !text.trim()}
-                className="flex-1 py-3 rounded-xl font-medium inline-flex items-center justify-center gap-2 disabled:opacity-40"
-                style={{ background: "#7dd3a3", color: "#0f1f22" }}
-              >
-                <Send size={14} /> {submitting ? "게시 중…" : "게시하기"}
-              </button>
+                idleLabel="게시하기"
+                pendingLabel="게시 중…"
+              />
             </div>
           </div>
 
-          <div className="lg:sticky lg:top-24 self-start">
-            <p className="text-[12px] tracking-[0.3em] uppercase mb-3" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
+          <div className="self-start lg:sticky lg:top-24">
+            <p className="mb-3 text-[12px] tracking-[0.3em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
               미리보기
             </p>
             <article
-              className="rounded-2xl border overflow-hidden shadow-[0_30px_60px_-20px_rgba(0,0,0,0.4)]"
+              className="overflow-hidden rounded-2xl border shadow-[0_30px_60px_-20px_rgba(0,0,0,0.4)]"
               style={{
                 background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
                 borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
@@ -282,35 +240,49 @@ export default function PostCreatePage() {
               <div className="flex items-center gap-3 p-4">
                 <Avatar name="나" />
                 <div>
-                  <div className="text-[14px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{authorName}</div>
-                  <div className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>방금 전 · {category}</div>
+                  <div className="text-[14px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                    {authorName}
+                  </div>
+                  <div className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                    방금 전 · {category}
+                  </div>
                 </div>
               </div>
-              {images.length > 0 ? (
-                images.length === 1 ? (
+              {values.images.length > 0 ? (
+                values.images.length === 1 ? (
                   <div className="aspect-[4/3] overflow-hidden">
-                    <img src={images[0]} alt="" className="w-full h-full object-cover" />
+                    <img src={values.images[0]} alt="" className="h-full w-full object-cover" />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-0.5 aspect-[4/3]">
-                    {images.map((src, i) => (
-                      <img key={i} src={src} alt="" className="w-full h-full object-cover" />
+                  <div className="grid aspect-[4/3] grid-cols-2 gap-0.5">
+                    {values.images.map((src) => (
+                      <img key={src} src={src} alt="" className="h-full w-full object-cover" />
                     ))}
                   </div>
                 )
               ) : (
-                <div className="aspect-[4/3] flex items-center justify-center" style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}>
-                  <ImageIcon size={32} style={{ color: dark ? "rgba(255,255,255,0.3)" : "rgba(28,64,68,0.3)" }} />
+                <div
+                  className="flex aspect-[4/3] items-center justify-center"
+                  style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
+                >
+                  <ImageIcon size={32} style={{ color: dark ? "rgba(255,255,255,0.3)" : "rgba(28,64,68,0.3)" }} aria-hidden />
                 </div>
               )}
-              <div className="p-4 space-y-3">
+              <div className="space-y-3 p-4">
                 <p style={{ color: dark ? "#f9f7f2" : "#0f1f22", fontSize: 14, lineHeight: 1.6 }}>
-                  {text || <span className="opacity-40">내용이 여기에 표시됩니다…</span>}
+                  {values.text || <span className="opacity-40">내용이 여기에 표시됩니다…</span>}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {tags.map((t) => (
-                    <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: dark ? "rgba(125,211,163,0.12)" : "rgba(125,211,163,0.2)", color: dark ? "#7dd3a3" : "#1c4044" }}>
-                      {t}
+                  {values.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full px-2 py-0.5 text-[11px]"
+                      style={{
+                        background: dark ? "rgba(125,211,163,0.12)" : "rgba(125,211,163,0.2)",
+                        color: dark ? "#7dd3a3" : "#1c4044",
+                      }}
+                    >
+                      {tag}
                     </span>
                   ))}
                 </div>
