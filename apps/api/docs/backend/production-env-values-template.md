@@ -3,7 +3,7 @@
 > **용도**: GitHub Secrets/Variables·`production` Environment·서버 `.env.prod` 생성 **전** 운영 값을 안전하게 수집·검토하는 체크리스트.  
 > **이 문서에 실제 secret/credential 값을 적지 않는다.** 값은 1Password·비공개 시트·서버 전용 파일 등 **Git 제외 저장소**에만 기록한다.
 
-관련: [github-secrets-and-environments.md](./github-secrets-and-environments.md), [main-release-readiness.md](./main-release-readiness.md), [Secrets 설정 runbook](./github-secrets-setup-runbook.md), [deploy/.env.prod.example](../../../../deploy/.env.prod.example).
+관련: [github-secrets-and-environments.md](./github-secrets-and-environments.md), [main-release-readiness.md](./main-release-readiness.md), [Secrets 설정 runbook](./github-secrets-setup-runbook.md), [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md), [deploy/.env.prod.example](../../../../deploy/.env.prod.example).
 
 ---
 
@@ -31,7 +31,7 @@
 
 | name | GitHub target | required before main merge | required before deploy | validation rule | owner / decision needed |
 |------|---------------|---------------------------|------------------------|-----------------|-------------------------|
-| `NEXT_PUBLIC_API_URL` | Repository Variable | **no** (CI placeholder로 main PR 가능) | **yes** (Web image build) | 운영 API **public** URL (`https://` 권장). localhost·내부 전용 URL만 있으면 Web 빌드 의미 없음. trailing slash 없이 base URL | Web/API 도메인 확정 |
+| `NEXT_PUBLIC_API_URL` | Repository Variable | **no** (CI placeholder로 main PR 가능) | **yes** (Web image build) | 운영 API **public** URL (`https://` 권장). 예: `https://api.example.com` ([Nginx 배포안](./nginx-reverse-proxy-deployment.md)). localhost·내부 전용 URL만 있으면 Web 빌드 의미 없음. trailing slash 없이 base URL. **도메인 확정 전 등록 보류** | Web/API 도메인 확정 |
 | `DOCKERHUB_USERNAME` | Repository Variable | **no** (main PR build-only 가능) | **yes** (main push image publish) | Docker Hub **실제 계정명**. image: `docker.io/<username>/dasida-api|web` | Docker Hub 계정 확정 |
 
 ### API runtime (서버 `.env.prod` 1차 권장)
@@ -42,7 +42,7 @@
 | `DB_URL` | 서버 전용 | no | **yes** | prod MySQL JDBC endpoint. `localhost`·`127.0.0.1` 금지. SSL/TLS 정책에 맞는 query param | DB 호스트·DB명 확정 |
 | `DB_USER` | 서버 전용 | no | **yes** | prod 전용 DB 사용자. root 공유 계정 비권장 | DBA |
 | `DB_PASSWORD` | 서버 전용 | **yes** | **yes** | 강한 랜덤 비밀번호. Git·Slack·이슈에 붙여넣기 금지 | DBA |
-| `APP_CORS_ALLOWED_ORIGINS` | 서버 전용 | no | **yes** | 운영 Web origin만(comma-separated). `*`·`localhost`·`127.0.0.1` 금지 ([README CORS](../../../../README.md#cors-설정)) | Web 도메인 = CORS origin 일치 |
+| `APP_CORS_ALLOWED_ORIGINS` | 서버 전용 | no | **yes** | 운영 Web origin만(comma-separated). 예: `https://example.com` ([Nginx 배포안](./nginx-reverse-proxy-deployment.md)). `*`·`localhost`·`127.0.0.1` 금지 ([README CORS](../../../../README.md#cors-설정)) | Web 도메인 = CORS origin 일치 |
 
 `SPRING_PROFILES_ACTIVE=prod` 는 고정값 — 별도 secret 아님([`.env.prod.example`](../../../../deploy/.env.prod.example)).
 
