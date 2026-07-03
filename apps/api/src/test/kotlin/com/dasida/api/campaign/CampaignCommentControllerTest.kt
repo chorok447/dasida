@@ -295,7 +295,7 @@ class CampaignCommentControllerTest(
             jsonPath("$.authorUserId") { doesNotExist() }
         }.andReturn()
 
-        val id = mapper.readTree(result.response.contentAsString)["id"].asText()
+        val id = mapper.readTree(result.response.contentAsString)["id"].asString()
         val saved = commentRepo.findById(id).orElseThrow()
         assertThat(saved.authorUserId).isEqualTo(1)
         assertThat(saved.author.name).isEqualTo("댓글 작성자")

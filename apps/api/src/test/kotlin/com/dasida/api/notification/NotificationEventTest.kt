@@ -115,7 +115,7 @@ class NotificationEventTest(
         val postId = savePost(authorUserId = owner)
 
         val response = comment(postId, actorToken).andExpect { status { isCreated() } }.andReturn()
-        val commentId = mapper.readTree(response.response.contentAsString)["id"].asText()
+        val commentId = mapper.readTree(response.response.contentAsString)["id"].asString()
 
         val list = eventsAbout(postId)
         assertThat(list).hasSize(1)
@@ -144,7 +144,7 @@ class NotificationEventTest(
     fun `내 캠페인에 타인이 댓글을 달면 알림이 생성된다`() {
         val campaignId = saveCampaign(authorUserId = owner)
         val response = campaignComment(campaignId, actorToken).andExpect { status { isCreated() } }.andReturn()
-        val commentId = mapper.readTree(response.response.contentAsString)["id"].asText()
+        val commentId = mapper.readTree(response.response.contentAsString)["id"].asString()
 
         val list = eventsAbout(campaignId)
         assertThat(list).hasSize(1)

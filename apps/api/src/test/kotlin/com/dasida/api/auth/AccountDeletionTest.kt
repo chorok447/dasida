@@ -285,7 +285,7 @@ class AccountDeletionTest(
             contentType = MediaType.APPLICATION_JSON
             content = mapper.writeValueAsString(SignupRequest(originalEmail, "NewPassword2@", "새 사용자"))
         }.andExpect { status { isCreated() } }.andReturn().response
-        val newToken = mapper.readTree(signup.contentAsString).get("token").asText()
+        val newToken = mapper.readTree(signup.contentAsString).get("token").asString()
         val newUser = users.findByEmail(originalEmail) ?: error("re-created user missing")
         assertThat(newUser.id).isNotEqualTo(userId)
 
