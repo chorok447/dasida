@@ -71,6 +71,17 @@ docker compose -f compose.local.yml up --build
 - volume까지 삭제: `docker compose -f compose.local.yml down -v`
 - `compose.local.yml` 의 DB/JWT 값은 **로컬 전용 placeholder**이며 운영 secret 이 아니다.
 
+### Production container images (GHCR)
+
+로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 와 GitHub Actions [`container-images.yml`](.github/workflows/container-images.yml) 로 빌드한다.
+
+| 이벤트 | 동작 |
+|--------|------|
+| `main` 대상 PR | API/Web image build 검증만 (`push=false`) |
+| `main` push | `ghcr.io/chorok447/dasida-api`, `ghcr.io/chorok447/dasida-web` push (`sha-<shortsha>`, `main` tag) |
+
+실제 서버 배포는 아직 미구현(CD workflow placeholder). 상세는 [`apps/api/docs/backend/container-images.md`](apps/api/docs/backend/container-images.md) 참고.
+
 ### 호스트에서 직접 실행 (기존 방식)
 
 #### 1. 의존성 설치
