@@ -20,6 +20,7 @@ import {
   type PostComposeValues,
   validatePostCompose,
 } from "@/data/posts";
+import { POST_TEMPLATES, type PostTemplate } from "@/data/post-templates";
 
 const EMPTY_VALUES: PostComposeValues = {
   text: "",
@@ -27,6 +28,15 @@ const EMPTY_VALUES: PostComposeValues = {
   tags: [],
   campaign: "",
 };
+
+function composeHasContent(values: PostComposeValues): boolean {
+  return (
+    values.text.trim().length > 0 ||
+    values.images.length > 0 ||
+    values.tags.length > 0 ||
+    values.campaign.trim().length > 0
+  );
+}
 
 export default function PostCreatePage() {
   const router = useRouter();
@@ -73,12 +83,7 @@ export default function PostCreatePage() {
   }, [router]);
 
   useEffect(() => {
-    const hasContent =
-      values.text.trim().length > 0 ||
-      values.images.length > 0 ||
-      values.tags.length > 0 ||
-      values.campaign.trim().length > 0;
-    if (!hasContent) return;
+    if (!composeHasContent(values)) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -86,6 +91,19 @@ export default function PostCreatePage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [values]);
+
+  const applyTemplate = (template: PostTemplate) => {
+    if (
+      composeHasContent(values) &&
+      !window.confirm("작성 중인 내용이 있습니다. 예시로 덮어쓸까요? (사진과 캠페인 연결은 유지됩니다)")
+    ) {
+      return;
+    }
+    setValues((current) => ({ ...current, ...template.values }));
+    setCategory(template.category);
+    setFieldErrors({});
+    toast.success("기록 예시를 적용했어요. 괄호 안 내용을 채워주세요.");
+  };
 
   const clearFieldError = (field: PostComposeField) => {
     setFieldErrors((current) => {
@@ -171,6 +189,35 @@ export default function PostCreatePage() {
               borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
             }}
           >
+            <div>
+              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+                기록 예시로 시작하기 <span className="normal-case tracking-normal opacity-70">(선택)</span>
+              </p>
+              <ul className="flex flex-wrap gap-2" aria-label="기록 예시 목록">
+                {POST_TEMPLATES.map((template) => (
+                  <li key={template.id}>
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(template)}
+                      disabled={submitting}
+                      className="rounded-full px-3.5 py-2 text-[13px] transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{
+                        background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                        border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
+                        color: dark ? "#f9f7f2" : "#0f1f22",
+                      }}
+                      aria-label={`${template.label} 예시 적용`}
+                    >
+                      {template.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                내용·태그·카테고리가 초안으로 채워집니다. 자유롭게 수정하세요.
+              </p>
+            </div>
+
             <div>
               <label htmlFor="post-category" className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
                 카테고리
