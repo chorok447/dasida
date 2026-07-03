@@ -24,7 +24,9 @@
 
 ## 1차 추천: Docker Compose on VM
 
-**Public ingress**: 호스트 **Nginx** reverse proxy(80/443) — 상세 [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md).
+**Public ingress**: 호스트 **Nginx** reverse proxy(80/443) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md).
+
+**초기 single VM**: Nginx(host) + Compose(web/api/mysql/redis) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md).
 
 ### 추천 이유
 
@@ -173,13 +175,14 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 ## 후속 작업 (코드/인프라 PR로 분리)
 
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
-2. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
-3. 서버 runbook: Docker Hub login, pull, deploy, rollback
-4. CD workflow에 opt-in deploy job (명시 승인 후)
-5. prod Redis store 설정 PR (필요 시)
-6. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
-7. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
-8. (optional) `linux/arm64` multi-arch build
+2. Single VM compose override (mysql/redis, localhost port bind) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
+3. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
+4. 서버 runbook: Docker Hub login, pull, deploy, rollback, DB backup
+5. CD workflow에 opt-in deploy job (명시 승인 후)
+6. prod Redis store 설정 PR (필요 시)
+7. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
+8. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
+9. (optional) `linux/arm64` multi-arch build
 
 ---
 
@@ -189,4 +192,5 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 - [main-release-readiness.md](./main-release-readiness.md) — merge 전 체크리스트
 - [container-images.md](./container-images.md) — Docker Hub·CI
 - [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx ingress·TLS·도메인
+- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 Compose·volume·스펙
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist

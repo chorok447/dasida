@@ -41,7 +41,7 @@ Nginx (host) :80 / :443
 | Nginx | **호스트에 설치** (초기). compose service 로 넣는 방식은 후속 선택지 |
 | Public ingress | Nginx **80/443 만** 허용 |
 | api/web container port | 가능하면 **127.0.0.1** 또는 private network 로만 publish |
-| DB / Redis | **public 노출 금지** — external managed 또는 private network |
+| DB / Redis | **public 노출 금지** — compose 내부 또는 external managed ([single-vm-compose-deployment.md](./single-vm-compose-deployment.md)) |
 
 ### Docker Hub image pin
 
@@ -249,3 +249,4 @@ Nginx 뒤에서 HTTPS origin 을 애플리케이션이 인식하려면 `X-Forwar
 - [production-env-values-template.md](./production-env-values-template.md) — 운영 값 수집
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables 분류
 - [deploy/compose.prod.example.yml](../../../../deploy/compose.prod.example.yml) — api/web compose template
+- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 compose(mysql/redis 포함) 전략
