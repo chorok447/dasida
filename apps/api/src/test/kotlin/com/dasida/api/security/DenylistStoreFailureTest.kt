@@ -2,6 +2,8 @@ package com.dasida.api.security
 
 import com.dasida.api.auth.User
 import com.dasida.api.auth.UserRepository
+import io.micrometer.core.instrument.MeterRegistry
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -25,6 +27,7 @@ class DenylistStoreFailureTest(
     @param:Autowired val mvc: MockMvc,
     @param:Autowired val repo: UserRepository,
     @param:Autowired val jwt: JwtService,
+    @param:Autowired val meterRegistry: MeterRegistry,
 ) {
     @TestConfiguration
     class ThrowingDenylistStoreConfig {
@@ -37,13 +40,21 @@ class DenylistStoreFailureTest(
     }
 
     @Test
-    fun `denylist store 장애 시 Bearer 인증 API 는 fail-closed 로 401`() {
+    fun `denylist store 장애 시 Bearer 인증 API 는 fail-closed 로 401이고 counter 가 증가한다`() {
         val user = repo.saveAndFlush(User(email = "denylist-down@dasida.com", passwordHash = "h", name = "유저"))
         val token = jwt.issue(user)
+        val before = failClosedCount()
 
         mvc.get("/api/auth/me") { headers { add("Authorization", "Bearer $token") } }
             .andExpect { status { isUnauthorized() } }
+
+        assertThat(failClosedCount()).isGreaterThan(before)
     }
+
+    private fun failClosedCount(): Double =
+        meterRegistry.find("dasida.security.token_denylist.store_unavailable")
+            .tag("policy", "fail_closed")
+            .counter()?.count() ?: 0.0
 
     @Test
     fun `denylist store 장애여도 토큰 없는 public GET 은 정상 동작한다`() {

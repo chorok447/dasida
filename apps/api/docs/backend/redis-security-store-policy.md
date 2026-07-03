@@ -62,6 +62,19 @@
 - `application-local.properties` 에 `spring.data.redis.timeout=1s`, `spring.data.redis.connect-timeout=1s` 를 설정해 store 장애를 **수 초 내 감지**하고 정책(fail-open/closed)이 즉시 발동하도록 했다. 정책 자체(fail-open/closed)는 바꾸지 않았다.
 - prod 는 Redis 미적용 상태이므로 prod timeout 은 Redis provisioning PR 에서 함께 정한다(이 문서 5·6 참조).
 
+### 4-1-2. 관측성(metric·로그) ✅ 보강됨
+
+store 장애로 fail-open/closed 가 발동하면 운영에서 감지할 수 있도록 Micrometer counter 와 경고 로그를 남긴다.
+
+| metric | tag | 의미 |
+|---|---|---|
+| `dasida.security.rate_limit.store_unavailable` | `rule`(AUTH_LOGIN 등), `policy=fail_open` | rate limit store 장애로 요청을 통과시킨 횟수(rule 별) |
+| `dasida.security.token_denylist.store_unavailable` | `policy=fail_closed` | denylist store 장애로 인증을 거절한 횟수 |
+
+- 경고 로그: `rate limit store unavailable, failing open (rule=... policy=fail_open)`, `denylist store unavailable, failing closed (policy=fail_closed, denying request)`.
+- **민감정보 미출력**: raw JWT·token hash·client IP 전체값은 metric tag·로그 어디에도 남기지 않는다(rate limit 로그에서 기존 `ip=` 출력 제거). tag 는 저(低)cardinality 값(rule/policy)만 사용.
+- **Actuator 노출 정책 미변경**: metric 은 `MeterRegistry` 에만 기록하며, `/actuator/metrics` 등 endpoint 외부 노출은 추가하지 않았다(`management.endpoints.web.exposure.include=health` 유지). 노출은 배포 환경 확정 후 별도 결정.
+
 ### 4-2. 정책 선택 배경(후보와 장단점)
 
 > 아래 표는 정책 선택의 근거다. 굵게 표시한 권장안(rate limit fail-open, denylist fail-closed)이 **4-1 에서 구현됨**.
@@ -105,7 +118,7 @@
 
 - [ ] `application-prod.yml` 에 Redis 접속 + store=redis 설정 추가(secret 주입 방식 포함).
 - [ ] denylist degraded-mode 정책 플래그(장애 시 fail-open/closed 런타임 선택) 도입 검토.
-- [ ] store 오류·denylist miss/hit·rate limit 무제한 구간 메트릭/알럿 추가(로깅은 도입됨).
+- [ ] 알럿(임계값 기반) 구성 — store 장애 metric(`dasida.security.*.store_unavailable`)과 로그는 도입됨(4-1-2), 알럿·metric endpoint 노출은 배포 환경 확정 후.
 - [ ] prod Redis 연결 smoke/health 확인 절차 문서화(기존 `RedisCompatibleStoreConnectionTest` 참고).
 - [ ] TLS/AUTH/네트워크 격리 등 접속 보안 설정 및 문서화.
 
