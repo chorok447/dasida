@@ -558,6 +558,26 @@ class AuthControllerTest(
     }
 
     @Test
+    fun `http(s)가 아닌 profileImageUrl은 400`() {
+        val user = saveUser(email = "ftp-avatar@dasida.com")
+        mvc.put("/api/auth/me") {
+            headers { add("Authorization", authorization(user)) }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"${user.name}","profileImageUrl":"ftp://example.com/a.png"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `500자 초과 profileImageUrl은 400`() {
+        val user = saveUser(email = "long-avatar@dasida.com")
+        mvc.put("/api/auth/me") {
+            headers { add("Authorization", authorization(user)) }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"${user.name}","profileImageUrl":"https://example.com/${"a".repeat(501)}"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
     fun `프로필 응답은 passwordHash를 노출하지 않는다`() {
         val passwordHash = "must-never-be-exposed"
         val user = saveUser(email = "safe@dasida.com", passwordHash = passwordHash)

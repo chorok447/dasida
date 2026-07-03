@@ -16,6 +16,7 @@ import { ChangePasswordForm } from "./change-password-form";
 import { ChangeEmailForm } from "./change-email-form";
 import { DeleteAccountForm } from "./delete-account-form";
 import { ReportsList } from "./reports-list";
+import { Avatar } from "@/components/avatar";
 import { StatePanel } from "@/components/ui/state-panel";
 
 type Tab = "posts" | "campaigns" | "created" | "saved" | "reports";
@@ -44,16 +45,13 @@ function ProfileHeader({ profile }: { profile: UserProfile }) {
   const dark = theme === "dark";
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 pb-10 pt-28 sm:flex-row sm:items-center sm:px-8 sm:pt-32">
-      <div
-        className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full text-4xl shadow-[0_25px_55px_-20px_rgba(0,0,0,0.55)]"
-        style={{
-          background: dark ? "rgba(125,211,163,0.14)" : "rgba(125,211,163,0.32)",
-          color: dark ? "#7dd3a3" : "#1c4044",
-          fontFamily: "'Black Han Sans', sans-serif",
-        }}
-        aria-hidden="true"
-      >
-        {profile.name.slice(0, 1)}
+      <div className="shrink-0 shadow-[0_25px_55px_-20px_rgba(0,0,0,0.55)]">
+        <Avatar
+          name={profile.name}
+          verified={profile.verified}
+          size={96}
+          src={profile.profileImageUrl ?? undefined}
+        />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -97,7 +95,7 @@ function ProfileHeader({ profile }: { profile: UserProfile }) {
           color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)",
         }}
       >
-        <Pencil size={13} /> 프로필 수정
+        <Pencil size={13} /> 프로필 편집
       </Link>
     </div>
   );
