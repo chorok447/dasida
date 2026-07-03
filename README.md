@@ -82,6 +82,8 @@ docker compose -f compose.local.yml up --build
 
 실제 서버 배포는 아직 미구현(CD workflow placeholder). 상세는 [`apps/api/docs/backend/container-images.md`](apps/api/docs/backend/container-images.md) 참고.
 
+**main merge 전** GitHub Secrets/Variables·GHCR·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다.
+
 ### 호스트에서 직접 실행 (기존 방식)
 
 #### 1. 의존성 설치
