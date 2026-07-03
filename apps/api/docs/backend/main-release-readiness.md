@@ -26,6 +26,8 @@
 
 운영 값 수집 체크리스트: [production-env-values-template.md](./production-env-values-template.md).
 
+GitHub UI/CLI 생성·검증 절차: [github-secrets-setup-runbook.md](./github-secrets-setup-runbook.md).
+
 ### 1-1. API (런타임 필수)
 
 | 항목 | 형태 | 설명 | prod 준비 |
@@ -203,6 +205,7 @@ main merge **전** GitHub에서 확인:
 
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables·`production` Environment 전략
 - [production-env-values-template.md](./production-env-values-template.md) — 운영 값 수집·검증 체크리스트
+- [github-secrets-setup-runbook.md](./github-secrets-setup-runbook.md) — Secrets/Variables/Environment 생성·검증 runbook
 - [deployment-strategy.md](./deployment-strategy.md) — production 배포 전략 결정안
 - [container-images.md](./container-images.md) — GHCR image·CI 정책
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist·Redis 정책
