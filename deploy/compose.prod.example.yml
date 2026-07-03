@@ -3,8 +3,7 @@
 #
 # 전제:
 # - MySQL / Redis(Valkey) 는 external managed service (호스트·포트는 .env 에 주입)
-# - 같은 VM 에 DB/Redis 컨테이너를 넣으려면 compose.local.yml 의 mysql/redis 블록을 참고해
-#   별도 override compose 를 서버에만 두는 방식을 권장한다(이 template 에는 포함하지 않음).
+# - 같은 VM 에 DB/Redis 컨테이너를 넣을 때는 deploy/compose.single-vm.example.yml 을 병행한다.
 #
 # Docker Hub pull 전 서버에서 login (private repo 또는 rate limit 회피 시):
 #   echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -14,13 +13,15 @@
 #   docker compose -f deploy/compose.prod.example.yml --env-file deploy/.env.prod config
 #   docker compose -f deploy/compose.prod.example.yml --env-file deploy/.env.prod pull
 #   docker compose -f deploy/compose.prod.example.yml --env-file deploy/.env.prod up -d
+#
+# api/web ports 는 127.0.0.1 bind — host Nginx reverse proxy 전제. mysql/redis public port 없음.
 
 services:
   api:
     image: ${DOCKERHUB_USERNAME}/dasida-api:${DASIDA_IMAGE_TAG}
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
       JWT_SECRET: ${JWT_SECRET}
@@ -47,7 +48,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/dasida-web:${DASIDA_IMAGE_TAG}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NODE_ENV: production
       PORT: 3000

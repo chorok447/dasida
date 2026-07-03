@@ -37,7 +37,7 @@
 
 ### 아직 구현되지 않은 것 (TODO)
 
-- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — Docker Hub pull·env 주입 참고용. **실제 서버 deploy/CD 는 아직 없음.**
+- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) (single VM) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — **실제 서버 deploy/CD 는 아직 없음.**
 - CD workflow의 실제 deploy step — [`.github/workflows/cd.yml`](../../../../.github/workflows/cd.yml) placeholder
 - Docker Hub pull 인증(서버 credential) — **미설정**
 
@@ -175,7 +175,7 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 ## 후속 작업 (코드/인프라 PR로 분리)
 
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
-2. Single VM compose override (mysql/redis, localhost port bind) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
+2. ~~Single VM compose override~~ → [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
 3. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
 4. 서버 runbook: Docker Hub login, pull, deploy, rollback, DB backup
 5. CD workflow에 opt-in deploy job (명시 승인 후)
