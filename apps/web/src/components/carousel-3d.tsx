@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion, useMotionValue, animate } from "motion/react";
+import { motion, useMotionValue, useReducedMotion, animate } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { fashionPhotos, marketPhotos, naturePhotos, peoplePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 
@@ -26,15 +26,17 @@ export function Carousel3D() {
   const radius = 420;
   const step = 360 / items.length;
 
+  const reduce = useReducedMotion();
+
   useEffect(() => {
-    if (paused) return;
+    if (paused || reduce) return;
     const controls = animate(rotation, rotation.get() - 360, {
       duration: 40,
       ease: "linear",
       repeat: Infinity,
     });
     return () => controls.stop();
-  }, [paused, rotation]);
+  }, [paused, rotation, reduce]);
 
   function onDrag(_: unknown, info: { delta: { x: number } }) {
     rotation.set(rotation.get() + info.delta.x * 0.4);

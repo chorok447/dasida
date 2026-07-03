@@ -23,6 +23,7 @@ import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { ReportButton } from "@/components/report-button";
+import { StaggerItem } from "@/components/scroll-reveal";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
@@ -676,14 +677,15 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
           {response && response.content.length > 0 ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {response.content.map((post) => (
-                <PostCard
-                  key={post.id}
-                  p={post}
-                  refreshing={refreshing}
-                  identity={token}
-                  onOpen={() => router.push(`/posts/${post.id}`)}
-                />
+              {response.content.map((post, i) => (
+                <StaggerItem key={post.id} index={i}>
+                  <PostCard
+                    p={post}
+                    refreshing={refreshing}
+                    identity={token}
+                    onOpen={() => router.push(`/posts/${post.id}`)}
+                  />
+                </StaggerItem>
               ))}
             </div>
           ) : null}

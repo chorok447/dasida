@@ -9,6 +9,7 @@ import { CampaignDateRangeFilterControls } from "@/components/campaign-date-rang
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
+import { StaggerItem } from "@/components/scroll-reveal";
 import {
   appendCampaignDateRangeFilters,
   campaignDateRangeError,
@@ -564,12 +565,13 @@ export default function CampaignListClient() {
 
         {currentState.status === "success" && response && response.content.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {response.content.map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                onOpen={() => router.push(`/campaigns/${campaign.id}`)}
-              />
+            {response.content.map((campaign, i) => (
+              <StaggerItem key={campaign.id} index={i}>
+                <CampaignCard
+                  campaign={campaign}
+                  onOpen={() => router.push(`/campaigns/${campaign.id}`)}
+                />
+              </StaggerItem>
             ))}
           </div>
         ) : null}

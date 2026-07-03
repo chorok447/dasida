@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
+import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { Leaf, Recycle, Sprout, Shirt, Coffee, Package } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 
@@ -35,7 +35,10 @@ function TiltCard({ card }: { card: Card }) {
     return `radial-gradient(400px circle at ${x}% ${y}%, rgba(255,255,255,0.35), transparent 50%)`;
   });
 
+  const reduce = useReducedMotion();
+
   function onMove(e: React.MouseEvent) {
+    if (reduce) return;
     const r = ref.current?.getBoundingClientRect();
     if (!r) return;
     mx.set((e.clientX - r.left) / r.width - 0.5);
