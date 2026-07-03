@@ -11,6 +11,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
+import { RecommendedCampaigns } from "@/components/recommended-campaigns";
 import { ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import {
@@ -457,17 +458,20 @@ export default function NotificationsClient() {
             </button>
           </StatePanel>
         ) : list.length === 0 ? (
-          <StatePanel compact>
-            <Bell size={32} className="opacity-35" aria-hidden />
-            <p className="font-medium">
-              {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
-            </p>
-            <p className="text-[12px] opacity-60">
-              {filter === "unread"
-                ? "새 알림이 오면 이 목록에 표시됩니다."
-                : "댓글, 캠페인 참여 등 활동이 있으면 여기에 모입니다."}
-            </p>
-          </StatePanel>
+          <div className="space-y-4">
+            <StatePanel compact>
+              <Bell size={32} className="opacity-35" aria-hidden />
+              <p className="font-medium">
+                {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
+              </p>
+              <p className="text-[12px] opacity-60">
+                {filter === "unread"
+                  ? "새 알림이 오면 이 목록에 표시됩니다."
+                  : "관심 있는 캠페인에 참여하면 소식을 알림으로 받을 수 있어요."}
+              </p>
+            </StatePanel>
+            {filter === "all" ? <RecommendedCampaigns heading="참여해볼 만한 캠페인" /> : null}
+          </div>
         ) : (
           <div className="space-y-2">
             {list.map((n, i) => (
