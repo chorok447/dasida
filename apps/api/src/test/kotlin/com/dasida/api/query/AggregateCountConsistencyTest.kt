@@ -75,7 +75,7 @@ class AggregateCountConsistencyTest(
     /** 최상위 배열 목록에서 id 로 항목을 찾아 정수 필드를 읽는다. */
     private fun listField(listPath: String, id: String, field: String): Int {
         val body = mvc.get(listPath).andReturn().response.contentAsString
-        val node = mapper.readTree(body).toElementList().first { it["id"].asText() == id }
+        val node = mapper.readTree(body).toElementList().first { it["id"].asString() == id }
         return node[field].asInt()
     }
 

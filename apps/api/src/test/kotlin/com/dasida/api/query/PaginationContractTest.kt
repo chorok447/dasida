@@ -99,7 +99,7 @@ class PaginationContractTest(
             param("page", page.toString())
             param("size", size.toString())
         }.andReturn().response.contentAsString
-        return mapper.readTree(body)["content"].mapElements { it["id"].asText() }
+        return mapper.readTree(body)["content"].mapElements { it["id"].asString() }
     }
 
     /** 3개 항목을 size=2 로 나누면 page0(2개) + page1(1개) 이 disjoint 하고 합치면 전체를 덮는지 확인한다. */

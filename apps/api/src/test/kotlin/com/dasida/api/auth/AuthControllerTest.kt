@@ -279,7 +279,7 @@ class AuthControllerTest(
         login(email, "Current1!").andExpect { status { isUnauthorized() } }
         login(email, "Changed2@").andExpect { status { isOk() } }
 
-        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asString()
         assertThat(newToken).isNotBlank()
         mvc.get("/api/auth/me") {
             headers { add("Authorization", "Bearer $newToken") }
@@ -363,7 +363,7 @@ class AuthControllerTest(
         login(originalEmail, "Current1!").andExpect { status { isUnauthorized() } }
         login(changedEmail, "Current1!").andExpect { status { isOk() } }
 
-        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asString()
         mvc.get("/api/auth/me") {
             headers { add("Authorization", "Bearer $newToken") }
         }.andExpect {
@@ -489,7 +489,7 @@ class AuthControllerTest(
             content = """{"name":"새토큰이름"}"""
         }.andExpect { status { isOk() } }.andReturn().response
 
-        val newToken = objectMapper.readTree(response.contentAsString).get("token").asText()
+        val newToken = objectMapper.readTree(response.contentAsString).get("token").asString()
         assertThat(jwt.parse(newToken).name).isEqualTo("새토큰이름")
     }
 

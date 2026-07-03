@@ -90,7 +90,7 @@ class ListOrderingBoundaryTest(
 
     /** 응답 JSON 배열에서 id 순서를 뽑는다. 시드 데이터가 섞여도 내가 넣은 항목의 상대 순서만 검증한다. */
     private fun idOrder(body: String): List<String> =
-        mapper.readTree(body).mapElements { it["id"].asText() }
+        mapper.readTree(body).mapElements { it["id"].asString() }
 
     @Test
     fun `게시글 목록은 seq 내림차순 기본 정렬을 유지한다`() {
@@ -131,7 +131,7 @@ class ListOrderingBoundaryTest(
         val body = mvc.get("/api/reports/mine") {
             headers { add("Authorization", "Bearer $reporterToken") }
         }.andReturn().response.contentAsString
-        val ids = mapper.readTree(body)["content"].mapElements { it["id"].asText() }
+        val ids = mapper.readTree(body)["content"].mapElements { it["id"].asString() }
 
         assertThat(ids).containsExactly("ord-report-top", "ord-report-a", "ord-report-b")
     }
