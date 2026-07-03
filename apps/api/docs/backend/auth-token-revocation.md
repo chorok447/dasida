@@ -1,6 +1,8 @@
 # Auth 토큰 무효화(denylist) 도입 계획
 
-> 상태: **설계 초안(proposal)**. 아직 구현하지 않았다. 이 문서는 refresh token / token revocation(denylist) 도입 전, 현재 구조와 제약, 도입안을 정리하는 조사 문서다.
+> 상태: **구현 완료**. logout access token denylist 가 도입되어 있다(hash 기반, 아래 후보 A 계열). 실제 현재 동작·API 계약은 [apps/api/README.md 의 "로그아웃과 토큰 무효화(denylist)"](../../README.md#로그아웃과-토큰-무효화denylist) 와 [Redis 보안 store 운영 정책](./redis-security-store-policy.md) 을 참조한다.
+>
+> 아래 4~9절은 도입 검토 시점의 **설계 기록**이다(원본 토큰 대신 SHA-256 hash 를 key 로 쓰는 방식으로 구현됐다). refresh token 은 지금도 도입하지 않았다.
 
 ## 1. 현재 인증 구조 요약
 
@@ -26,11 +28,16 @@ Dasida API 는 **stateless JWT 단일 access token** 방식이다. 서버는 세
 
 ## 2. refresh token 존재 여부
 
-**없다.** 소스 전체에 refresh token 개념·엔드포인트·claim·저장소가 존재하지 않는다(`grep -n "refresh"` 결과 없음). 현재는 access token 하나만 발급·사용한다.
+**없다(현재도).** 소스에 refresh token 개념·엔드포인트·claim·저장소가 없다. access token 하나만 발급·사용하며, 재발급은 재로그인으로 한다.
 
-## 3. logout 엔드포인트 존재 여부
+## 3. logout 엔드포인트 (구현됨)
 
-**없다.** 로그아웃은 프론트엔드가 `localStorage` 토큰을 삭제(`clearSession`)하는 클라이언트 동작뿐이다. 서버는 해당 토큰을 여전히 유효한 것으로 취급하므로, 유출된 토큰은 만료(최대 24시간)까지 살아 있다.
+> 도입 검토 시점에는 **없었다**(로그아웃이 프론트엔드의 `localStorage` 삭제뿐이라 서버는 토큰을 만료까지 유효로 취급). 이후 아래처럼 **구현됨**.
+
+- **`POST /api/auth/logout`** (bearerAuth): 현재 access token 의 SHA-256 hash 를 남은 만료 시간까지 denylist 에 등록. 성공 시 `200 { "loggedOut": true }`.
+- 로그아웃 후 같은 access token 재사용, 토큰 없음/깨진 토큰/denylisted 토큰은 모두 `401`.
+- 코드: `auth/AuthController.logout`, `auth/AuthService.logout`, `security/TokenDenylistStore`, `security/JwtAuthFilter`.
+- API 계약·denylist 요약은 [README](../../README.md#로그아웃과-토큰-무효화denylist), 운영/장애 정책은 [Redis 보안 store 운영 정책](./redis-security-store-policy.md) 참조.
 
 ## 4. denylist(무효화)가 필요한 이유
 
