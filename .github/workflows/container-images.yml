@@ -36,7 +36,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/chorok447/dasida-api
           tags: type=sha,prefix=sha-,format=short
@@ -70,7 +70,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/chorok447/dasida-api
           tags: |
@@ -100,7 +100,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/chorok447/dasida-web
           tags: type=sha,prefix=sha-,format=short
@@ -136,7 +136,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/chorok447/dasida-web
           tags: |
