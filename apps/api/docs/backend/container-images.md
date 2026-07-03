@@ -58,3 +58,82 @@ docker build -f apps/web/Dockerfile.prod \
   --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 \
   -t dasida-web:local .
 ```
+
+## Platform (linux/amd64)
+
+GitHub Actions runner(`ubuntu-latest`)에서 빌드·push 되는 production image 는 **`linux/amd64` 전용**이다. multi-arch(`linux/arm64`) 는 **아직 미구현**이다.
+
+| 환경 | pull / run |
+|------|------------|
+| **amd64 서버**(일반 Linux VM) | `docker pull` / `docker run` 그대로 |
+| **Apple Silicon Mac**(로컬 smoke) | `--platform linux/amd64` 필요 |
+
+로컬 검증 예:
+
+```bash
+docker pull --platform linux/amd64 docker.io/chorok446/dasida-api:sha-af5082c
+docker pull --platform linux/amd64 docker.io/chorok446/dasida-web:sha-af5082c
+docker run --rm -d --platform linux/amd64 -p 3000:3000 \
+  docker.io/chorok446/dasida-web:sha-af5082c
+```
+
+플랫폼 없이 pull 하면 `no matching manifest for linux/arm64` 가 날 수 있다. **서버가 amd64 이면 문제 없다.** ARM 서버를 쓸 계획이면 별도 multi-arch build PR 이 필요하다.
+
+## Docker Hub 검증 (main push, 2026-07-03)
+
+PR #149 merge 후 main push(`af5082c`)로 Docker Hub push 가 성공했다. **실제 서버 deploy 는 아직 없음.**
+
+### Published images
+
+| Image | Tags (동일 digest) |
+|-------|-------------------|
+| `docker.io/chorok446/dasida-api` | `main`, `sha-af5082c` → `sha256:d6f510d6…` |
+| `docker.io/chorok446/dasida-web` | `main`, `sha-af5082c` → `sha256:25cb8a09…` |
+
+동일 커밋에서 `main` 과 `sha-<shortsha>` 는 **같은 manifest** 를 가리킨다. 운영 pin 은 `sha-af5082c` 를 사용한다.
+
+### Pull / inspect
+
+- 네 image tag 모두 Docker Hub 에서 pull 가능(Apple Silicon 은 위 `--platform` 참고).
+- `docker image inspect`: architecture `amd64`, OCI label `org.opencontainers.image.revision=af5082c`.
+
+### Web smoke (process 기동만)
+
+`chorok446/dasida-web:sha-af5082c` 단독 실행 시:
+
+- HTTP **200** (`curl -I http://localhost:3000`)
+- Next.js 16.x `Ready` — 컨테이너 즉시 crash 없음
+- **API 연동은 검증 대상 아님** — 아래 `NEXT_PUBLIC_API_URL` placeholder 상태
+
+### API image (DB 없이)
+
+ENTRYPOINT 는 `java -jar app.jar` 이므로 `docker run … --version` 은 Spring Boot 기동으로 이어진다.
+
+- JAR 로딩·Spring Boot 기동까지 확인됨
+- DB/env 미설정 시 Hibernate dialect 오류로 종료 — **image pull 실패가 아니라 예상 동작**
+
+### Compose config dry-run
+
+secret 없이 임시 env 로 검증:
+
+```bash
+cp deploy/.env.prod.example /tmp/dasida.env
+# DOCKERHUB_USERNAME=chorok446, DASIDA_IMAGE_TAG=sha-af5082c 로 교체
+docker compose -f deploy/compose.prod.example.yml --env-file /tmp/dasida.env config
+```
+
+→ `chorok446/dasida-api:sha-af5082c`, `chorok446/dasida-web:sha-af5082c` 로 resolve 성공.
+
+## `NEXT_PUBLIC_API_URL` (현재 placeholder)
+
+main push 로 빌드된 **현재 Web image** 는 `vars.NEXT_PUBLIC_API_URL` 미설정 시 CI placeholder(`https://ci-build-placeholder.invalid`)로 bake-in 되었다.
+
+- **운영 API URL 확정 후** Repository Variable `NEXT_PUBLIC_API_URL` 등록 + **main 재빌드(push)** 가 필요하다.
+- placeholder 상태에서는 브라우저→API 연동·운영 배포 검증을 **완료로 보지 않는다**.
+
+## 향후 작업 후보
+
+1. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드(main push)
+2. 서버 `.env.prod` 준비(값은 repo 밖)
+3. deploy secrets·runbook·CD job (opt-in)
+4. (optional) `linux/arm64` multi-arch build — ARM 서버 또는 Mac 네이티브 pull 용
