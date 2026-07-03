@@ -1,18 +1,18 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDelete, apiDeleteVoid, ApiError, apiErrorMessage } from "@/lib/api";
 import { getToken, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -55,6 +55,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const dark = theme === "dark";
   const p = post;
   const [idx, setIdx] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
@@ -594,25 +595,38 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             className="rounded-3xl border overflow-hidden shadow-[0_40px_80px_-30px_rgba(0,0,0,0.4)] grid grid-cols-1 md:grid-cols-[1.2fr_1fr]"
           >
             <div className="relative aspect-square md:aspect-auto bg-black overflow-hidden">
-              <motion.img
-                key={idx}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                src={p.images[idx]}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+              {imageFailed ? (
+                <div className="flex h-full w-full items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <ImageIcon size={32} color="rgba(255,255,255,0.35)" aria-hidden />
+                </div>
+              ) : (
+                <motion.img
+                  key={idx}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  src={p.images[idx]}
+                  alt={`게시글 이미지 ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={() => setImageFailed(true)}
+                />
+              )}
               {p.images.length > 1 && (
                 <>
                   <button
-                    onClick={() => setIdx((i) => (i - 1 + p.images.length) % p.images.length)}
+                    onClick={() => {
+                      setImageFailed(false);
+                      setIdx((i) => (i - 1 + p.images.length) % p.images.length);
+                    }}
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(15,31,34,0.6)", color: "#fff" }}
                   >
                     <ChevronLeft size={18} />
                   </button>
                   <button
-                    onClick={() => setIdx((i) => (i + 1) % p.images.length)}
+                    onClick={() => {
+                      setImageFailed(false);
+                      setIdx((i) => (i + 1) % p.images.length);
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(15,31,34,0.6)", color: "#fff" }}
                   >
@@ -657,7 +671,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                     border: `1px solid ${dark ? "rgba(125,211,163,0.2)" : "rgba(125,211,163,0.3)"}`,
                   }}
                 >
-                  <img src={linkedCampaign.thumb} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                  <FallbackImage
+                    src={linkedCampaign.thumb}
+                    alt={`${linkedCampaign.title} 캠페인 이미지`}
+                    className="w-10 h-10 rounded-lg object-cover"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>연결된 캠페인</div>
                     <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{linkedCampaign.title}</div>

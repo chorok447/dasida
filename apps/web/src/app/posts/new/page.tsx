@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -251,12 +251,25 @@ export default function PostCreatePage() {
               {values.images.length > 0 ? (
                 values.images.length === 1 ? (
                   <div className="aspect-[4/3] overflow-hidden">
-                    <img src={values.images[0]} alt="" className="h-full w-full object-cover" />
+                    <FallbackImage
+                      src={values.images[0]}
+                      alt="첨부 이미지 미리보기 1"
+                      dark={dark}
+                      errorText="이미지를 불러올 수 없어요"
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                 ) : (
                   <div className="grid aspect-[4/3] grid-cols-2 gap-0.5">
-                    {values.images.map((src) => (
-                      <img key={src} src={src} alt="" className="h-full w-full object-cover" />
+                    {values.images.map((src, index) => (
+                      <FallbackImage
+                        key={src}
+                        src={src}
+                        alt={`첨부 이미지 미리보기 ${index + 1}`}
+                        dark={dark}
+                        errorText="이미지를 불러올 수 없어요"
+                        className="h-full w-full object-cover"
+                      />
                     ))}
                   </div>
                 )

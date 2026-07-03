@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { StaggerItem } from "@/components/scroll-reveal";
+import { FallbackImage } from "@/components/fallback-image";
 import Link from "next/link";
 import { FileText, Heart, MessageCircle, PenLine } from "lucide-react";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -25,7 +25,7 @@ function MyPostCard({ post }: { post: Post }) {
     >
       {image ? (
         <div className="aspect-[4/3] overflow-hidden">
-          <img src={image} alt={`${post.author.name}님의 게시글`} className="h-full w-full object-cover" />
+          <FallbackImage src={image} alt="게시글 미리보기 이미지" className="h-full w-full object-cover" />
         </div>
       ) : (
         <div

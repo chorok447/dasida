@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { StaggerItem } from "@/components/scroll-reveal";
+import { FallbackImage } from "@/components/fallback-image";
 import { useState } from "react";
 import Link from "next/link";
 import { Bookmark, Heart, MessageCircle } from "lucide-react";
@@ -36,7 +36,7 @@ function SavedPostCard({
       <Link href={`/posts/${post.id}`} className="block h-full">
         {image ? (
           <div className="aspect-[4/3] overflow-hidden">
-            <img src={image} alt="" className="h-full w-full object-cover" />
+            <FallbackImage src={image} alt="게시글 미리보기 이미지" className="h-full w-full object-cover" />
           </div>
         ) : (
           <div

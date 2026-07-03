@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,6 +21,7 @@ import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { ListEmptyState } from "@/components/list-empty-state";
@@ -335,12 +335,12 @@ function PostCard({
 
         {p.images.length === 1 ? (
           <button type="button" className="block aspect-[4/3] w-full overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
-            <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
+            <FallbackImage src={p.images[0]} alt="" decorative className="w-full h-full object-cover" />
           </button>
         ) : (
           <button type="button" className="grid aspect-[4/3] w-full grid-cols-2 gap-0.5 overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             {p.images.map((src, i) => (
-              <img key={i} src={src} alt="" className="w-full h-full object-cover" />
+              <FallbackImage key={i} src={src} alt="" decorative className="w-full h-full object-cover" />
             ))}
           </button>
         )}
@@ -460,7 +460,11 @@ function SideHot({ campaigns }: { campaigns: Campaign[] }) {
           const pct = progressPercent(c.joined, c.capacity);
           return (
             <div key={c.id} className="flex gap-3 items-center">
-              <img src={c.thumb} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+              <FallbackImage
+                src={c.thumb}
+                alt={`${c.title} 캠페인 이미지`}
+                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
                   {c.title}

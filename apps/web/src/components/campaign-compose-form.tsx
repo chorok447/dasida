@@ -41,10 +41,13 @@ function ImagePreview({ src, dark }: { src: string; dark: boolean }) {
   if (failed) {
     return (
       <div
-        className="flex h-full w-full items-center justify-center"
+        className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px]"
         style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+        role="img"
+        aria-label="이미지를 불러올 수 없어요"
       >
-        <ImageIcon size={20} style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} aria-hidden />
+        <ImageIcon size={18} style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} aria-hidden />
+        <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>이미지를 불러올 수 없어요</span>
       </div>
     );
   }
@@ -52,7 +55,7 @@ function ImagePreview({ src, dark }: { src: string; dark: boolean }) {
   return (
     <img
       src={src}
-      alt=""
+      alt="캠페인 썸네일 미리보기"
       className="h-full w-full object-cover"
       onError={() => setFailed(true)}
     />
@@ -291,7 +294,7 @@ export function CampaignComposeForm({
                 aria-label={values.thumb === src ? "선택된 썸네일" : "썸네일 이미지 선택"}
                 aria-pressed={values.thumb === src}
               >
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img src={src} alt="" aria-hidden className="h-full w-full object-cover" />
               </button>
             ))}
           </div>

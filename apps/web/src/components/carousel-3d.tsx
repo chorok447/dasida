@@ -125,7 +125,7 @@ export function Carousel3D() {
                 >
                   <Image
                     src={it.img}
-                    alt={it.title}
+                    alt={`${it.title} 캠페인 이미지`}
                     fill
                     sizes="260px"
                     className="object-cover"

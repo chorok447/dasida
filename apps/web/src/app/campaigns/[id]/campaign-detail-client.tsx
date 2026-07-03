@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { toast } from "sonner";
 import { useRef, useState } from "react";
@@ -15,6 +14,7 @@ import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
 import { CampaignComments } from "./campaign-comments";
 
@@ -69,7 +69,7 @@ function HeaderCard({ c }: { c: Campaign }) {
       >
         <div className="grid grid-cols-1 md:grid-cols-[400px_1fr]">
           <div className="relative aspect-square md:aspect-auto overflow-hidden">
-            <img src={c.thumb} alt={c.title} className="w-full h-full object-cover" />
+            <FallbackImage src={c.thumb} alt={`${c.title} 캠페인 이미지`} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-tr from-[#0f1f22]/40 to-transparent" />
             <div className="absolute top-4 left-4 flex items-center gap-2" style={{ transform: "translateZ(50px)" }}>
               <StatusBadge c={c} />
@@ -417,7 +417,7 @@ function ContentTab({ c }: { c: Campaign }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
         {c.body.images.map((src, i) => (
           <div key={i} className="aspect-[4/3] rounded-2xl overflow-hidden">
-            <img src={src} alt="" className="w-full h-full object-cover" />
+            <FallbackImage src={src} alt={`캠페인 상세 이미지 ${i + 1}`} className="w-full h-full object-cover" />
           </div>
         ))}
       </div>

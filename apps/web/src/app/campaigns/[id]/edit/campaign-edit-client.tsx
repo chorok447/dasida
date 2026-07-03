@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +13,7 @@ import {
   CampaignComposeForm,
   CampaignComposeSubmitButton,
 } from "@/components/campaign-compose-form";
+import { FallbackImage } from "@/components/fallback-image";
 import {
   campaignToComposeValues,
   statusMeta,
@@ -323,7 +323,13 @@ export default function CampaignEditClient({ id }: { id: string }) {
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 {values.thumb ? (
-                  <img src={values.thumb} alt="" className="h-full w-full object-cover" />
+                  <FallbackImage
+                    src={values.thumb}
+                    alt="캠페인 썸네일 미리보기"
+                    dark={dark}
+                    errorText="이미지를 불러올 수 없어요"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div
                     className="flex h-full w-full items-center justify-center"
