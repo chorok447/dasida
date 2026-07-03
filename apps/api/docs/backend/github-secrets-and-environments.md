@@ -3,7 +3,7 @@
 > **상태**: 정책·설계 문서. **Repository Secrets/Variables·GitHub Environment 는 아직 생성하지 않았다.**  
 > secret·credential **값은 이 문서·저장소에 적지 않는다.**
 
-관련: [main release 준비 체크리스트](./main-release-readiness.md), [deployment 전략](./deployment-strategy.md), [compose template](../../../../deploy/compose.prod.example.yml).
+관련: [main release 준비 체크리스트](./main-release-readiness.md), [deployment 전략](./deployment-strategy.md), [compose template](../../../../deploy/compose.prod.example.yml), [Secrets 설정 runbook](./github-secrets-setup-runbook.md).
 
 ---
 
@@ -163,6 +163,7 @@ flowchart TB
 ## 관련 문서
 
 - [production-env-values-template.md](./production-env-values-template.md) — 운영 값 수집 체크리스트
+- [github-secrets-setup-runbook.md](./github-secrets-setup-runbook.md) — UI/CLI 생성·검증 절차
 - [main-release-readiness.md](./main-release-readiness.md)
 - [deployment-strategy.md](./deployment-strategy.md)
 - [container-images.md](./container-images.md)
