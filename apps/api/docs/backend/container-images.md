@@ -2,6 +2,8 @@
 
 API/Web 배포용 Docker image 빌드 정책. **실제 서버 배포는 아직 미구현**이다(CD workflow placeholder).
 
+**main merge 전** 운영 준비(GitHub Secrets/Variables, GHCR, prod 인프라, 배포 전략)는 [main release 준비 체크리스트](./main-release-readiness.md)를 확인한다.
+
 ## Dockerfile
 
 | 용도 | API | Web |
