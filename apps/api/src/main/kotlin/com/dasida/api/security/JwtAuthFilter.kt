@@ -20,6 +20,7 @@ class JwtAuthFilter(
     private val jwt: JwtService,
     private val users: UserRepository,
     private val denylist: TokenDenylistStore,
+    private val meterRegistry: io.micrometer.core.instrument.MeterRegistry,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
         val header = req.getHeader("Authorization")
@@ -56,11 +57,15 @@ class JwtAuthFilter(
         try {
             denylist.isDenied(hashToken(token))
         } catch (ex: Exception) {
-            log.warn("denylist store unavailable, failing closed (denying request)", ex)
+            // store 장애로 무효화 여부 확인 불가 → fail-closed. metric·경고 로그만 남긴다.
+            // 로그에 raw token/token hash 를 남기지 않는다(민감정보 미출력).
+            meterRegistry.counter(STORE_UNAVAILABLE_METRIC, "policy", "fail_closed").increment()
+            log.warn("denylist store unavailable, failing closed (policy=fail_closed, denying request)", ex)
             true
         }
 
     private companion object {
         private val log = org.slf4j.LoggerFactory.getLogger(JwtAuthFilter::class.java)
+        const val STORE_UNAVAILABLE_METRIC = "dasida.security.token_denylist.store_unavailable"
     }
 }

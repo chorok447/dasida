@@ -1,5 +1,6 @@
 package com.dasida.api.common.ratelimit
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -17,6 +18,7 @@ class RateLimitServiceTest {
                         ),
                 ),
                 store,
+                SimpleMeterRegistry(),
             )
 
         assertThat(service.check(RateLimitRule.AUTH_LOGIN, "203.0.113.1").allowed).isTrue()
@@ -28,7 +30,7 @@ class RateLimitServiceTest {
     @Test
     fun `비활성화 시 store를 호출하지 않고 허용한다`() {
         val store = RecordingRateLimitBucketStore()
-        val service = RateLimitService(RateLimitProperties(enabled = false), store)
+        val service = RateLimitService(RateLimitProperties(enabled = false), store, SimpleMeterRegistry())
 
         repeat(3) {
             assertThat(service.check(RateLimitRule.AUTH_SIGNUP, "203.0.113.2").allowed).isTrue()
