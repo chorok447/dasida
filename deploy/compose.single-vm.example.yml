@@ -1,0 +1,65 @@
+# Single VM override (예시). api/web base: deploy/compose.prod.example.yml
+#
+# MySQL·Redis(Valkey)를 같은 VM compose stack에 넣을 때 병행한다.
+# - mysql/redis: compose internal network만 (public port 없음)
+# - api/web: 127.0.0.1 bind (base compose.prod.example.yml) — host Nginx reverse proxy 전제
+#
+# 사용 (서버에서만, 실제 deploy는 별도 runbook):
+#   cp deploy/.env.prod.example deploy/.env.prod   # git 제외, 실제 값 주입
+#   docker compose \
+#     -f deploy/compose.prod.example.yml \
+#     -f deploy/compose.single-vm.example.yml \
+#     --env-file deploy/.env.prod config
+#   docker compose \
+#     -f deploy/compose.prod.example.yml \
+#     -f deploy/compose.single-vm.example.yml \
+#     --env-file deploy/.env.prod pull
+#   docker compose \
+#     -f deploy/compose.prod.example.yml \
+#     -f deploy/compose.single-vm.example.yml \
+#     --env-file deploy/.env.prod up -d
+#
+# managed DB/Redis 사용 시 이 override 파일은 쓰지 않고 base compose + external DB_URL 만 사용한다.
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: dasida
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: valkey/valkey:8
+    restart: unless-stopped
+    command: ["valkey-server", "--requirepass", "${SPRING_DATA_REDIS_PASSWORD}"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "${SPRING_DATA_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/dasida?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=utf8
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+
+volumes:
+  mysql_data:
