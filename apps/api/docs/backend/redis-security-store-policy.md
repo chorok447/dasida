@@ -54,6 +54,14 @@
 
 관련 테스트: `RateLimitServiceFailOpenTest`(모든 rule fail-open), `RateLimitStoreFailureIntegrationTest`(signup 201·login 401, 5xx 아님), `DenylistStoreFailureTest`(Bearer 401·public GET 200).
 
+### 4-1-1. 장애 감지 timeout (정책과 별개) ✅ 설정됨
+
+**장애 정책**(어떤 결과로 처리할지)과 **장애 감지 timeout**(얼마나 빨리 감지할지)은 다른 축이다.
+
+- Lettuce(Redis client) 기본 command timeout 은 60초다. 이 값이면 store 장애 시 fail-open/closed 코드가 예외를 받기까지 요청이 **~60초 hang** 한다(정책 결과는 정확하지만 fast-fail 아님).
+- `application-local.properties` 에 `spring.data.redis.timeout=1s`, `spring.data.redis.connect-timeout=1s` 를 설정해 store 장애를 **수 초 내 감지**하고 정책(fail-open/closed)이 즉시 발동하도록 했다. 정책 자체(fail-open/closed)는 바꾸지 않았다.
+- prod 는 Redis 미적용 상태이므로 prod timeout 은 Redis provisioning PR 에서 함께 정한다(이 문서 5·6 참조).
+
 ### 4-2. 정책 선택 배경(후보와 장단점)
 
 > 아래 표는 정책 선택의 근거다. 굵게 표시한 권장안(rate limit fail-open, denylist fail-closed)이 **4-1 에서 구현됨**.
