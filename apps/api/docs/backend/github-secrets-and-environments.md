@@ -150,6 +150,8 @@ flowchart TB
 
 ## 체크리스트 (생성 전)
 
+운영 값 수집·검증 표: [production-env-values-template.md](./production-env-values-template.md).
+
 - [ ] Repository Variable `NEXT_PUBLIC_API_URL` (운영 URL 확정 후)
 - [ ] 서버 `.env.prod` (runtime secret — Git 제외)
 - [ ] GitHub Environment `production` + protection rules (deploy PR 전)
@@ -160,6 +162,7 @@ flowchart TB
 
 ## 관련 문서
 
+- [production-env-values-template.md](./production-env-values-template.md) — 운영 값 수집 체크리스트
 - [main-release-readiness.md](./main-release-readiness.md)
 - [deployment-strategy.md](./deployment-strategy.md)
 - [container-images.md](./container-images.md)
