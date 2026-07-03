@@ -1,11 +1,12 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.auth.UserRepository
+import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
-import com.dasida.api.post.Author
 import com.dasida.api.security.AuthUser
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -25,6 +26,7 @@ import java.util.UUID
 class CampaignCommentService(
     private val campaigns: CampaignRepository,
     private val comments: CampaignCommentRepository,
+    private val users: UserRepository,
     private val notifications: NotificationService,
     private val clock: Clock,
 ) {
@@ -76,11 +78,12 @@ class CampaignCommentService(
         val campaign = campaigns.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
 
+        val authorSnapshot = activeUser(user.id).toAuthorSnapshot()
         val saved = comments.save(
             CampaignComment(
                 id = "cc-${UUID.randomUUID()}",
                 campaignId = campaignId,
-                author = Author(user.name, user.verified),
+                author = authorSnapshot,
                 text = text,
                 createdAt = Instant.now(clock),
                 authorUserId = user.id,
@@ -91,7 +94,7 @@ class CampaignCommentService(
             recipientUserId = campaign.authorUserId,
             actorUserId = user.id,
             type = NotificationType.CAMPAIGN_COMMENT_CREATED,
-            title = "${user.name}님이 캠페인에 댓글을 남겼습니다",
+            title = "${authorSnapshot.name}님이 캠페인에 댓글을 남겼습니다",
             body = campaign.title,
             href = "/campaigns/$campaignId?commentId=${saved.id}",
         )
@@ -126,6 +129,15 @@ class CampaignCommentService(
         }
         comments.delete(comment)
     }
+
+    private fun activeUser(userId: Long) =
+        users.findById(userId).orElseThrow {
+            ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+        }.also { user ->
+            if (user.deletedAt != null) {
+                throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+            }
+        }
 
     private companion object {
         const val MAX_PAGE_SIZE = 100

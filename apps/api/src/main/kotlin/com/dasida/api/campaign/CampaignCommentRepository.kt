@@ -32,6 +32,6 @@ interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
     fun deleteByCampaignId(campaignId: String)
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update CampaignComment c set c.author.name = :name, c.author.verified = false where c.authorUserId = :userId")
+    @Query("update CampaignComment c set c.author.name = :name, c.author.verified = false, c.author.profileImageUrl = null where c.authorUserId = :userId")
     fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }

@@ -720,34 +720,51 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             className="flex items-center gap-3 p-3 rounded-2xl mb-6"
             style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
           >
-            <Avatar name="나" />
-            <input
-              aria-label="댓글 내용"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                // 한글 IME 조합 중 Enter 는 제출하지 않음.
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submitComment();
-                }
-              }}
-              placeholder="댓글 달기..."
-              maxLength={MAX_COMMENT_LENGTH}
-              disabled={submittingComment || visibleCommentsLoading || !!commentsError}
-              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
-              style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={submittingComment || visibleCommentsLoading || !!commentsError || !commentText.trim()}
-              aria-label="댓글 등록"
-              className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
-              style={{ background: "#7dd3a3", color: "#0f1f22" }}
-            >
-              <Send size={14} />
-            </button>
+            {token ? (
+              <>
+                <Avatar name="나" size={36} />
+                <input
+                  aria-label="댓글 내용"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    // 한글 IME 조합 중 Enter 는 제출하지 않음.
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      submitComment();
+                    }
+                  }}
+                  placeholder="댓글 달기..."
+                  maxLength={MAX_COMMENT_LENGTH}
+                  disabled={submittingComment || visibleCommentsLoading || !!commentsError}
+                  className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
+                  style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+                />
+                <button
+                  type="button"
+                  onClick={submitComment}
+                  disabled={submittingComment || visibleCommentsLoading || !!commentsError || !commentText.trim()}
+                  aria-label="댓글 등록"
+                  className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
+                  style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                >
+                  <Send size={14} />
+                </button>
+              </>
+            ) : (
+              <div className="flex w-full flex-col items-center gap-3 py-2 text-center">
+                <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+                  로그인해야 댓글을 작성할 수 있어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+                >
+                  로그인하기
+                </button>
+              </div>
+            )}
           </div>
           <div className="space-y-5 min-h-[64px]">
             {targetLocationMessage ? (
@@ -785,7 +802,12 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                     outline: c.id === targetCommentId ? "1px solid rgba(125,211,163,0.55)" : "none",
                   }}
                 >
-                  <Avatar name={c.author.name} verified={c.author.verified} />
+                  <Avatar
+                    name={c.author.name}
+                    verified={c.author.verified}
+                    size={36}
+                    src={c.author.profileImageUrl ?? undefined}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-[13px]">
                       <span className="truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>

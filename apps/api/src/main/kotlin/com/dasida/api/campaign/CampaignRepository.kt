@@ -20,6 +20,6 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update Campaign c set c.author.name = :name, c.author.verified = false where c.authorUserId = :userId")
+    @Query("update Campaign c set c.author.name = :name, c.author.verified = false, c.author.profileImageUrl = null where c.authorUserId = :userId")
     fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }

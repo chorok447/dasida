@@ -16,6 +16,7 @@ import org.hibernate.type.SqlTypes
 class Author(
     var name: String = "",
     var verified: Boolean = false,
+    @Column(name = "profile_image_url", length = 500) var profileImageUrl: String? = null,
 )
 
 @Entity

@@ -24,12 +24,20 @@ data class LoginRequest(
 data class AuthResponse(val token: String, val name: String, val verified: Boolean)
 
 @Schema(description = "내 프로필")
-data class UserProfileResponse(val id: Long, val email: String, val name: String, val verified: Boolean)
+data class UserProfileResponse(
+    val id: Long,
+    val email: String,
+    val name: String,
+    val verified: Boolean,
+    val profileImageUrl: String? = null,
+)
 
 @Schema(description = "프로필 수정 요청")
 data class UpdateProfileRequest(
     @field:Schema(description = "변경할 표시 이름", example = "홍길동")
     val name: String,
+    @field:Schema(description = "프로필 이미지 URL(http/https, 최대 500자). null/blank면 제거")
+    val profileImageUrl: String? = null,
 )
 
 data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)

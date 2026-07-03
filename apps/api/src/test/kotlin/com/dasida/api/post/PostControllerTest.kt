@@ -1,6 +1,7 @@
 package com.dasida.api.post
 
 import com.dasida.api.auth.User
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.notification.NotificationRepository
 import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
@@ -30,6 +31,7 @@ class PostControllerTest(
     @param:Autowired val bookmarkRepo: PostBookmarkRepository,
     @param:Autowired val commentRepo: PostCommentRepository,
     @param:Autowired val notificationRepo: NotificationRepository,
+    @param:Autowired val userRepo: UserRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
     // 다른 사용자(authorUserId=2) 권한 테스트용 토큰.
@@ -947,7 +949,7 @@ class PostControllerTest(
         }.andExpect {
             status { isCreated() }
             jsonPath("$.text") { value("좋은 글이네요") }
-            jsonPath("$.author.name") { value("테스터") }
+            jsonPath("$.author.name") { value("테스트 사용자 1") }
             jsonPath("$.ownedByMe") { value(true) }
             jsonPath("$.edited") { value(false) }
             jsonPath("$.updatedAt") { value(null) }
@@ -965,6 +967,31 @@ class PostControllerTest(
         }.andExpect { status { isCreated() } }
 
         assertThat(commentRepo.findByPostIdOrderBySeqAsc(id).single().authorUserId).isEqualTo(1)
+    }
+
+    @Test
+    fun `댓글 작성 시 현재 사용자 프로필이 author snapshot에 반영된다`() {
+        val user = userRepo.findById(1L).orElseThrow()
+        user.name = "프로필댓글러"
+        user.profileImageUrl = "https://example.com/avatar.png"
+        userRepo.saveAndFlush(user)
+
+        val id = savePost(comments = 0)
+        mvc.post("/api/posts/$id/comments") {
+            headers { add("Authorization", "Bearer $token") }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"text":"프로필 확인"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.author.name") { value("프로필댓글러") }
+            jsonPath("$.author.verified") { value(false) }
+            jsonPath("$.author.profileImageUrl") { value("https://example.com/avatar.png") }
+        }
+
+        val saved = commentRepo.findByPostIdOrderBySeqAsc(id).single()
+        assertThat(saved.author.name).isEqualTo("프로필댓글러")
+        assertThat(saved.author.verified).isFalse()
+        assertThat(saved.author.profileImageUrl).isEqualTo("https://example.com/avatar.png")
     }
 
     @Test

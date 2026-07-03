@@ -86,6 +86,7 @@ class AuthService(
     fun updateProfile(userId: Long, req: UpdateProfileRequest): UpdateProfileResponse {
         val user = activeUser(userId)
         user.name = normalizeName(req.name)
+        user.profileImageUrl = normalizeProfileImageUrl(req.profileImageUrl)
         return UpdateProfileResponse(token = jwt.issue(user), profile = user.toProfile())
     }
 

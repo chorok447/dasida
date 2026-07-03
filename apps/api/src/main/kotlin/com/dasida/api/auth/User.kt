@@ -17,5 +17,6 @@ class User(
     @JsonIgnore var passwordHash: String,
     var name: String,
     val verified: Boolean = false,
+    @Column(name = "profile_image_url", length = 500) var profileImageUrl: String? = null,
     @Column(name = "deleted_at") @JsonIgnore var deletedAt: Instant? = null,
 )

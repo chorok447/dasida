@@ -102,7 +102,7 @@ export type Campaign = {
   daysLeftLabel: string;
   recruitable: boolean;
   recruitState: CampaignRecruitState;
-  author: { name: string; verified: boolean };
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
   body: { heading: string; paragraphs: string[]; images: string[] };
   joinedByMe: boolean;
   ownedByMe: boolean;
@@ -174,7 +174,7 @@ export function removeCampaignParticipant(
 export type CampaignComment = {
   id: string;
   campaignId: string;
-  author: { name: string; verified: boolean };
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
   text: string;
   createdAt: string;
   ownedByMe: boolean;
