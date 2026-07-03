@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiGet, ApiError } from "./api";
-import { clearSession, getToken } from "./auth";
+import { clearSession, getToken, PROFILE_EVENT } from "./auth";
 import { useAuthSession } from "./use-auth-session";
 import type { UserProfile } from "@/data/users";
 
@@ -77,6 +77,12 @@ export function useCurrentUserProfile() {
     };
   }, [reloadTick, token]);
 
+  useEffect(() => {
+    const refresh = () => setReloadTick((tick) => tick + 1);
+    window.addEventListener(PROFILE_EVENT, refresh);
+    return () => window.removeEventListener(PROFILE_EVENT, refresh);
+  }, []);
+
   const retry = () => {
     if (!token) return;
     setState((current) => ({ ...current, profile: null, status: "loading", error: "" }));
@@ -89,5 +95,6 @@ export function useCurrentUserProfile() {
     error: state.error,
     isLoggedIn: !!token,
     retry,
+    refresh: retry,
   };
 }
