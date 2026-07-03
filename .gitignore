@@ -17,3 +17,16 @@ node_modules
 .claude*
 
 .worktrees*
+
+# macOS
+.DS_Store
+
+# Local experiment / scratch (not part of the shipping monorepo)
+Dasida-boot35/
+
+# Production deploy secrets (commit template only: deploy/.env.prod.example)
+deploy/.env.prod
+deploy/.env.prod.local
+
+# Ad-hoc Gradle/API tooling logs
+apps/api/build-*.log
