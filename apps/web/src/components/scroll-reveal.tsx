@@ -11,15 +11,18 @@ export function ScrollReveal({
   children,
   delay = 0,
   className,
+  style,
 }: {
   children: React.ReactNode;
   delay?: number;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
+      style={style}
       initial={reduce ? false : { opacity: 0, y: 32 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
