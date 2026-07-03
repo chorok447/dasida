@@ -7,6 +7,7 @@ import { CalendarDays, ExternalLink, Loader2, PenLine, Users, UserMinus } from "
 import { useState } from "react";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { FallbackImage } from "@/components/fallback-image";
+import { RecommendedCampaigns } from "@/components/recommended-campaigns";
 import { apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getToken } from "@/lib/auth";
 import { useTheme } from "@/lib/theme-context";
@@ -229,14 +230,17 @@ export function UserCampaignsList({
       loadingLabel={meta.loading}
       errorLabel={meta.error}
       empty={
-        <ListEmptyState
-          title={meta.emptyTitle}
-          action={
-            <Link href={meta.ctaHref} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
-              {meta.ctaLabel}
-            </Link>
-          }
-        />
+        <div className="space-y-4">
+          <ListEmptyState
+            title={meta.emptyTitle}
+            action={
+              <Link href={meta.ctaHref} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
+                {meta.ctaLabel}
+              </Link>
+            }
+          />
+          {mode === "joined" ? <RecommendedCampaigns /> : null}
+        </div>
       }
       renderItems={(campaigns, reload) => (
         <div className="space-y-4">
