@@ -3,6 +3,7 @@ export type UserProfile = {
   email: string;
   name: string;
   verified: boolean;
+  profileImageUrl?: string | null;
 };
 
 export type UpdateProfileResponse = {

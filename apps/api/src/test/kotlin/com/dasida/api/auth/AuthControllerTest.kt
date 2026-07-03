@@ -513,6 +513,51 @@ class AuthControllerTest(
     }
 
     @Test
+    fun `정상 profileImageUrl 수정은 DB에 저장한다`() {
+        val user = saveUser(email = "avatar@dasida.com")
+
+        mvc.put("/api/auth/me") {
+            headers { add("Authorization", authorization(user)) }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"아바타","profileImageUrl":"  https://example.com/me.png  "}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.profile.profileImageUrl") { value("https://example.com/me.png") }
+        }
+        assertThat(repo.findById(requireNotNull(user.id)).get().profileImageUrl)
+            .isEqualTo("https://example.com/me.png")
+    }
+
+    @Test
+    fun `blank profileImageUrl 수정은 이미지를 제거한다`() {
+        val user = saveUser(email = "clear-avatar@dasida.com")
+        user.profileImageUrl = "https://example.com/old.png"
+        repo.saveAndFlush(user)
+
+        mvc.put("/api/auth/me") {
+            headers { add("Authorization", authorization(user)) }
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"${user.name}","profileImageUrl":"   "}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.profile.profileImageUrl") { value(null) }
+        }
+        assertThat(repo.findById(requireNotNull(user.id)).get().profileImageUrl).isNull()
+    }
+
+    @Test
+    fun `javascript와 data profileImageUrl은 400`() {
+        val user = saveUser(email = "bad-avatar@dasida.com")
+        listOf("javascript:alert(1)", "data:image/png;base64,abc").forEach { url ->
+            mvc.put("/api/auth/me") {
+                headers { add("Authorization", authorization(user)) }
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"${user.name}","profileImageUrl":"$url"}"""
+            }.andExpect { status { isBadRequest() } }
+        }
+    }
+
+    @Test
     fun `프로필 응답은 passwordHash를 노출하지 않는다`() {
         val passwordHash = "must-never-be-exposed"
         val user = saveUser(email = "safe@dasida.com", passwordHash = passwordHash)

@@ -3,21 +3,24 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LogIn, RefreshCw, UserRound } from "lucide-react";
+import { ArrowLeft, LogIn, RefreshCw } from "lucide-react";
 import { apiPut, ApiError } from "@/lib/api";
 import { clearSession, getToken, setSession } from "@/lib/auth";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useTheme } from "@/lib/theme-context";
 import type { UpdateProfileResponse, UserProfile } from "@/data/users";
+import { Avatar } from "@/components/avatar";
 import { StatePanel } from "@/components/ui/state-panel";
 
 const MAX_NAME_LENGTH = 30;
+const MAX_PROFILE_IMAGE_URL_LENGTH = 500;
 
 function ProfileEditForm({ profile }: { profile: UserProfile }) {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [name, setName] = useState(profile.name);
+  const [profileImageUrl, setProfileImageUrl] = useState(profile.profileImageUrl ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,6 +37,11 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
       setError(`표시 이름은 ${MAX_NAME_LENGTH}자 이하여야 합니다.`);
       return;
     }
+    const trimmedImageUrl = profileImageUrl.trim();
+    if (trimmedImageUrl.length > MAX_PROFILE_IMAGE_URL_LENGTH) {
+      setError(`프로필 이미지 URL은 ${MAX_PROFILE_IMAGE_URL_LENGTH}자 이하여야 합니다.`);
+      return;
+    }
 
     const requestToken = getToken();
     if (!requestToken) {
@@ -45,7 +53,10 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
     setSubmitting(true);
     setError("");
     try {
-      const response = await apiPut<UpdateProfileResponse>("/api/auth/me", { name: trimmedName });
+      const response = await apiPut<UpdateProfileResponse>("/api/auth/me", {
+        name: trimmedName,
+        profileImageUrl: trimmedImageUrl || null,
+      });
       if (getToken() !== requestToken) return;
       setSession(response.token, response.profile.name);
       router.push("/mypage");
@@ -80,15 +91,12 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
         }}
       >
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: dark ? "rgba(125,211,163,0.14)" : "rgba(125,211,163,0.3)",
-              color: dark ? "#7dd3a3" : "#1c4044",
-            }}
-          >
-            <UserRound size={34} />
-          </div>
+          <Avatar
+            name={profile.name}
+            verified={profile.verified}
+            size={80}
+            src={profileImageUrl.trim() || profile.profileImageUrl || undefined}
+          />
           <div>
             <h1
               style={{
@@ -103,7 +111,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               className="mt-1 text-[13px]"
               style={{ color: dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)" }}
             >
-              프로필 이미지 변경은 준비 중입니다.
+              표시 이름과 프로필 이미지 URL을 변경할 수 있습니다.
             </p>
           </div>
         </div>
@@ -129,6 +137,29 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
             />
             <p className="mt-1 text-right text-[11px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
               {name.length}/{MAX_NAME_LENGTH}
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="profile-image-url" className="mb-2 block text-[13px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              프로필 이미지 URL
+            </label>
+            <input
+              id="profile-image-url"
+              value={profileImageUrl}
+              onChange={(event) => setProfileImageUrl(event.target.value)}
+              maxLength={MAX_PROFILE_IMAGE_URL_LENGTH}
+              placeholder="https://example.com/avatar.png"
+              disabled={submitting}
+              className="ui-control"
+              style={{
+                background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
+                borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+                color: dark ? "#f9f7f2" : "#0f1f22",
+              }}
+            />
+            <p className="mt-1 text-[11px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              http 또는 https URL만 사용할 수 있습니다. 비워두면 기본 아바타가 표시됩니다.
             </p>
           </div>
 

@@ -174,6 +174,7 @@ function PostCard({
   const rX = useTransform(sy, [-0.5, 0.5], [5, -5]);
 
   const router = useRouter();
+  const { token } = useAuthSession();
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
@@ -368,7 +369,12 @@ function PostCard({
               ) : (
                 comments.slice(0, 5).map((c) => (
                   <div key={c.id} className="flex gap-2 items-start">
-                    <Avatar name={c.author.name} verified={c.author.verified} size={28} />
+                    <Avatar
+                      name={c.author.name}
+                      verified={c.author.verified}
+                      size={32}
+                      src={c.author.profileImageUrl ?? undefined}
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
                         {c.author.name} <span className="opacity-50">· {c.time}</span>
@@ -378,20 +384,31 @@ function PostCard({
                   </div>
                 ))
               )}
-              <div className="flex items-center gap-2">
-                <input
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
-                  placeholder="댓글 달기…"
-                  maxLength={MAX_COMMENT_LENGTH}
-                  className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
-                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-                />
-                <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
-                  <Send size={14} />
-                </button>
-              </div>
+              {token ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
+                    placeholder="댓글 달기…"
+                    maxLength={MAX_COMMENT_LENGTH}
+                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
+                    style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                  />
+                  <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
+                    <Send size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 text-center" style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}>
+                  <p className="text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+                    로그인해야 댓글을 작성할 수 있어요.
+                  </p>
+                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-4 py-1.5 text-[12px] text-[#0f1f22]">
+                    로그인하기
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

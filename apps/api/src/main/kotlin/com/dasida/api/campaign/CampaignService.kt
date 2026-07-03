@@ -1,5 +1,6 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.post.Author
 import com.dasida.api.post.PostRepository
@@ -22,6 +23,7 @@ import java.util.UUID
 class CampaignService(
     private val repo: CampaignRepository,
     private val campaignSearch: CampaignSearchRepository,
+    private val users: UserRepository,
     private val participants: CampaignParticipantRepository,
     private val posts: PostRepository,
     private val comments: CampaignCommentRepository,
@@ -305,7 +307,11 @@ class CampaignService(
                 capacity = input.capacity,
                 joined = 0,
                 daysLeftLabel = "모집예정",
-                author = Author(user.name, user.verified),
+                author = Author(
+                    user.name,
+                    user.verified,
+                    users.findById(user.id).orElse(null)?.profileImageUrl,
+                ),
                 body = input.body,
                 seq = System.currentTimeMillis(),
                 authorUserId = user.id,

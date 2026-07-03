@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.auth.User
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.notification.NotificationRepository
 import com.dasida.api.post.Author
 import com.dasida.api.security.JwtService
@@ -31,6 +32,7 @@ class CampaignCommentControllerTest(
     @param:Autowired private val campaignRepo: CampaignRepository,
     @param:Autowired private val commentRepo: CampaignCommentRepository,
     @param:Autowired private val notificationRepo: NotificationRepository,
+    @param:Autowired private val userRepo: UserRepository,
 ) {
     private val ownerToken = jwt.issue(
         User(id = 1, email = "comment@test.com", passwordHash = "x", name = "댓글 작성자", verified = true),
@@ -285,8 +287,8 @@ class CampaignCommentControllerTest(
             status { isCreated() }
             jsonPath("$.id") { value(Matchers.startsWith("cc-")) }
             jsonPath("$.campaignId") { value(campaignId) }
-            jsonPath("$.author.name") { value("댓글 작성자") }
-            jsonPath("$.author.verified") { value(true) }
+            jsonPath("$.author.name") { value("테스트 사용자 1") }
+            jsonPath("$.author.verified") { value(false) }
             jsonPath("$.text") { value("상태와 무관한 댓글") }
             jsonPath("$.createdAt") { exists() }
             jsonPath("$.ownedByMe") { value(true) }
@@ -298,10 +300,30 @@ class CampaignCommentControllerTest(
         val id = mapper.readTree(result.response.contentAsString)["id"].asString()
         val saved = commentRepo.findById(id).orElseThrow()
         assertThat(saved.authorUserId).isEqualTo(1)
-        assertThat(saved.author.name).isEqualTo("댓글 작성자")
-        assertThat(saved.author.verified).isTrue()
+        assertThat(saved.author.name).isEqualTo("테스트 사용자 1")
+        assertThat(saved.author.verified).isFalse()
         assertThat(saved.text).isEqualTo("상태와 무관한 댓글")
         assertThat(saved.createdAt).isAfterOrEqualTo(before)
+    }
+
+    @Test
+    fun `댓글 작성 시 현재 사용자 프로필이 author snapshot에 반영된다`() {
+        val user = userRepo.findById(1L).orElseThrow()
+        user.name = "캠페인댓글러"
+        user.profileImageUrl = "https://example.com/campaign-avatar.png"
+        userRepo.saveAndFlush(user)
+
+        val campaignId = saveCampaign()
+        createComment(campaignId, "프로필 스냅샷").andExpect {
+            status { isCreated() }
+            jsonPath("$.author.name") { value("캠페인댓글러") }
+            jsonPath("$.author.verified") { value(false) }
+            jsonPath("$.author.profileImageUrl") { value("https://example.com/campaign-avatar.png") }
+        }
+
+        val saved = commentRepo.findByCampaignId(campaignId, org.springframework.data.domain.PageRequest.of(0, 1)).content.single()
+        assertThat(saved.author.name).isEqualTo("캠페인댓글러")
+        assertThat(saved.author.profileImageUrl).isEqualTo("https://example.com/campaign-avatar.png")
     }
 
     @Test

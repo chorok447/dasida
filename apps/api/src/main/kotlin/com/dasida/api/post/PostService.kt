@@ -1,5 +1,6 @@
 package com.dasida.api.post
 
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.security.AuthUser
@@ -19,6 +20,7 @@ import java.util.UUID
 class PostService(
     private val repo: PostRepository,
     private val campaigns: CampaignRepository,
+    private val users: UserRepository,
     private val likeRepo: PostLikeRepository,
     private val bookmarkRepo: PostBookmarkRepository,
     private val commentRepo: PostCommentRepository,
@@ -252,10 +254,11 @@ class PostService(
         // @Transactional 로 묶어 normalizeFields 의 campaign write lock 을 게시글 저장 commit 까지 유지한다.
         // 캠페인 삭제와 동시에 실행돼도 둘 중 하나만 통과해 orphan campaignId 가 남지 않는다.
         val fields = normalizeFields(req.text, req.tags, req.images, req.campaignId)
+        val profileImageUrl = users.findById(author.id).orElse(null)?.profileImageUrl
         return repo.save(
             Post(
                 id = "p-${UUID.randomUUID()}",
-                author = Author(author.name, author.verified),
+                author = Author(author.name, author.verified, profileImageUrl),
                 time = "방금 전",
                 text = fields.text,
                 tags = fields.tags,

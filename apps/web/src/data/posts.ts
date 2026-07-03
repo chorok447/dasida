@@ -6,7 +6,7 @@ export type PostSearchSort = "latest" | "popular" | "discussed";
 
 export type Post = {
   id: string;
-  author: { name: string; verified: boolean };
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
   time: string;
   text: string;
   tags: string[];
@@ -50,7 +50,7 @@ export const fetchBookmarkedPostsPage = (page: number) => postsPage("/api/posts/
 export type PostComment = {
   id: string;
   postId: string;
-  author: { name: string; verified: boolean };
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
   text: string;
   time: string;
   ownedByMe: boolean;

@@ -14,6 +14,7 @@ type AvatarProps = {
 export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
   const imgSrc = src ?? avatarFor(name);
   const [failed, setFailed] = useState(false);
+  const alt = src ? `${name} 프로필 이미지` : name;
 
   return (
     <div className="relative inline-block flex-shrink-0" style={{ width: size, height: size }}>
@@ -21,7 +22,7 @@ export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={imgSrc}
-          alt={name}
+          alt={alt}
           onError={() => setFailed(true)}
           className="w-full h-full rounded-full object-cover"
           draggable={false}

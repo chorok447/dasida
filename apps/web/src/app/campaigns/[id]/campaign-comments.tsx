@@ -93,7 +93,12 @@ function CommentItem({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Avatar name={comment.author.name} verified={comment.author.verified} />
+          <Avatar
+            name={comment.author.name}
+            verified={comment.author.verified}
+            size={36}
+            src={comment.author.profileImageUrl ?? undefined}
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate text-[13px] font-medium" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
@@ -612,7 +617,7 @@ export function CampaignComments({
         ) : (
           <div className="flex flex-col items-center gap-3 rounded-2xl border px-5 py-6 text-center" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
             <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              댓글을 작성하려면 로그인이 필요합니다.
+              로그인해야 댓글을 작성할 수 있어요.
             </p>
             <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               로그인하기

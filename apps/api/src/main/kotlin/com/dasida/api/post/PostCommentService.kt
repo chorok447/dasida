@@ -1,5 +1,7 @@
 package com.dasida.api.post
 
+import com.dasida.api.auth.UserRepository
+import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
@@ -24,6 +26,7 @@ import java.util.UUID
 class PostCommentService(
     private val repo: PostRepository,
     private val commentRepo: PostCommentRepository,
+    private val users: UserRepository,
     private val notifications: NotificationService,
     private val clock: Clock,
 ) {
@@ -79,11 +82,12 @@ class PostCommentService(
         val post = repo.findByIdForUpdate(postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
         val text = normalizeCommentText(req.text)
+        val authorSnapshot = activeUser(author.id).toAuthorSnapshot()
         val comment = commentRepo.save(
             PostComment(
                 id = "pc-${UUID.randomUUID()}",
                 postId = postId,
-                author = Author(author.name, author.verified),
+                author = authorSnapshot,
                 text = text,
                 time = "방금 전",
                 seq = System.currentTimeMillis(),
@@ -96,7 +100,7 @@ class PostCommentService(
             recipientUserId = post.authorUserId,
             actorUserId = author.id,
             type = NotificationType.POST_COMMENT_CREATED,
-            title = "${author.name}님이 내 게시글에 댓글을 남겼습니다",
+            title = "${authorSnapshot.name}님이 내 게시글에 댓글을 남겼습니다",
             body = text,
             href = "/posts/$postId?commentId=${comment.id}",
         )
@@ -139,6 +143,15 @@ class PostCommentService(
         commentRepo.delete(comment)
         post.comments = maxOf(0, post.comments - 1)
     }
+
+    private fun activeUser(userId: Long) =
+        users.findById(userId).orElseThrow {
+            ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+        }.also { user ->
+            if (user.deletedAt != null) {
+                throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+            }
+        }
 
     private companion object {
         const val MAX_COMMENT_PAGE_SIZE = 100
