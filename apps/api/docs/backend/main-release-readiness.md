@@ -21,6 +21,7 @@
 ## 1. GitHub Secrets / Variables
 
 저장소 또는 배포 환경(서버/컨테이너 오케스트레이터)에 주입. **값을 이 문서·코드·커밋에 적지 않는다.**
+분류·Environment 전략·main PR/push/deploy 흐름: [github-secrets-and-environments.md](./github-secrets-and-environments.md).
 
 ### 1-1. API (런타임 필수)
 
@@ -197,6 +198,7 @@ main merge **전** GitHub에서 확인:
 
 ## 관련 문서
 
+- [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables·`production` Environment 전략
 - [deployment-strategy.md](./deployment-strategy.md) — production 배포 전략 결정안
 - [container-images.md](./container-images.md) — GHCR image·CI 정책
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist·Redis 정책

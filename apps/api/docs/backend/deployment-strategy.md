@@ -159,6 +159,7 @@ flowchart LR
 
 ## 관련 문서
 
+- [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables·Environment
 - [main-release-readiness.md](./main-release-readiness.md) — merge 전 체크리스트
 - [container-images.md](./container-images.md) — GHCR·CI
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist
