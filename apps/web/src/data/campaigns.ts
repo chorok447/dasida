@@ -236,3 +236,157 @@ export function campaignRecruitMeta(campaign: Campaign) {
   }
   return recruitStateMeta[campaign.recruitState];
 }
+
+/** 백엔드 CampaignValidators 와 동일한 제한. */
+export const CAMPAIGN_MAX_CAPACITY = 10_000;
+
+export const CAMPAIGN_COMPOSE_DRAFT_KEY = "dasida:campaign-compose-draft";
+
+export type CampaignComposeValues = {
+  title: string;
+  summary: string;
+  body: string;
+  thumb: string;
+  recruitStart: string;
+  recruitEnd: string;
+  runStart: string;
+  runEnd: string;
+  capacity: string;
+};
+
+export type CampaignComposePayload = Omit<CampaignComposeValues, "capacity"> & { capacity: number };
+
+export type CampaignComposeField =
+  | "title"
+  | "summary"
+  | "body"
+  | "thumb"
+  | "recruitStart"
+  | "recruitEnd"
+  | "runStart"
+  | "runEnd"
+  | "capacity";
+
+export type CampaignComposeValidationResult =
+  | { ok: true; payload: CampaignComposePayload }
+  | { ok: false; message: string; field?: CampaignComposeField };
+
+export function isValidCampaignImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
+}
+
+export const DEFAULT_CAMPAIGN_COMPOSE_VALUES: CampaignComposeValues = {
+  title: "",
+  summary: "",
+  body: "",
+  thumb: "",
+  recruitStart: "2026-07-01",
+  recruitEnd: "2026-07-31",
+  runStart: "2026-08-05",
+  runEnd: "2026-08-30",
+  capacity: "30",
+};
+
+export function campaignToComposeValues(campaign: Campaign): CampaignComposeValues {
+  return {
+    title: campaign.title,
+    summary: campaign.summary,
+    body: campaign.body.paragraphs.join("\n\n"),
+    thumb: campaign.thumb,
+    recruitStart: campaign.recruitStart,
+    recruitEnd: campaign.recruitEnd,
+    runStart: campaign.runStart,
+    runEnd: campaign.runEnd,
+    capacity: String(campaign.capacity),
+  };
+}
+
+export function validateCampaignCompose(values: CampaignComposeValues): CampaignComposeValidationResult {
+  const title = values.title.trim();
+  if (!title) {
+    return { ok: false, message: "캠페인 제목을 입력해주세요.", field: "title" };
+  }
+
+  const thumb = values.thumb.trim();
+  if (thumb && !isValidCampaignImageUrl(thumb)) {
+    return {
+      ok: false,
+      message: "썸네일 URL은 http:// 또는 https:// 로 시작해야 합니다.",
+      field: "thumb",
+    };
+  }
+
+  const capacity = Number(values.capacity);
+  if (!Number.isInteger(capacity) || capacity < 1) {
+    return { ok: false, message: "모집 인원은 1 이상의 정수여야 합니다.", field: "capacity" };
+  }
+  if (capacity > CAMPAIGN_MAX_CAPACITY) {
+    return {
+      ok: false,
+      message: `모집 인원은 ${CAMPAIGN_MAX_CAPACITY.toLocaleString()}명 이하여야 합니다.`,
+      field: "capacity",
+    };
+  }
+
+  const dateFields: { key: CampaignComposeField; value: string; label: string }[] = [
+    { key: "recruitStart", value: values.recruitStart, label: "모집 시작일" },
+    { key: "recruitEnd", value: values.recruitEnd, label: "모집 종료일" },
+    { key: "runStart", value: values.runStart, label: "진행 시작일" },
+    { key: "runEnd", value: values.runEnd, label: "진행 종료일" },
+  ];
+
+  for (const field of dateFields) {
+    if (!field.value.trim()) {
+      return { ok: false, message: `${field.label}을(를) 입력해주세요.`, field: field.key };
+    }
+    if (!isIsoDate(field.value)) {
+      return { ok: false, message: `${field.label}은(는) yyyy-MM-dd 형식이어야 합니다.`, field: field.key };
+    }
+  }
+
+  const { recruitStart, recruitEnd, runStart, runEnd } = values;
+  if (recruitStart > recruitEnd) {
+    return {
+      ok: false,
+      message: "모집 시작일은 모집 종료일보다 늦을 수 없습니다.",
+      field: "recruitEnd",
+    };
+  }
+  if (recruitEnd > runStart) {
+    return {
+      ok: false,
+      message: "모집 종료일은 진행 시작일보다 늦을 수 없습니다.",
+      field: "recruitEnd",
+    };
+  }
+  if (recruitEnd > runEnd) {
+    return {
+      ok: false,
+      message: "모집 종료일은 진행 종료일보다 늦을 수 없습니다.",
+      field: "recruitEnd",
+    };
+  }
+  if (runStart > runEnd) {
+    return {
+      ok: false,
+      message: "진행 시작일은 진행 종료일보다 늦을 수 없습니다.",
+      field: "runEnd",
+    };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      title,
+      summary: values.summary.trim(),
+      body: values.body.trim(),
+      thumb,
+      recruitStart,
+      recruitEnd,
+      runStart,
+      runEnd,
+      capacity,
+    },
+  };
+}
