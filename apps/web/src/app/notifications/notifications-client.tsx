@@ -199,8 +199,10 @@ export default function NotificationsClient() {
   const requestIdentity = JSON.stringify([token, page, filter, retryTick]);
 
   // 비로그인은 로그인 페이지로(로그인 후 알림으로 복귀).
+  // isLoggedIn만 보면 직접 URL 진입 시 hydration 첫 렌더의 서버 스냅샷(비로그인)이 캡처되어
+  // 로그인 상태에서도 튕기므로, localStorage의 실제 토큰을 함께 확인한다.
   useEffect(() => {
-    if (!isLoggedIn) router.replace("/login?next=/notifications");
+    if (!isLoggedIn && !getToken()) router.replace("/login?next=/notifications");
   }, [isLoggedIn, router]);
 
   // 검색 페이지와 동일한 stale 방어: generation + token 으로 늦은 응답이 최신을 덮지 못하게 한다.
