@@ -6,8 +6,8 @@
 # - 같은 VM 에 DB/Redis 컨테이너를 넣으려면 compose.local.yml 의 mysql/redis 블록을 참고해
 #   별도 override compose 를 서버에만 두는 방식을 권장한다(이 template 에는 포함하지 않음).
 #
-# GHCR pull 전 서버에서 login:
-#   echo "$CR_PAT" | docker login ghcr.io -u USERNAME --password-stdin
+# Docker Hub pull 전 서버에서 login (private repo 또는 rate limit 회피 시):
+#   echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 #
 # 사용:
 #   cp deploy/.env.prod.example deploy/.env.prod  # 서버에서만, git 제외
@@ -17,7 +17,7 @@
 
 services:
   api:
-    image: ghcr.io/chorok447/dasida-api:${DASIDA_IMAGE_TAG}
+    image: ${DOCKERHUB_USERNAME}/dasida-api:${DASIDA_IMAGE_TAG}
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -44,7 +44,7 @@ services:
       start_period: 90s
 
   web:
-    image: ghcr.io/chorok447/dasida-web:${DASIDA_IMAGE_TAG}
+    image: ${DOCKERHUB_USERNAME}/dasida-web:${DASIDA_IMAGE_TAG}
     restart: unless-stopped
     ports:
       - "3000:3000"

@@ -58,11 +58,21 @@ prod Redis store(`app.rate-limit.store`, `app.auth.denylist.store`)는 **별도 
 
 deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `docker compose` 를 실행하는 방식 중 하나를 후속 PR에서 선택한다. API runtime secret 을 GitHub에 중복 보관할 필요는 없다.
 
+### Docker Hub image publish (main push)
+
+| Secret 이름 | 용도 | 주입 위치 |
+|-------------|------|-----------|
+| `DOCKERHUB_TOKEN` | Docker Hub access token | `container-images.yml` main push login |
+
+`DOCKERHUB_USERNAME` 은 Repository **Variable**(비밀 아님). main PR build-only 에서는 token 없이 build 검증만 한다.
+
 ### Actions 기본 제공 (별도 등록 불필요)
 
 | 이름 | 용도 |
 |------|------|
-| `GITHUB_TOKEN` | CI, main push 시 GHCR push (`packages: write`는 push job만) |
+| `GITHUB_TOKEN` | CI 검사; **Docker Hub push 에 사용하지 않음** |
+
+> **참고**: 초기 설계는 GHCR + `GITHUB_TOKEN` push 였으나 Docker Hub 로 전환했다.
 
 ---
 
@@ -70,12 +80,13 @@ deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `doc
 
 | Variable 이름 | 용도 | 사용처 |
 |---------------|------|--------|
+| `DOCKERHUB_USERNAME` | Docker Hub namespace (실제 계정명) | `container-images.yml` image name; main push 전 등록 |
 | `NEXT_PUBLIC_API_URL` | 운영 API URL(Web **build arg**) | `container-images.yml` Web build; 미설정 시 CI placeholder |
 | `DASIDA_IMAGE_TAG` | (정책) 배포 pin tag | **서버 `.env.prod`** — GitHub Variable 필수 아님. `sha-<shortsha>` pin 권장, `main` tag는 추적용만 |
-| `GHCR_API_IMAGE` | (선택) API image 전체 이름 | 향후 deploy job; 기본값 `ghcr.io/chorok447/dasida-api` |
-| `GHCR_WEB_IMAGE` | (선택) Web image 전체 이름 | 향후 deploy job; 기본값 `ghcr.io/chorok447/dasida-web` |
 
 `DASIDA_IMAGE_TAG` 는 [deployment-strategy.md](./deployment-strategy.md) 와 [`.env.prod.example`](../../../../deploy/.env.prod.example) 에서 **sha-\*** pin 을 기본으로 한다. Repository Variable 로 고정할 수도 있으나, **rollback 단위는 배포 시점의 sha** 이므로 서버 env 또는 deploy job input 이 더 적합하다.
+
+**미사용 (GHCR 전환 이전 후보)**: `GHCR_API_IMAGE`, `GHCR_WEB_IMAGE` — Docker Hub 전환 후 등록하지 않는다.
 
 ---
 
@@ -87,8 +98,8 @@ deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `doc
 |------|------|
 | Environment 이름 | `production` |
 | Protection rules | Required reviewers(1명 이상) 또는 manual approval |
-| Environment secrets | `DEPLOY_*`, (선택) GHCR read PAT if not using `GITHUB_TOKEN` on server |
-| Environment variables | (선택) `GHCR_API_IMAGE`, `GHCR_WEB_IMAGE`, 기본 `DASIDA_IMAGE_TAG` hint |
+| Environment secrets | `DEPLOY_*` |
+| Environment variables | (선택) `DASIDA_IMAGE_TAG` hint |
 
 **당장 하지 않는 것**
 
@@ -97,7 +108,7 @@ deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `doc
 
 ### 향후 deploy job 흐름 (설계)
 
-1. `main` push → GHCR image push (`sha-*`, `main`)
+1. `main` push → Docker Hub image push (`sha-*`, `main`)
 2. (선택) CD workflow `deploy` job 트리거 — **`environment: production`** → 승인 gate
 3. 승인 후 job 이 `DEPLOY_*` secret 으로 서버 SSH
 4. 서버에서 `DASIDA_IMAGE_TAG=sha-…` 로 [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) 기반 pull/up
@@ -115,7 +126,7 @@ flowchart TB
     D[production secrets 금지]
   end
   subgraph push [main push]
-    E[GHCR push sha + main]
+    E[Docker Hub push sha + main]
     F[CD deploy placeholder]
     G[실제 deploy 없음]
   end
@@ -132,7 +143,7 @@ flowchart TB
 |------|-------------------|------|
 | **develop PR** | 없음(또는 `GITHUB_TOKEN`) | auto-merge |
 | **main PR** | production secret **사용 금지**; `vars.NEXT_PUBLIC_API_URL` 만 Web build(placeholder 허용) | 구현됨 |
-| **main push** | `GITHUB_TOKEN` → GHCR push | 구현됨 |
+| **main push** | `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN` → Docker Hub push | 구현됨 |
 | **deploy** | `production` Environment + `DEPLOY_*` + 서버 `.env.prod` | **미구현** |
 
 ---
@@ -152,11 +163,13 @@ flowchart TB
 
 운영 값 수집·검증 표: [production-env-values-template.md](./production-env-values-template.md).
 
+- [ ] Repository Variable `DOCKERHUB_USERNAME` (main push 전)
+- [ ] Repository Secret `DOCKERHUB_TOKEN` (main push 전)
 - [ ] Repository Variable `NEXT_PUBLIC_API_URL` (운영 URL 확정 후)
 - [ ] 서버 `.env.prod` (runtime secret — Git 제외)
 - [ ] GitHub Environment `production` + protection rules (deploy PR 전)
 - [ ] Environment secrets `DEPLOY_*` (deploy PR 전)
-- [ ] GHCR package visibility·pull 정책 (수동 UI)
+- [ ] Docker Hub repository visibility·pull 정책 (수동 UI)
 
 ---
 

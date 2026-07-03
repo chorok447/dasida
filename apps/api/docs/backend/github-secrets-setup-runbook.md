@@ -80,8 +80,15 @@ Runtime secret 을 **서버 `.env.prod`에만** 둘 경우 GitHub 에 `JWT_SECRE
 | 이름 | UI | 비고 |
 |------|-----|------|
 | `NEXT_PUBLIC_API_URL` | Repository **variable** | 운영 API public URL. Web image build(`container-images.yml`)에 사용 |
+| `DOCKERHUB_USERNAME` | Repository **variable** | Docker Hub namespace. main push image publish 전 등록 |
 
-main merge **전** 필수는 아님. **운영 Web image 빌드·deploy 전** 필수.
+main merge **전** 필수는 아님. **운영 Web image 빌드·deploy 전** `NEXT_PUBLIC_API_URL` 필수. **첫 main push 전** `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN` 필수.
+
+### 1b단계 — Docker Hub CI credential (main push 전)
+
+| 이름 | UI | 비고 |
+|------|-----|------|
+| `DOCKERHUB_TOKEN` | Repository **secret** | Docker Hub access token. main push job login |
 
 ### 2단계 — API runtime (주입 위치 선택)
 
@@ -135,9 +142,9 @@ CD workflow·`environment: production` 은 **아직 미구현**.
    ```
    deploy 자동화 준비 시 `production` 포함 여부 확인.
 
-3. **main PR / GHCR**
+3. **main PR / Docker Hub**
    - [PR #149](https://github.com/chorok447/dasida/pull/149) 는 운영 준비·명시 승인 전까지 **merge 하지 않음**
-   - main merge **전** `container-images` main **push** 이벤트 없음 → GHCR prod push **없음** (정상)
+   - main merge **전** `container-images` main **push** 이벤트 없음 → Docker Hub prod push **없음** (정상)
    ```bash
    gh run list --workflow=container-images.yml --event push --limit 3
    ```
