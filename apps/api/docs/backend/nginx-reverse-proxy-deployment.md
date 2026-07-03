@@ -241,7 +241,7 @@ Nginx 뒤에서 HTTPS origin 을 애플리케이션이 인식하려면 `X-Forwar
 - [ ] `NEXT_PUBLIC_API_URL` 등록 + Web image 재빌드 (도메인 확정 후)
 - [ ] `APP_CORS_ALLOWED_ORIGINS` 서버 env 준비 (Web 도메인 확정 후)
 - [ ] 서버 `.env.prod` 작성 (Git 제외)
-- [ ] production deploy runbook 작성
+- [ ] production deploy runbook 작성 — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) (문서만)
 - [x] compose api/web `127.0.0.1` port bind — [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml)
 - [ ] (optional) `linux/arm64` multi-arch build
 - [ ] (optional) Nginx 를 compose service 로 통합
