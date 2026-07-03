@@ -33,7 +33,7 @@
 
 ### 아직 구현되지 않은 것 (TODO)
 
-- 운영용 `compose.prod.yml` (또는 서버 전용 compose manifest) — **저장소에 없음**
+- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — GHCR pull·env 주입 참고용. **실제 서버 deploy/CD 는 아직 없음.**
 - CD workflow의 실제 deploy step — [`.github/workflows/cd.yml`](../../../../.github/workflows/cd.yml) placeholder
 - GHCR pull 인증(runner/서버 credential) — **미설정**
 
@@ -149,7 +149,7 @@ flowchart LR
 
 ## 후속 작업 (코드/인프라 PR로 분리)
 
-1. 운영 compose manifest 초안(`compose.prod.yml` 등) — secret 없이 변수 참조만
+1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
 2. 서버 runbook: GHCR login, pull, deploy, rollback
 3. CD workflow에 opt-in deploy job (명시 승인 후)
 4. prod Redis store 설정 PR (필요 시)
