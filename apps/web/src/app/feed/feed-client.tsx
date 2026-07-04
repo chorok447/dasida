@@ -3,27 +3,19 @@
 import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import {
-  Bookmark,
-  Heart,
   Image as ImageIcon,
-  MessageCircle,
   RefreshCw,
-  Send,
-  Sparkles,
-  TrendingUp,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { progressPercent } from "@/lib/progress";
-import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
-import { clearSession, getSessionId } from "@/lib/auth";
+import { apiGet } from "@/lib/api";
+import { getSessionId } from "@/lib/auth";
+import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
-import { FallbackImage } from "@/components/fallback-image";
-import { ReportButton } from "@/components/report-button";
-import { ShareButton } from "@/components/share-button";
 import { PageShell } from "@/components/page-shell";
+import { FeedPostCard } from "@/app/feed/feed-post-card";
+import { FeedSideHot, FeedSideRecommend } from "@/app/feed/feed-sidebar";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { SearchField } from "@/components/search-field";
@@ -31,17 +23,11 @@ import { StaggerItem } from "@/components/scroll-reveal";
 import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
-import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
-import { statusMeta, type Campaign } from "@/data/campaigns";
+import type { PostSearchResponse, PostSearchSort } from "@/data/posts";
+import type { Campaign } from "@/data/campaigns";
+import { useCanonicalUrl, parsePageParam, buildFeedHref, type FeedUrlState } from "@/lib/use-url-query";
 
-const MAX_COMMENT_LENGTH = 500;
-
-type UrlState = {
-  query: string;
-  campaignOnly: boolean;
-  sort: PostSearchSort;
-  page: number;
-};
+type UrlState = FeedUrlState;
 
 type SearchState = {
   identity: string;
@@ -50,12 +36,6 @@ type SearchState = {
   status: "loading" | "success" | "error";
   response: PostSearchResponse | null;
 };
-
-function parsePage(value: string | null): number {
-  if (value === null) return 0;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
-}
 
 function neutralizeInteractions(response: PostSearchResponse): PostSearchResponse {
   return {
@@ -173,343 +153,6 @@ function FeedControls({
   );
 }
 
-function PostCard({
-  p,
-  refreshing,
-  identity,
-  onOpen,
-}: {
-  p: Post;
-  refreshing: boolean;
-  identity: string | null;
-  onOpen: () => void;
-}) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const ref = useRef<HTMLDivElement>(null);
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 220, damping: 22 });
-  const sy = useSpring(my, { stiffness: 220, damping: 22 });
-  const rY = useTransform(sx, [-0.5, 0.5], [-6, 6]);
-  const rX = useTransform(sy, [-0.5, 0.5], [5, -5]);
-
-  const router = useRouter();
-  const { sessionId: token } = useAuthSession();
-  const [likes, setLikes] = useState(p.likes);
-  const [liked, setLiked] = useState(p.likedByMe);
-  const [liking, setLiking] = useState(false);
-  const [bookmarked, setBookmarked] = useState(p.bookmarkedByMe);
-  const [bookmarking, setBookmarking] = useState(false);
-  const [commentCount, setCommentCount] = useState(p.comments);
-  // 인증 재조회로 새 p가 오면 서버 상태를 반영한다. identity 변경 직후에는 사용자별 상태를 즉시 중립화한다.
-  // 카드를 리마운트하지 않아 작성 중인 댓글 입력은 보존한다.
-  const [synced, setSynced] = useState({ post: p, identity });
-  if (synced.post !== p || synced.identity !== identity) {
-    const identityChanged = synced.identity !== identity;
-    setSynced({ post: p, identity });
-    setLikes(p.likes);
-    setCommentCount(p.comments);
-    setLiked(identityChanged ? false : p.likedByMe);
-    setBookmarked(identityChanged ? false : p.bookmarkedByMe);
-  }
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<PostComment[]>([]);
-  const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const [commentsError, setCommentsError] = useState("");
-  const [commentText, setCommentText] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const promptLogin = (message: string, expired = false) => {
-    if (expired) clearSession();
-    toast.error(message);
-    router.push("/login");
-  };
-
-  const onLike = async () => {
-    if (!getSessionId()) return promptLogin("로그인 후 이용할 수 있어요.");
-    if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
-    setLiking(true);
-    const requestToken = getSessionId(); // 요청 identity 캡처
-    try {
-      const updated = liked
-        ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
-        : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
-      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
-      setLikes(updated.likes);
-      setLiked(updated.likedByMe);
-    } catch (e) {
-      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
-      if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
-      else toast.error("좋아요 처리에 실패했습니다.");
-    } finally {
-      setLiking(false);
-    }
-  };
-
-  const onBookmark = async () => {
-    const requestToken = getSessionId();
-    if (!requestToken) return promptLogin("로그인 후 이용할 수 있어요.");
-    if (bookmarking || refreshing) return;
-    setBookmarking(true);
-    try {
-      const updated = bookmarked
-        ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
-        : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
-      if (getSessionId() !== requestToken) return;
-      setBookmarked(updated.bookmarkedByMe);
-    } catch (e) {
-      if (getSessionId() !== requestToken) return;
-      if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
-      else toast.error("북마크 처리에 실패했습니다.");
-    } finally {
-      setBookmarking(false);
-    }
-  };
-
-  const toggleComments = async () => {
-    const next = !showComments;
-    setShowComments(next);
-    if (next && !commentsLoaded) {
-      try {
-        setComments(await apiGet<PostComment[]>(`/api/posts/${p.id}/comments`));
-        setCommentsError("");
-      } catch {
-        setComments([]);
-        setCommentsError("댓글을 불러오지 못했습니다.");
-      } finally {
-        setCommentsLoaded(true);
-      }
-    }
-  };
-
-  const submitComment = async () => {
-    const text = commentText.trim();
-    if (!text || busy) return;
-    if (text.length > MAX_COMMENT_LENGTH) return toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
-    if (!getSessionId()) return promptLogin("로그인해야 댓글을 작성할 수 있어요.");
-    setBusy(true);
-    try {
-      const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
-      setComments((cs) => [...cs, created]);
-      setCommentCount((c) => c + 1);
-      setCommentText("");
-    } catch (e) {
-      setBusy(false);
-      if (e instanceof ApiError && e.status === 401) promptLogin("로그인해야 댓글을 작성할 수 있어요.", true);
-      else toast.error("댓글 작성에 실패했습니다.");
-      return;
-    }
-    setBusy(false);
-  };
-
-  return (
-    <div style={{ perspective: 1200 }}>
-      <motion.article
-        ref={ref}
-        onMouseMove={(e) => {
-          const r = ref.current?.getBoundingClientRect();
-          if (!r) return;
-          mx.set((e.clientX - r.left) / r.width - 0.5);
-          my.set((e.clientY - r.top) / r.height - 0.5);
-        }}
-        onMouseLeave={() => {
-          mx.set(0);
-          my.set(0);
-        }}
-        style={{
-          rotateX: rX,
-          rotateY: rY,
-          transformStyle: "preserve-3d",
-          background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        }}
-        className="rounded-2xl border overflow-hidden shadow-[0_20px_50px_-25px_rgba(0,0,0,0.4)]"
-      >
-        <div className="flex items-center gap-3 p-4">
-          <Avatar name={p.author.name} verified={p.author.verified} />
-          <div className="flex-1">
-            <div style={{ color: dark ? "#f9f7f2" : "#0f1f22", fontSize: 14 }}>{p.author.name}</div>
-            <div className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{p.time}</div>
-          </div>
-        </div>
-
-        {p.images.length === 1 ? (
-          <button type="button" className="block aspect-[4/3] w-full overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
-            <FallbackImage src={p.images[0]} alt="" decorative className="w-full h-full object-cover" />
-          </button>
-        ) : (
-          <button type="button" className="grid aspect-[4/3] w-full grid-cols-2 gap-0.5 overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
-            {p.images.map((src, i) => (
-              <FallbackImage key={i} src={src} alt="" decorative className="w-full h-full object-cover" />
-            ))}
-          </button>
-        )}
-
-        <div className="p-4 space-y-3">
-          <p style={{ color: dark ? "#f9f7f2" : "#0f1f22", fontSize: 14, lineHeight: 1.6 }}>{p.text}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {p.tags.map((t) => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: dark ? "rgba(125,211,163,0.12)" : "rgba(125,211,163,0.2)", color: dark ? "#7dd3a3" : "#1c4044" }}>
-                {t}
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-            <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              <motion.button whileTap={{ scale: 0.85 }} onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
-                <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
-              </motion.button>
-              <button onClick={toggleComments} className="flex items-center gap-1">
-                <MessageCircle size={14} /> {commentCount}
-              </button>
-              <ShareButton
-                title={p.text.slice(0, 80)}
-                className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors"
-              />
-              <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.85 }}
-              onClick={onBookmark}
-              disabled={bookmarking || refreshing}
-              aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
-              className="transition-colors disabled:opacity-50"
-              style={{ color: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
-            >
-              <Bookmark size={14} fill={bookmarked ? "#7dd3a3" : "transparent"} />
-            </motion.button>
-          </div>
-
-          {showComments && (
-            <div className="pt-3 border-t space-y-3" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-              {commentsError ? (
-                <p className="text-[12px]" style={{ color: "#ed5c48" }}>{commentsError}</p>
-              ) : comments.length === 0 ? (
-                <p className="text-[12px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                  {commentsLoaded ? "첫 댓글을 남겨보세요." : "댓글을 불러오는 중…"}
-                </p>
-              ) : (
-                comments.slice(0, 5).map((c) => (
-                  <div key={c.id} className="flex gap-2 items-start">
-                    <Avatar
-                      name={c.author.name}
-                      verified={c.author.verified}
-                      size={32}
-                      src={c.author.profileImageUrl ?? undefined}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                        {c.author.name} <span className="opacity-50">· {c.time}</span>
-                      </div>
-                      <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}>{c.text}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-              {token ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
-                    placeholder="댓글 달기…"
-                    maxLength={MAX_COMMENT_LENGTH}
-                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
-                    style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-                  />
-                  <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
-                    <Send size={14} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 text-center" style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}>
-                  <p className="text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-                    로그인해야 댓글을 작성할 수 있어요.
-                  </p>
-                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-4 py-1.5 text-[12px] text-[#0f1f22]">
-                    로그인하기
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </motion.article>
-    </div>
-  );
-}
-
-function SideHot({ campaigns }: { campaigns: Campaign[] }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <TrendingUp size={14} style={{ color: "#7dd3a3" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-          진행 중인 캠페인
-        </h3>
-      </div>
-      <div className="space-y-3">
-        {campaigns.map((c) => {
-          const pct = progressPercent(c.joined, c.capacity);
-          return (
-            <div key={c.id} className="flex gap-3 items-center">
-              <FallbackImage
-                src={c.thumb}
-                alt={`${c.title} 캠페인 이미지`}
-                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                  {c.title}
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1 rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: statusMeta[c.status].color }} />
-                  </div>
-                  <span className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{pct}%</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function SideRecommend() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} style={{ color: "#7dd3a3" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-          크리에이터 추천
-        </h3>
-      </div>
-      <p className="text-[13px] leading-relaxed opacity-65" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-        팔로우와 추천 크리에이터 기능은 준비 중이에요.
-      </p>
-    </div>
-  );
-}
-
 export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -525,9 +168,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
       query: searchParams.get("q") ?? "",
       campaignOnly: searchParams.get("campaignOnly") === "true",
       sort: sort === "popular" || sort === "discussed" ? sort : "latest",
-      page: parsePage(searchParams.get("page")),
+      page: parsePageParam(searchParams.get("page")),
     };
   }, [searchParams]);
+  const canonicalHref = buildFeedHref(urlState);
+  const currentHref = searchParams.toString() ? `/feed?${searchParams.toString()}` : "/feed";
+  useCanonicalUrl(canonicalHref, currentHref);
   const queryIdentity = JSON.stringify(urlState);
   const requestIdentity = JSON.stringify([token, queryIdentity, retryTick]);
   const [searchState, setSearchState] = useState<SearchState>({
@@ -587,14 +233,11 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
     const requestToken = token;
     if (getSessionId() !== requestToken) return;
 
-    const generation = ++generationRef.current;
-    let cancelled = false;
-    const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
+    const guard = beginAuthedRequest(generationRef, requestToken);
 
     apiGet<PostSearchResponse>(searchPath)
       .then((nextResponse) => {
-        if (!isCurrent()) return;
+        if (!guard.isCurrent()) return;
         setSearchState({
           identity: requestIdentity,
           queryIdentity,
@@ -604,11 +247,8 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
         });
       })
       .catch((error) => {
-        if (!isCurrent()) return;
-        if (error instanceof ApiError && error.status === 401 && requestToken) {
-          clearSession();
-          return;
-        }
+        if (!guard.isCurrent()) return;
+        if (clearSessionIfUnauthorized(error, requestToken)) return;
         setSearchState((previous) => {
           const previousResponse = previous.queryIdentity === queryIdentity ? previous.response : null;
           const fallback = previousResponse && previous.token !== requestToken
@@ -624,9 +264,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
         });
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return guard.cancel;
   }, [queryIdentity, requestIdentity, searchPath, token]);
 
   return (
@@ -738,7 +376,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               {response.content.map((post, i) => (
                 <StaggerItem key={post.id} index={i}>
-                  <PostCard
+                  <FeedPostCard
                     p={post}
                     refreshing={refreshing}
                     identity={token}
@@ -763,8 +401,8 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-5">
-            <SideHot campaigns={campaigns} />
-            <SideRecommend />
+            <FeedSideHot campaigns={campaigns} />
+            <FeedSideRecommend />
           </div>
         </aside>
       </div>

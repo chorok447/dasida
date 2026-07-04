@@ -16,6 +16,7 @@ import {
   statusMeta,
   type CampaignParticipantsResponse,
 } from "@/data/campaigns";
+import { PageShell } from "@/components/page-shell";
 
 const PAGE_SIZE = 20;
 
@@ -27,21 +28,12 @@ type LoadState =
   | { identity: string; kind: "error" };
 
 function StateShell({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   return (
-    <section
-      className="relative min-h-screen px-4 pb-20 pt-28 transition-colors sm:px-6"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
+    <PageShell paddingClassName="relative min-h-screen px-4 pb-20 pt-28 sm:px-6" orb="none">
       <StatePanel className="mx-auto min-h-72 max-w-2xl">
         {children}
       </StatePanel>
-    </section>
+    </PageShell>
   );
 }
 
@@ -204,14 +196,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
   const { data } = currentLoad;
   const status = statusMeta[data.status];
   return (
-    <section
-      className="relative min-h-screen px-4 pb-20 pt-28 transition-colors sm:px-6"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
+    <PageShell paddingClassName="relative min-h-screen px-4 pb-20 pt-28 sm:px-6" orb="none">
       <div className="relative mx-auto max-w-4xl">
         <Link
           href={`/campaigns/${id}`}
@@ -312,6 +297,6 @@ export default function ParticipantsClient({ id }: { id: string }) {
           </div>
         </div>
       </div>
-    </section>
+    </PageShell>
   );
 }

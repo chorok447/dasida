@@ -4,128 +4,87 @@ import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { apiGet, apiPut, ApiError } from "@/lib/api";
-import { clearSession, getSessionId } from "@/lib/auth";
-import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
-import { StatePanel } from "@/components/ui/state-panel";
+import { apiPost, ApiError } from "@/lib/api";
+import { clearSession, getSessionId } from "@/lib/auth";
 import {
   CampaignComposeForm,
   CampaignComposeSubmitButton,
+  useCampaignComposeDraft,
 } from "@/components/campaign-compose-form";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FallbackImage } from "@/components/fallback-image";
 import {
-  campaignToComposeValues,
+  DEFAULT_CAMPAIGN_COMPOSE_VALUES,
   statusMeta,
   type Campaign,
   type CampaignComposeField,
   type CampaignComposeValues,
   validateCampaignCompose,
 } from "@/data/campaigns";
+import { CAMPAIGN_TEMPLATES, type CampaignTemplate } from "@/data/campaign-templates";
 import { PageShell } from "@/components/page-shell";
 
-type LoadState =
-  | { identity: string; kind: "loading" }
-  | { identity: string; kind: "ready"; campaign: Campaign; initialValues: CampaignComposeValues }
-  | { identity: string; kind: "notfound" }
-  | { identity: string; kind: "forbidden" }
-  | { identity: string; kind: "started" }
-  | { identity: string; kind: "error" };
-
-function PageState({ children }: { children: React.ReactNode }) {
+function draftHasContent(values: CampaignComposeValues): boolean {
   return (
-    <PageShell paddingClassName="relative min-h-screen px-6 pb-20 pt-28" orb="none">
-      <StatePanel className="relative mx-auto min-h-72 max-w-2xl">
-        {children}
-      </StatePanel>
-    </PageShell>
+    values.title.trim().length > 0 ||
+    values.summary.trim().length > 0 ||
+    values.body.trim().length > 0 ||
+    values.thumb.trim().length > 0 ||
+    values.capacity !== DEFAULT_CAMPAIGN_COMPOSE_VALUES.capacity ||
+    values.recruitStart !== DEFAULT_CAMPAIGN_COMPOSE_VALUES.recruitStart ||
+    values.recruitEnd !== DEFAULT_CAMPAIGN_COMPOSE_VALUES.recruitEnd ||
+    values.runStart !== DEFAULT_CAMPAIGN_COMPOSE_VALUES.runStart ||
+    values.runEnd !== DEFAULT_CAMPAIGN_COMPOSE_VALUES.runEnd
   );
 }
 
-function composeValuesChanged(a: CampaignComposeValues, b: CampaignComposeValues): boolean {
-  return (
-    a.title !== b.title ||
-    a.summary !== b.summary ||
-    a.body !== b.body ||
-    a.thumb !== b.thumb ||
-    a.recruitStart !== b.recruitStart ||
-    a.recruitEnd !== b.recruitEnd ||
-    a.runStart !== b.runStart ||
-    a.runEnd !== b.runEnd ||
-    a.capacity !== b.capacity
-  );
-}
-
-export default function CampaignEditClient({ id }: { id: string }) {
+export default function CampaignCreateClient() {
   const router = useRouter();
-  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const savingRef = useRef(false);
-  const [retry, setRetry] = useState(0);
-  const identity = `${id}:${token ?? "anonymous"}:${retry}`;
-  const [loadState, setLoadState] = useState<LoadState>({ identity: "", kind: "loading" });
-  const [values, setValues] = useState<CampaignComposeValues | null>(null);
-  const [initialValues, setInitialValues] = useState<CampaignComposeValues | null>(null);
-  const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false);
+  const restoredRef = useRef(false);
+
+  const [values, setValues] = useState<CampaignComposeValues>(DEFAULT_CAMPAIGN_COMPOSE_VALUES);
+  const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<CampaignComposeField, string>>>({});
+  const confirm = useConfirm();
 
-  const currentLoad: LoadState = loadState.identity === identity
-    ? loadState
-    : { identity, kind: "loading" };
+  const { draftSaved, clearDraft } = useCampaignComposeDraft(values, (draft) => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    setValues(draft);
+  });
 
   useEffect(() => {
-    const requestToken = getSessionId();
-    if (!requestToken) {
+    if (!getSessionId()) {
+      toast.error("로그인이 필요합니다.");
       router.replace("/login");
-      return;
     }
-
-    let cancelled = false;
-    const isCurrent = () => !cancelled && getSessionId() === requestToken;
-    apiGet<Campaign>(`/api/campaigns/${id}`)
-      .then((campaign) => {
-        if (!isCurrent()) return;
-        if (!campaign.ownedByMe) {
-          setLoadState({ identity, kind: "forbidden" });
-        } else if (campaign.status !== "upcoming") {
-          setLoadState({ identity, kind: "started" });
-        } else {
-          const formValues = campaignToComposeValues(campaign);
-          setValues(formValues);
-          setInitialValues(formValues);
-          setLoadState({ identity, kind: "ready", campaign, initialValues: formValues });
-        }
-      })
-      .catch((error) => {
-        if (!isCurrent()) return;
-        if (error instanceof ApiError && error.status === 401) {
-          clearSession();
-          router.replace("/login");
-        } else if (error instanceof ApiError && error.status === 404) {
-          setLoadState({ identity, kind: "notfound" });
-        } else if (error instanceof ApiError && error.status === 403) {
-          setLoadState({ identity, kind: "forbidden" });
-        } else {
-          setLoadState({ identity, kind: "error" });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, identity, router]);
+  }, [router]);
 
   useEffect(() => {
-    if (currentLoad.kind !== "ready" || !values || !initialValues) return;
-    if (!composeValuesChanged(values, initialValues)) return;
+    if (!draftHasContent(values)) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [currentLoad.kind, values, initialValues]);
+  }, [values]);
+
+  const applyTemplate = async (template: CampaignTemplate) => {
+    if (
+      draftHasContent(values) &&
+      !(await confirm({ message: "작성 중인 내용이 있습니다. 템플릿으로 덮어쓸까요? (일정은 유지됩니다)" }))
+    ) {
+      return;
+    }
+    setValues((current) => ({ ...current, ...template.values }));
+    setFieldErrors({});
+    toast.success("템플릿을 적용했어요. 괄호 안 내용을 채워주세요.");
+  };
 
   const clearFieldError = (field: CampaignComposeField) => {
     setFieldErrors((current) => {
@@ -136,8 +95,8 @@ export default function CampaignEditClient({ id }: { id: string }) {
     });
   };
 
-  const save = async () => {
-    if (savingRef.current || !values) return;
+  const submit = async () => {
+    if (submittingRef.current) return;
 
     const validation = validateCampaignCompose(values);
     if (!validation.ok) {
@@ -150,107 +109,57 @@ export default function CampaignEditClient({ id }: { id: string }) {
 
     const requestToken = getSessionId();
     if (!requestToken) {
-      clearSession();
       toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
 
-    savingRef.current = true;
-    setSaving(true);
+    submittingRef.current = true;
+    setSubmitting(true);
     setFieldErrors({});
 
     try {
-      const updated = await apiPut<Campaign>(`/api/campaigns/${id}`, validation.payload);
+      const created = await apiPost<Campaign>("/api/campaigns", validation.payload);
       if (getSessionId() !== requestToken) return;
-      toast.success("캠페인이 수정되었습니다.");
-      router.replace(`/campaigns/${updated.id}`);
+      clearDraft();
+      toast.success("캠페인이 등록되었습니다.");
+      router.replace(`/campaigns/${created.id}`);
     } catch (error) {
       if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");
         router.push("/login");
-      } else if (error instanceof ApiError && error.status === 403) {
-        toast.error("캠페인 수정 권한이 없습니다.");
-      } else if (error instanceof ApiError && error.status === 409) {
-        toast.error("모집을 시작한 캠페인은 수정할 수 없습니다.");
       } else if (error instanceof ApiError && error.status === 400) {
         toast.error("입력값을 확인해주세요.");
       } else {
-        toast.error("캠페인 수정에 실패했습니다.");
+        toast.error("등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
-      savingRef.current = false;
-      setSaving(false);
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
-
-  if (currentLoad.kind === "loading") {
-    return <PageState><p>캠페인을 불러오는 중입니다.</p></PageState>;
-  }
-  if (currentLoad.kind === "notfound") {
-    return (
-      <PageState>
-        <p>캠페인을 찾을 수 없습니다.</p>
-        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
-          캠페인 목록
-        </button>
-      </PageState>
-    );
-  }
-  if (currentLoad.kind === "forbidden") {
-    return (
-      <PageState>
-        <p>캠페인 수정 권한이 없습니다.</p>
-        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
-          캠페인으로 돌아가기
-        </button>
-      </PageState>
-    );
-  }
-  if (currentLoad.kind === "started") {
-    return (
-      <PageState>
-        <p>모집 시작 전 캠페인만 수정할 수 있습니다.</p>
-        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
-          캠페인으로 돌아가기
-        </button>
-      </PageState>
-    );
-  }
-  if (currentLoad.kind === "error") {
-    return (
-      <PageState>
-        <p>캠페인을 불러오지 못했습니다.</p>
-        <button type="button" onClick={() => setRetry((current) => current + 1)} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
-          다시 시도
-        </button>
-      </PageState>
-    );
-  }
-
-  if (!values) return null;
 
   return (
     <PageShell paddingClassName="relative min-h-screen overflow-hidden px-6 pb-20 pt-28" orb="right">
       <div className="relative mx-auto max-w-6xl">
         <button
           type="button"
-          onClick={() => router.push(`/campaigns/${id}`)}
-          disabled={saving}
+          onClick={() => router.push("/campaigns")}
+          disabled={submitting}
           className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 disabled:opacity-40"
           style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
         >
           <ArrowLeft size={14} aria-hidden />
-          캠페인으로 돌아가기
+          캠페인 목록
         </button>
 
         <div className="mb-10 text-center">
           <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
-            Edit Campaign
+            Create Campaign
           </p>
           <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
-            캠페인 수정
+            새 캠페인 개설
           </h1>
         </div>
 
@@ -262,20 +171,50 @@ export default function CampaignEditClient({ id }: { id: string }) {
               borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
             }}
           >
+            <div>
+              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+                템플릿으로 시작하기 <span className="normal-case tracking-normal opacity-70">(선택)</span>
+              </p>
+              <ul className="flex flex-wrap gap-2" aria-label="캠페인 템플릿 목록">
+                {CAMPAIGN_TEMPLATES.map((template) => (
+                  <li key={template.id}>
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(template)}
+                      disabled={submitting}
+                      className="rounded-full px-3.5 py-2 text-[13px] transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{
+                        background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                        border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
+                        color: dark ? "#f9f7f2" : "#0f1f22",
+                      }}
+                      aria-label={`${template.label} 템플릿 적용`}
+                    >
+                      {template.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                제목·요약·본문·썸네일·모집 인원이 초안으로 채워집니다. 자유롭게 수정하세요.
+              </p>
+            </div>
+
             <CampaignComposeForm
               values={values}
               onChange={setValues}
               dark={dark}
               fieldErrors={fieldErrors}
               onFieldErrorClear={clearFieldError}
-              disabled={saving}
+              showDraftSaved={draftSaved}
+              disabled={submitting}
             />
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <button
                 type="button"
-                onClick={() => router.push(`/campaigns/${id}`)}
-                disabled={saving}
+                onClick={() => router.push("/campaigns")}
+                disabled={submitting}
                 className="flex-1 rounded-xl py-3 disabled:opacity-40"
                 style={{
                   background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
@@ -285,11 +224,11 @@ export default function CampaignEditClient({ id }: { id: string }) {
                 취소
               </button>
               <CampaignComposeSubmitButton
-                submitting={saving}
+                submitting={submitting}
                 disabled={!values.title.trim()}
-                onClick={save}
-                idleLabel="변경사항 저장"
-                pendingLabel="저장 중…"
+                onClick={submit}
+                idleLabel="캠페인 등록"
+                pendingLabel="캠페인 만드는 중…"
               />
             </div>
           </div>

@@ -12,9 +12,11 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
 import { RecommendedCampaigns } from "@/components/recommended-campaigns";
+import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
+import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import {
   deleteNotification,
   deleteReadNotifications,
@@ -210,13 +212,11 @@ export default function NotificationsClient() {
   useEffect(() => {
     const requestToken = token;
     if (!requestToken || getSessionId() !== requestToken) return;
-    const generation = ++generationRef.current;
-    let cancelled = false;
-    const isCurrent = () => !cancelled && generation === generationRef.current && getSessionId() === requestToken;
+    const guard = beginAuthedRequest(generationRef, requestToken);
 
     fetchNotifications(page, PAGE_SIZE, filter === "unread")
       .then((res) => {
-        if (!isCurrent()) return;
+        if (!guard.isCurrent()) return;
         if (res.content.length === 0 && page > 0) {
           setPage((currentPage) => Math.max(0, currentPage - 1));
           return;
@@ -224,18 +224,15 @@ export default function NotificationsClient() {
         setResult({ identity: requestIdentity, status: "success", data: res });
       })
       .catch((e) => {
-        if (!isCurrent()) return;
-        if (e instanceof ApiError && e.status === 401) {
-          clearSession();
+        if (!guard.isCurrent()) return;
+        if (clearSessionIfUnauthorized(e, requestToken)) {
           router.replace("/login?next=/notifications");
           return;
         }
         setResult({ identity: requestIdentity, status: "error", data: null });
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return guard.cancel;
   }, [requestIdentity, token, page, filter, router]);
 
   const current = result.identity === requestIdentity;
@@ -357,7 +354,7 @@ export default function NotificationsClient() {
 
   const cardBg = dark ? "rgba(255,255,255,0.04)" : "#ffffff";
   const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
-  const fg = dark ? "#f9f7f2" : "#0f1f22";
+  const fg = "var(--foreground)";
 
   // hydration 전에는 로그인 여부 미확정 → 아래 본문(로딩 상태)으로 렌더해 깜빡임을 막는다.
   if (hydrated && !isLoggedIn) {
@@ -369,17 +366,10 @@ export default function NotificationsClient() {
   }
 
   return (
-    <section
-      className="relative min-h-screen pt-28 pb-20 px-4 sm:px-6 transition-colors overflow-hidden"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
+    <PageShell paddingClassName="relative min-h-screen pt-28 pb-20 px-4 sm:px-6 overflow-hidden" orb="none">
       <div className="max-w-3xl mx-auto relative">
         <div className="text-center mb-8">
-          <p className="tracking-[0.4em] uppercase mb-3" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+          <p className="tracking-[0.4em] uppercase mb-3" style={{ color: "var(--accent)", fontSize: 11 }}>
             Notifications
           </p>
           <h1
@@ -407,10 +397,10 @@ export default function NotificationsClient() {
                   onClick={() => changeFilter(f.id)}
                   aria-pressed={active}
                   className="relative px-4 py-2 text-[13px] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-                  style={{ color: active ? "#0f1f22" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
+                  style={{ color: active ? "var(--surface-dark)" : "var(--foreground-muted)" }}
                 >
                   {active && (
-                    <motion.div layoutId="notif-filter-pill" className="absolute inset-0 rounded-full" style={{ background: "#7dd3a3" }} />
+                    <motion.div layoutId="notif-filter-pill" className="absolute inset-0 rounded-full" style={{ background: "var(--accent)" }} />
                   )}
                   <span className="relative">{f.label}</span>
                 </button>
@@ -446,7 +436,7 @@ export default function NotificationsClient() {
 
         {loading ? (
           <StatePanel compact>
-            <Loader2 size={28} className="animate-spin text-[#7dd3a3]" aria-hidden />
+            <Loader2 size={28} className="animate-spin text-[var(--accent)]" aria-hidden />
             <p>알림을 불러오는 중입니다.</p>
           </StatePanel>
         ) : error ? (
@@ -456,7 +446,8 @@ export default function NotificationsClient() {
             <button
               type="button"
               onClick={() => setRetryTick((t) => t + 1)}
-              className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f1f22]"
+              className="rounded-full px-5 py-2 text-[13px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
             >
               다시 시도
             </button>
@@ -508,6 +499,6 @@ export default function NotificationsClient() {
           />
         ) : null}
       </div>
-    </section>
+    </PageShell>
   );
 }
