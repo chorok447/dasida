@@ -4,7 +4,7 @@ import { signup } from "./helpers/account";
 test.describe("비로그인 접근", () => {
   test("글 작성 페이지는 로그인으로 보낸다", async ({ page }) => {
     await page.goto("/posts/new");
-    await page.waitForURL("**/login?next=%2Fposts%2Fnew");
+    await page.waitForURL(/\/login\?next=.*\/posts\/new/);
   });
 
   test("캠페인 개설 페이지는 로그인으로 보낸다", async ({ page }) => {
@@ -45,8 +45,8 @@ test("작성한 글을 편집하면 상세에 반영된다", async ({ page }) =>
   await page.waitForURL("**/feed");
 
   await page.goto("/mypage");
-  await page.getByRole("link", { name: "편집" }).first().click();
-  await page.waitForURL("**/posts/*/edit");
+  await page.getByRole("link", { name: "편집", exact: true }).first().click();
+  await page.waitForURL(/\/posts\/[^/]+\/edit$/);
   await expect(page.getByRole("heading", { name: "글 수정" })).toBeVisible();
 
   await page.getByLabel(/내용/).fill(updated);
