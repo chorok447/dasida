@@ -5,6 +5,7 @@
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "build:web": "pnpm --filter web build",
+    "test:web": "pnpm --filter web test",
     "dev:api": "cd apps/api && ./gradlew bootRun",
     "build:api": "cd apps/api && ./gradlew build"
   }
