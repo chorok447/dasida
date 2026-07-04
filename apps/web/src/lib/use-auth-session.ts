@@ -21,6 +21,9 @@ function subscribe(callback: () => void) {
 export function useAuthSession() {
   const token = useSyncExternalStore(subscribe, getToken, () => null);
   const name = useSyncExternalStore(subscribe, getName, () => null);
+  // 서버 스냅샷은 항상 비로그인이라 hydration 첫 렌더를 "로그아웃"으로 오인할 수 있다.
+  // 클라이언트 값 반영 여부를 함께 노출한다. (false 동안은 로그인 여부 미확정)
+  const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
 
-  return { token, isLoggedIn: !!token, name, logout: clearSession };
+  return { token, isLoggedIn: !!token, name, hydrated, logout: clearSession };
 }
