@@ -1,30 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { signup, type Account } from "./helpers/account";
 
 /**
  * 인증·캠페인 시나리오: httpOnly 쿠키 인증 전환(#202) 이후의 회귀 가드.
  * - 로그아웃이 쿠키를 만료시키고, 재로그인이 새 쿠키로 동작하는지
  * - 쿠키 인증으로 캠페인 개설 → 모집 시작 → 참여 → 취소가 이어지는지
  */
-
-type Account = { email: string; password: string; nickname: string };
-
-async function signup(page: Page): Promise<Account> {
-  const stamp = Date.now();
-  const account = {
-    email: `e2e-auth-${stamp}@example.com`,
-    password: "Passw0rd!", // 영문+숫자+특수문자, 8~15자
-    nickname: `이투이${stamp % 100000}`,
-  };
-  await page.goto("/signup");
-  await page.getByLabel("이메일").fill(account.email);
-  await page.getByLabel("비밀번호", { exact: true }).fill(account.password);
-  await page.getByLabel("비밀번호 확인").fill(account.password);
-  await page.getByLabel("이름").fill("이투이");
-  await page.getByLabel("닉네임").fill(account.nickname);
-  await page.getByRole("button", { name: "회원가입" }).click();
-  await page.waitForURL("**/feed");
-  return account;
-}
 
 /** controlled input React state 반영 후 submit — fill 직후 click 시 빈 body POST 방지. */
 async function login(page: Page, account: Pick<Account, "email" | "password">) {
@@ -45,7 +26,7 @@ function dateAfter(days: number): string {
 }
 
 test("로그아웃하면 세션이 끊기고 재로그인하면 복구된다", async ({ page }) => {
-  const account = await signup(page);
+  const account = await signup(page, "e2e-auth");
   await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
 
   // 로그아웃 → 비로그인 헤더 (서버 쿠키 만료 응답까지 await)
@@ -65,7 +46,7 @@ test("로그아웃하면 세션이 끊기고 재로그인하면 복구된다", a
 });
 
 test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다", async ({ page }) => {
-  await signup(page);
+  await signup(page, "e2e-auth");
 
   // 개설 — 템플릿으로 필수 텍스트를 채우고, 날짜는 오늘 기준으로 참여 가능하게 지정
   await page.goto("/campaigns/new");
