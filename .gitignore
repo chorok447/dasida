@@ -30,3 +30,6 @@ deploy/.env.prod.local
 
 # Ad-hoc Gradle/API tooling logs
 apps/api/build-*.log
+
+# Local uploaded media (API disk store)
+uploads/

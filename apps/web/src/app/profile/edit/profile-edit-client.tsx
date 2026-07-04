@@ -16,6 +16,7 @@ import {
   type UserProfile,
 } from "@/data/users";
 import { Avatar } from "@/components/avatar";
+import { ImageFileUploadButton } from "@/components/image-file-upload-button";
 import { FallbackImage } from "@/components/fallback-image";
 import { StatePanel } from "@/components/ui/state-panel";
 import { PageShell } from "@/components/page-shell";
@@ -169,7 +170,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               프로필 편집
             </h1>
             <p className="mt-1 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
-              표시 이름과 프로필 이미지 URL을 변경할 수 있습니다.
+              표시 이름과 프로필 이미지를 변경할 수 있습니다.
             </p>
           </div>
         </div>
@@ -200,24 +201,30 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
 
           <div>
             <label htmlFor="profile-image-url" className="mb-2 block text-[13px]" style={{ color: "var(--foreground)" }}>
-              프로필 이미지 URL
+              프로필 이미지
             </label>
-            <input
-              id="profile-image-url"
-              value={profileImageUrl}
-              onChange={(event) => setProfileImageUrl(event.target.value)}
-              maxLength={MAX_PROFILE_IMAGE_URL_LENGTH}
-              placeholder="https://example.com/avatar.png"
-              disabled={submitting}
-              className="ui-control"
-              style={{
-                background: "var(--card)",
-                borderColor: "var(--border)",
-                color: "var(--foreground)",
-              }}
-            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+              <input
+                id="profile-image-url"
+                value={profileImageUrl}
+                onChange={(event) => setProfileImageUrl(event.target.value)}
+                maxLength={MAX_PROFILE_IMAGE_URL_LENGTH}
+                placeholder="https://example.com/avatar.png"
+                disabled={submitting}
+                className="ui-control min-w-0 flex-1"
+                style={{
+                  background: "var(--card)",
+                  borderColor: "var(--border)",
+                  color: "var(--foreground)",
+                }}
+              />
+              <ImageFileUploadButton
+                disabled={submitting}
+                onUploaded={setProfileImageUrl}
+              />
+            </div>
             <p className="mt-1 text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>
-              http 또는 https URL만 사용할 수 있습니다. 비워두면 기본 아바타가 표시됩니다.
+              URL 입력 또는 파일 업로드(jpeg/png/webp, 5MB 이하). 비우면 기본 아바타가 표시됩니다.
             </p>
           </div>
 
