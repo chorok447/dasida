@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fillPostContent } from "./helpers/post-content";
 
 /**
  * 핵심 경로 스모크: 회원가입 → 글 작성 → 피드 노출 → 로그인 상태로 직접 진입.
@@ -26,7 +27,7 @@ test("회원가입 후 글을 작성하면 피드에 보인다", async ({ page }
   // 글 작성
   const text = `E2E 스모크 게시글 ${stamp}`;
   await page.goto("/posts/new");
-  await page.getByLabel(/내용/).fill(text);
+  await fillPostContent(page, text);
   await page.getByRole("button", { name: "게시하기" }).click();
   await page.waitForURL("**/feed");
   await expect(page.getByText(text).first()).toBeVisible();
