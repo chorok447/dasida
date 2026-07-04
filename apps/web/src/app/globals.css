@@ -3,26 +3,34 @@
 
 :root {
   --surface: #f9f7f2;
+  --surface-muted: #e7dfcb;
+  --surface-deep: #1c4044;
   --surface-dark: #0f1f22;
   --accent: #7dd3a3;
+  --accent-secondary: #1c4044;
   --foreground: #0f1f22;
+  --foreground-muted: rgba(28, 64, 68, 0.65);
   --border: rgba(28, 64, 68, 0.08);
+  --page-gradient: linear-gradient(180deg, var(--surface), var(--surface-muted));
 }
 
 .dark {
   --surface: #0f1f22;
+  --surface-muted: #1c4044;
   --foreground: #f9f7f2;
+  --foreground-muted: rgba(255, 255, 255, 0.65);
   --border: rgba(255, 255, 255, 0.08);
+  --page-gradient: linear-gradient(180deg, var(--surface-dark), var(--surface-muted));
 }
 
 html,
 body {
   margin: 0;
-  background: #0f1f22;
+  background: var(--surface-dark);
 }
 
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid #7dd3a3;
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -41,7 +49,7 @@ body {
 }
 
 .ui-control:focus-visible {
-  border-color: #7dd3a3;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgb(125 211 163 / 18%);
 }
 

@@ -27,13 +27,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import type { PostSearchResponse, PostSearchSort } from "@/data/posts";
 import { statusMeta, type Campaign } from "@/data/campaigns";
+import { useCanonicalUrl, parsePageParam, buildFeedHref, type FeedUrlState } from "@/lib/use-url-query";
 
-type UrlState = {
-  query: string;
-  campaignOnly: boolean;
-  sort: PostSearchSort;
-  page: number;
-};
+type UrlState = FeedUrlState;
 
 type SearchState = {
   identity: string;
@@ -42,12 +38,6 @@ type SearchState = {
   status: "loading" | "success" | "error";
   response: PostSearchResponse | null;
 };
-
-function parsePage(value: string | null): number {
-  if (value === null) return 0;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
-}
 
 function neutralizeInteractions(response: PostSearchResponse): PostSearchResponse {
   return {
@@ -250,9 +240,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
       query: searchParams.get("q") ?? "",
       campaignOnly: searchParams.get("campaignOnly") === "true",
       sort: sort === "popular" || sort === "discussed" ? sort : "latest",
-      page: parsePage(searchParams.get("page")),
+      page: parsePageParam(searchParams.get("page")),
     };
   }, [searchParams]);
+  const canonicalHref = buildFeedHref(urlState);
+  const currentHref = searchParams.toString() ? `/feed?${searchParams.toString()}` : "/feed";
+  useCanonicalUrl(canonicalHref, currentHref);
   const queryIdentity = JSON.stringify(urlState);
   const requestIdentity = JSON.stringify([token, queryIdentity, retryTick]);
   const [searchState, setSearchState] = useState<SearchState>({
