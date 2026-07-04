@@ -70,7 +70,12 @@ Nginx (host) :80 / :443
 
 **정책**
 
-- Web origin(`https://example.com`)과 API origin(`https://api.example.com`)이 **다르므로** 브라우저 cross-origin 요청에 **CORS 설정 필수** (`APP_CORS_ALLOWED_ORIGINS`)
+- **[인증 쿠키] Web 과 API 는 반드시 같은 site(같은 registrable domain)여야 한다.**
+  인증은 httpOnly `SameSite=Lax` 쿠키(`dasida_token`, PR #202)로 동작하므로, web 과 api 가
+  cross-site(예: web 을 `*.vercel.app`, api 를 `example.com`)면 브라우저가 쿠키를 보내지 않아
+  **로그인이 전면 불능**이 된다. 본 배포안처럼 같은 도메인의 서브도메인(`example.com` +
+  `api.example.com`, 둘 다 HTTPS)이면 충족된다. 도메인 확정 시 이 제약을 최우선으로 검증한다.
+- Web origin(`https://example.com`)과 API origin(`https://api.example.com`)이 **다르므로** 브라우저 cross-origin 요청에 **CORS 설정 필수** (`APP_CORS_ALLOWED_ORIGINS`) — 인증 쿠키가 실리려면 credentials 허용이 필요한데, 백엔드 기본값이 이미 `allow-credentials=true`(`CorsProperties`)라 origin 만 정확히 넣으면 된다
 - CORS **wildcard(`*`) 금지**
 - **`localhost` / `127.0.0.1` 금지** (prod CORS·public URL)
 - web 컨테이너 SSR 은 `API_INTERNAL_URL=http://api:8080`(compose 내부 DNS). `127.0.0.1:8080`은 web 자신을 가리켜 ECONNREFUSED 가 난다.
