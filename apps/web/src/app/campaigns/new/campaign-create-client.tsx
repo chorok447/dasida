@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import {
@@ -41,8 +40,6 @@ function draftHasContent(values: CampaignComposeValues): boolean {
 
 export default function CampaignCreateClient() {
   const router = useRouter();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const submittingRef = useRef(false);
   const restoredRef = useRef(false);
 
@@ -148,17 +145,17 @@ export default function CampaignCreateClient() {
           onClick={() => router.push("/campaigns")}
           disabled={submitting}
           className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 disabled:opacity-40"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          style={{ color: "var(--foreground)" }}
         >
           <ArrowLeft size={14} aria-hidden />
           캠페인 목록
         </button>
 
         <div className="mb-10 text-center">
-          <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+          <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
             Create Campaign
           </p>
-          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
             새 캠페인 개설
           </h1>
         </div>
@@ -167,12 +164,12 @@ export default function CampaignCreateClient() {
           <div
             className="space-y-6 rounded-3xl border p-5 sm:p-8"
             style={{
-              background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-              borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+              background: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <div>
-              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: "var(--foreground-muted)" }}>
                 템플릿으로 시작하기 <span className="normal-case tracking-normal opacity-70">(선택)</span>
               </p>
               <ul className="flex flex-wrap gap-2" aria-label="캠페인 템플릿 목록">
@@ -184,9 +181,9 @@ export default function CampaignCreateClient() {
                       disabled={submitting}
                       className="rounded-full px-3.5 py-2 text-[13px] transition-opacity hover:opacity-80 disabled:opacity-40"
                       style={{
-                        background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                        border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-                        color: dark ? "#f9f7f2" : "#0f1f22",
+                        background: "var(--border)",
+                        border: "1px solid var(--border)",
+                        color: "var(--foreground)",
                       }}
                       aria-label={`${template.label} 템플릿 적용`}
                     >
@@ -195,7 +192,7 @@ export default function CampaignCreateClient() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              <p className="mt-2 text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
                 제목·요약·본문·썸네일·모집 인원이 초안으로 채워집니다. 자유롭게 수정하세요.
               </p>
             </div>
@@ -203,7 +200,6 @@ export default function CampaignCreateClient() {
             <CampaignComposeForm
               values={values}
               onChange={setValues}
-              dark={dark}
               fieldErrors={fieldErrors}
               onFieldErrorClear={clearFieldError}
               showDraftSaved={draftSaved}
@@ -217,8 +213,8 @@ export default function CampaignCreateClient() {
                 disabled={submitting}
                 className="flex-1 rounded-xl py-3 disabled:opacity-40"
                 style={{
-                  background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                  color: dark ? "#f9f7f2" : "#0f1f22",
+                  background: "var(--border)",
+                  color: "var(--foreground)",
                 }}
               >
                 취소
@@ -234,26 +230,25 @@ export default function CampaignCreateClient() {
           </div>
 
           <div className="self-start lg:sticky lg:top-24">
-            <p className="mb-3 text-[12px] uppercase tracking-[0.3em]" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
+            <p className="mb-3 text-[12px] uppercase tracking-[0.3em]" style={{ color: "var(--foreground-muted)" }}>
               미리보기
             </p>
             <div
               className="overflow-hidden rounded-2xl border shadow-[0_30px_60px_-20px_rgba(0,0,0,0.4)]"
-              style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
+              style={{ background: "var(--card)", borderColor: "var(--border)" }}
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 {values.thumb ? (
                   <FallbackImage
                     src={values.thumb}
                     alt="캠페인 썸네일 미리보기"
-                    dark={dark}
                     errorText="이미지를 불러올 수 없어요"
                     className="h-full w-full object-cover"
                   />
                 ) : (
                   <div
                     className="flex h-full w-full items-center justify-center"
-                    style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
+                    style={{ background: "var(--border)" }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/60 via-transparent to-transparent" />
@@ -262,13 +257,13 @@ export default function CampaignCreateClient() {
                 </span>
               </div>
               <div className="space-y-3 p-5">
-                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: dark ? "#f9f7f2" : "#0f1f22", lineHeight: 1.25 }}>
+                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: "var(--foreground)", lineHeight: 1.25 }}>
                   {values.title || "캠페인 제목"}
                 </h3>
-                <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+                <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>
                   {values.summary || "캠페인 한 줄 소개가 여기에 표시됩니다."}
                 </p>
-                <div className="space-y-1 border-t pt-2 text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+                <div className="space-y-1 border-t pt-2 text-[12px]" style={{ color: "var(--foreground-muted)", borderColor: "var(--border)" }}>
                   <div>모집 {values.recruitStart} ~ {values.recruitEnd}</div>
                   <div>진행 {values.runStart} ~ {values.runEnd}</div>
                   <div>모집 인원 {values.capacity || "—"}명</div>

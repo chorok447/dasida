@@ -21,7 +21,8 @@ type PostComposeFormProps = {
   values: PostComposeValues;
   onChange: (values: PostComposeValues) => void;
   campaigns: { id: string; title: string }[];
-  dark: boolean;
+  /** @deprecated 색상이 CSS 토큰으로 바뀌어 사용하지 않는다. 호출부 정리 후 제거 예정. */
+  dark?: boolean;
   fieldErrors?: Partial<Record<PostComposeField, string>>;
   onFieldErrorClear?: (field: PostComposeField) => void;
   textInputId?: string;
@@ -29,19 +30,19 @@ type PostComposeFormProps = {
   showDraftSaved?: boolean;
 };
 
-function ImagePreview({ src, dark, index }: { src: string; dark: boolean; index: number }) {
+function ImagePreview({ src, index }: { src: string; index: number }) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
     return (
       <div
         className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px]"
-        style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+        style={{ background: "var(--border)" }}
         role="img"
         aria-label="이미지를 불러올 수 없어요"
       >
-        <ImageIcon size={18} style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} aria-hidden />
-        <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>이미지를 불러올 수 없어요</span>
+        <ImageIcon size={18} style={{ color: "var(--foreground-muted)" }} aria-hidden />
+        <span style={{ color: "var(--foreground-muted)" }}>이미지를 불러올 수 없어요</span>
       </div>
     );
   }
@@ -60,7 +61,6 @@ export function PostComposeForm({
   values,
   onChange,
   campaigns,
-  dark,
   fieldErrors = {},
   onFieldErrorClear,
   textInputId = "post-text",
@@ -73,11 +73,11 @@ export function PostComposeForm({
   const [imageInput, setImageInput] = useState("");
   const [imageInputError, setImageInputError] = useState("");
 
-  const labelStyle = { color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" };
+  const labelStyle = { color: "var(--foreground-muted)" };
   const controlStyle = {
-    background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-    border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    background: "var(--card)",
+    border: "1px solid var(--border)",
+    color: "var(--foreground)",
   };
 
   const patch = (partial: Partial<PostComposeValues>) => onChange({ ...values, ...partial });
@@ -140,7 +140,7 @@ export function PostComposeForm({
   return (
     <div className="space-y-6">
       {showDraftSaved ? (
-        <p className="text-[12px]" style={{ color: dark ? "#7dd3a3" : "#1c4044" }} role="status" aria-live="polite">
+        <p className="text-[12px]" style={{ color: "var(--accent-secondary)" }} role="status" aria-live="polite">
           임시 저장됨
         </p>
       ) : null}
@@ -175,7 +175,7 @@ export function PostComposeForm({
               .
             </span>
           )}
-          <p className="shrink-0 text-[11px] tabular-nums opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }} aria-live="polite">
+          <p className="shrink-0 text-[11px] tabular-nums opacity-60" style={{ color: "var(--foreground)" }} aria-live="polite">
             {values.text.length}/{POST_MAX_TEXT_LENGTH}
           </p>
         </div>
@@ -240,14 +240,14 @@ export function PostComposeForm({
                 key={url}
                 className="flex items-center gap-3 rounded-xl p-2"
                 style={{
-                  background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)",
-                  border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
+                  background: "var(--border)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                  <ImagePreview src={url} dark={dark} index={index} />
+                  <ImagePreview src={url} index={index} />
                 </div>
-                <p className="min-w-0 flex-1 truncate text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }} title={url}>
+                <p className="min-w-0 flex-1 truncate text-[12px]" style={{ color: "var(--foreground)" }} title={url}>
                   {url}
                 </p>
                 <button
@@ -298,8 +298,8 @@ export function PostComposeForm({
               key={tag}
               className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px]"
               style={{
-                background: dark ? "rgba(125,211,163,0.15)" : "rgba(125,211,163,0.25)",
-                color: dark ? "#7dd3a3" : "#1c4044",
+                background: "var(--accent-soft)",
+                color: "var(--accent-secondary)",
               }}
             >
               {tag}
@@ -329,7 +329,7 @@ export function PostComposeForm({
             disabled={values.tags.length >= POST_MAX_TAGS}
             aria-invalid={Boolean(fieldErrors.tags)}
             className="min-w-[120px] flex-1 bg-transparent px-2 text-[13px] outline-none placeholder:opacity-50"
-            style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+            style={{ color: "var(--foreground)" }}
           />
         </div>
         {fieldErrors.tags ? (

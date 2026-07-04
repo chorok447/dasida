@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Image as ImageIcon } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
@@ -42,8 +41,6 @@ function composeHasContent(values: PostComposeValues): boolean {
 
 export default function PostCreateClient() {
   const router = useRouter();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const submittingRef = useRef(false);
   const restoredRef = useRef(false);
 
@@ -164,10 +161,10 @@ export default function PostCreateClient() {
     <PageShell paddingClassName="relative min-h-screen overflow-hidden px-6 pt-28 pb-20" orb="left">
       <div className="relative mx-auto max-w-6xl">
         <div className="mb-10 text-center">
-          <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+          <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
             New Post
           </p>
-          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
             새 글 쓰기
           </h1>
         </div>
@@ -176,12 +173,12 @@ export default function PostCreateClient() {
           <div
             className="space-y-6 rounded-3xl border p-5 sm:p-8"
             style={{
-              background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-              borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+              background: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <div>
-              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+              <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={{ color: "var(--foreground-muted)" }}>
                 기록 예시로 시작하기 <span className="normal-case tracking-normal opacity-70">(선택)</span>
               </p>
               <ul className="flex flex-wrap gap-2" aria-label="기록 예시 목록">
@@ -193,9 +190,9 @@ export default function PostCreateClient() {
                       disabled={submitting}
                       className="rounded-full px-3.5 py-2 text-[13px] transition-opacity hover:opacity-80 disabled:opacity-40"
                       style={{
-                        background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                        border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-                        color: dark ? "#f9f7f2" : "#0f1f22",
+                        background: "var(--border)",
+                        border: "1px solid var(--border)",
+                        color: "var(--foreground)",
                       }}
                       aria-label={`${template.label} 예시 적용`}
                     >
@@ -204,13 +201,13 @@ export default function PostCreateClient() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+              <p className="mt-2 text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
                 내용·태그·카테고리가 초안으로 채워집니다. 자유롭게 수정하세요.
               </p>
             </div>
 
             <div>
-              <label htmlFor="post-category" className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+              <label htmlFor="post-category" className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={{ color: "var(--foreground-muted)" }}>
                 카테고리
               </label>
               <select
@@ -219,9 +216,9 @@ export default function PostCreateClient() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="ui-control px-3 py-2.5"
                 style={{
-                  background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-                  border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-                  color: dark ? "#f9f7f2" : "#0f1f22",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  color: "var(--foreground)",
                 }}
               >
                 {["패션", "도시텃밭", "공방", "기증", "음식", "가구"].map((item) => (
@@ -236,7 +233,6 @@ export default function PostCreateClient() {
               values={values}
               onChange={setValues}
               campaigns={campaigns}
-              dark={dark}
               fieldErrors={fieldErrors}
               onFieldErrorClear={clearFieldError}
               showDraftSaved={draftSaved}
@@ -248,8 +244,8 @@ export default function PostCreateClient() {
                 onClick={() => router.push("/feed")}
                 className="flex-1 rounded-xl py-3"
                 style={{
-                  background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                  color: dark ? "#f9f7f2" : "#0f1f22",
+                  background: "var(--border)",
+                  color: "var(--foreground)",
                 }}
               >
                 취소
@@ -265,23 +261,23 @@ export default function PostCreateClient() {
           </div>
 
           <div className="self-start lg:sticky lg:top-24">
-            <p className="mb-3 text-[12px] tracking-[0.3em] uppercase" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
+            <p className="mb-3 text-[12px] tracking-[0.3em] uppercase" style={{ color: "var(--foreground-muted)" }}>
               미리보기
             </p>
             <article
               className="overflow-hidden rounded-2xl border shadow-[0_30px_60px_-20px_rgba(0,0,0,0.4)]"
               style={{
-                background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-                borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+                background: "var(--card)",
+                borderColor: "var(--border)",
               }}
             >
               <div className="flex items-center gap-3 p-4">
                 <Avatar name="나" />
                 <div>
-                  <div className="text-[14px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                  <div className="text-[14px]" style={{ color: "var(--foreground)" }}>
                     {authorName}
                   </div>
-                  <div className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                  <div className="text-[11px] opacity-60" style={{ color: "var(--foreground)" }}>
                     방금 전 · {category}
                   </div>
                 </div>
@@ -292,7 +288,6 @@ export default function PostCreateClient() {
                     <FallbackImage
                       src={values.images[0]}
                       alt="첨부 이미지 미리보기 1"
-                      dark={dark}
                       errorText="이미지를 불러올 수 없어요"
                       className="h-full w-full object-cover"
                     />
@@ -304,7 +299,6 @@ export default function PostCreateClient() {
                         key={src}
                         src={src}
                         alt={`첨부 이미지 미리보기 ${index + 1}`}
-                        dark={dark}
                         errorText="이미지를 불러올 수 없어요"
                         className="h-full w-full object-cover"
                       />
@@ -314,13 +308,13 @@ export default function PostCreateClient() {
               ) : (
                 <div
                   className="flex aspect-[4/3] items-center justify-center"
-                  style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
+                  style={{ background: "var(--border)" }}
                 >
-                  <ImageIcon size={32} style={{ color: dark ? "rgba(255,255,255,0.3)" : "rgba(28,64,68,0.3)" }} aria-hidden />
+                  <ImageIcon size={32} style={{ color: "var(--foreground-muted)" }} aria-hidden />
                 </div>
               )}
               <div className="space-y-3 p-4">
-                <p style={{ color: dark ? "#f9f7f2" : "#0f1f22", fontSize: 14, lineHeight: 1.6 }}>
+                <p style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }}>
                   {values.text || <span className="opacity-40">내용이 여기에 표시됩니다…</span>}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -329,8 +323,8 @@ export default function PostCreateClient() {
                       key={tag}
                       className="rounded-full px-2 py-0.5 text-[11px]"
                       style={{
-                        background: dark ? "rgba(125,211,163,0.12)" : "rgba(125,211,163,0.2)",
-                        color: dark ? "#7dd3a3" : "#1c4044",
+                        background: "var(--accent-soft)",
+                        color: "var(--accent-secondary)",
                       }}
                     >
                       {tag}
