@@ -52,9 +52,9 @@ export function SiteHeader() {
   }, [token]);
 
   const onLogout = () => {
-    logout();
-    // 인증이 필요한 페이지에 있었다면 피드로 보내고, 일반 페이지면 그대로 둔다.
-    if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) router.push("/feed");
+    void logout().finally(() => {
+      if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) router.push("/feed");
+    });
   };
 
   return (
