@@ -11,6 +11,7 @@ import java.util.Date
 class JwtService(
     @Value("\${app.jwt.secret}") secret: String,
     @param:Value("\${app.jwt.ttl-millis}") private val ttlMillis: Long,
+    @param:Value("\${app.jwt.refresh-ttl-millis}") private val refreshTtlMillis: Long,
     @Value("\${spring.profiles.active:}") activeProfiles: String,
 ) {
     init {
@@ -35,10 +36,31 @@ class JwtService(
             .signWith(key)
             .compact()
 
-    /** 유효하지 않으면 예외. 호출부에서 잡아 미인증 처리. */
+    /**
+     * refresh token. access 와 같은 키로 서명하되 typ=refresh 로 구분해 access 자리에 쓰이지 못하게 한다
+     * (parse 가 거절). 사용자 최신 상태는 refresh 시점에 DB 에서 다시 읽으므로 claim 은 subject 만 둔다.
+     */
+    fun issueRefresh(user: User): String =
+        Jwts.builder()
+            .subject(user.id.toString())
+            .claim("typ", "refresh")
+            .issuedAt(Date())
+            .expiration(Date(System.currentTimeMillis() + refreshTtlMillis))
+            .signWith(key)
+            .compact()
+
+    /** 유효하지 않으면 예외. 호출부에서 잡아 미인증 처리. refresh token 은 access 로 쓸 수 없다. */
     fun parse(token: String): AuthUser {
         val c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
+        require(c["typ"] != "refresh") { "refresh token cannot be used as access token" }
         return AuthUser(c.subject.toLong(), c["name"] as String, c["verified"] as Boolean)
+    }
+
+    /** refresh token 검증 → userId. typ=refresh 가 아니면(access 토큰이면) 예외. */
+    fun parseRefresh(token: String): Long {
+        val c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
+        require(c["typ"] == "refresh") { "not a refresh token" }
+        return c.subject.toLong()
     }
 
     /** 토큰의 남은 만료 시간(초). 이미 만료면 0. denylist TTL 산정에 쓴다. 유효하지 않으면 예외. */

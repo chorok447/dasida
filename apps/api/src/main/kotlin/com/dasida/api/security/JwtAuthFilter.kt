@@ -11,9 +11,10 @@ import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
 /**
- * Authorization: Bearer <jwt> 를 읽어 SecurityContext 에 인증을 채운다.
- * - 헤더 없음 / Bearer 형식 아님 → 미인증으로 통과(공개 엔드포인트 접근 허용).
- * - Bearer 토큰이 명시됐는데 invalid이거나 DB 사용자가 없거나 탈퇴함 → 즉시 401, 체인 중단.
+ * Authorization: Bearer <jwt> 또는 httpOnly 인증 쿠키를 읽어 SecurityContext 에 인증을 채운다.
+ * 헤더가 우선(API 클라이언트·테스트 호환), 없으면 쿠키(브라우저) fallback.
+ * - 둘 다 없음 → 미인증으로 통과(공개 엔드포인트 접근 허용).
+ * - 토큰이 명시됐는데 invalid이거나 DB 사용자가 없거나 탈퇴함 → 즉시 401, 체인 중단.
  */
 @Component
 class JwtAuthFilter(
@@ -24,9 +25,9 @@ class JwtAuthFilter(
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
         val header = req.getHeader("Authorization")
-        if (header != null && header.startsWith("Bearer ")) {
+        val token = if (header != null && header.startsWith("Bearer ")) header.substring(7) else req.authCookieToken()
+        if (token != null) {
             try {
-                val token = header.substring(7)
                 val user = jwt.parse(token)
                 // 로그아웃된 토큰은 만료 전이라도 거절. 서명·형식 검증 이후에만 조회한다.
                 if (isDeniedFailClosed(token)) {

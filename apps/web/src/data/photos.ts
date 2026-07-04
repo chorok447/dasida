@@ -67,10 +67,4 @@ export const objectPhotos = [
   u("photo-1728551040634-db461e235b1f"),
 ];
 
-// 70 unique portraits from pravatar — no duplicates guaranteed
-export const portraitPhotos = Array.from(
-  { length: 70 },
-  (_, i) => `https://i.pravatar.cc/150?img=${i + 1}`,
-);
-
 export const pickPhoto = (pool: string[], i: number) => pool[i % pool.length];

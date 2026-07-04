@@ -79,17 +79,15 @@ export async function markAllNotificationsRead(): Promise<NotificationReadAllRes
 
 export async function deleteNotification(
   id: string,
-  token: string,
 ): Promise<NotificationDeleteResponse> {
-  const res = await apiDelete<NotificationDeleteResponse>(`/api/notifications/${id}`, token);
+  const res = await apiDelete<NotificationDeleteResponse>(`/api/notifications/${id}`);
   emitNotificationsChanged();
   return res;
 }
 
 export async function deleteReadNotifications(
-  token: string,
 ): Promise<NotificationDeleteReadResponse> {
-  const res = await apiDelete<NotificationDeleteReadResponse>("/api/notifications/read", token);
+  const res = await apiDelete<NotificationDeleteReadResponse>("/api/notifications/read");
   emitNotificationsChanged();
   return res;
 }
@@ -108,4 +106,16 @@ export function relativeTime(item: Pick<NotificationItem, "createdAt" | "time">)
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}일 전`;
   return new Date(then).toLocaleDateString("ko-KR");
+}
+
+export function notificationTypeLabel(type: string): string {
+  if (type === "CAMPAIGN_JOINED") return "캠페인 참여";
+  if (type === "POST_COMMENT_CREATED") return "게시글 댓글";
+  if (type === "CAMPAIGN_COMMENT_CREATED") return "캠페인 댓글";
+  return "알림";
+}
+
+export function isNotificationNavigable(href: string): boolean {
+  const trimmed = href.trim();
+  return trimmed.startsWith("/") && trimmed.length > 1;
 }

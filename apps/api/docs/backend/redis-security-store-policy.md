@@ -20,9 +20,9 @@
 |---|---|---|---|---|
 | 기본(호스트 `bootRun`) / test | `memory` | `memory` | 없음(`management.health.redis.enabled=false`) | `application.properties`, `src/test/resources/application.properties` |
 | compose local (`SPRING_PROFILES_ACTIVE=local`) | `redis` | `redis` | Valkey (`compose.local.yml` 의 `redis` 서비스) | `application-local.properties` |
-| **prod** | (미설정 → 기본 `memory`) | (미설정 → 기본 `memory`) | **없음** | `application-prod.yml` 에 store/redis 설정 없음 |
+| **prod** | `redis` | `redis` | env 주입(`SPRING_DATA_REDIS_HOST` 필수 — 미설정 시 기동 실패) | `application-prod.yml` |
 
-- **핵심**: prod 는 아직 Redis store 를 적용하지 않았다. 현재 prod 로 기동하면 두 기능 모두 **in-memory** 로 동작한다.
+- **핵심**: prod 는 두 기능 모두 **redis store 로 고정**됐다(`application-prod.yml`, 회귀 가드 `ProdRedisStoreConfigTest`). host 미주입 시 in-memory 로 조용히 내려앉지 않고 **기동이 실패**한다(fail-fast).
 - in-memory store 의 한계(prod 다중 인스턴스 기준):
   - **인스턴스 로컬**: rate limit 버킷·denylist 가 인스턴스마다 따로 존재한다. 여러 replica 뒤에 LB 가 있으면 제한/무효화가 인스턴스 간 공유되지 않는다.
   - **재기동 시 소실**: 프로세스 재시작하면 denylist 가 비워져 로그아웃했던 토큰이 만료 전이면 다시 통과할 수 있다.
@@ -60,7 +60,7 @@
 
 - Lettuce(Redis client) 기본 command timeout 은 60초다. 이 값이면 store 장애 시 fail-open/closed 코드가 예외를 받기까지 요청이 **~60초 hang** 한다(정책 결과는 정확하지만 fast-fail 아님).
 - `application-local.properties` 에 `spring.data.redis.timeout=1s`, `spring.data.redis.connect-timeout=1s` 를 설정해 store 장애를 **수 초 내 감지**하고 정책(fail-open/closed)이 즉시 발동하도록 했다. 정책 자체(fail-open/closed)는 바꾸지 않았다.
-- prod 는 Redis 미적용 상태이므로 prod timeout 은 Redis provisioning PR 에서 함께 정한다(이 문서 5·6 참조).
+- prod 도 `application-prod.yml` 에 동일하게 `timeout=1s`, `connect-timeout=1s` 를 설정했다.
 
 ### 4-1-2. 관측성(metric·로그) ✅ 보강됨
 
@@ -116,7 +116,7 @@ store 장애로 fail-open/closed 가 발동하면 운영에서 감지할 수 있
 
 남은 과제(구현 PR):
 
-- [ ] `application-prod.yml` 에 Redis 접속 + store=redis 설정 추가(secret 주입 방식 포함).
+- [x] `application-prod.yml` 에 Redis 접속 + store=redis 설정 추가(host 는 env 필수 주입·fail-fast, timeout 1s, 회귀 가드 `ProdRedisStoreConfigTest`).
 - [ ] denylist degraded-mode 정책 플래그(장애 시 fail-open/closed 런타임 선택) 도입 검토.
 - [ ] 알럿(임계값 기반) 구성 — store 장애 metric(`dasida.security.*.store_unavailable`)과 로그는 도입됨(4-1-2), 알럿·metric endpoint 노출은 배포 환경 확정 후.
 - [ ] prod Redis 연결 smoke/health 확인 절차 문서화(기존 `RedisCompatibleStoreConnectionTest` 참고).

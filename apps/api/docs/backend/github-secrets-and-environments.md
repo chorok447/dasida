@@ -13,6 +13,8 @@
 |------|-------------|-----------|-----|
 | **민감 정보** | Repository / Environment **Secret** | 로그·PR에 노출되면 안 되는 값 | `JWT_SECRET`, `DB_PASSWORD`, SSH private key |
 | **비밀 아님** | Repository **Variable** | workflow·build에 넣어도 괜찮은 설정값 | `NEXT_PUBLIC_API_URL`, image name |
+
+도메인·Nginx ingress 구조: [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md). `NEXT_PUBLIC_API_URL` 과 `APP_CORS_ALLOWED_ORIGINS` 는 각각 API public URL·Web origin 과 **쌍으로** 맞춰야 한다.
 | **런타임 only** | 서버 `.env.prod` / secret manager | 컨테이너 기동 시 API가 읽는 값 | [`.env.prod.example`](../../../../deploy/.env.prod.example) 항목 |
 
 **원칙**
@@ -179,5 +181,6 @@ flowchart TB
 - [github-secrets-setup-runbook.md](./github-secrets-setup-runbook.md) — UI/CLI 생성·검증 절차
 - [main-release-readiness.md](./main-release-readiness.md)
 - [deployment-strategy.md](./deployment-strategy.md)
+- [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
 - [container-images.md](./container-images.md)
 - [deploy/.env.prod.example](../../../../deploy/.env.prod.example)

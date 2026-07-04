@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
+import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 
 export function Hero3D() {
@@ -24,7 +24,10 @@ export function Hero3D() {
 
   const [hover, setHover] = useState(false);
 
+  const reduce = useReducedMotion();
+
   function handleMove(e: React.MouseEvent) {
+    if (reduce) return;
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
     mx.set((e.clientX - rect.left) / rect.width - 0.5);
@@ -148,7 +151,7 @@ export function Hero3D() {
             transform: "translateZ(60px)",
             color: dark ? "rgba(255,255,255,0.8)" : "rgba(15,31,34,0.7)",
           }}
-          className="text-center mt-4 max-w-xl mx-auto"
+          className="hidden sm:block text-center mt-4 max-w-xl mx-auto"
         >
           마우스를 움직여 보세요 — 레이어들이 3D 공간에서 따라옵니다.
         </motion.p>

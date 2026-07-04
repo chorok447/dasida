@@ -31,6 +31,7 @@ export function Pagination({
   return (
     <nav
       aria-label="페이지 탐색"
+      aria-busy={disabled || undefined}
       className={`flex flex-col items-center gap-3 sm:flex-row ${totalElements === undefined ? "sm:justify-center" : "sm:justify-between"} ${className}`}
       style={{ color: foreground }}
     >

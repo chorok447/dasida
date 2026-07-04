@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Leaf } from "lucide-react";
-import { avatarFor } from "@/data/avatars";
+import { Leaf, User } from "lucide-react";
+import { useTheme } from "@/lib/theme-context";
 
 type AvatarProps = {
   name: string;
@@ -11,37 +11,45 @@ type AvatarProps = {
   src?: string;
 };
 
+function DefaultAvatar({ size, dark }: { size: number; dark: boolean }) {
+  return (
+    <div
+      className="flex h-full w-full items-center justify-center rounded-full"
+      style={{ background: dark ? "#363636" : "#EFEFEF" }}
+      aria-hidden
+    >
+      <User
+        size={Math.round(size * 0.52)}
+        color={dark ? "#737373" : "#A8A8A8"}
+        strokeWidth={1.75}
+      />
+    </div>
+  );
+}
+
 export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
-  const imgSrc = src ?? avatarFor(name);
+  const { theme } = useTheme();
+  const dark = theme === "dark";
   const [failed, setFailed] = useState(false);
+  const showDefault = !src || failed;
 
   return (
     <div className="relative inline-block flex-shrink-0" style={{ width: size, height: size }}>
-      {!failed ? (
+      {showDefault ? (
+        <DefaultAvatar size={size} dark={dark} />
+      ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={imgSrc}
-          alt={name}
+          src={src}
+          alt={`${name} 프로필 이미지`}
           onError={() => setFailed(true)}
-          className="w-full h-full rounded-full object-cover"
+          className="h-full w-full rounded-full object-cover"
           draggable={false}
         />
-      ) : (
-        <div
-          className="w-full h-full rounded-full flex items-center justify-center"
-          style={{
-            background: "#1c4044",
-            color: "#7dd3a3",
-            fontFamily: "'Black Han Sans', sans-serif",
-            fontSize: size * 0.45,
-          }}
-        >
-          {name[0]}
-        </div>
       )}
       {verified && (
         <div
-          className="absolute -bottom-0.5 -right-0.5 rounded-full bg-[#7dd3a3] flex items-center justify-center ring-1 ring-white"
+          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[#7dd3a3] ring-1 ring-white"
           style={{ width: Math.max(12, size * 0.42), height: Math.max(12, size * 0.42) }}
         >
           <Leaf size={Math.max(7, size * 0.24)} color="#0f1f22" />

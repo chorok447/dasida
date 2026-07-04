@@ -2,11 +2,113 @@
 import { apiGet, apiPut } from "@/lib/api";
 import type { CommentPageLocationResponse } from "@/data/comments";
 
+/** 백엔드 PostValidators 와 동일한 제한. */
+export const POST_MAX_TEXT_LENGTH = 1000;
+export const POST_MAX_TAGS = 10;
+export const POST_MAX_TAG_LENGTH = 30;
+export const POST_MAX_IMAGES = 4;
+
+export type PostComposeValues = {
+  text: string;
+  images: string[];
+  tags: string[];
+  campaign: string;
+};
+
+export type PostComposePayload = {
+  text: string;
+  images: string[];
+  tags: string[];
+  campaignId: string | null;
+};
+
+export type PostComposeField = "text" | "images" | "tags";
+
+export type PostComposeValidationResult =
+  | { ok: true; payload: PostComposePayload }
+  | { ok: false; message: string; field?: PostComposeField };
+
+export function isValidPostImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
+}
+
+export function normalizePostTags(tags: string[]): string[] {
+  return Array.from(
+    new Set(
+      tags
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`)),
+    ),
+  );
+}
+
+export function normalizePostImages(images: string[]): string[] {
+  return Array.from(new Set(images.map((url) => url.trim()).filter(Boolean)));
+}
+
+export function validatePostCompose(values: PostComposeValues): PostComposeValidationResult {
+  const text = values.text.trim();
+  if (!text) {
+    return { ok: false, message: "내용을 입력해주세요.", field: "text" };
+  }
+  if (text.length > POST_MAX_TEXT_LENGTH) {
+    return {
+      ok: false,
+      message: `내용은 ${POST_MAX_TEXT_LENGTH}자 이하여야 합니다.`,
+      field: "text",
+    };
+  }
+
+  const tags = normalizePostTags(values.tags);
+  if (tags.length > POST_MAX_TAGS) {
+    return {
+      ok: false,
+      message: `태그는 최대 ${POST_MAX_TAGS}개까지 가능합니다.`,
+      field: "tags",
+    };
+  }
+  if (tags.some((tag) => tag.length > POST_MAX_TAG_LENGTH)) {
+    return {
+      ok: false,
+      message: `태그는 ${POST_MAX_TAG_LENGTH}자 이하여야 합니다.`,
+      field: "tags",
+    };
+  }
+
+  const images = normalizePostImages(values.images);
+  if (images.length > POST_MAX_IMAGES) {
+    return {
+      ok: false,
+      message: `이미지는 최대 ${POST_MAX_IMAGES}개까지 가능합니다.`,
+      field: "images",
+    };
+  }
+  if (images.some((url) => !isValidPostImageUrl(url))) {
+    return {
+      ok: false,
+      message: "이미지 URL은 http:// 또는 https:// 로 시작해야 합니다.",
+      field: "images",
+    };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      text,
+      images,
+      tags,
+      campaignId: values.campaign.trim() || null,
+    },
+  };
+}
+
 export type PostSearchSort = "latest" | "popular" | "discussed";
 
 export type Post = {
   id: string;
-  author: { name: string; verified: boolean };
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
   time: string;
   text: string;
   tags: string[];
@@ -50,7 +152,7 @@ export const fetchBookmarkedPostsPage = (page: number) => postsPage("/api/posts/
 export type PostComment = {
   id: string;
   postId: string;
-  author: { name: string; verified: boolean };
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
   text: string;
   time: string;
   ownedByMe: boolean;
@@ -71,7 +173,6 @@ export type PostCommentsPageResponse = {
 export function fetchPostCommentsPage(
   postId: string,
   params: { page?: number; size?: number } = {},
-  token?: string | null,
 ): Promise<PostCommentsPageResponse> {
   const query = new URLSearchParams({
     page: String(params.page ?? 0),
@@ -79,7 +180,6 @@ export function fetchPostCommentsPage(
   });
   return apiGet<PostCommentsPageResponse>(
     `/api/posts/${encodeURIComponent(postId)}/comments/page?${query.toString()}`,
-    token,
   );
 }
 
@@ -91,7 +191,6 @@ export function fetchPostCommentPageLocation(
   const query = new URLSearchParams({ size: String(size) });
   return apiGet<CommentPageLocationResponse>(
     `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}/page?${query.toString()}`,
-    null,
   );
 }
 
@@ -99,11 +198,9 @@ export function updatePostComment(
   postId: string,
   commentId: string,
   body: UpdatePostCommentRequest,
-  token: string,
 ): Promise<PostComment> {
   return apiPut<PostComment>(
     `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
     body,
-    token,
   );
 }

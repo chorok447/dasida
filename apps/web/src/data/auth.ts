@@ -66,21 +66,18 @@ export function getPasswordPolicyState(password: string): PasswordPolicyState {
 
 export function changePassword(
   body: ChangePasswordRequest,
-  token: string,
 ): Promise<ChangePasswordResponse> {
-  return apiPut<ChangePasswordResponse>("/api/auth/password", body, token);
+  return apiPut<ChangePasswordResponse>("/api/auth/password", body);
 }
 
 export function changeEmail(
   body: ChangeEmailRequest,
-  token: string,
 ): Promise<ChangeEmailResponse> {
-  return apiPut<ChangeEmailResponse>("/api/auth/email", body, token);
+  return apiPut<ChangeEmailResponse>("/api/auth/email", body);
 }
 
 export function deleteAccount(
   body: DeleteAccountRequest,
-  token: string,
 ): Promise<DeleteAccountResponse> {
-  return apiDeleteWithBody<DeleteAccountResponse>("/api/auth/me", body, token);
+  return apiDeleteWithBody<DeleteAccountResponse>("/api/auth/me", body);
 }

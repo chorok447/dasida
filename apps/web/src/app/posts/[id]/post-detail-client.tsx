@@ -1,17 +1,18 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDelete, apiDeleteVoid, ApiError, apiErrorMessage } from "@/lib/api";
-import { getToken, clearSession } from "@/lib/auth";
+import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -49,11 +50,12 @@ function parseCommentsPage(value: string | null): number {
 export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const p = post;
   const [idx, setIdx] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
@@ -82,9 +84,9 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
   const onDelete = async () => {
     if (deleting) return;
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -92,18 +94,18 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setDeleting(true);
     try {
       await apiDeleteVoid(`/api/posts/${p.id}`);
-      if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 이동 취소
+      if (getSessionId() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 이동 취소
       router.push("/mypage");
     } catch (e) {
-      if (getToken() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
+      if (getSessionId() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("삭제 권한이 없습니다.");
+        toast.error("삭제 권한이 없습니다.");
       } else {
-        alert("게시글 삭제에 실패했습니다.");
+        toast.error("게시글 삭제에 실패했습니다.");
       }
     } finally {
       // 토큰 변경으로 무시한 경우에도 버튼이 영구 비활성화되지 않게 정리.
@@ -236,9 +238,9 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     const isCurrent = () =>
       !cancelled &&
       generation === commentsRequestGenerationRef.current &&
-      getToken() === requestToken;
+      getSessionId() === requestToken;
 
-    fetchPostCommentsPage(p.id, { page: commentsPage, size: 20 }, requestToken)
+    fetchPostCommentsPage(p.id, { page: commentsPage, size: 20 })
       .then((response) => {
         if (!isCurrent()) return;
         if (response.content.length === 0 && commentsPage > 0) {
@@ -260,7 +262,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         if (!isCurrent()) return;
         if (error instanceof ApiError && error.status === 401) {
           clearSession();
-          alert("로그인이 필요합니다.");
+          toast.error("로그인이 필요합니다.");
           router.push("/login");
           return;
         }
@@ -299,19 +301,19 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     // 목록 조회/에러 중에는 작성 금지 → 늦게 도착한 GET 이 방금 추가한 댓글을 덮는 경합 방지.
     if (!text || submittingComment || visibleCommentsLoading || commentsError) return;
     if (text.length > MAX_COMMENT_LENGTH) {
-      alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
+      toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
       return;
     }
-    if (!getToken()) {
-      alert("로그인이 필요합니다.");
+    if (!getSessionId()) {
+      toast.error("로그인해야 댓글을 작성할 수 있어요.");
       router.push("/login");
       return;
     }
     setSubmittingComment(true);
-    const requestToken = getToken(); // 요청 identity 캡처
+    const requestToken = getSessionId(); // 요청 identity 캡처
     try {
       await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
-      if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 무시
       setCommentCount((c) => c + 1);
       setCommentText("");
       if (commentsPage === 0 && rawCommentsPage === "0") {
@@ -320,13 +322,13 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         updateCommentsPage(0, commentsPage === 0);
       }
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인해야 댓글을 작성할 수 있어요.");
         router.push("/login");
       } else {
-        alert("댓글 작성에 실패했습니다.");
+        toast.error("댓글 작성에 실패했습니다.");
       }
     } finally {
       setSubmittingComment(false);
@@ -334,10 +336,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   const deleteComment = async (commentId: string) => {
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
-      alert("로그인이 필요합니다.");
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -348,7 +350,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setDeletingCommentIds(new Set(deletingCommentIdsRef.current));
     try {
       await apiDeleteVoid(`/api/posts/${p.id}/comments/${commentId}`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setCommentCount((current) => Math.max(0, current - 1));
       const response = currentCommentsState.response;
       if (response && response.content.length === 1 && commentsPage > 0) {
@@ -357,18 +359,18 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         retryComments();
       }
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 403) {
-        alert("댓글 삭제 권한이 없습니다.");
+        toast.error("댓글 삭제 권한이 없습니다.");
       } else if (error instanceof ApiError && error.status === 404) {
-        alert("이미 삭제되었거나 존재하지 않는 댓글입니다.");
+        toast.error("이미 삭제되었거나 존재하지 않는 댓글입니다.");
         retryComments();
       } else {
-        alert("댓글 삭제에 실패했습니다.");
+        toast.error("댓글 삭제에 실패했습니다.");
       }
     } finally {
       deletingCommentIdsRef.current.delete(commentId);
@@ -398,7 +400,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       setEditCommentError(`댓글은 1자 이상 ${MAX_COMMENT_LENGTH}자 이하로 입력해주세요.`);
       return;
     }
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       setEditingCommentId(null);
@@ -411,8 +413,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setSavingCommentId(commentId);
     setEditCommentError("");
     try {
-      const updated = await updatePostComment(p.id, commentId, { text }, requestToken);
-      if (getToken() !== requestToken || generation !== editRequestGenerationRef.current) return;
+      const updated = await updatePostComment(p.id, commentId, { text });
+      if (getSessionId() !== requestToken || generation !== editRequestGenerationRef.current) return;
       if (!currentCommentsState.response?.content.some((comment) => comment.id === commentId)) {
         setEditingCommentId(null);
         retryComments();
@@ -430,17 +432,17 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       setEditingCommentId(null);
       setEditCommentText("");
     } catch (error) {
-      if (getToken() !== requestToken || generation !== editRequestGenerationRef.current) return;
+      if (getSessionId() !== requestToken || generation !== editRequestGenerationRef.current) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         setEditingCommentId(null);
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 403) {
-        alert("댓글을 수정할 권한이 없습니다.");
+        toast.error("댓글을 수정할 권한이 없습니다.");
         setEditingCommentId(null);
         retryComments();
       } else if (error instanceof ApiError && error.status === 404) {
-        alert("댓글을 찾을 수 없습니다.");
+        toast.error("댓글을 찾을 수 없습니다.");
         setEditingCommentId(null);
         retryComments();
       } else if (error instanceof ApiError && error.status === 400) {
@@ -455,29 +457,30 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   const onLike = async () => {
-    if (!getToken()) {
-      alert("로그인이 필요합니다.");
+    if (!getSessionId()) {
+      toast.error("로그인 후 이용할 수 있어요.");
       router.push("/login");
       return;
     }
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
     invalidatePending(); // 늦게 도착할 재조회가 좋아요 결과를 덮어쓰지 않게
-    const requestToken = getToken(); // 요청 identity 캡처
+    const requestToken = getSessionId(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
-        alert("로그인이 필요합니다.");
+        clearSession();
+        toast.error("로그인 후 이용할 수 있어요.");
         router.push("/login");
       } else {
-        alert("좋아요 처리에 실패했습니다.");
+        toast.error("좋아요 처리에 실패했습니다.");
       }
     } finally {
       setLiking(false);
@@ -485,9 +488,9 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   const onBookmark = async () => {
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
-      alert("로그인이 필요합니다.");
+      toast.error("로그인 후 이용할 수 있어요.");
       router.push("/login");
       return;
     }
@@ -498,15 +501,16 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       const updated = bookmarked
         ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
         : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setBookmarked(updated.bookmarkedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
-        alert("로그인이 필요합니다.");
+        clearSession();
+        toast.error("로그인 후 이용할 수 있어요.");
         router.push("/login");
       } else {
-        alert("북마크 처리에 실패했습니다.");
+        toast.error("북마크 처리에 실패했습니다.");
       }
     } finally {
       setBookmarking(false);
@@ -591,25 +595,38 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             className="rounded-3xl border overflow-hidden shadow-[0_40px_80px_-30px_rgba(0,0,0,0.4)] grid grid-cols-1 md:grid-cols-[1.2fr_1fr]"
           >
             <div className="relative aspect-square md:aspect-auto bg-black overflow-hidden">
-              <motion.img
-                key={idx}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                src={p.images[idx]}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+              {imageFailed ? (
+                <div className="flex h-full w-full items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <ImageIcon size={32} color="rgba(255,255,255,0.35)" aria-hidden />
+                </div>
+              ) : (
+                <motion.img
+                  key={idx}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  src={p.images[idx]}
+                  alt={`게시글 이미지 ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={() => setImageFailed(true)}
+                />
+              )}
               {p.images.length > 1 && (
                 <>
                   <button
-                    onClick={() => setIdx((i) => (i - 1 + p.images.length) % p.images.length)}
+                    onClick={() => {
+                      setImageFailed(false);
+                      setIdx((i) => (i - 1 + p.images.length) % p.images.length);
+                    }}
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(15,31,34,0.6)", color: "#fff" }}
                   >
                     <ChevronLeft size={18} />
                   </button>
                   <button
-                    onClick={() => setIdx((i) => (i + 1) % p.images.length)}
+                    onClick={() => {
+                      setImageFailed(false);
+                      setIdx((i) => (i + 1) % p.images.length);
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(15,31,34,0.6)", color: "#fff" }}
                   >
@@ -654,7 +671,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                     border: `1px solid ${dark ? "rgba(125,211,163,0.2)" : "rgba(125,211,163,0.3)"}`,
                   }}
                 >
-                  <img src={linkedCampaign.thumb} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                  <FallbackImage
+                    src={linkedCampaign.thumb}
+                    alt={`${linkedCampaign.title} 캠페인 이미지`}
+                    className="w-10 h-10 rounded-lg object-cover"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>연결된 캠페인</div>
                     <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{linkedCampaign.title}</div>
@@ -719,34 +740,51 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
             className="flex items-center gap-3 p-3 rounded-2xl mb-6"
             style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
           >
-            <Avatar name="나" />
-            <input
-              aria-label="댓글 내용"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                // 한글 IME 조합 중 Enter 는 제출하지 않음.
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submitComment();
-                }
-              }}
-              placeholder="댓글 달기..."
-              maxLength={MAX_COMMENT_LENGTH}
-              disabled={submittingComment || visibleCommentsLoading || !!commentsError}
-              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
-              style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={submittingComment || visibleCommentsLoading || !!commentsError || !commentText.trim()}
-              aria-label="댓글 등록"
-              className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
-              style={{ background: "#7dd3a3", color: "#0f1f22" }}
-            >
-              <Send size={14} />
-            </button>
+            {token ? (
+              <>
+                <Avatar name="나" size={36} />
+                <input
+                  aria-label="댓글 내용"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    // 한글 IME 조합 중 Enter 는 제출하지 않음.
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      submitComment();
+                    }
+                  }}
+                  placeholder="댓글 달기..."
+                  maxLength={MAX_COMMENT_LENGTH}
+                  disabled={submittingComment || visibleCommentsLoading || !!commentsError}
+                  className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
+                  style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+                />
+                <button
+                  type="button"
+                  onClick={submitComment}
+                  disabled={submittingComment || visibleCommentsLoading || !!commentsError || !commentText.trim()}
+                  aria-label="댓글 등록"
+                  className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
+                  style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                >
+                  <Send size={14} />
+                </button>
+              </>
+            ) : (
+              <div className="flex w-full flex-col items-center gap-3 py-2 text-center">
+                <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+                  로그인해야 댓글을 작성할 수 있어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+                >
+                  로그인하기
+                </button>
+              </div>
+            )}
           </div>
           <div className="space-y-5 min-h-[64px]">
             {targetLocationMessage ? (
@@ -784,7 +822,12 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                     outline: c.id === targetCommentId ? "1px solid rgba(125,211,163,0.55)" : "none",
                   }}
                 >
-                  <Avatar name={c.author.name} verified={c.author.verified} />
+                  <Avatar
+                    name={c.author.name}
+                    verified={c.author.verified}
+                    size={36}
+                    src={c.author.profileImageUrl ?? undefined}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-[13px]">
                       <span className="truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>

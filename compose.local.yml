@@ -60,7 +60,10 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      # 브라우저(호스트) → API
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      # web 컨테이너 SSR → compose 내부 api 서비스 (127.0.0.1:8080 은 web 자신을 가리킴)
+      API_INTERNAL_URL: http://api:8080
     depends_on:
       - api
 

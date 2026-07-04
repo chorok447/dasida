@@ -1,5 +1,6 @@
 "use client";
 
+import { StaggerItem } from "@/components/scroll-reveal";
 import Link from "next/link";
 import { FileWarning, Flag } from "lucide-react";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -9,7 +10,7 @@ import {
   REPORT_TARGET_LABELS,
   type ReportItem,
 } from "@/data/reports";
-import { getToken } from "@/lib/auth";
+import { getSessionId } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { useTheme } from "@/lib/theme-context";
 import { PaginatedSection } from "./paginated-section";
@@ -75,9 +76,9 @@ export function ReportsList({ page, onPageChange }: { page: number; onPageChange
       page={page}
       onPageChange={onPageChange}
       fetcher={(currentPage) => {
-        const token = getToken();
+        const token = getSessionId();
         return token
-          ? fetchMyReports({ page: currentPage, size: 20 }, token)
+          ? fetchMyReports({ page: currentPage, size: 20 })
           : Promise.reject(new ApiError(401, "/api/reports/mine"));
       }}
       loadingLabel="신고 내역을 불러오는 중입니다."
@@ -93,7 +94,11 @@ export function ReportsList({ page, onPageChange }: { page: number; onPageChange
           <div className="flex items-center gap-2 text-[13px] opacity-65">
             <Flag size={14} /> 내가 접수한 신고만 표시됩니다.
           </div>
-          {reports.map((report) => <ReportCard key={report.id} report={report} />)}
+          {reports.map((report, i) => (
+            <StaggerItem key={report.id} index={i}>
+              <ReportCard report={report} />
+            </StaggerItem>
+          ))}
         </div>
       )}
     />

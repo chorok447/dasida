@@ -98,6 +98,8 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 
 `Authorization`/`Content-Type` 헤더와 credentials 를 허용하지만, CORS 허용은 인증 우회가 아니다. 인증 필수 API 는 여전히 JWT Bearer 토큰이 필요하다(예: `GET /api/auth/me` 는 토큰 없으면 401).
 
+`UserProfileResponse.profileImageUrl` / `UpdateProfileRequest.profileImageUrl`(선택)은 http 또는 https URL만 허용하며 최대 500자이다. null/blank 는 이미지 없음이며, 댓글·게시글 `Author` snapshot 에 저장되어 목록에 표시된다.
+
 ### Rate limit
 
 특정 mutation endpoint 에 IP 기준 **fixed-window** rate limit 을 적용한다. 글로벌 API rate limit 은 없으며, 아래 endpoint 만 대상이다.

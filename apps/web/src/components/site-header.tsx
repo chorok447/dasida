@@ -7,7 +7,7 @@ import { Bell, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { getToken } from "@/lib/auth";
+import { getSessionId } from "@/lib/auth";
 import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
@@ -27,7 +27,8 @@ export function SiteHeader() {
   const dark = theme === "dark";
   const pathname = usePathname();
   const router = useRouter();
-  const { isLoggedIn, name, logout, token } = useAuthSession();
+  const onNotifications = pathname === "/notifications";
+  const { isLoggedIn, name, logout, sessionId: token } = useAuthSession();
   // 카운트를 조회 시점의 token 과 함께 보관 → 토큰이 바뀌면 이전 사용자 값을 표시하지 않는다(reset 용 동기 setState 회피).
   const [unreadState, setUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
   const unreadGenRef = useRef(0);
@@ -43,12 +44,12 @@ export function SiteHeader() {
       fetchNotificationUnreadCount()
         .then((res) => {
           // 늦은 응답/토큰 변경 시 무시. 실패 시 badge 만 숨기고 헤더는 유지.
-          if (generation === unreadGenRef.current && getToken() === requestToken) {
+          if (generation === unreadGenRef.current && getSessionId() === requestToken) {
             setUnreadState({ token: requestToken, count: res.unreadCount });
           }
         })
         .catch(() => {
-          if (generation === unreadGenRef.current && getToken() === requestToken) {
+          if (generation === unreadGenRef.current && getSessionId() === requestToken) {
             setUnreadState({ token: requestToken, count: 0 });
           }
         });
@@ -68,14 +69,15 @@ export function SiteHeader() {
     <header
       className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b transition-colors"
       style={{
-        background: dark ? "rgba(15,31,34,0.55)" : "rgba(249,247,242,0.7)",
+        // 히어로 그라데이션이 비쳐도 로고/태그라인 대비 4.5:1을 지키는 최소 불투명도
+        background: dark ? "rgba(15,31,34,0.82)" : "rgba(249,247,242,0.88)",
         borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" style={{ color: dark ? "#7dd3a3" : "#1c4044" }}>
           <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
-          <span className="hidden text-[10px] tracking-[0.3em] opacity-60 sm:inline">UPCYCLE</span>
+          <span className="hidden text-[10px] tracking-[0.3em] opacity-90 sm:inline">UPCYCLE</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1">
           {items.map((it) => {
@@ -116,18 +118,30 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
-            style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
-            aria-label={unread > 0 ? `알림 ${unread > 99 ? "99+" : unread}개` : "알림"}
+            className="relative flex h-10 w-10 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
+            style={{
+              background: onNotifications
+                ? "rgba(125,211,163,0.18)"
+                : dark
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(28,64,68,0.06)",
+              color: onNotifications ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+            }}
+            aria-label={unread > 0 ? `알림, 읽지 않음 ${unread > 99 ? "99+" : unread}개` : "알림"}
+            aria-current={onNotifications ? "page" : undefined}
           >
-            <Bell size={16} />
+            <Bell size={18} aria-hidden />
             {isLoggedIn && unread > 0 && (
-              <span
-                className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-medium"
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[10px] font-semibold leading-none"
                 style={{ background: "#ed5c48", color: "#ffffff" }}
+                aria-hidden
               >
                 {unread > 99 ? "99+" : unread}
-              </span>
+              </motion.span>
             )}
           </Link>
           {/* 서버 스냅샷은 항상 로그아웃 상태 → 비로그인 뷰로 hydration, 이후 클라이언트에서 갱신. */}

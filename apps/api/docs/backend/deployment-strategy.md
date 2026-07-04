@@ -6,7 +6,7 @@
 ## 목적
 
 `develop` → `main` merge 및 Docker Hub image push **이후**, 운영 서버에 어떻게 배포할지 1차 전략을 고정한다.
-현재 [PR #149](https://github.com/chorok447/dasida/pull/149)는 기술 gate와 별도로 **운영 준비 미완 시 merge 보류** 대상이다.
+[PR #149](https://github.com/chorok447/dasida/pull/149)는 **2026-07-03 merge 완료** — main push 로 Docker Hub image push 까지 확인됨. **서버 deploy 는 아직 미구현.**
 
 ---
 
@@ -24,6 +24,10 @@
 
 ## 1차 추천: Docker Compose on VM
 
+**Public ingress**: 호스트 **Nginx** reverse proxy(80/443) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md).
+
+**초기 single VM**: Nginx(host) + Compose(web/api/mysql/redis) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md).
+
 ### 추천 이유
 
 1. **Docker Hub image와 정합** — `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web`를 서버에서 `docker compose pull` 후 기동하면 된다.
@@ -33,7 +37,7 @@
 
 ### 아직 구현되지 않은 것 (TODO)
 
-- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — Docker Hub pull·env 주입 참고용. **실제 서버 deploy/CD 는 아직 없음.**
+- **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) (single VM) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — **실제 서버 deploy/CD 는 아직 없음.**
 - CD workflow의 실제 deploy step — [`.github/workflows/cd.yml`](../../../../.github/workflows/cd.yml) placeholder
 - Docker Hub pull 인증(서버 credential) — **미설정**
 
@@ -49,6 +53,8 @@ docker.io/<DOCKERHUB_USERNAME>/dasida-web:<tag>
 ```
 
 서버 `.env.prod` 의 `DOCKERHUB_USERNAME` 과 `DASIDA_IMAGE_TAG` 로 compose image 를 pin 한다. private repository 이면 서버에서 `docker login` 후 pull 한다.
+
+**Platform**: CI image 는 `linux/amd64` 전용이다([container-images.md](./container-images.md)). amd64 서버에서는 추가 옵션 없이 pull 가능하다. Apple Silicon 로컬 검증 시 `docker pull --platform linux/amd64` 가 필요하다.
 
 ### Tag 전략
 
@@ -129,8 +135,8 @@ flowchart LR
 | 단계 | 동작 | 현재 상태 |
 |------|------|-----------|
 | develop PR | CI pass 후 **auto-merge** | 구현됨 |
-| develop → main PR | CI + container build 검증; **수동 merge** | PR #149 OPEN·보류 |
-| main push | Docker Hub `dasida-api` / `dasida-web` push | merge 후 자동 |
+| develop → main PR | CI + container build 검증; **수동 merge** | **merge 완료** (2026-07-03, `af5082c`) |
+| main push | Docker Hub `dasida-api` / `dasida-web` push | **완료** — `chorok446/dasida-*:main`, `:sha-af5082c` |
 | 서버 deploy | pull + compose + health | **미구현** |
 | rollback | 이전 `sha-<shortsha>` tag로 redeploy | runbook만(문서) |
 
@@ -141,6 +147,18 @@ flowchart LR
 - `GET /actuator/health` → 200
 - signup / login / logout / rate limit 기본 smoke
 - 브라우저 CORS (운영 origin)
+
+### Pre-deploy image smoke (2026-07-03, 서버 deploy 없음)
+
+main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [container-images.md](./container-images.md#docker-hub-검증-main-push-2026-07-03).
+
+| 항목 | 결과 |
+|------|------|
+| Docker Hub push | `chorok446/dasida-api|web` — `main`, `sha-af5082c` (동일 digest) |
+| Web smoke | HTTP 200, Next.js 기동 정상 (`--platform linux/amd64` on Apple Silicon) |
+| API smoke | Spring Boot 기동 확인; DB/env 없으면 dialect 오류 종료(예상) |
+| compose `config` dry-run | `DOCKERHUB_USERNAME=chorok446`, `DASIDA_IMAGE_TAG=sha-af5082c` 성공 |
+| `NEXT_PUBLIC_API_URL` | **placeholder** — 운영 URL 확정·재빌드 전까지 API 연동 검증 제한 |
 
 ---
 
@@ -157,10 +175,15 @@ flowchart LR
 ## 후속 작업 (코드/인프라 PR로 분리)
 
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
-2. 서버 runbook: Docker Hub login, pull, deploy, rollback
-3. CD workflow에 opt-in deploy job (명시 승인 후)
-4. prod Redis store 설정 PR (필요 시)
-5. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
+2. ~~Single VM compose override~~ → [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
+3. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
+4. 서버 runbook: Docker Hub login, pull, deploy, rollback — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
+5. MySQL backup/restore — [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md)
+6. CD workflow에 opt-in deploy job (명시 승인 후)
+7. prod Redis store 설정 PR (필요 시)
+8. [main-release-readiness.md](./main-release-readiness.md) 체크리스트 항목 완료
+9. `NEXT_PUBLIC_API_URL` 등록 후 Web image 재빌드
+10. (optional) `linux/arm64` multi-arch build
 
 ---
 
@@ -169,4 +192,8 @@ flowchart LR
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables·Environment
 - [main-release-readiness.md](./main-release-readiness.md) — merge 전 체크리스트
 - [container-images.md](./container-images.md) — Docker Hub·CI
+- [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx ingress·TLS·도메인
+- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 Compose·volume·스펙
+- [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) — amd64 VM 배포 runbook (문서만)
+- [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md) — MySQL backup/restore
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist

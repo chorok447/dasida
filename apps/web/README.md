@@ -22,7 +22,8 @@ pnpm lint
 
 ## 백엔드 연동
 
-- API 베이스 URL은 `NEXT_PUBLIC_API_URL`(기본 `http://localhost:8080`).
+- **브라우저**: `NEXT_PUBLIC_API_URL`(기본 `http://localhost:8080`) — Web image build arg 로 bake-in.
+- **SSR·Server Components**: `API_INTERNAL_URL`(런타임 env). Docker Compose 에서 `http://api:8080`. 미설정 시 `NEXT_PUBLIC_API_URL` fallback. `src/lib/api-url.ts` 참고.
 - 인증 토큰은 `localStorage`에 저장(`src/lib/auth.ts`), `apiPost` 가 `Authorization` 헤더에 부착.
 
 프로젝트 전체 구조·DB·환경 변수는 루트 [`README.md`](../../README.md) 참고.

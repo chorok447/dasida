@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -9,13 +8,17 @@ import {
   Heart,
   MessageCircle,
   RefreshCw,
-  Search,
   Users,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
+import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
+import { ListEmptyState } from "@/components/list-empty-state";
+import { SearchField } from "@/components/search-field";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
+import { StaggerItem } from "@/components/scroll-reveal";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
   appendCampaignDateRangeFilters,
@@ -30,7 +33,7 @@ import {
 } from "@/data/campaigns";
 import type { Post, PostSearchResponse } from "@/data/posts";
 import { ApiError, apiGet } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { progressPercent } from "@/lib/progress";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
@@ -97,38 +100,47 @@ function buildSearchHref(state: UrlState): string {
   return `/search?${params.toString()}`;
 }
 
-function DebouncedSearchInput({ value, onCommit }: { value: string; onCommit: (query: string) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const [draft, setDraft] = useState(value);
-
-  useEffect(() => {
-    const normalized = draft.trim();
-    if (normalized === value) return;
-    const timeout = window.setTimeout(() => onCommit(normalized), 300);
-    return () => window.clearTimeout(timeout);
-  }, [draft, onCommit, value]);
-
-  return (
-    <label
-      className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border px-4 py-3"
-      style={{
-        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
-      }}
-    >
-      <Search size={18} className="shrink-0 opacity-50" />
-      <span className="sr-only">통합 검색</span>
-      <input
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        maxLength={100}
-        placeholder="캠페인과 게시글을 검색해보세요."
-        className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:opacity-45"
-        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-      />
-    </label>
+function searchHasActiveFilters(state: UrlState): boolean {
+  return !!(
+    state.query
+    || state.type !== "all"
+    || state.sort !== "latest"
+    || state.recruitState
+    || state.availableOnly
+    || state.recruitEndFrom
+    || state.recruitEndTo
+    || state.runStartFrom
+    || state.runStartTo
   );
+}
+
+const RECRUIT_LABELS: Record<CampaignRecruitState, string> = {
+  before_recruit: "모집 예정",
+  recruiting: "모집 중",
+  ended: "모집 종료",
+  closed: "마감",
+};
+
+function buildSearchFilterChips(state: UrlState, onPatch: (changes: Partial<UrlState>) => void): FilterChip[] {
+  const chips: FilterChip[] = [];
+  if (state.query) chips.push({ id: "q", label: `검색: ${state.query}`, onRemove: () => onPatch({ query: "" }) });
+  if (state.type !== "all") {
+    const label = TYPE_TABS.find((tab) => tab.id === state.type)?.label ?? state.type;
+    chips.push({ id: "type", label: `유형: ${label}`, onRemove: () => onPatch({ type: "all" }) });
+  }
+  if (state.sort !== "latest") {
+    const sortLabel = state.sort === "popular" ? "인기순" : "마감임박순";
+    chips.push({ id: "sort", label: `정렬: ${sortLabel}`, onRemove: () => onPatch({ sort: "latest" }) });
+  }
+  if (state.type === "campaigns") {
+    if (state.recruitState) {
+      chips.push({ id: "rs", label: `모집: ${RECRUIT_LABELS[state.recruitState]}`, onRemove: () => onPatch({ recruitState: null }) });
+    }
+    if (state.availableOnly) {
+      chips.push({ id: "av", label: "참여 가능", onRemove: () => onPatch({ availableOnly: false }) });
+    }
+  }
+  return chips;
 }
 
 function CampaignResultCard({ campaign }: { campaign: Campaign }) {
@@ -155,9 +167,9 @@ function CampaignResultCard({ campaign }: { campaign: Campaign }) {
       >
         <div className="relative aspect-[16/9] overflow-hidden">
           {campaign.thumb ? (
-            <img
+            <FallbackImage
               src={campaign.thumb}
-              alt={campaign.title}
+              alt={`${campaign.title} 캠페인 이미지`}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
@@ -224,9 +236,9 @@ function PostResultCard({ post }: { post: Post }) {
       </div>
       {image ? (
         <div className="aspect-[16/9] overflow-hidden">
-          <img
+          <FallbackImage
             src={image}
-            alt=""
+            alt="게시글 미리보기 이미지"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
@@ -258,7 +270,7 @@ function PostResultCard({ post }: { post: Post }) {
 export default function SearchClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
@@ -320,7 +332,7 @@ export default function SearchClient() {
 
   useEffect(() => {
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const campaignParams = new URLSearchParams();
     if (urlState.query) campaignParams.set("q", urlState.query);
@@ -350,7 +362,7 @@ export default function SearchClient() {
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     const load = async () => {
       let campaigns: CampaignSearchResponse | null = null;
@@ -413,6 +425,16 @@ export default function SearchClient() {
     && campaignResponse?.content.length === 0
     && postResponse?.content.length === 0;
   const title = urlState.query ? `“${urlState.query}” 검색 결과` : "전체 탐색";
+  const filterChips = buildSearchFilterChips(urlState, (changes) => updateUrl({ ...changes, page: 0 }));
+  const resetFilters = () => updateUrl({
+    query: "",
+    type: "all",
+    sort: "latest",
+    recruitState: null,
+    availableOnly: false,
+    ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
+    page: 0,
+  });
 
   return (
     <section
@@ -435,7 +457,15 @@ export default function SearchClient() {
         </div>
 
         <div className="mx-auto mb-8 max-w-3xl space-y-4">
-          <DebouncedSearchInput key={urlState.query} value={urlState.query} onCommit={commitSearch} />
+          <SearchField
+            key={urlState.query}
+            value={urlState.query}
+            onCommit={commitSearch}
+            label="통합 검색"
+            placeholder="캠페인과 게시글을 검색해보세요."
+            loading={currentState.status === "loading"}
+            className="rounded-full"
+          />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-1 overflow-x-auto rounded-full p-1" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
               {TYPE_TABS.map((tab) => {
@@ -512,6 +542,7 @@ export default function SearchClient() {
               />
             </>
           ) : null}
+          <ActiveFilterChips chips={filterChips} onClearAll={filterChips.length > 0 ? resetFilters : undefined} />
         </div>
 
         <div className="mb-5 flex items-center justify-between gap-3">
@@ -549,21 +580,41 @@ export default function SearchClient() {
         ) : null}
 
         {currentState.status === "success" && allEmpty ? (
-          <StatePanel>
-            <p style={{ color: dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)" }}>검색 결과가 없습니다.</p>
-          </StatePanel>
+          <ListEmptyState
+            title="검색 결과가 없어요."
+            description="다른 검색어를 입력하거나 필터를 초기화해보세요."
+            action={
+              searchHasActiveFilters(urlState) ? (
+                <button type="button" onClick={resetFilters} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
+                  필터 초기화
+                </button>
+              ) : undefined
+            }
+          />
         ) : null}
 
         {currentState.status === "success" && urlState.type === "campaigns" && campaignResponse?.content.length === 0 ? (
-          <StatePanel>
-            <p style={{ color: dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)" }}>조건에 맞는 캠페인이 없습니다.</p>
-          </StatePanel>
+          <ListEmptyState
+            title="조건에 맞는 캠페인이 없어요."
+            description="다른 검색어를 입력하거나 필터를 초기화해보세요."
+            action={
+              <button type="button" onClick={resetFilters} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
+                전체 캠페인 보기
+              </button>
+            }
+          />
         ) : null}
 
         {currentState.status === "success" && urlState.type === "posts" && postResponse?.content.length === 0 ? (
-          <StatePanel>
-            <p style={{ color: dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)" }}>조건에 맞는 게시글이 없습니다.</p>
-          </StatePanel>
+          <ListEmptyState
+            title="조건에 맞는 게시글이 없어요."
+            description="다른 검색어를 입력하거나 정렬을 바꿔보세요."
+            action={
+              <button type="button" onClick={resetFilters} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
+                전체 게시글 보기
+              </button>
+            }
+          />
         ) : null}
 
         {currentState.status === "success" && campaignResponse && campaignResponse.content.length > 0 ? (
@@ -576,7 +627,11 @@ export default function SearchClient() {
               <span className="text-[12px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{campaignResponse.totalElements.toLocaleString()}개</span>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {campaignResponse.content.map((campaign) => <CampaignResultCard key={campaign.id} campaign={campaign} />)}
+              {campaignResponse.content.map((campaign, i) => (
+                <StaggerItem key={campaign.id} index={i}>
+                  <CampaignResultCard campaign={campaign} />
+                </StaggerItem>
+              ))}
             </div>
             {urlState.type === "all" ? (
               <div className="mt-6 text-center">
@@ -598,7 +653,11 @@ export default function SearchClient() {
               <span className="text-[12px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{postResponse.totalElements.toLocaleString()}개</span>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {postResponse.content.map((post) => <PostResultCard key={post.id} post={post} />)}
+              {postResponse.content.map((post, i) => (
+                <StaggerItem key={post.id} index={i}>
+                  <PostResultCard post={post} />
+                </StaggerItem>
+              ))}
             </div>
             {urlState.type === "all" ? (
               <div className="mt-6 text-center">

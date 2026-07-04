@@ -4,7 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { changeEmail, isValidEmail, normalizeEmail } from "@/data/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
-import { clearSession, getToken, setSession } from "@/lib/auth";
+import { clearSession, getSessionId, setSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 
@@ -57,7 +57,7 @@ export function ChangeEmailForm({
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       router.replace("/login");
@@ -71,16 +71,15 @@ export function ChangeEmailForm({
     try {
       const response = await changeEmail(
         { currentPassword, newEmail: normalizedEmail },
-        requestToken,
       );
-      if (getToken() !== requestToken) return;
-      setSession(response.token, response.name);
+      if (getSessionId() !== requestToken) return;
+      setSession(response.name);
       onChanged(response.email);
       setNewEmail("");
       setCurrentPassword("");
       setSuccess("이메일이 변경되었습니다.");
     } catch (requestError) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
         clearSession();
         router.replace("/login");

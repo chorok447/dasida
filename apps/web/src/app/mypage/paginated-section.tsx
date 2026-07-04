@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { Pagination } from "@/components/ui/pagination";
+import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { StatePanel } from "@/components/ui/state-panel";
 
 export type PageResponse<T> = {
@@ -48,7 +49,7 @@ export function PaginatedSection<T>({
   loadingLabel: string;
   errorLabel: string;
 }) {
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
@@ -72,7 +73,7 @@ export function PaginatedSection<T>({
     const requestToken = token;
     const generation = ++generationRef.current;
     let cancelled = false;
-    const isCurrent = () => !cancelled && generation === generationRef.current && getToken() === requestToken;
+    const isCurrent = () => !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     fetcherRef.current(page)
       .then((data) => {
@@ -120,10 +121,10 @@ export function PaginatedSection<T>({
   }
   if (loading && !data) {
     return (
-      <StatePanel>
-        <RefreshCw size={26} className="animate-spin text-[#7dd3a3]" />
-        <p>{loadingLabel}</p>
-      </StatePanel>
+      <div aria-busy="true" aria-live="polite">
+        <p className="sr-only">{loadingLabel}</p>
+        <SkeletonCards count={6} className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" />
+      </div>
     );
   }
   if (status === "error" && !data) {
@@ -141,27 +142,29 @@ export function PaginatedSection<T>({
   }
   if (!data) {
     return (
-      <StatePanel>
-        <RefreshCw size={26} className="animate-spin text-[#7dd3a3]" />
-        <p>{loadingLabel}</p>
-      </StatePanel>
+      <div aria-busy="true" aria-live="polite">
+        <p className="sr-only">{loadingLabel}</p>
+        <SkeletonCards count={6} className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" />
+      </div>
     );
   }
 
   const fg = dark ? "#f9f7f2" : "#0f1f22";
   const subtle = dark ? "rgba(255,255,255,0.07)" : "rgba(28,64,68,0.07)";
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3" style={{ color: fg }}>
+    <div className="space-y-6" aria-busy={loading || undefined}>
+      <div className="flex flex-wrap items-center justify-between gap-3" style={{ color: fg }}>
         <span className="text-[13px] opacity-70">총 {data.totalElements}개</span>
         <button
           type="button"
           onClick={reload}
           disabled={loading}
+          aria-busy={loading || undefined}
+          aria-label={loading ? "목록 새로고침 중" : "목록 새로고침"}
           className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] disabled:opacity-45"
           style={{ background: subtle }}
         >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> 새로고침
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} aria-hidden /> 새로고침
         </button>
       </div>
 

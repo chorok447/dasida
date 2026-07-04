@@ -17,6 +17,10 @@ import org.springframework.test.web.servlet.get
     properties = [
         "app.jwt.secret=test-prod-secret-that-is-long-enough-for-tests-1234567890",
         "app.cors.allowed-origins=https://app.example.com",
+        // prod 는 Redis host 미주입 시 기동 실패(fail-fast). 이 테스트 주제가 아니므로 placeholder 만 해결하고,
+        // 테스트 환경에는 실제 Redis 가 없으므로 health probe 는 끈다(노출 정책 검증에는 영향 없음).
+        "spring.data.redis.host=localhost",
+        "management.health.redis.enabled=false",
     ],
 )
 @AutoConfigureMockMvc

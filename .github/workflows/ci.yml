@@ -32,7 +32,51 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm --filter web lint
+      - run: pnpm --filter web test
       - run: pnpm --filter web build
+
+  # 회원가입→글 작성→피드 핵심 경로 스모크. web 프로덕션 빌드 + api bootRun 을 Playwright webServer 가 띄운다.
+  e2e:
+    name: e2e (smoke)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: dasida
+          MYSQL_USER: dasida
+          MYSQL_PASSWORD: dasida
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web build
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm --filter web e2e
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/
+          retention-days: 7
 
   api:
     name: api (Spring Boot)
@@ -55,7 +99,7 @@ jobs:
   # Draft PR과 push workflow에서는 auto-merge job을 실행하지 않는다.
   automerge:
     name: auto-merge
-    needs: [web, api]
+    needs: [web, api, e2e]
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&

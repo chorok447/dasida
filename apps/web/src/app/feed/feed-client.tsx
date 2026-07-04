@@ -1,6 +1,6 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
@@ -10,7 +10,6 @@ import {
   Image as ImageIcon,
   MessageCircle,
   RefreshCw,
-  Search,
   Send,
   Share2,
   Sparkles,
@@ -19,10 +18,16 @@ import {
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
+import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
+import { ListEmptyState } from "@/components/list-empty-state";
+import { SearchField } from "@/components/search-field";
+import { StaggerItem } from "@/components/scroll-reveal";
+import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import type { Post, PostComment, PostSearchResponse, PostSearchSort } from "@/data/posts";
@@ -63,60 +68,77 @@ function neutralizeInteractions(response: PostSearchResponse): PostSearchRespons
   };
 }
 
-function DebouncedSearchInput({ value, onCommit }: { value: string; onCommit: (query: string) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const [draft, setDraft] = useState(value);
+function feedHasActiveFilters(state: UrlState): boolean {
+  return !!(state.query || state.campaignOnly || state.sort !== "latest");
+}
 
-  useEffect(() => {
-    const normalized = draft.trim();
-    if (normalized === value) return;
-    const timeout = window.setTimeout(() => onCommit(normalized), 300);
-    return () => window.clearTimeout(timeout);
-  }, [draft, onCommit, value]);
+const POST_SORT_LABELS: Record<PostSearchSort, string> = {
+  latest: "최신순",
+  popular: "인기순",
+  discussed: "댓글순",
+};
 
-  return (
-    <label
-      className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 py-2.5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-        border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
-      }}
-    >
-      <Search size={16} className="shrink-0 opacity-50" />
-      <span className="sr-only">게시글 검색</span>
-      <input
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        maxLength={100}
-        placeholder="본문 또는 작성자 검색..."
-        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:opacity-50"
-        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-      />
-    </label>
-  );
+function buildFeedFilterChips(state: UrlState, onPatch: (changes: Partial<UrlState>) => void): FilterChip[] {
+  const chips: FilterChip[] = [];
+  if (state.query) {
+    chips.push({
+      id: "q",
+      label: `검색: ${state.query}`,
+      onRemove: () => onPatch({ query: "" }),
+    });
+  }
+  if (state.campaignOnly) {
+    chips.push({
+      id: "campaignOnly",
+      label: "캠페인 게시글만",
+      onRemove: () => onPatch({ campaignOnly: false }),
+    });
+  }
+  if (state.sort !== "latest") {
+    chips.push({
+      id: "sort",
+      label: `정렬: ${POST_SORT_LABELS[state.sort]}`,
+      onRemove: () => onPatch({ sort: "latest" }),
+    });
+  }
+  return chips;
 }
 
 function FeedControls({
   state,
+  loading,
   onSearch,
   onSort,
   onCampaignOnly,
+  onPatch,
+  onResetAll,
 }: {
   state: UrlState;
+  loading: boolean;
   onSearch: (query: string) => void;
   onSort: (sort: PostSearchSort) => void;
   onCampaignOnly: (checked: boolean) => void;
+  onPatch: (changes: Partial<UrlState>) => void;
+  onResetAll: () => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const chips = buildFeedFilterChips(state, (changes) => onPatch({ ...changes, page: 0 }));
 
   return (
     <div className="mb-6 flex flex-col gap-3">
-      <DebouncedSearchInput key={state.query} value={state.query} onCommit={onSearch} />
+      <SearchField
+        key={state.query}
+        value={state.query}
+        onCommit={onSearch}
+        label="게시글 검색"
+        placeholder="본문 또는 작성자 검색..."
+        loading={loading}
+        className="rounded-full"
+      />
       <div className="flex flex-wrap items-center gap-3">
         <label
-          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
+          className="flex min-h-10 items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
           style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
         >
           <input
@@ -127,12 +149,12 @@ function FeedControls({
           />
           캠페인 게시글만
         </label>
-        <label className="ml-auto flex items-center gap-2 text-[13px]">
+        <label className="ml-auto flex min-h-10 items-center gap-2 text-[13px]">
           <span className="sr-only">게시글 정렬</span>
           <select
             value={state.sort}
             onChange={(event) => onSort(event.target.value as PostSearchSort)}
-            className="rounded-full border px-4 py-2.5 outline-none"
+            className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
             style={{
               color: dark ? "#f9f7f2" : "#0f1f22",
               background: dark ? "#1c4044" : "#ffffff",
@@ -145,6 +167,7 @@ function FeedControls({
           </select>
         </label>
       </div>
+      <ActiveFilterChips chips={chips} onClearAll={chips.length > 0 ? onResetAll : undefined} />
     </div>
   );
 }
@@ -171,6 +194,7 @@ function PostCard({
   const rX = useTransform(sy, [-0.5, 0.5], [5, -5]);
 
   const router = useRouter();
+  const { sessionId: token } = useAuthSession();
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
@@ -195,47 +219,48 @@ function PostCard({
   const [commentText, setCommentText] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const requireLogin = () => {
-    alert("로그인이 필요합니다.");
+  const promptLogin = (message: string, expired = false) => {
+    if (expired) clearSession();
+    toast.error(message);
     router.push("/login");
   };
 
   const onLike = async () => {
-    if (!getToken()) return requireLogin();
+    if (!getSessionId()) return promptLogin("로그인 후 이용할 수 있어요.");
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
-    const requestToken = getToken(); // 요청 identity 캡처
+    const requestToken = getSessionId(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
-      if (e instanceof ApiError && e.status === 401) requireLogin();
-      else alert("좋아요 처리에 실패했습니다.");
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
+      else toast.error("좋아요 처리에 실패했습니다.");
     } finally {
       setLiking(false);
     }
   };
 
   const onBookmark = async () => {
-    const requestToken = getToken();
-    if (!requestToken) return requireLogin();
+    const requestToken = getSessionId();
+    if (!requestToken) return promptLogin("로그인 후 이용할 수 있어요.");
     if (bookmarking || refreshing) return;
     setBookmarking(true);
     try {
       const updated = bookmarked
         ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
         : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setBookmarked(updated.bookmarkedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return;
-      if (e instanceof ApiError && e.status === 401) requireLogin();
-      else alert("북마크 처리에 실패했습니다.");
+      if (getSessionId() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
+      else toast.error("북마크 처리에 실패했습니다.");
     } finally {
       setBookmarking(false);
     }
@@ -260,8 +285,8 @@ function PostCard({
   const submitComment = async () => {
     const text = commentText.trim();
     if (!text || busy) return;
-    if (text.length > MAX_COMMENT_LENGTH) return alert(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
-    if (!getToken()) return requireLogin();
+    if (text.length > MAX_COMMENT_LENGTH) return toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
+    if (!getSessionId()) return promptLogin("로그인해야 댓글을 작성할 수 있어요.");
     setBusy(true);
     try {
       const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
@@ -270,8 +295,8 @@ function PostCard({
       setCommentText("");
     } catch (e) {
       setBusy(false);
-      if (e instanceof ApiError && e.status === 401) requireLogin();
-      else alert("댓글 작성에 실패했습니다.");
+      if (e instanceof ApiError && e.status === 401) promptLogin("로그인해야 댓글을 작성할 수 있어요.", true);
+      else toast.error("댓글 작성에 실패했습니다.");
       return;
     }
     setBusy(false);
@@ -310,12 +335,12 @@ function PostCard({
 
         {p.images.length === 1 ? (
           <button type="button" className="block aspect-[4/3] w-full overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
-            <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
+            <FallbackImage src={p.images[0]} alt="" decorative className="w-full h-full object-cover" />
           </button>
         ) : (
           <button type="button" className="grid aspect-[4/3] w-full grid-cols-2 gap-0.5 overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             {p.images.map((src, i) => (
-              <img key={i} src={src} alt="" className="w-full h-full object-cover" />
+              <FallbackImage key={i} src={src} alt="" decorative className="w-full h-full object-cover" />
             ))}
           </button>
         )}
@@ -331,18 +356,19 @@ function PostCard({
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
             <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              <button onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
+              <motion.button whileTap={{ scale: 0.85 }} onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
                 <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
-              </button>
+              </motion.button>
               <button onClick={toggleComments} className="flex items-center gap-1">
                 <MessageCircle size={14} /> {commentCount}
               </button>
-              <button className="flex items-center gap-1">
+              <button className="flex items-center gap-1" aria-label="공유하기">
                 <Share2 size={14} />
               </button>
               <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
             </div>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.85 }}
               onClick={onBookmark}
               disabled={bookmarking || refreshing}
               aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
@@ -350,7 +376,7 @@ function PostCard({
               style={{ color: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
             >
               <Bookmark size={14} fill={bookmarked ? "#7dd3a3" : "transparent"} />
-            </button>
+            </motion.button>
           </div>
 
           {showComments && (
@@ -364,7 +390,12 @@ function PostCard({
               ) : (
                 comments.slice(0, 5).map((c) => (
                   <div key={c.id} className="flex gap-2 items-start">
-                    <Avatar name={c.author.name} verified={c.author.verified} size={28} />
+                    <Avatar
+                      name={c.author.name}
+                      verified={c.author.verified}
+                      size={32}
+                      src={c.author.profileImageUrl ?? undefined}
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
                         {c.author.name} <span className="opacity-50">· {c.time}</span>
@@ -374,20 +405,31 @@ function PostCard({
                   </div>
                 ))
               )}
-              <div className="flex items-center gap-2">
-                <input
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
-                  placeholder="댓글 달기…"
-                  maxLength={MAX_COMMENT_LENGTH}
-                  className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
-                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-                />
-                <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
-                  <Send size={14} />
-                </button>
-              </div>
+              {token ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
+                    placeholder="댓글 달기…"
+                    maxLength={MAX_COMMENT_LENGTH}
+                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
+                    style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                  />
+                  <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
+                    <Send size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 text-center" style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}>
+                  <p className="text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+                    로그인해야 댓글을 작성할 수 있어요.
+                  </p>
+                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-4 py-1.5 text-[12px] text-[#0f1f22]">
+                    로그인하기
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -418,7 +460,11 @@ function SideHot({ campaigns }: { campaigns: Campaign[] }) {
           const pct = progressPercent(c.joined, c.capacity);
           return (
             <div key={c.id} className="flex gap-3 items-center">
-              <img src={c.thumb} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+              <FallbackImage
+                src={c.thumb}
+                alt={`${c.title} 캠페인 이미지`}
+                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
                   {c.title}
@@ -477,7 +523,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme } = useTheme();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
   const generationRef = useRef(0);
@@ -527,6 +573,15 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
     updateUrl({ query, page: 0 }, true);
   }, [updateUrl]);
 
+  const goToNewPost = () => {
+    if (!getSessionId()) {
+      toast.error("로그인 후 글을 작성할 수 있어요.");
+      router.push("/login?next=/posts/new");
+      return;
+    }
+    router.push("/posts/new");
+  };
+
   const searchPath = useMemo(() => {
     const params = new URLSearchParams();
     if (urlState.query) params.set("q", urlState.query);
@@ -539,12 +594,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
   useEffect(() => {
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     apiGet<PostSearchResponse>(searchPath)
       .then((nextResponse) => {
@@ -600,7 +655,9 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
       <div className="relative mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <main>
           <button
-            onClick={() => router.push("/posts/new")}
+            type="button"
+            onClick={goToNewPost}
+            aria-label="새 글 작성"
             className="w-full flex items-center gap-3 p-4 rounded-2xl border mb-6 hover:-translate-y-0.5 transition-transform text-left"
             style={{
               background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
@@ -634,16 +691,16 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
           <FeedControls
             state={urlState}
+            loading={refreshing}
             onSearch={commitSearch}
             onSort={(sort) => updateUrl({ sort, page: 0 })}
             onCampaignOnly={(campaignOnly) => updateUrl({ campaignOnly, page: 0 })}
+            onPatch={(changes) => updateUrl(changes)}
+            onResetAll={() => updateUrl({ query: "", campaignOnly: false, sort: "latest", page: 0 })}
           />
 
           {requestStatus === "loading" && !response ? (
-            <StatePanel>
-              <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
-              <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>게시글을 검색하는 중입니다.</p>
-            </StatePanel>
+            <SkeletonCards count={4} className="grid grid-cols-1 gap-5 sm:grid-cols-2" />
           ) : null}
 
           {requestStatus === "error" && !response ? (
@@ -669,21 +726,46 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           ) : null}
 
           {requestStatus === "success" && response?.content.length === 0 ? (
-            <StatePanel>
-              <p style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>조건에 맞는 게시글이 없습니다.</p>
-            </StatePanel>
+            <ListEmptyState
+              title={feedHasActiveFilters(urlState) ? "검색 결과가 없어요." : "아직 게시글이 없어요."}
+              description={
+                feedHasActiveFilters(urlState)
+                  ? "다른 검색어를 입력하거나 필터를 초기화해보세요."
+                  : "첫 업사이클 이야기를 남겨보세요."
+              }
+              action={
+                feedHasActiveFilters(urlState) ? (
+                  <button
+                    type="button"
+                    onClick={() => updateUrl({ query: "", campaignOnly: false, sort: "latest", page: 0 })}
+                    className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                  >
+                    전체 게시글 보기
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={goToNewPost}
+                    className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                  >
+                    새 글 작성
+                  </button>
+                )
+              }
+            />
           ) : null}
 
           {response && response.content.length > 0 ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {response.content.map((post) => (
-                <PostCard
-                  key={post.id}
-                  p={post}
-                  refreshing={refreshing}
-                  identity={token}
-                  onOpen={() => router.push(`/posts/${post.id}`)}
-                />
+              {response.content.map((post, i) => (
+                <StaggerItem key={post.id} index={i}>
+                  <PostCard
+                    p={post}
+                    refreshing={refreshing}
+                    identity={token}
+                    onOpen={() => router.push(`/posts/${post.id}`)}
+                  />
+                </StaggerItem>
               ))}
             </div>
           ) : null}

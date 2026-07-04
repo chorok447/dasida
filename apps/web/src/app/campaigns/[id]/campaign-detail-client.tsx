@@ -1,19 +1,20 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
+import { toast } from "sonner";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Pencil, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Pencil, Trash2, Users, Loader2, LogIn, CheckCircle2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
+import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
 import { CampaignComments } from "./campaign-comments";
 
@@ -68,7 +69,7 @@ function HeaderCard({ c }: { c: Campaign }) {
       >
         <div className="grid grid-cols-1 md:grid-cols-[400px_1fr]">
           <div className="relative aspect-square md:aspect-auto overflow-hidden">
-            <img src={c.thumb} alt={c.title} className="w-full h-full object-cover" />
+            <FallbackImage src={c.thumb} alt={`${c.title} 캠페인 이미지`} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-tr from-[#0f1f22]/40 to-transparent" />
             <div className="absolute top-4 left-4 flex items-center gap-2" style={{ transform: "translateZ(50px)" }}>
               <StatusBadge c={c} />
@@ -267,6 +268,7 @@ function CTABar({
   c,
   onJoin,
   onLeave,
+  onLogin,
   action,
   disabled,
   loggedIn,
@@ -274,64 +276,121 @@ function CTABar({
   c: Campaign;
   onJoin: () => void;
   onLeave: () => void;
+  onLogin: () => void;
   action: "join" | "leave" | null;
   disabled: boolean;
   loggedIn: boolean;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const panelStyle = {
+    background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.78)",
+    borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
+    color: dark ? "#f9f7f2" : "#0f1f22",
+  };
   const joinedStyle = { background: "rgba(125,211,163,0.18)", color: dark ? "#7dd3a3" : "#1c4044", fontSize: 16 };
+  const pending = action !== null;
+
   if (c.joinedByMe) {
-    // open 일 때만 취소 가능. closed 는 마감되어 취소 불가, upcoming 은 비정상 데이터라 안내만 표시한다.
     if (c.status === "open") {
       return (
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-          <div className="py-5 px-6 rounded-2xl text-center font-medium" style={joinedStyle}>
-            참여 중인 캠페인입니다
+          <div
+            role="status"
+            className="flex items-center justify-center gap-2 py-5 px-6 rounded-2xl text-center font-medium"
+            style={joinedStyle}
+          >
+            <CheckCircle2 size={20} aria-hidden />
+            <span>참여 완료 · 모집 중인 캠페인입니다</span>
           </div>
           <button
+            type="button"
             onClick={onLeave}
-            disabled={disabled}
-            aria-label="참여 취소"
-            className="py-5 px-6 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={disabled || pending}
+            aria-busy={action === "leave"}
+            aria-label={action === "leave" ? "참여 취소 처리 중" : "참여 취소"}
+            className="inline-flex items-center justify-center gap-2 py-5 px-6 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: "rgba(237,92,72,0.16)", color: "#ed5c48" }}
           >
+            {action === "leave" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}
             {action === "leave" ? "취소 처리 중…" : "참여 취소"}
           </button>
         </div>
       );
     }
+    const joinedMessage =
+      c.status === "closed"
+        ? "참여 완료 · 모집이 마감된 캠페인입니다"
+        : "참여 완료 · 종료된 캠페인입니다";
     return (
-      <div className="w-full py-5 rounded-2xl text-center font-medium" style={joinedStyle}>
-        {c.status === "closed" ? "참여한 캠페인입니다 (모집 마감)" : "참여 완료된 캠페인입니다"}
+      <div
+        role="status"
+        className="flex items-center justify-center gap-2 w-full py-5 rounded-2xl text-center font-medium"
+        style={joinedStyle}
+      >
+        <CheckCircle2 size={20} aria-hidden />
+        <span>{joinedMessage}</span>
       </div>
     );
   }
+
   if (c.recruitable) {
+    if (!loggedIn) {
+      return (
+        <div
+          className="flex flex-col items-center gap-3 rounded-2xl border px-6 py-6 text-center"
+          style={panelStyle}
+        >
+          <p className="text-[14px]" style={{ color: dark ? "rgba(255,255,255,0.75)" : "rgba(28,64,68,0.75)" }}>
+            로그인 후 캠페인에 참여할 수 있어요.
+          </p>
+          <button
+            type="button"
+            onClick={onLogin}
+            className="inline-flex items-center gap-2 rounded-full bg-[#7dd3a3] px-6 py-2.5 text-[14px] font-medium text-[#0f1f22]"
+          >
+            <LogIn size={16} aria-hidden />
+            로그인하고 참여하기
+          </button>
+        </div>
+      );
+    }
     return (
       <button
+        type="button"
         onClick={onJoin}
-        disabled={disabled}
-        className="w-full py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50"
+        disabled={disabled || pending}
+        aria-busy={action === "join"}
+        aria-label={action === "join" ? "캠페인 참여 처리 중" : "캠페인 참여하기"}
+        className="inline-flex w-full items-center justify-center gap-2 py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ background: "#7dd3a3", color: "#0f1f22", fontSize: 17 }}
       >
-        {action === "join" ? "참여 처리 중…" : loggedIn ? "캠페인 참여하기" : "로그인 후 캠페인 참여"}
+        {action === "join" ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}
+        {action === "join" ? "참여 처리 중…" : "캠페인 참여하기"}
       </button>
     );
   }
-  const unavailableMessage = c.recruitState === "before_recruit"
-    ? "모집 시작 전입니다"
-    : c.recruitState === "ended"
-      ? "모집이 종료되었습니다"
-      : c.recruitState === "closed"
-        ? "모집이 마감되었습니다"
-        : "정원이 마감되었습니다";
+
+  const unavailableMessage =
+    c.recruitState === "before_recruit"
+      ? "모집 시작 전이라 참여할 수 없습니다"
+      : c.recruitState === "ended"
+        ? "종료된 캠페인이라 참여할 수 없습니다"
+        : c.recruitState === "closed"
+          ? "모집이 마감되어 참여할 수 없습니다"
+          : "정원이 마감되어 참여할 수 없습니다";
+
   return (
     <div
-      className="w-full py-5 rounded-2xl text-center"
-      style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.08)", color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}
+      role="status"
+      className="w-full rounded-2xl border px-6 py-5 text-center"
+      style={{
+        ...panelStyle,
+        color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)",
+      }}
     >
-      {unavailableMessage}
+      <p className="text-[15px] font-medium">{unavailableMessage}</p>
+      <p className="mt-1 text-[12px] opacity-70">현재 이 캠페인은 새 참여를 받지 않습니다.</p>
     </div>
   );
 }
@@ -358,7 +417,7 @@ function ContentTab({ c }: { c: Campaign }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
         {c.body.images.map((src, i) => (
           <div key={i} className="aspect-[4/3] rounded-2xl overflow-hidden">
-            <img src={src} alt="" className="w-full h-full object-cover" />
+            <FallbackImage src={src} alt={`캠페인 상세 이미지 ${i + 1}`} className="w-full h-full object-cover" />
           </div>
         ))}
       </div>
@@ -370,7 +429,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetCommentId = searchParams.get("commentId")?.trim() || null;
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [tab, setTab] = useState<Tab>(() => targetCommentId ? "comments" : "content");
@@ -400,7 +459,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     `/api/campaigns/${campaign.id}`,
     (updated) => {
       setC(updated);
-      setOwnershipToken(updated.ownedByMe ? getToken() : null);
+      setOwnershipToken(updated.ownedByMe ? getSessionId() : null);
     },
     () => {
       setOwnershipToken(null);
@@ -420,32 +479,29 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const join = async () => {
     if (mutationBusy()) return;
-    if (!getToken()) {
-      alert("로그인이 필요합니다.");
-      router.push("/login");
-      return;
-    }
-    const requestToken = getToken(); // 요청 identity 캡처
+    if (!getSessionId()) return;
+    const requestToken = getSessionId();
     if (!requestToken) return;
     participationUpdatingRef.current = true;
     setParticipationAction("join");
-    invalidatePending(); // 진행 중 재조회 결과가 참여 성공 결과를 덮어쓰지 않게
+    invalidatePending();
     try {
       const updated = await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {});
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return;
       setC(updated);
+      toast.success("캠페인에 참여했습니다.");
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인 후 캠페인에 참여할 수 있어요.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집 기간이 아니거나 정원이 마감되었습니다.");
+        toast.error("모집 기간이 아니거나 정원이 마감되었습니다.");
       } else if (e instanceof ApiError && e.status === 400) {
-        alert("현재 참여할 수 없는 캠페인입니다.");
+        toast.error("현재 참여할 수 없는 캠페인입니다.");
       } else {
-        alert("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("참여에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } finally {
       participationUpdatingRef.current = false;
@@ -455,36 +511,36 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const leave = async () => {
     if (mutationBusy()) return;
-    if (!getToken()) {
-      alert("로그인이 필요합니다.");
+    if (!getSessionId()) {
+      toast.error("로그인 후 캠페인에 참여할 수 있어요.");
       router.push("/login");
       return;
     }
     if (!confirm("캠페인 참여를 취소할까요?\n모집 마감 후에는 취소할 수 없습니다.")) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return;
     participationUpdatingRef.current = true;
     setParticipationAction("leave");
     invalidatePending();
     try {
       const updated = await apiDelete<Campaign>(`/api/campaigns/${c.id}/join`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setC(updated); // joined/progress/joinedByMe 즉시 갱신
-      alert("참여가 취소되었습니다.");
+      toast.success("참여가 취소되었습니다.");
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인 후 캠페인에 참여할 수 있어요.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 404) {
-        alert("존재하지 않는 캠페인입니다.");
+        toast.error("존재하지 않는 캠페인입니다.");
         router.push("/campaigns");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집이 마감되어 참여를 취소할 수 없습니다.");
+        toast.error("모집이 마감되어 참여를 취소할 수 없습니다.");
       } else {
-        alert("참여 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("참여 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } finally {
       participationUpdatingRef.current = false;
@@ -494,8 +550,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const updateStatus = async (target: "open" | "closed") => {
     if (mutationBusy()) return; // 참여/취소·삭제와 동시 실행 금지
-    if (!getToken()) {
-      alert("로그인이 필요합니다.");
+    if (!getSessionId()) {
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
@@ -505,29 +561,29 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       : confirm("모집을 마감할까요? 다시 시작할 수 없습니다.");
     if (!confirmed) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return;
     statusUpdatingRef.current = true;
     setStatusUpdating(true);
     invalidatePending();
     try {
       const updated = await apiPut<Campaign>(`/api/campaigns/${c.id}/status`, { status: target });
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setC(updated);
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("캠페인 관리 권한이 없습니다.");
+        toast.error("캠페인 관리 권한이 없습니다.");
       } else if (e instanceof ApiError && e.status === 400) {
-        alert("요청한 모집 상태가 올바르지 않습니다.");
+        toast.error("요청한 모집 상태가 올바르지 않습니다.");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("현재 상태에서는 모집 상태를 변경할 수 없습니다.");
+        toast.error("현재 상태에서는 모집 상태를 변경할 수 없습니다.");
       } else {
-        alert("캠페인 상태 변경에 실패했습니다.");
+        toast.error("캠페인 상태 변경에 실패했습니다.");
       }
     } finally {
       statusUpdatingRef.current = false;
@@ -537,38 +593,38 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const deleteCampaign = async () => {
     if (mutationBusy()) return; // 참여/취소·모집 시작과 동시 실행 금지
-    if (!getToken()) {
-      alert("로그인이 필요합니다.");
+    if (!getSessionId()) {
+      toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
     if (!confirm("이 캠페인을 삭제할까요?\n삭제한 캠페인은 복구할 수 없습니다.")) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return;
     deletingRef.current = true;
     setDeleting(true);
     invalidatePending(); // 진행 중 재조회 결과가 삭제 동작과 경합하지 않게
     try {
       await apiDeleteVoid(`/api/campaigns/${c.id}`);
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       // 삭제된 상세가 history 에 남지 않도록 replace 로 이동. 다른 state 는 갱신하지 않는다.
       router.replace("/mypage");
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        alert("로그인이 필요합니다.");
+        toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (e instanceof ApiError && e.status === 403) {
-        alert("캠페인 삭제 권한이 없습니다.");
+        toast.error("캠페인 삭제 권한이 없습니다.");
       } else if (e instanceof ApiError && e.status === 404) {
-        alert("이미 삭제되었거나 존재하지 않는 캠페인입니다.");
+        toast.error("이미 삭제되었거나 존재하지 않는 캠페인입니다.");
         router.push("/campaigns");
       } else if (e instanceof ApiError && e.status === 409) {
-        alert("모집을 시작했거나 참여자 또는 연결 게시글이 있어 삭제할 수 없습니다.");
+        toast.error("모집을 시작했거나 참여자 또는 연결 게시글이 있어 삭제할 수 없습니다.");
       } else {
-        alert("캠페인 삭제에 실패했습니다.");
+        toast.error("캠페인 삭제에 실패했습니다.");
       }
     } finally {
       deletingRef.current = false;
@@ -616,6 +672,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
             c={c}
             onJoin={join}
             onLeave={leave}
+            onLogin={() => router.push("/login")}
             action={participationAction}
             disabled={anyMutating}
             loggedIn={!!token}

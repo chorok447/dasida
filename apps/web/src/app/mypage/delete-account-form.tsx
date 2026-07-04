@@ -4,7 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { deleteAccount } from "@/data/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 
@@ -42,7 +42,7 @@ export function DeleteAccountForm() {
     }
     if (!window.confirm("정말 계정을 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       router.replace("/login");
@@ -53,8 +53,8 @@ export function DeleteAccountForm() {
     setSubmitting(true);
     setError("");
     try {
-      const response = await deleteAccount({ currentPassword, confirmText }, requestToken);
-      if (getToken() !== requestToken) return;
+      const response = await deleteAccount({ currentPassword, confirmText });
+      if (getSessionId() !== requestToken) return;
       if (!response.deleted) {
         setError("계정 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.");
         return;
@@ -63,7 +63,7 @@ export function DeleteAccountForm() {
       router.replace("/");
       router.refresh();
     } catch (requestError) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
         clearSession();
         router.replace("/login");

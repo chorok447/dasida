@@ -37,7 +37,7 @@ class AuthService(
     private val dummyHash = encoder.encode("__no_such_user__")
 
     @Transactional
-    fun signup(req: SignupRequest): AuthResponse {
+    fun signup(req: SignupRequest): IssuedTokens {
         val email = normalizeEmail(req.email)
         val name = normalizeName(req.name)
         validatePassword(req.password)
@@ -53,11 +53,11 @@ class AuthService(
             // 동시 요청이 사전 체크를 둘 다 통과한 경우 → unique 제약 위반을 409 로 변환(500 방지)
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
         }
-        return user.toAuthResponse(jwt.issue(user))
+        return issueTokens(user)
     }
 
     @Transactional(readOnly = true)
-    fun login(req: LoginRequest): AuthResponse {
+    fun login(req: LoginRequest): IssuedTokens {
         val user = repo.findByEmail(req.email.trim().lowercase())
         if (user == null || user.deletedAt != null) {
             // ponytail: 유저가 없어도 BCrypt 1회 실행 → 응답시간 차이로 가입 여부가 새는 것을 방지
@@ -67,17 +67,57 @@ class AuthService(
         if (!encoder.matches(req.password, user.passwordHash)) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid credentials")
         }
-        return user.toAuthResponse(jwt.issue(user))
+        return issueTokens(user)
     }
 
     /**
-     * 로그아웃. 현재 access token 을 만료 시간까지 denylist 에 등록해 재사용을 막는다.
-     * 필터에서 이미 검증된 유효 토큰만 여기 도달한다. refresh token 은 없으므로 이 토큰만 처리한다.
+     * refresh token 으로 access·refresh 를 재발급한다(rotation: 사용한 refresh 는 denylist 등록해
+     * 재사용을 차단 — 탈취된 refresh 가 재사용되면 정당한 사용자의 다음 refresh 가 실패해 이상 징후가 된다).
+     * 유효하지 않거나 denylist 에 있거나 사용자가 비활성이면 401.
      */
-    fun logout(token: String): LogoutResponse {
+    @Transactional(readOnly = true)
+    fun refresh(refreshToken: String): IssuedTokens {
+        val userId = try {
+            jwt.parseRefresh(refreshToken)
+        } catch (_: Exception) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
+        }
+        // store 장애로 확인 불가면 fail-closed(denylist 정책과 동일): 무효화됐을 수 있는 refresh 를 통과시키지 않는다.
+        val denied = try {
+            denylist.isDenied(hashToken(refreshToken))
+        } catch (_: Exception) {
+            true
+        }
+        if (denied) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
+        }
+        val user = repo.findById(userId).orElse(null)
+        if (user == null || user.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
+        }
+        denylist.deny(hashToken(refreshToken), jwt.remainingTtlSeconds(refreshToken))
+        return issueTokens(user)
+    }
+
+    /**
+     * 로그아웃. access token(필수)과 refresh token(있으면)을 만료 시간까지 denylist 에 등록해 재사용을 막는다.
+     * access 는 필터에서 이미 검증된 유효 토큰만 여기 도달한다. refresh 는 검증 없이 온 쿠키 값이므로
+     * 유효할 때만 등록한다(invalid 면 어차피 refresh 불가라 무시).
+     */
+    fun logout(token: String, refreshToken: String?): LogoutResponse {
         denylist.deny(hashToken(token), jwt.remainingTtlSeconds(token))
+        refreshToken?.let {
+            try {
+                denylist.deny(hashToken(it), jwt.remainingTtlSeconds(it))
+            } catch (_: Exception) {
+                // 서명이 깨진 refresh 쿠키 — 재사용될 수 없으므로 무시
+            }
+        }
         return LogoutResponse(loggedOut = true)
     }
+
+    private fun issueTokens(user: User): IssuedTokens =
+        IssuedTokens(user.toAuthResponse(jwt.issue(user)), jwt.issueRefresh(user))
 
     @Transactional(readOnly = true)
     fun getMe(userId: Long): UserProfileResponse = activeUser(userId).toProfile()
@@ -86,6 +126,7 @@ class AuthService(
     fun updateProfile(userId: Long, req: UpdateProfileRequest): UpdateProfileResponse {
         val user = activeUser(userId)
         user.name = normalizeName(req.name)
+        user.profileImageUrl = normalizeProfileImageUrl(req.profileImageUrl)
         return UpdateProfileResponse(token = jwt.issue(user), profile = user.toProfile())
     }
 

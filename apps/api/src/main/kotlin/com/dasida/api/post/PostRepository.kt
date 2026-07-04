@@ -25,6 +25,6 @@ interface PostRepository : JpaRepository<Post, String> {
     fun existsByCampaignId(campaignId: String): Boolean
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update Post p set p.author.name = :name, p.author.verified = false where p.authorUserId = :userId")
+    @Query("update Post p set p.author.name = :name, p.author.verified = false, p.author.profileImageUrl = null where p.authorUserId = :userId")
     fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
 }

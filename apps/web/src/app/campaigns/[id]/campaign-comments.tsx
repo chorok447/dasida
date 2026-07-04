@@ -14,7 +14,7 @@ import {
   type CampaignCommentsResponse,
 } from "@/data/campaigns";
 import { ApiError, apiDeleteVoid, apiErrorMessage, apiGet, apiPost } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 
@@ -93,7 +93,12 @@ function CommentItem({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Avatar name={comment.author.name} verified={comment.author.verified} />
+          <Avatar
+            name={comment.author.name}
+            verified={comment.author.verified}
+            size={36}
+            src={comment.author.profileImageUrl ?? undefined}
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate text-[13px] font-medium" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
@@ -209,7 +214,7 @@ export function CampaignComments({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [page, setPage] = useState(0);
@@ -317,16 +322,15 @@ export function CampaignComments({
     if (targetLocationStatus === "loading") return;
     if (targetLocationPage !== undefined && targetLocationPage !== null && targetLocationPage !== page) return;
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     apiGet<CampaignCommentsResponse>(
       `/api/campaigns/${campaignId}/comments?page=${page}&size=20`,
-      requestToken,
     )
       .then((response) => {
         if (!isCurrent()) return;
@@ -376,7 +380,7 @@ export function CampaignComments({
     event.preventDefault();
     if (submittingRef.current) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       router.push("/login");
       return;
@@ -392,13 +396,13 @@ export function CampaignComments({
     setMutationError("");
     try {
       await apiPost<CampaignComment>(`/api/campaigns/${campaignId}/comments`, { text: normalized });
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setText("");
       clearTargetComment();
       if (page === 0) reload();
       else setPage(0);
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         router.push("/login");
@@ -427,7 +431,7 @@ export function CampaignComments({
 
   const deleteComment = async (comment: CampaignComment) => {
     if (deletingRef.current.has(comment.id)) return;
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       router.push("/login");
       return;
@@ -439,10 +443,10 @@ export function CampaignComments({
     setMutationError("");
     try {
       await apiDeleteVoid(`/api/campaigns/${campaignId}/comments/${comment.id}`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       refreshAfterDelete();
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         router.push("/login");
@@ -487,7 +491,7 @@ export function CampaignComments({
       setEditError("댓글은 1자 이상 500자 이하로 입력해주세요.");
       return;
     }
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       setEditingCommentId(null);
@@ -504,9 +508,8 @@ export function CampaignComments({
         campaignId,
         comment.id,
         { text: normalized },
-        requestToken,
       );
-      if (getToken() !== requestToken || generation !== editGenerationRef.current) return;
+      if (getSessionId() !== requestToken || generation !== editGenerationRef.current) return;
       if (!currentState.response?.content.some((item) => item.id === comment.id)) {
         setEditingCommentId(null);
         reload();
@@ -524,7 +527,7 @@ export function CampaignComments({
       setEditingCommentId(null);
       setEditText("");
     } catch (error) {
-      if (getToken() !== requestToken || generation !== editGenerationRef.current) return;
+      if (getSessionId() !== requestToken || generation !== editGenerationRef.current) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         setEditingCommentId(null);
@@ -612,7 +615,7 @@ export function CampaignComments({
         ) : (
           <div className="flex flex-col items-center gap-3 rounded-2xl border px-5 py-6 text-center" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
             <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              댓글을 작성하려면 로그인이 필요합니다.
+              로그인해야 댓글을 작성할 수 있어요.
             </p>
             <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               로그인하기

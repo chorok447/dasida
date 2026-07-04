@@ -5,6 +5,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Calendar, FileText, Layers, Send, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { FallbackImage } from "@/components/fallback-image";
 import { fashionPhotos, marketPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 
@@ -288,7 +289,7 @@ export function CampaignForm({
                         style={{ borderColor: values.thumb === src ? "#7dd3a3" : "transparent" }}
                         aria-label="캠페인 썸네일 선택"
                       >
-                        <img src={src} alt="" className="h-full w-full object-cover" />
+                        <img src={src} alt="" aria-hidden className="h-full w-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -404,7 +405,15 @@ export function CampaignForm({
               style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
             >
               <div className="relative aspect-[4/3] overflow-hidden">
-                {values.thumb ? <img src={values.thumb} alt="" className="h-full w-full object-cover" /> : null}
+                {values.thumb ? (
+                  <FallbackImage
+                    src={values.thumb}
+                    alt="캠페인 썸네일 미리보기"
+                    dark={dark}
+                    errorText="이미지를 불러올 수 없어요"
+                    className="h-full w-full object-cover"
+                  />
+                ) : null}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/60 via-transparent to-transparent" />
                 <span className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] tracking-[0.2em]" style={{ background: statusMeta.upcoming.color, color: "#fff" }}>
                   모집예정

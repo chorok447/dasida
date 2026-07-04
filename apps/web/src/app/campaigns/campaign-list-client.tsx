@@ -1,14 +1,19 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
-import { Calendar, RefreshCw, Search, Users } from "lucide-react";
+import { Calendar, Users } from "lucide-react";
 import { CampaignDateRangeFilterControls } from "@/components/campaign-date-range-filters";
+import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
+import { ListEmptyState } from "@/components/list-empty-state";
+import { SearchField } from "@/components/search-field";
 import { ReportButton } from "@/components/report-button";
+import { FallbackImage } from "@/components/fallback-image";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
+import { StaggerItem } from "@/components/scroll-reveal";
+import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import {
   appendCampaignDateRangeFilters,
   campaignDateRangeError,
@@ -23,7 +28,7 @@ import {
   type CampaignSearchSort,
   type CampaignStatus,
 } from "@/data/campaigns";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { ApiError, apiGet } from "@/lib/api";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
@@ -147,7 +152,11 @@ function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => 
           className="border-0"
         >
           <div className="relative aspect-[4/3] overflow-hidden">
-            <img src={campaign.thumb} alt={campaign.title} className="h-full w-full object-cover" />
+            <FallbackImage
+              src={campaign.thumb}
+              alt={`${campaign.title} 캠페인 이미지`}
+              className="h-full w-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
             <div className="absolute right-3 top-3" style={{ transform: "translateZ(40px)" }}>
               <StatusBadge campaign={campaign} />
@@ -191,42 +200,88 @@ function CampaignCard({ campaign, onOpen }: { campaign: Campaign; onOpen: () => 
   );
 }
 
-function DebouncedSearchInput({ value, onCommit }: { value: string; onCommit: (query: string) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const [draft, setDraft] = useState(value);
+const RECRUIT_STATE_LABELS: Record<CampaignRecruitState, string> = {
+  before_recruit: "모집 예정",
+  recruiting: "모집 중",
+  ended: "모집 종료",
+  closed: "마감",
+};
 
-  useEffect(() => {
-    const normalized = draft.trim();
-    if (normalized === value) return;
-    const timeout = window.setTimeout(() => onCommit(normalized), 300);
-    return () => window.clearTimeout(timeout);
-  }, [draft, onCommit, value]);
-
-  return (
-    <label
-      className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 py-2.5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-        border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
-      }}
-    >
-      <Search size={16} className="shrink-0 opacity-50" />
-      <span className="sr-only">캠페인 검색</span>
-      <input
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        maxLength={100}
-        placeholder="캠페인 검색..."
-        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:opacity-50"
-        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
-      />
-    </label>
+function campaignHasActiveFilters(state: UrlState): boolean {
+  return !!(
+    state.query
+    || state.filter !== "all"
+    || state.recruitState
+    || state.availableOnly
+    || state.recruitEndFrom
+    || state.recruitEndTo
+    || state.runStartFrom
+    || state.runStartTo
   );
+}
+
+function buildCampaignFilterChips(
+  state: UrlState,
+  onPatch: (changes: Partial<UrlState>) => void,
+): FilterChip[] {
+  const chips: FilterChip[] = [];
+  if (state.query) {
+    chips.push({
+      id: "q",
+      label: `검색: ${state.query}`,
+      onRemove: () => onPatch({ query: "" }),
+    });
+  }
+  if (state.filter !== "all") {
+    const label = FILTER_ITEMS.find((item) => item.id === state.filter)?.label ?? state.filter;
+    chips.push({
+      id: "status",
+      label: `상태: ${label}`,
+      onRemove: () => onPatch({ filter: "all" }),
+    });
+  }
+  if (state.recruitState) {
+    chips.push({
+      id: "recruitState",
+      label: `모집: ${RECRUIT_STATE_LABELS[state.recruitState]}`,
+      onRemove: () => onPatch({ recruitState: null }),
+    });
+  }
+  if (state.availableOnly) {
+    chips.push({
+      id: "availableOnly",
+      label: "참여 가능",
+      onRemove: () => onPatch({ availableOnly: false }),
+    });
+  }
+  if (state.recruitEndFrom || state.recruitEndTo) {
+    chips.push({
+      id: "recruitEnd",
+      label: `모집 마감 ${state.recruitEndFrom || "…"}~${state.recruitEndTo || "…"}`,
+      onRemove: () => onPatch({ recruitEndFrom: "", recruitEndTo: "" }),
+    });
+  }
+  if (state.runStartFrom || state.runStartTo) {
+    chips.push({
+      id: "runStart",
+      label: `진행 시작 ${state.runStartFrom || "…"}~${state.runStartTo || "…"}`,
+      onRemove: () => onPatch({ runStartFrom: "", runStartTo: "" }),
+    });
+  }
+  if (state.sort !== "latest") {
+    const sortLabel = state.sort === "popular" ? "인기순" : "마감임박순";
+    chips.push({
+      id: "sort",
+      label: `정렬: ${sortLabel}`,
+      onRemove: () => onPatch({ sort: "latest" }),
+    });
+  }
+  return chips;
 }
 
 function FilterBar({
   state,
+  loading,
   onFilter,
   onSearch,
   onSort,
@@ -234,8 +289,11 @@ function FilterBar({
   onAvailableOnly,
   onDateChange,
   onClearDates,
+  onPatch,
+  onResetAll,
 }: {
   state: UrlState;
+  loading: boolean;
   onFilter: (filter: Filter) => void;
   onSearch: (query: string) => void;
   onSort: (sort: CampaignSearchSort) => void;
@@ -243,9 +301,12 @@ function FilterBar({
   onAvailableOnly: (checked: boolean) => void;
   onDateChange: (field: CampaignDateRangeField, value: string) => void;
   onClearDates: () => void;
+  onPatch: (changes: Partial<UrlState>) => void;
+  onResetAll: () => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const chips = buildCampaignFilterChips(state, (changes) => onPatch({ ...changes, page: 0 }));
 
   return (
     <div className="mb-8 space-y-4">
@@ -271,7 +332,15 @@ function FilterBar({
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <DebouncedSearchInput key={state.query} value={state.query} onCommit={onSearch} />
+        <SearchField
+          key={state.query}
+          value={state.query}
+          onCommit={onSearch}
+          label="캠페인 검색"
+          placeholder="캠페인 제목·요약 검색..."
+          loading={loading}
+          className="rounded-full"
+        />
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-[13px]">
             <span className="shrink-0 opacity-65">모집 상태</span>
@@ -331,6 +400,7 @@ function FilterBar({
         onChange={onDateChange}
         onClear={onClearDates}
       />
+      <ActiveFilterChips chips={chips} onClearAll={chips.length > 0 ? onResetAll : undefined} />
     </div>
   );
 }
@@ -370,7 +440,7 @@ function buildCampaignsHref(state: UrlState): string {
 export default function CampaignListClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
@@ -420,7 +490,7 @@ export default function CampaignListClient() {
 
   useEffect(() => {
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const params = new URLSearchParams();
     if (urlState.query) params.set("q", urlState.query);
@@ -440,7 +510,7 @@ export default function CampaignListClient() {
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     apiGet<CampaignSearchResponse>(`/api/campaigns/search?${params.toString()}`)
       .then((response) => {
@@ -525,6 +595,7 @@ export default function CampaignListClient() {
 
         <FilterBar
           state={urlState}
+          loading={currentState.status === "loading"}
           onFilter={(filter) => updateUrl({ filter, page: 0 })}
           onSearch={commitSearch}
           onSort={(sort) => updateUrl({ sort, page: 0 })}
@@ -532,13 +603,20 @@ export default function CampaignListClient() {
           onAvailableOnly={(availableOnly) => updateUrl({ availableOnly, page: 0 })}
           onDateChange={(field, value) => updateUrl({ [field]: value, page: 0 })}
           onClearDates={() => updateUrl({ ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS, page: 0 })}
+          onPatch={(changes) => updateUrl(changes)}
+          onResetAll={() => updateUrl({
+            query: "",
+            filter: "all",
+            recruitState: null,
+            availableOnly: false,
+            sort: "latest",
+            ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
+            page: 0,
+          })}
         />
 
         {currentState.status === "loading" ? (
-          <StatePanel>
-            <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
-            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>캠페인을 검색하는 중입니다.</p>
-          </StatePanel>
+          <SkeletonCards count={6} className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" />
         ) : null}
 
         {currentState.status === "error" ? (
@@ -557,19 +635,52 @@ export default function CampaignListClient() {
         ) : null}
 
         {currentState.status === "success" && response?.content.length === 0 ? (
-          <StatePanel>
-            <p style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>조건에 맞는 캠페인이 없습니다.</p>
-          </StatePanel>
+          <ListEmptyState
+            title={campaignHasActiveFilters(urlState) ? "조건에 맞는 캠페인이 없어요." : "아직 등록된 캠페인이 없어요."}
+            description={
+              campaignHasActiveFilters(urlState)
+                ? "다른 검색어를 입력하거나 필터를 초기화해보세요."
+                : "첫 캠페인을 만들거나 잠시 후 다시 확인해보세요."
+            }
+            action={
+              campaignHasActiveFilters(urlState) ? (
+                <button
+                  type="button"
+                  onClick={() => updateUrl({
+                    query: "",
+                    filter: "all",
+                    recruitState: null,
+                    availableOnly: false,
+                    sort: "latest",
+                    ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
+                    page: 0,
+                  })}
+                  className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                >
+                  전체 캠페인 보기
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => router.push("/campaigns/new")}
+                  className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                >
+                  캠페인 만들기
+                </button>
+              )
+            }
+          />
         ) : null}
 
         {currentState.status === "success" && response && response.content.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {response.content.map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                onOpen={() => router.push(`/campaigns/${campaign.id}`)}
-              />
+            {response.content.map((campaign, i) => (
+              <StaggerItem key={campaign.id} index={i}>
+                <CampaignCard
+                  campaign={campaign}
+                  onOpen={() => router.push(`/campaigns/${campaign.id}`)}
+                />
+              </StaggerItem>
             ))}
           </div>
         ) : null}

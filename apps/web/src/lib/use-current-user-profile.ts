@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiGet, ApiError } from "./api";
-import { clearSession, getToken } from "./auth";
+import { clearSession, getSessionId, PROFILE_EVENT } from "./auth";
 import { useAuthSession } from "./use-auth-session";
 import type { UserProfile } from "@/data/users";
 
@@ -16,40 +16,40 @@ type ProfileState = {
 };
 
 export function useCurrentUserProfile() {
-  const { token } = useAuthSession();
+  const { sessionId, hydrated } = useAuthSession();
   const [reloadTick, setReloadTick] = useState(0);
   const [state, setState] = useState<ProfileState>(() => ({
-    identity: token,
+    identity: sessionId,
     profile: null,
-    status: token ? "loading" : "idle",
+    status: sessionId ? "loading" : "idle",
     error: "",
   }));
   const generationRef = useRef(0);
 
   // identity가 바뀌면 이전 사용자의 프로필을 네트워크 응답보다 먼저 제거한다.
-  if (state.identity !== token) {
+  if (state.identity !== sessionId) {
     setState({
-      identity: token,
+      identity: sessionId,
       profile: null,
-      status: token ? "loading" : "idle",
+      status: sessionId ? "loading" : "idle",
       error: "",
     });
   }
 
   useEffect(() => {
-    if (!token) return;
+    if (!sessionId) return;
 
-    const requestToken = token;
+    const requestSession = sessionId;
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestSession;
 
     apiGet<UserProfile>("/api/auth/me")
       .then((profile) => {
         if (!isCurrent()) return;
         setState((current) =>
-          current.identity === requestToken
+          current.identity === requestSession
             ? { ...current, profile, status: "success", error: "" }
             : current,
         );
@@ -61,7 +61,7 @@ export function useCurrentUserProfile() {
           return;
         }
         setState((current) =>
-          current.identity === requestToken
+          current.identity === requestSession
             ? {
                 ...current,
                 profile: null,
@@ -75,19 +75,27 @@ export function useCurrentUserProfile() {
     return () => {
       cancelled = true;
     };
-  }, [reloadTick, token]);
+  }, [reloadTick, sessionId]);
+
+  useEffect(() => {
+    const refresh = () => setReloadTick((tick) => tick + 1);
+    window.addEventListener(PROFILE_EVENT, refresh);
+    return () => window.removeEventListener(PROFILE_EVENT, refresh);
+  }, []);
 
   const retry = () => {
-    if (!token) return;
+    if (!sessionId) return;
     setState((current) => ({ ...current, profile: null, status: "loading", error: "" }));
     setReloadTick((tick) => tick + 1);
   };
 
   return {
     profile: state.profile,
-    loading: !!token && state.status === "loading",
+    // hydration 전에는 로그인 여부가 미확정이므로 loading으로 취급해 비로그인 UI 깜빡임을 막는다.
+    loading: !hydrated || (!!sessionId && state.status === "loading"),
     error: state.error,
-    isLoggedIn: !!token,
+    isLoggedIn: !!sessionId,
     retry,
+    refresh: retry,
   };
 }

@@ -122,7 +122,7 @@ class NotificationEventTest(
         assertThat(list[0].userId).isEqualTo(owner)
         assertThat(list[0].type).isEqualTo(NotificationType.POST_COMMENT_CREATED)
         assertThat(list[0].href).isEqualTo("/posts/$postId?commentId=$commentId")
-        assertThat(list[0].title).contains("행동한사람")
+        assertThat(list[0].title).contains("테스트 사용자 2")
         assertThat(list[0].readAt).isNull()
     }
 
