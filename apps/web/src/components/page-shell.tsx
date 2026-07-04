@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { useTheme } from "@/lib/theme-context";
 
 type PageShellProps = {
@@ -19,17 +19,21 @@ const orbClass: Record<NonNullable<PageShellProps["orb"]>, string> = {
   none: "",
 };
 
-export function PageShell({
-  children,
-  className = "",
-  paddingClassName = "px-6 pb-20 pt-32",
-  orb = "left",
-}: PageShellProps) {
+export const PageShell = forwardRef<HTMLElement, PageShellProps>(function PageShell(
+  {
+    children,
+    className = "",
+    paddingClassName = "px-6 pb-20 pt-32",
+    orb = "left",
+  },
+  ref,
+) {
   const { theme } = useTheme();
   const dark = theme === "dark";
 
   return (
     <section
+      ref={ref}
       className={`relative min-h-screen overflow-hidden transition-colors ${paddingClassName} ${className}`}
       style={{
         backgroundImage: dark
@@ -45,4 +49,4 @@ export function PageShell({
       <div className="relative">{children}</div>
     </section>
   );
-}
+});

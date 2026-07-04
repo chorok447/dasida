@@ -12,6 +12,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
 import { RecommendedCampaigns } from "@/components/recommended-campaigns";
+import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
@@ -369,14 +370,7 @@ export default function NotificationsClient() {
   }
 
   return (
-    <section
-      className="relative min-h-screen pt-28 pb-20 px-4 sm:px-6 transition-colors overflow-hidden"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
+    <PageShell paddingClassName="relative min-h-screen pt-28 pb-20 px-4 sm:px-6 overflow-hidden" orb="none">
       <div className="max-w-3xl mx-auto relative">
         <div className="text-center mb-8">
           <p className="tracking-[0.4em] uppercase mb-3" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
@@ -508,6 +502,6 @@ export default function NotificationsClient() {
           />
         ) : null}
       </div>
-    </section>
+    </PageShell>
   );
 }

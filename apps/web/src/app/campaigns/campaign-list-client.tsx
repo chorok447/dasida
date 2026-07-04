@@ -34,6 +34,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { useCanonicalUrl, parsePageParam } from "@/lib/use-url-query";
 import { progressPercent } from "@/lib/progress";
+import { PageShell } from "@/components/page-shell";
 
 type Filter = "all" | CampaignStatus;
 type SearchState = {
@@ -548,19 +549,7 @@ export default function CampaignListClient() {
   const response = currentState.response;
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative min-h-screen overflow-hidden px-6 pb-20 pt-32 transition-colors"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-20">
-        <div className="absolute right-1/4 top-20 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
+    <PageShell ref={sectionRef} paddingClassName="relative min-h-screen overflow-hidden px-6 pb-20 pt-32" orb="right">
       <div className="relative mx-auto max-w-6xl">
         <motion.div className="mb-12 text-center" style={{ y: titleY }}>
           <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
@@ -692,6 +681,6 @@ export default function CampaignListClient() {
           />
         ) : null}
       </div>
-    </section>
+    </PageShell>
   );
 }
