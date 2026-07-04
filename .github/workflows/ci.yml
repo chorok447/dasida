@@ -5,7 +5,7 @@ on:
     branches: [develop, main]
   pull_request:
     branches: [develop, main]
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 # 같은 브랜치/PR에서 새 푸시가 오면 진행 중 실행을 취소한다.
 concurrency:
@@ -92,11 +92,10 @@ jobs:
         working-directory: apps/api
         run: ./gradlew build --no-daemon
 
-  # develop 대상 Ready PR은 web/api 검사 통과 후 자동 머지한다.
-  # main 대상 PR은 release/deploy gate 이므로 자동 머지하지 않는다(CI + container image build 검증만).
-  #   main merge 는 수동 승인 후 수행하고, main push 시 Docker Hub image push 가 발생한다(container-images.yml).
+  # develop 대상 Ready PR은 web/api/e2e 검사 통과 후 자동 머지한다.
+  # main 대상 PR은 release/deploy gate 이므로 자동 머지하지 않는다(CI + image build 검증만).
+  #   main merge 는 수동 승인 후 수행하고, main push CI 성공 시 CD(cd.yml)가 image push 를 수행한다.
   # Dependabot PR은 의존성 검증을 CI에서 돌리되 자동 머지는 하지 않는다(수동 검증 후 처리).
-  # Draft PR과 push workflow에서는 auto-merge job을 실행하지 않는다.
   automerge:
     name: auto-merge
     needs: [web, api, e2e]
@@ -104,26 +103,12 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
-      github.event.pull_request.user.login != 'app/dependabot' &&
       github.base_ref == 'develop'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-      checks: read
-      statuses: read
     steps:
-      - name: Inspect PR merge state
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          echo "PR #$PR merge diagnostics"
-          gh pr view "$PR" \
-            --json number,title,isDraft,mergeable,mergeStateStatus,reviewDecision,baseRefName,headRefName,headRefOid,author \
-            --jq '.'
-
       - name: Merge PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

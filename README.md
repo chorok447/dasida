@@ -74,14 +74,14 @@ docker compose -f compose.local.yml up --build
 
 ### Production container images (Docker Hub)
 
-로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 와 GitHub Actions [`container-images.yml`](.github/workflows/container-images.yml) 로 빌드한다. (기존 GHCR 계획에서 **Docker Hub**로 전환.)
+로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 와 GitHub Actions [`cd.yml`](.github/workflows/cd.yml) 로 빌드한다. (기존 GHCR 계획에서 **Docker Hub**로 전환.)
 
 | 이벤트 | 동작 |
 |--------|------|
 | `main` 대상 PR | API/Web image build 검증만 (`push=false`). **자동 머지 없음** — 수동 승인 후 merge |
-| `main` push | `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` push (`sha-<shortsha>`, `main` tag) |
+| `main` push | **CI 성공 후에만** `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` push (`sha-<shortsha>`, `main` tag) |
 
-실제 서버 배포는 아직 미구현(CD workflow placeholder). **amd64 VM 배포 runbook** [`single-vm-production-deploy-runbook.md`](apps/api/docs/backend/single-vm-production-deploy-runbook.md), **MySQL backup/restore** [`mysql-backup-restore-runbook.md`](apps/api/docs/backend/mysql-backup-restore-runbook.md). Docker Hub·Nginx는 [`container-images.md`](apps/api/docs/backend/container-images.md), [`nginx-reverse-proxy-deployment.md`](apps/api/docs/backend/nginx-reverse-proxy-deployment.md).
+실제 서버 배포는 아직 미구현 — `cd.yml` 은 image push 까지만 수행한다. **amd64 VM 배포 runbook** [`single-vm-production-deploy-runbook.md`](apps/api/docs/backend/single-vm-production-deploy-runbook.md), **MySQL backup/restore** [`mysql-backup-restore-runbook.md`](apps/api/docs/backend/mysql-backup-restore-runbook.md). Docker Hub·Nginx는 [`container-images.md`](apps/api/docs/backend/container-images.md), [`nginx-reverse-proxy-deployment.md`](apps/api/docs/backend/nginx-reverse-proxy-deployment.md).
 
 **main merge 전** GitHub Secrets/Variables·Docker Hub·prod 환경·배포 전략 준비는 [`main-release-readiness.md`](apps/api/docs/backend/main-release-readiness.md) 체크리스트를 따른다. Secrets/Environment 상세는 [`github-secrets-and-environments.md`](apps/api/docs/backend/github-secrets-and-environments.md), 운영 값 수집은 [`production-env-values-template.md`](apps/api/docs/backend/production-env-values-template.md). 운영 VM compose **예시 template** 은 [`deploy/compose.prod.example.yml`](deploy/compose.prod.example.yml) 참고.
 
