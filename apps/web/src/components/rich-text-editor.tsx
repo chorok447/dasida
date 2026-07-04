@@ -132,8 +132,7 @@ export function RichTextEditor({
     const incoming = value.trim();
     const current = normalizeEditorHtml(editor.getHTML());
     if (incoming === current) return;
-    editor.commands.setContent(incoming || "", { emitUpdate: false });
-    setTextLength(editor.getText().trim().length);
+    editor.commands.setContent(incoming || "");
   }, [editor, value]);
 
   const setLink = useCallback(() => {
