@@ -2,11 +2,11 @@
 
 import { type FormEvent, useRef, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
+import { toast } from "sonner";
 import { changeEmail, isValidEmail, normalizeEmail } from "@/data/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
 import { clearSession, getSessionId, setSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useTheme } from "@/lib/theme-context";
 
 function changeEmailError(error: ApiError): string {
   if (error.status === 409) return "이미 사용 중인 이메일입니다.";
@@ -27,14 +27,11 @@ export function ChangeEmailForm({
   onChanged: (email: string) => void;
 }) {
   const router = useRouter();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const submittingRef = useRef(false);
   const [newEmail, setNewEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -67,7 +64,6 @@ export function ChangeEmailForm({
     submittingRef.current = true;
     setSubmitting(true);
     setError("");
-    setSuccess("");
     try {
       const response = await changeEmail(
         { currentPassword, newEmail: normalizedEmail },
@@ -77,7 +73,9 @@ export function ChangeEmailForm({
       onChanged(response.email);
       setNewEmail("");
       setCurrentPassword("");
-      setSuccess("이메일이 변경되었습니다.");
+      // setSession 이 세션 마커를 재발급하면 프로필 리페치로 이 폼이 리마운트되므로
+      // 인라인 메시지 대신 리마운트에도 남는 toast 로 성공을 알린다.
+      toast.success("이메일이 변경되었습니다.");
     } catch (requestError) {
       if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
@@ -95,36 +93,33 @@ export function ChangeEmailForm({
   };
 
   const inputStyle = {
-    background: dark ? "rgba(255,255,255,0.05)" : "#ffffff",
-    borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    background: "var(--card)",
+    borderColor: "var(--border)",
+    color: "var(--foreground)",
   };
 
   return (
     <section className="mx-auto mb-6 max-w-5xl px-6 sm:px-8" aria-labelledby="change-email-title">
       <div
         className="rounded-3xl border p-5 sm:p-7"
-        style={{
-          background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.72)",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        }}
+        style={{ background: "var(--card)", borderColor: "var(--border)" }}
       >
         <div className="mb-5 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7dd3a3]/15 text-[#7dd3a3]">
             <Mail size={19} aria-hidden="true" />
           </span>
           <div>
-            <h2 id="change-email-title" className="text-[17px] font-semibold" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <h2 id="change-email-title" className="text-[17px] font-semibold" style={{ color: "var(--foreground)" }}>
               이메일 변경
             </h2>
-            <p className="mt-0.5 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <p className="mt-0.5 text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
               현재 비밀번호 확인 후 로그인 이메일을 변경합니다.
             </p>
           </div>
         </div>
 
         <form onSubmit={submit} noValidate className="grid gap-4 lg:grid-cols-3">
-          <label className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             현재 이메일
             <input
               type="email"
@@ -135,7 +130,7 @@ export function ChangeEmailForm({
               style={inputStyle}
             />
           </label>
-          <label className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             새 이메일
             <input
               type="email"
@@ -147,7 +142,7 @@ export function ChangeEmailForm({
               style={inputStyle}
             />
           </label>
-          <label className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             현재 비밀번호
             <input
               type="password"
@@ -163,7 +158,6 @@ export function ChangeEmailForm({
           <div className="flex flex-col gap-3 lg:col-span-3 sm:flex-row sm:items-center sm:justify-between">
             <div aria-live="polite">
               {error ? <p role="alert" className="text-[12px] text-[#ed5c48]">{error}</p> : null}
-              {success ? <p className="text-[12px] text-[#7dd3a3]">{success}</p> : null}
             </div>
             <button
               type="submit"
