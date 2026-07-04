@@ -62,8 +62,6 @@ test("로그아웃하면 세션이 끊기고 재로그인하면 복구된다", a
 });
 
 test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다", async ({ page }) => {
-  // 모집 시작·참여 취소는 window.confirm 을 띄운다 — 기본 동작(dismiss)이면 진행이 안 되므로 수락.
-  page.on("dialog", (dialog) => void dialog.accept());
   await signup(page);
 
   // 개설 — 템플릿으로 필수 텍스트를 채우고, 날짜는 오늘 기준으로 참여 가능하게 지정
@@ -78,6 +76,7 @@ test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다",
 
   // 신규 캠페인은 upcoming → 개설자가 모집을 시작해야 참여 가능
   await page.getByRole("button", { name: "모집 시작" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "확인" }).click();
 
   // 참여
   await page.getByRole("button", { name: "캠페인 참여하기" }).click();
@@ -85,5 +84,6 @@ test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다",
 
   // 취소
   await page.getByRole("button", { name: "참여 취소", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "확인" }).click();
   await expect(page.getByRole("button", { name: "캠페인 참여하기" })).toBeVisible();
 });

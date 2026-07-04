@@ -32,6 +32,7 @@ import { clearSession, getSessionId } from "@/lib/auth";
 import { ApiError, apiGet } from "@/lib/api";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
+import { useCanonicalUrl, parsePageParam } from "@/lib/use-url-query";
 import { progressPercent } from "@/lib/progress";
 
 type Filter = "all" | CampaignStatus;
@@ -406,9 +407,7 @@ function FilterBar({
 }
 
 function parsePage(value: string | null): number {
-  if (value === null) return 0;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+  return parsePageParam(value);
 }
 
 function parseFilter(value: string | null): Filter {
@@ -459,9 +458,7 @@ export default function CampaignListClient() {
   const currentHref = searchParams.toString() ? `/campaigns?${searchParams.toString()}` : "/campaigns";
   const dateFilterError = campaignDateRangeError(urlState);
 
-  useEffect(() => {
-    if (currentHref !== canonicalHref) router.replace(canonicalHref, { scroll: false });
-  }, [canonicalHref, currentHref, router]);
+  useCanonicalUrl(canonicalHref, currentHref);
   const requestIdentity = JSON.stringify([token, urlState, retryTick]);
   const [searchState, setSearchState] = useState<SearchState>({
     identity: "",

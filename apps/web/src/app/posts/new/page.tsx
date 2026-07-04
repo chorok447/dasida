@@ -10,6 +10,7 @@ import { FallbackImage } from "@/components/fallback-image";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   PostComposeForm,
   PostComposeSubmitButton,
@@ -52,6 +53,7 @@ export default function PostCreatePage() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PostComposeField, string>>>({});
 
   const { name } = useAuthSession();
+  const confirm = useConfirm();
   const authorName = name ?? "사용자";
 
   const { draftSaved, clearDraft } = usePostComposeDraft(
@@ -92,10 +94,10 @@ export default function PostCreatePage() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [values]);
 
-  const applyTemplate = (template: PostTemplate) => {
+  const applyTemplate = async (template: PostTemplate) => {
     if (
       composeHasContent(values) &&
-      !window.confirm("작성 중인 내용이 있습니다. 예시로 덮어쓸까요? (사진과 캠페인 연결은 유지됩니다)")
+      !(await confirm({ message: "작성 중인 내용이 있습니다. 예시로 덮어쓸까요? (사진과 캠페인 연결은 유지됩니다)" }))
     ) {
       return;
     }

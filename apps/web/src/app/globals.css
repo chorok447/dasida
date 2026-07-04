@@ -1,6 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap');
 @import "tailwindcss";
 
+:root {
+  --surface: #f9f7f2;
+  --surface-dark: #0f1f22;
+  --accent: #7dd3a3;
+  --foreground: #0f1f22;
+  --border: rgba(28, 64, 68, 0.08);
+}
+
+.dark {
+  --surface: #0f1f22;
+  --foreground: #f9f7f2;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
 html,
 body {
   margin: 0;

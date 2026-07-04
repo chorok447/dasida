@@ -12,6 +12,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
 import { RecommendedCampaigns } from "@/components/recommended-campaigns";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import {
@@ -182,6 +183,7 @@ export default function NotificationsClient() {
   const dark = theme === "dark";
   const router = useRouter();
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
+  const confirm = useConfirm();
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(0);
@@ -330,7 +332,7 @@ export default function NotificationsClient() {
 
   const removeRead = async () => {
     if (cleaningRead || !hasReadNotifications) return;
-    if (!window.confirm("읽은 알림을 모두 삭제할까요?\n삭제한 알림은 복구할 수 없습니다.")) return;
+    if (!(await confirm({ message: "읽은 알림을 모두 삭제할까요?\n삭제한 알림은 복구할 수 없습니다.", destructive: true, confirmLabel: "삭제" }))) return;
     const requestToken = token;
     if (!requestToken || getSessionId() !== requestToken) return;
     setCleaningRead(true);

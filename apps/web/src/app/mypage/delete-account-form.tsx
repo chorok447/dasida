@@ -7,6 +7,7 @@ import { ApiError, apiErrorMessage } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const CONFIRM_TEXT = "탈퇴합니다";
 
@@ -27,6 +28,7 @@ export function DeleteAccountForm() {
   const [confirmText, setConfirmText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const confirm = useConfirm();
   const canSubmit = currentPassword.trim().length > 0 && confirmText === CONFIRM_TEXT && !submitting;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -40,7 +42,7 @@ export function DeleteAccountForm() {
       setError("확인 문구를 정확히 입력해주세요.");
       return;
     }
-    if (!window.confirm("정말 계정을 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+    if (!(await confirm({ message: "정말 계정을 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.", destructive: true, confirmLabel: "탈퇴" }))) return;
 
     const requestToken = getSessionId();
     if (!requestToken) {
