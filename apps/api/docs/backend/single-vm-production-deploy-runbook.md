@@ -1,11 +1,11 @@
-# Single VM production 배포 runbook
+# Single VM production 배포 (아키텍처 + runbook)
 
-> **상태**: runbook(문서). **실제 서버·DNS·TLS·deploy 는 아직 수행하지 않는다.**  
+> **상태**: 결정안 + runbook(문서). **실제 서버·DNS·TLS·deploy 는 아직 수행하지 않는다.**
 > secret·credential·실제 도메인·서버 IP 는 이 문서에 적지 않는다.
 
 ## Purpose
 
-**amd64 VM 1대**에서 **Host Nginx** + **Docker Compose** + **Docker Hub image** 로 Dasida(api/web/mysql/redis)를 배포하는 절차를 정리한다.
+초기 운영을 **amd64 VM 1대**에서 시작한다. **Host Nginx**(80/443 public ingress) + **Docker Compose**(web/api/mysql/redis) + **Docker Hub image** 구조와 배포 절차를 정리한다.
 
 | 범위 | 포함 | 제외 |
 |------|------|------|
@@ -15,9 +15,43 @@
 
 관련 전략 문서:
 
-- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — 아키텍처·스펙·volume
+- [deployment-strategy.md](./deployment-strategy.md) — 배포 방식 비교·결정
 - [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx·TLS·도메인·CORS
 - [container-images.md](./container-images.md) — Docker Hub·`sha-*` pin
+
+---
+
+## Architecture
+
+```text
+Internet
+  ↓
+Host Nginx :80 / :443          (TLS 종료, vhost 라우팅)
+  ├─ https://example.com       → 127.0.0.1:3000  (web container)
+  └─ https://api.example.com   → 127.0.0.1:8080  (api container)
+                                      ↓
+                    Docker Compose (default bridge / internal network)
+                    ├─ web   :3000
+                    ├─ api   :8080
+                    ├─ mysql :3306   (compose 내부만, public 금지)
+                    └─ redis :6379   (compose 내부만, public 금지)
+```
+
+| 구성 요소 | 실행 방식 | 외부 노출 |
+|-----------|-----------|-----------|
+| Nginx | **호스트** 설치 | **80, 443** 만 |
+| web, api | Docker Compose | Nginx 경유만 (`127.0.0.1` bind) |
+| MySQL 8 (`mysql:8.4`) | Docker Compose | **public 금지** — named volume `mysql_data` |
+| Redis/Valkey (`valkey/valkey:8`) | Docker Compose | **public 금지** — 기본 ephemeral |
+
+compose 는 base + override 병행:
+
+| 파일 | 역할 |
+|------|------|
+| [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) | api/web image, healthcheck, 공통 env |
+| [`compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) | mysql, redis, api/web port·depends_on·internal `DB_URL` |
+
+로컬 개발 참고: 루트 [`compose.local.yml`](../../../../compose.local.yml) 이 같은 패턴이다. 운영은 image 를 Docker Hub `sha-*` 로 pin 하고, env 는 prod secret, 포트는 localhost bind 를 쓴다.
 
 ---
 
@@ -271,8 +305,8 @@ CORS: 브라우저에서 `https://example.com` → `https://api.example.com` 호
 
 | 대상 | 정책 |
 |------|------|
-| MySQL `mysql_data` | **필수** — 정기 `mysqldump` |
-| Redis | ephemeral 허용 가능(정책에 따름) |
+| MySQL `mysql_data` | **필수** — 정기 `mysqldump`. `docker compose down -v` 금지 운영 |
+| Redis | ephemeral 허용 가능(rate limit/denylist 위주면 재기동 허용) |
 | VM snapshot | **DB 일관성만으로는 불충분** — logical backup 병행 |
 
 ```bash
@@ -304,6 +338,20 @@ docker compose -f compose.prod.yml -f compose.single-vm.yml --env-file .env.prod
 | `main` tag | rollback pin 으로 쓰지 않음 |
 | Web URL 변경 | 해당 시점 **Web image sha** 도 함께 되돌림 |
 | DB schema | 현재 migration 도구 **없음** — rollback 은 **application image** 수준. schema 변경 도입 후 rollback 위험 증가 |
+
+---
+
+## Managed DB/Redis 이전 대비
+
+single VM 에서 시작해도 **연결 문자열만 env 로 분리**해 두면 이전이 쉽다.
+
+| 변수 | single VM (compose 내부) | managed 이전 후 |
+|------|------------------------|-----------------|
+| `DB_URL` | `jdbc:mysql://mysql:3306/...` | managed endpoint hostname |
+| `SPRING_DATA_REDIS_HOST` | `redis` | managed Redis hostname |
+| 나머지 (`DOCKERHUB_*`, CORS, `NEXT_PUBLIC_API_URL`, `API_INTERNAL_URL`) | 동일 | 동일 |
+
+**이전 순서(개념)**: managed MySQL/Redis 프로비저닝·데이터 마이그레이션 → `.env.prod` 의 `DB_URL`/Redis host 변경 → compose 에서 mysql/redis service 제거(override 삭제) → api 재기동·smoke.
 
 ---
 
@@ -340,7 +388,7 @@ docker compose -f compose.prod.yml -f compose.single-vm.yml --env-file .env.prod
 - [deployment-strategy.md](./deployment-strategy.md)
 - [main-release-readiness.md](./main-release-readiness.md)
 - [production-env-values-template.md](./production-env-values-template.md)
-- [github-secrets-setup-runbook.md](./github-secrets-setup-runbook.md)
+- [github-secrets-and-environments.md](./github-secrets-and-environments.md)
 - [deploy/compose.prod.example.yml](../../../../deploy/compose.prod.example.yml)
 - [deploy/compose.single-vm.example.yml](../../../../deploy/compose.single-vm.example.yml)
 - [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md)

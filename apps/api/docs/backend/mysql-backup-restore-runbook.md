@@ -5,7 +5,7 @@
 
 ## Purpose
 
-[single VM Docker Compose](./single-vm-compose-deployment.md) 운영에서 **MySQL**(`mysql` service, named volume `mysql_data`) 데이터를 **안전하게 백업·복구**하는 절차를 정리한다.
+[single VM Docker Compose](./single-vm-production-deploy-runbook.md) 운영에서 **MySQL**(`mysql` service, named volume `mysql_data`) 데이터를 **안전하게 백업·복구**하는 절차를 정리한다.
 
 배포 runbook: [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
 
@@ -263,7 +263,7 @@ curl -fsS https://api.example.com/actuator/health
 ## 관련 문서
 
 - [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
-- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
+- [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
 - [main-release-readiness.md](./main-release-readiness.md)
 - [deployment-strategy.md](./deployment-strategy.md)
 - [deploy/compose.single-vm.example.yml](../../../../deploy/compose.single-vm.example.yml)
