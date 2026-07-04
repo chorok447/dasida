@@ -26,6 +26,17 @@ async function signup(page: Page): Promise<Account> {
   return account;
 }
 
+/** controlled input React state 반영 후 submit — fill 직후 click 시 빈 body POST 방지. */
+async function login(page: Page, account: Pick<Account, "email" | "password">) {
+  await page.goto("/login");
+  await page.getByLabel("이메일", { exact: true }).fill(account.email);
+  await page.getByLabel("비밀번호", { exact: true }).fill(account.password);
+  const submit = page.getByRole("button", { name: "로그인", exact: true });
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await page.waitForURL("**/feed");
+}
+
 /** LocalDate(yyyy-MM-dd). 오프셋은 일 단위. */
 function dateAfter(days: number): string {
   const d = new Date();
@@ -37,7 +48,7 @@ test("로그아웃하면 세션이 끊기고 재로그인하면 복구된다", a
   const account = await signup(page);
   await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
 
-  // 로그아웃 → 비로그인 헤더
+  // 로그아웃 → 비로그인 헤더 (서버 쿠키 만료 응답까지 await)
   await page.getByRole("button", { name: "로그아웃" }).click();
   await expect(page.getByRole("link", { name: "로그인", exact: true })).toBeVisible();
 
@@ -45,15 +56,7 @@ test("로그아웃하면 세션이 끊기고 재로그인하면 복구된다", a
   await page.goto("/mypage");
   await expect(page.getByText("마이페이지를 보려면 로그인이 필요합니다.")).toBeVisible();
 
-  // 재로그인. 헤더 링크로 이동해 hydration 완료 후 입력한다
-  // (goto 직후 fill 은 controlled input 의 React 상태 반영 전이라 빈 값으로 제출될 수 있다).
-  // "이메일 기억하기" 체크박스와 구분하려면 exact 필요.
-  await page.getByRole("link", { name: "로그인", exact: true }).click();
-  await page.waitForURL("**/login");
-  await page.getByLabel("이메일", { exact: true }).fill(account.email);
-  await page.getByLabel("비밀번호", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "로그인", exact: true }).click();
-  await page.waitForURL("**/feed");
+  await login(page, account);
   await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
 
   // 새 쿠키로 사용자별 페이지 접근
@@ -62,8 +65,6 @@ test("로그아웃하면 세션이 끊기고 재로그인하면 복구된다", a
 });
 
 test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다", async ({ page }) => {
-  // 모집 시작·참여 취소는 window.confirm 을 띄운다 — 기본 동작(dismiss)이면 진행이 안 되므로 수락.
-  page.on("dialog", (dialog) => void dialog.accept());
   await signup(page);
 
   // 개설 — 템플릿으로 필수 텍스트를 채우고, 날짜는 오늘 기준으로 참여 가능하게 지정
@@ -78,6 +79,7 @@ test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다",
 
   // 신규 캠페인은 upcoming → 개설자가 모집을 시작해야 참여 가능
   await page.getByRole("button", { name: "모집 시작" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "확인" }).click();
 
   // 참여
   await page.getByRole("button", { name: "캠페인 참여하기" }).click();
@@ -85,5 +87,6 @@ test("캠페인을 개설해 모집을 시작하면 참여와 취소가 된다",
 
   // 취소
   await page.getByRole("button", { name: "참여 취소", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "확인" }).click();
   await expect(page.getByRole("button", { name: "캠페인 참여하기" })).toBeVisible();
 });

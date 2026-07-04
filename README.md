@@ -74,7 +74,7 @@ docker compose -f compose.local.yml up --build
 
 ### Production container images (Docker Hub)
 
-로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 와 GitHub Actions [`cd.yml`](.github/workflows/cd.yml) 로 빌드한다. (기존 GHCR 계획에서 **Docker Hub**로 전환.)
+로컬 개발은 `compose.local.yml` + `apps/*/Dockerfile` 을 그대로 사용한다. **운영 배포용 image** 는 `Dockerfile.prod` 로 빌드한다 — main PR 검증은 [`image-verify.yml`](.github/workflows/image-verify.yml), main push 배포 push 는 [`cd.yml`](.github/workflows/cd.yml). (기존 GHCR 계획에서 **Docker Hub**로 전환.)
 
 | 이벤트 | 동작 |
 |--------|------|

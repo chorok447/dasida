@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDelete, apiDeleteVoid, ApiError, apiErrorMessage } from "@/lib/api";
 import { getSessionId, clearSession } from "@/lib/auth";
@@ -14,6 +14,8 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
+import { ShareButton } from "@/components/share-button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Pagination } from "@/components/ui/pagination";
 import {
   fetchPostCommentPageLocation,
@@ -64,6 +66,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   // 작성자 여부. 서버 렌더(public)는 항상 false → 인증된 client refresh 결과를 반영한다.
   const [owned, setOwned] = useState(p.ownedByMe);
   const [deleting, setDeleting] = useState(false);
+  const confirm = useConfirm();
 
   // 새로고침·로그인/로그아웃 시 좋아요·북마크·소유 상태와 likes를 동기화한다.
   // identity 변경 시 사용자별 상태만 즉시 neutral(false), likes 숫자는 유지한다.
@@ -90,7 +93,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       router.push("/login");
       return;
     }
-    if (!confirm("이 게시글을 삭제할까요? 되돌릴 수 없습니다.")) return;
+    if (!(await confirm({ message: "이 게시글을 삭제할까요? 되돌릴 수 없습니다.", destructive: true, confirmLabel: "삭제" }))) return;
     setDeleting(true);
     try {
       await apiDeleteVoid(`/api/posts/${p.id}`);
@@ -344,7 +347,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       return;
     }
     if (deletingCommentIdsRef.current.has(commentId)) return;
-    if (!confirm("이 댓글을 삭제할까요?")) return;
+    if (!(await confirm({ message: "이 댓글을 삭제할까요?", destructive: true, confirmLabel: "삭제" }))) return;
 
     deletingCommentIdsRef.current.add(commentId);
     setDeletingCommentIds(new Set(deletingCommentIdsRef.current));
@@ -704,9 +707,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 >
                   <MessageCircle size={14} /> {commentCount}
                 </button>
-                <button className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]" style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                  <Share2 size={14} />
-                </button>
+                <ShareButton
+                  title={p.text.slice(0, 80)}
+                  className="flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px]"
+                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                />
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   onClick={onBookmark}

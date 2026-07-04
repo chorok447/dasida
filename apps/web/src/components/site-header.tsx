@@ -9,18 +9,10 @@ import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { getSessionId } from "@/lib/auth";
 import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
+import { MAIN_NAV_ITEMS } from "@/lib/nav-items";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
 const PROTECTED_PREFIXES = ["/posts/new", "/campaigns/new", "/mypage", "/profile/edit"];
-
-// href가 있으면 링크, 없으면 아직 미구현 페이지(비활성 표시).
-const items: { label: string; href?: string }[] = [
-  { label: "홈", href: "/" },
-  { label: "피드", href: "/feed" },
-  { label: "캠페인", href: "/campaigns" },
-  { label: "마이페이지", href: "/mypage" },
-  { label: "로고" },
-];
 
 export function SiteHeader() {
   const { theme } = useTheme();
@@ -60,9 +52,9 @@ export function SiteHeader() {
   }, [token]);
 
   const onLogout = () => {
-    logout();
-    // 인증이 필요한 페이지에 있었다면 피드로 보내고, 일반 페이지면 그대로 둔다.
-    if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) router.push("/feed");
+    void logout().finally(() => {
+      if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) router.push("/feed");
+    });
   };
 
   return (
@@ -79,9 +71,9 @@ export function SiteHeader() {
           <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
           <span className="hidden text-[10px] tracking-[0.3em] opacity-90 sm:inline">UPCYCLE</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-1">
-          {items.map((it) => {
-            const isActive = it.href === pathname;
+        <nav className="hidden md:flex items-center gap-1" aria-label="주요 메뉴">
+          {MAIN_NAV_ITEMS.map((it) => {
+            const isActive = pathname === it.href || (it.href !== "/" && pathname.startsWith(it.href));
             const className = "relative rounded-lg px-4 py-2 text-[14px] transition-opacity hover:opacity-100";
             const style = { color: dark ? "#f9f7f2" : "#1c4044", opacity: isActive ? 1 : 0.7 };
             const dot = isActive && (
@@ -91,15 +83,11 @@ export function SiteHeader() {
                 style={{ background: "#7dd3a3" }}
               />
             );
-            return it.href ? (
-              <Link key={it.label} href={it.href} className={className} style={style}>
+            return (
+              <Link key={it.label} href={it.href} className={className} style={style} aria-current={isActive ? "page" : undefined}>
                 {it.label}
                 {dot}
               </Link>
-            ) : (
-              <span key={it.label} className={`${className} cursor-default`} style={{ ...style, opacity: 0.4 }}>
-                {it.label}
-              </span>
             );
           })}
         </nav>

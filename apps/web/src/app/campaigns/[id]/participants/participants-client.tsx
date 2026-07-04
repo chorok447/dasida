@@ -10,6 +10,7 @@ import { apiGet, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   removeCampaignParticipant,
   statusMeta,
@@ -55,6 +56,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
   const [retry, setRetry] = useState(0);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const confirm = useConfirm();
   const identity = `${id}:${token ?? "anonymous"}:${page}:${retry}`;
   const [loadState, setLoadState] = useState<LoadState>({ identity: "", kind: "loading" });
   const currentLoad: LoadState = loadState.identity === identity
@@ -129,9 +131,11 @@ export default function ParticipantsClient({ id }: { id: string }) {
   const removeParticipant = async (participantId: string) => {
     if (requestInFlightRef.current || removingId) return;
     if (
-      !window.confirm(
-        "이 참가자를 캠페인에서 제외할까요?\n제외된 사용자는 다시 참여할 수 있습니다.",
-      )
+      !(await confirm({
+        message: "이 참가자를 캠페인에서 제외할까요?\n제외된 사용자는 다시 참여할 수 있습니다.",
+        destructive: true,
+        confirmLabel: "제외",
+      }))
     ) {
       return;
     }

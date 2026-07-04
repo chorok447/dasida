@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Pencil, Trash2, Users, Loader2, LogIn, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, FileText, Pencil, Trash2, Users, Loader2, LogIn, CheckCircle2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
@@ -16,6 +16,8 @@ import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
+import { ShareButton } from "@/components/share-button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CampaignComments } from "./campaign-comments";
 
 type Tab = "content" | "comments";
@@ -94,18 +96,12 @@ function HeaderCard({ c }: { c: Campaign }) {
               </h1>
               <div className="flex gap-2 flex-shrink-0">
                 <ReportButton targetType="CAMPAIGN" targetId={c.id} ownedByMe={c.ownedByMe} className="!h-9 !px-3" />
-                <button
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: "#ed5c48" }}
-                >
-                  <Heart size={16} />
-                </button>
-                <button
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
+                <ShareButton
+                  title={c.title}
+                  text={c.summary}
+                  className="flex h-9 w-9 items-center justify-center rounded-full"
                   style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
-                >
-                  <Share2 size={16} />
-                </button>
+                />
               </div>
             </div>
 
@@ -443,6 +439,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const deletingRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
+  const confirm = useConfirm();
 
   const selectTab = (next: Tab) => {
     setTab(next);
@@ -516,7 +513,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       router.push("/login");
       return;
     }
-    if (!confirm("캠페인 참여를 취소할까요?\n모집 마감 후에는 취소할 수 없습니다.")) return;
+    if (!(await confirm({ message: "캠페인 참여를 취소할까요?\n모집 마감 후에는 취소할 수 없습니다." }))) return;
 
     const requestToken = getSessionId();
     if (!requestToken) return;
@@ -557,8 +554,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     }
 
     const confirmed = target === "open"
-      ? confirm("캠페인 모집을 시작할까요?")
-      : confirm("모집을 마감할까요? 다시 시작할 수 없습니다.");
+      ? await confirm({ message: "캠페인 모집을 시작할까요?" })
+      : await confirm({ message: "모집을 마감할까요? 다시 시작할 수 없습니다.", destructive: true });
     if (!confirmed) return;
 
     const requestToken = getSessionId();
@@ -598,7 +595,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       router.push("/login");
       return;
     }
-    if (!confirm("이 캠페인을 삭제할까요?\n삭제한 캠페인은 복구할 수 없습니다.")) return;
+    if (!(await confirm({ message: "이 캠페인을 삭제할까요?\n삭제한 캠페인은 복구할 수 없습니다.", destructive: true, confirmLabel: "삭제" }))) return;
 
     const requestToken = getSessionId();
     if (!requestToken) return;

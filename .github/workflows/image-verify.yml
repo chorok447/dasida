@@ -1,0 +1,56 @@
+name: Image Verify
+
+# main 대상 PR: Docker image build 검증만(push=false). Docker Hub login 없음.
+# production secret 을 사용하지 않는다. 실제 push 는 cd.yml(main push CI 성공 후).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image-verify:
+    name: ${{ matrix.app }} image
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - app: api
+            context: apps/api
+            file: apps/api/Dockerfile.prod
+            build-args: ""
+          - app: web
+            context: .
+            file: apps/web/Dockerfile.prod
+            build-args: NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://ci-build-placeholder.invalid' }}
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME || 'dasida-ci-placeholder' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: docker.io/${{ env.DOCKERHUB_USERNAME }}/dasida-${{ matrix.app }}
+          tags: type=sha,prefix=sha-,format=short
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build-args }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

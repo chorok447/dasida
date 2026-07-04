@@ -10,12 +10,12 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="fixed bottom-6 right-6 z-50 w-16 h-9 rounded-full p-1 backdrop-blur-md border transition-colors"
+      className="fixed bottom-20 right-6 z-50 h-9 w-16 rounded-full border p-1 backdrop-blur-md transition-colors md:bottom-6"
       style={{
         background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
         borderColor: dark ? "rgba(255,255,255,0.25)" : "rgba(28,64,68,0.2)",
       }}
-      aria-label="Toggle theme"
+      aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
     >
       <motion.div
         animate={{ x: dark ? 0 : 28 }}

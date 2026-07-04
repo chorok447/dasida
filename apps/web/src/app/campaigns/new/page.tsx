@@ -12,6 +12,7 @@ import {
   CampaignComposeSubmitButton,
   useCampaignComposeDraft,
 } from "@/components/campaign-compose-form";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FallbackImage } from "@/components/fallback-image";
 import {
   DEFAULT_CAMPAIGN_COMPOSE_VALUES,
@@ -47,6 +48,7 @@ export default function CampaignCreatePage() {
   const [values, setValues] = useState<CampaignComposeValues>(DEFAULT_CAMPAIGN_COMPOSE_VALUES);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<CampaignComposeField, string>>>({});
+  const confirm = useConfirm();
 
   const { draftSaved, clearDraft } = useCampaignComposeDraft(values, (draft) => {
     if (restoredRef.current) return;
@@ -71,10 +73,10 @@ export default function CampaignCreatePage() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [values]);
 
-  const applyTemplate = (template: CampaignTemplate) => {
+  const applyTemplate = async (template: CampaignTemplate) => {
     if (
       draftHasContent(values) &&
-      !window.confirm("작성 중인 내용이 있습니다. 템플릿으로 덮어쓸까요? (일정은 유지됩니다)")
+      !(await confirm({ message: "작성 중인 내용이 있습니다. 템플릿으로 덮어쓸까요? (일정은 유지됩니다)" }))
     ) {
       return;
     }

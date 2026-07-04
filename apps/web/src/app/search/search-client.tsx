@@ -18,6 +18,7 @@ import { ListEmptyState } from "@/components/list-empty-state";
 import { SearchField } from "@/components/search-field";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
+import { PageShell } from "@/components/page-shell";
 import { StaggerItem } from "@/components/scroll-reveal";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
@@ -37,6 +38,7 @@ import { clearSession, getSessionId } from "@/lib/auth";
 import { progressPercent } from "@/lib/progress";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
+import { useCanonicalUrl, parsePageParam } from "@/lib/use-url-query";
 
 type SearchType = "all" | "campaigns" | "posts";
 type SearchSort = "latest" | "popular" | "deadline";
@@ -75,9 +77,7 @@ function parseSort(value: string | null, type: SearchType): SearchSort {
 }
 
 function parsePage(value: string | null): number {
-  if (value === null) return 0;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+  return parsePageParam(value);
 }
 
 function parseRecruitState(value: string | null): CampaignRecruitState | null {
@@ -294,9 +294,7 @@ export default function SearchClient() {
   const currentHref = searchParams.toString() ? `/search?${searchParams.toString()}` : "/search";
   const dateFilterError = campaignDateRangeError(urlState);
 
-  useEffect(() => {
-    if (currentHref !== canonicalHref) router.replace(canonicalHref, { scroll: false });
-  }, [canonicalHref, currentHref, router]);
+  useCanonicalUrl(canonicalHref, currentHref);
 
   const requestIdentity = JSON.stringify([token, urlState, retryTick]);
   const [resultState, setResultState] = useState<ResultState>({
@@ -437,15 +435,8 @@ export default function SearchClient() {
   });
 
   return (
-    <section
-      className="relative min-h-screen overflow-hidden px-5 pb-20 pt-28 transition-colors sm:px-6 sm:pt-32"
-      style={{ backgroundImage: dark ? "linear-gradient(180deg,#0f1f22,#1c4044)" : "linear-gradient(180deg,#f9f7f2,#e7dfcb)" }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-20">
-        <div className="absolute left-1/3 top-16 h-[520px] w-[520px] rounded-full bg-[#7dd3a3] blur-[150px]" />
-      </div>
-
-      <div className="relative mx-auto max-w-6xl">
+    <PageShell paddingClassName="relative min-h-screen overflow-hidden px-5 pb-20 pt-28 sm:px-6 sm:pt-32" orb="left">
+      <div className="mx-auto max-w-6xl">
         <div className="mb-8 text-center sm:mb-10">
           <p className="mb-3 text-[11px] uppercase tracking-[0.4em]" style={{ color: dark ? "#7dd3a3" : "#1c4044" }}>Search</p>
           <h1 className="text-[36px] sm:text-[52px]" style={{ fontFamily: "'Black Han Sans', sans-serif", color: dark ? "#f9f7f2" : "#0f1f22" }}>
@@ -695,6 +686,6 @@ export default function SearchClient() {
           </p>
         ) : null}
       </div>
-    </section>
+    </PageShell>
   );
 }

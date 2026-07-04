@@ -7,6 +7,7 @@ import { Avatar } from "@/components/avatar";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   fetchCampaignCommentPageLocation,
   updateCampaignComment,
@@ -231,6 +232,7 @@ export function CampaignComments({
   const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
   const [editError, setEditError] = useState("");
   const [mutationError, setMutationError] = useState("");
+  const confirm = useConfirm();
   const generationRef = useRef(0);
   const targetGenerationRef = useRef(0);
   const targetIdentity = JSON.stringify([campaignId, targetCommentId]);
@@ -436,7 +438,7 @@ export function CampaignComments({
       router.push("/login");
       return;
     }
-    if (!confirm("이 댓글을 삭제할까요?")) return;
+    if (!(await confirm({ message: "이 댓글을 삭제할까요?", destructive: true, confirmLabel: "삭제" }))) return;
 
     deletingRef.current.add(comment.id);
     setDeletingIds((current) => new Set(current).add(comment.id));

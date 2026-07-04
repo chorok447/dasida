@@ -11,7 +11,6 @@ import {
   MessageCircle,
   RefreshCw,
   Send,
-  Share2,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -23,6 +22,8 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
+import { ShareButton } from "@/components/share-button";
+import { PageShell } from "@/components/page-shell";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { SearchField } from "@/components/search-field";
@@ -362,9 +363,10 @@ function PostCard({
               <button onClick={toggleComments} className="flex items-center gap-1">
                 <MessageCircle size={14} /> {commentCount}
               </button>
-              <button className="flex items-center gap-1" aria-label="공유하기">
-                <Share2 size={14} />
-              </button>
+              <ShareButton
+                title={p.text.slice(0, 80)}
+                className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors"
+              />
               <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
             </div>
             <motion.button
@@ -487,7 +489,6 @@ function SideHot({ campaigns }: { campaigns: Campaign[] }) {
 function SideRecommend() {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const users = ["초록도시", "원두모음", "리메이크목공방", "보틀앤캔들"];
   return (
     <div
       className="rounded-2xl border p-5"
@@ -496,25 +497,15 @@ function SideRecommend() {
         borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
       }}
     >
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-3">
         <Sparkles size={14} style={{ color: "#7dd3a3" }} />
         <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-          이런 분 어때요
+          크리에이터 추천
         </h3>
       </div>
-      <div className="space-y-3">
-        {users.map((n) => (
-          <div key={n} className="flex items-center gap-3">
-            <Avatar name={n} />
-            <div className="flex-1 text-[13px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-              {n}
-            </div>
-            <button className="text-[12px] px-3 py-1 rounded-full" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
-              팔로우
-            </button>
-          </div>
-        ))}
-      </div>
+      <p className="text-[13px] leading-relaxed opacity-65" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+        팔로우와 추천 크리에이터 기능은 준비 중이에요.
+      </p>
     </div>
   );
 }
@@ -639,20 +630,8 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   }, [queryIdentity, requestIdentity, searchPath, token]);
 
   return (
-    <section
-      className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
-      style={{
-        position: "relative",
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-20 left-1/3 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
-      <div className="relative mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+    <PageShell paddingClassName="relative min-h-screen pt-28 pb-20 px-6 overflow-hidden" orb="left">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <main>
           <button
             type="button"
@@ -789,6 +768,6 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           </div>
         </aside>
       </div>
-    </section>
+    </PageShell>
   );
 }

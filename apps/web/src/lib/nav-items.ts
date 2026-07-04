@@ -1,0 +1,7 @@
+export const MAIN_NAV_ITEMS = [
+  { label: "홈", href: "/" },
+  { label: "피드", href: "/feed" },
+  { label: "캠페인", href: "/campaigns" },
+  { label: "마이페이지", href: "/mypage" },
+  { label: "로고", href: "/logos" },
+] as const;
