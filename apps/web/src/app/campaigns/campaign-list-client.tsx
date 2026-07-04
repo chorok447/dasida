@@ -22,7 +22,6 @@ import {
   readCampaignDateRangeFilters,
   type Campaign,
   type CampaignDateRangeField,
-  type CampaignDateRangeFilters,
   type CampaignRecruitState,
   type CampaignSearchResponse,
   type CampaignSearchSort,
@@ -32,7 +31,7 @@ import { clearSession, getSessionId } from "@/lib/auth";
 import { ApiError, apiGet } from "@/lib/api";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
-import { useCanonicalUrl, parsePageParam } from "@/lib/use-url-query";
+import { useCanonicalUrl, parsePageParam, buildCampaignsHref, type CampaignListUrlState } from "@/lib/use-url-query";
 import { progressPercent } from "@/lib/progress";
 import { PageShell } from "@/components/page-shell";
 
@@ -43,14 +42,7 @@ type SearchState = {
   response: CampaignSearchResponse | null;
   errorMessage: string | null;
 };
-type UrlState = CampaignDateRangeFilters & {
-  query: string;
-  filter: Filter;
-  recruitState: CampaignRecruitState | null;
-  availableOnly: boolean;
-  sort: CampaignSearchSort;
-  page: number;
-};
+type UrlState = CampaignListUrlState;
 
 const FILTER_ITEMS: { id: Filter; label: string }[] = [
   { id: "all", label: "전체" },
@@ -423,18 +415,6 @@ function parseRecruitState(value: string | null): CampaignRecruitState | null {
 
 function parseSort(value: string | null): CampaignSearchSort {
   return value === "popular" || value === "deadline" ? value : "latest";
-}
-
-function buildCampaignsHref(state: UrlState): string {
-  const params = new URLSearchParams();
-  if (state.query) params.set("q", state.query);
-  if (state.filter !== "all") params.set("status", state.filter);
-  if (state.recruitState) params.set("recruitState", state.recruitState);
-  if (state.availableOnly) params.set("availableOnly", "true");
-  appendCampaignDateRangeFilters(params, state);
-  params.set("sort", state.sort);
-  params.set("page", state.page.toString());
-  return `/campaigns?${params.toString()}`;
 }
 
 export default function CampaignListClient() {
