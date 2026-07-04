@@ -19,9 +19,13 @@ function subscribe(callback: () => void) {
   };
 }
 
-/** 서버의 쿠키 만료·토큰 무효화(denylist)는 best-effort, 로컬 마커 제거는 즉시. */
-function logout() {
-  void apiPost("/api/auth/logout", {}).catch(() => {});
+/** 서버 쿠키/denylist 정리 후 로컬 마커 제거. 쿠키 만료 응답을 기다린 뒤 clearSession 한다. */
+async function logout() {
+  try {
+    await apiPost("/api/auth/logout", {});
+  } catch {
+    // 네트워크/401 이라도 로컬 UI는 로그아웃 상태로 맞춘다.
+  }
   clearSession();
 }
 

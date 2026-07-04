@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setSession } from "./auth";
 import { useAuthSession } from "./use-auth-session";
 
-// logout 은 서버 쿠키/denylist 정리를 위해 POST /api/auth/logout 을 fire-and-forget 호출한다.
+// logout 은 서버 쿠키/denylist 정리를 위해 POST /api/auth/logout 을 await 한다.
 vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api")>();
   return { ...actual, apiPost: vi.fn().mockResolvedValue({ loggedOut: true }) };
@@ -41,12 +41,14 @@ describe("useAuthSession", () => {
     expect(result.current.sessionId).not.toBe(first);
   });
 
-  it("logout 하면 로컬 마커가 지워지고 서버 로그아웃을 호출한다", () => {
+  it("logout 하면 로컬 마커가 지워지고 서버 로그아웃을 호출한다", async () => {
     setSession("홍길동");
     const { result } = renderHook(() => useAuthSession());
     expect(result.current.isLoggedIn).toBe(true);
 
-    act(() => result.current.logout());
+    await act(async () => {
+      await result.current.logout();
+    });
     expect(result.current.isLoggedIn).toBe(false);
     expect(result.current.name).toBeNull();
     expect(localStorage.getItem("dasida.session")).toBeNull();
