@@ -11,7 +11,7 @@
 | main PR auto-merge | **비활성화** (수동 승인 후 merge) |
 | Production Docker image (Docker Hub) | **push 완료** — `chorok446/dasida-api|web` (`main`, `sha-af5082c`) |
 | Docker Hub pull/smoke (로컬) | **검증 완료** — 상세 [container-images.md](./container-images.md#docker-hub-검증-main-push-2026-07-03) |
-| CD / 실제 서버 배포 | **미구현** (`.github/workflows/cd.yml` placeholder) |
+| CD / 실제 서버 배포 | **미구현** — `cd.yml` 은 main push CI 성공 시 image push 까지만 수행 |
 | `NEXT_PUBLIC_API_URL` (Web image) | **placeholder** — 운영 URL 확정·재빌드 필요 |
 | prod Redis store (rate limit / denylist) | **설정 완료** — prod 는 redis store 고정, host env 필수(fail-fast). Redis 인프라 provisioning 은 별도 ([redis-security-store-policy.md](./redis-security-store-policy.md)) |
 | `application-prod.yml` | OpenAPI 비활성·CORS 주입·인증 쿠키 `Secure` 강제·Redis store 고정(`redis`) 정의. DB/Redis/JWT **secret 값은 없음**(env 주입) |
@@ -61,7 +61,7 @@ prod 프로파일은 두 store 모두 **redis 로 고정**됐고, `SPRING_DATA_R
 | `NEXT_PUBLIC_API_URL` | **Repository Variable** (CI) + **build arg** (image) | 운영 API 베이스 URL. Web image는 **빌드 시** bake-in | [ ] **미등록 — 현재 image 는 placeholder** |
 | `NODE_ENV` | env | `production` (Dockerfile.prod 기본) | [ ] |
 
-CI: `container-images.yml` 은 `vars.NEXT_PUBLIC_API_URL` 을 Web build에 사용한다. 미설정 시 placeholder로 **build 검증만** 통과한다. **2026-07-03 main push Web image 도 placeholder 상태** — 운영 URL 확정 후 Variable 등록 + main 재빌드 필요.
+CI: `cd.yml` 은 `vars.NEXT_PUBLIC_API_URL` 을 Web build에 사용한다. 미설정 시 placeholder로 **build 검증만** 통과한다. **2026-07-03 main push Web image 도 placeholder 상태** — 운영 URL 확정 후 Variable 등록 + main 재빌드 필요.
 
 ### 1-4. GitHub Actions (CI/CD)
 
@@ -146,9 +146,8 @@ main merge **전** GitHub에서 확인:
 
 | Gate | 기대 | 체크 |
 |------|------|------|
-| develop → main PR checks | CI web/api **pass** | [x] |
-| Container Images | api/web image **build pass**, `push=false` | [x] |
-| CD deploy plan | dry-run **pass** | [x] |
+| develop → main PR checks | CI web/api/e2e **pass** | [x] |
+| CD image verify | api/web image **build pass**, `push=false` | [x] |
 | CI auto-merge (main PR) | **skipped** | [x] |
 | CodeRabbit / review | blocking comment 없음 | [x] |
 | **이 체크리스트 1~5절** | 운영 준비 완료 또는 **의도적 보류 사유** 문서화 | [ ] 일부 미완(deploy 전) |

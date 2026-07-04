@@ -64,7 +64,7 @@ deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `doc
 
 | Secret 이름 | 용도 | 주입 위치 |
 |-------------|------|-----------|
-| `DOCKERHUB_TOKEN` | Docker Hub access token | `container-images.yml` main push login |
+| `DOCKERHUB_TOKEN` | Docker Hub access token | `cd.yml` main push login |
 
 `DOCKERHUB_USERNAME` 은 Repository **Variable**(비밀 아님). main PR build-only 에서는 token 없이 build 검증만 한다.
 
@@ -82,8 +82,8 @@ deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `doc
 
 | Variable 이름 | 용도 | 사용처 |
 |---------------|------|--------|
-| `DOCKERHUB_USERNAME` | Docker Hub namespace (실제 계정명) | `container-images.yml` image name; main push 전 등록 |
-| `NEXT_PUBLIC_API_URL` | 운영 API URL(Web **build arg**) | `container-images.yml` Web build; 미설정 시 CI placeholder |
+| `DOCKERHUB_USERNAME` | Docker Hub namespace (실제 계정명) | `cd.yml` image name; main push 전 등록 |
+| `NEXT_PUBLIC_API_URL` | 운영 API URL(Web **build arg**) | `cd.yml` Web build; 미설정 시 CI placeholder |
 | `DASIDA_IMAGE_TAG` | (정책) 배포 pin tag | **서버 `.env.prod`** — GitHub Variable 필수 아님. `sha-<shortsha>` pin 권장, `main` tag는 추적용만 |
 
 `DASIDA_IMAGE_TAG` 는 [deployment-strategy.md](./deployment-strategy.md) 와 [`.env.prod.example`](../../../../deploy/.env.prod.example) 에서 **sha-\*** pin 을 기본으로 한다. Repository Variable 로 고정할 수도 있으나, **rollback 단위는 배포 시점의 sha** 이므로 서버 env 또는 deploy job input 이 더 적합하다.
@@ -123,13 +123,12 @@ deploy job 은 **서버에 `.env.prod`를 쓰거나**, job이 SSH로 원격 `doc
 ```mermaid
 flowchart TB
   subgraph pr [main PR]
-    A[CI web/api] --> B[Container build push=false]
-    C[CD deploy plan dry-run]
+    A[CI web/api/e2e]
+    B[CD image build push=false]
     D[production secrets 금지]
   end
   subgraph push [main push]
-    E[Docker Hub push sha + main]
-    F[CD deploy placeholder]
+    E[CI 성공] --> F[Docker Hub push sha + main]
     G[실제 deploy 없음]
   end
   subgraph future [향후 deploy]

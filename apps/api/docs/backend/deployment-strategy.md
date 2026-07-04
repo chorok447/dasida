@@ -38,7 +38,7 @@
 ### 아직 구현되지 않은 것 (TODO)
 
 - **예시 template**: [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) + [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) (single VM) + [`deploy/.env.prod.example`](../../../../deploy/.env.prod.example) — **실제 서버 deploy/CD 는 아직 없음.**
-- CD workflow의 실제 deploy step — [`.github/workflows/cd.yml`](../../../../.github/workflows/cd.yml) placeholder
+- CD workflow의 실제 deploy step — [`.github/workflows/cd.yml`](../../../../.github/workflows/cd.yml) 은 image push 까지만 수행 (deploy step 은 provider 확정 후 추가)
 - Docker Hub pull 인증(서버 credential) — **미설정**
 
 ---
