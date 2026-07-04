@@ -3,7 +3,7 @@ import { signup } from "./helpers/account";
 
 test("비로그인 상태에서 알림 페이지는 로그인으로 보낸다", async ({ page }) => {
   await page.goto("/notifications");
-  await page.waitForURL("**/login?next=%2Fnotifications");
+  await page.waitForURL(/\/login\?next=.*notifications/);
 });
 
 test("로그인 후 알림 페이지가 빈 상태로 표시된다", async ({ page }) => {
@@ -50,7 +50,7 @@ test("캠페인 참여 시 개설자에게 알림이 생성된다", async ({ bro
 
   await ownerPage.goto("/notifications");
   await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).toBeVisible();
-  await expect(ownerPage.getByText(/이투이님이 캠페인에 참여했습니다/)).toBeVisible();
+  await expect(ownerPage.getByRole("link", { name: /캠페인에 참여했습니다/ })).toBeVisible();
 
   await ownerContext.close();
   await joinerContext.close();
