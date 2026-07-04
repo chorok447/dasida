@@ -8,6 +8,7 @@ import { apiGet, apiPut, ApiError } from "@/lib/api";
 import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { PostComposeForm, PostComposeSubmitButton } from "@/components/post-compose-form";
+import { PageShell } from "@/components/page-shell";
 import {
   type Post,
   type PostComposeField,
@@ -158,16 +159,9 @@ export default function PostEditPage() {
   };
 
   const shell = (children: React.ReactNode) => (
-    <section
-      className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20 transition-colors"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
+    <PageShell paddingClassName="relative min-h-screen overflow-hidden px-6 pt-28 pb-20" orb="none">
       <div className="relative mx-auto max-w-2xl">{children}</div>
-    </section>
+    </PageShell>
   );
 
   const centerNote = (title: string, action?: React.ReactNode) =>

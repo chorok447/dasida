@@ -23,6 +23,7 @@ import {
   validateCampaignCompose,
 } from "@/data/campaigns";
 import { CAMPAIGN_TEMPLATES, type CampaignTemplate } from "@/data/campaign-templates";
+import { PageShell } from "@/components/page-shell";
 
 function draftHasContent(values: CampaignComposeValues): boolean {
   return (
@@ -140,18 +141,7 @@ export default function CampaignCreatePage() {
   };
 
   return (
-    <section
-      className="relative min-h-screen overflow-hidden px-6 pb-20 pt-28 transition-colors"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-20">
-        <div className="absolute right-1/4 top-40 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
+    <PageShell paddingClassName="relative min-h-screen overflow-hidden px-6 pb-20 pt-28" orb="right">
       <div className="relative mx-auto max-w-6xl">
         <button
           type="button"
@@ -288,6 +278,6 @@ export default function CampaignCreatePage() {
           </div>
         </div>
       </div>
-    </section>
+    </PageShell>
   );
 }

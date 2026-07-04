@@ -22,6 +22,7 @@ import {
   validatePostCompose,
 } from "@/data/posts";
 import { POST_TEMPLATES, type PostTemplate } from "@/data/post-templates";
+import { PageShell } from "@/components/page-shell";
 
 const EMPTY_VALUES: PostComposeValues = {
   text: "",
@@ -160,19 +161,7 @@ export default function PostCreatePage() {
   };
 
   return (
-    <section
-      className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20 transition-colors"
-      style={{
-        position: "relative",
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-20">
-        <div className="absolute top-32 left-1/4 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
+    <PageShell paddingClassName="relative min-h-screen overflow-hidden px-6 pt-28 pb-20" orb="left">
       <div className="relative mx-auto max-w-6xl">
         <div className="mb-10 text-center">
           <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
@@ -353,6 +342,6 @@ export default function PostCreatePage() {
           </div>
         </div>
       </div>
-    </section>
+    </PageShell>
   );
 }

@@ -17,6 +17,7 @@ import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
 import { ShareButton } from "@/components/share-button";
+import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CampaignComments } from "./campaign-comments";
 
@@ -630,19 +631,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   };
 
   return (
-    <section
-      className="relative min-h-screen pt-28 pb-20 px-6 transition-colors overflow-hidden"
-      style={{
-        position: "relative",
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-32 left-1/4 w-[500px] h-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
+    <PageShell paddingClassName="relative min-h-screen pt-28 pb-20 px-6 overflow-hidden" orb="left">
       <div className="max-w-5xl mx-auto relative">
         <button
           onClick={() => router.push("/campaigns")}
@@ -711,6 +700,6 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
           )}
         </div>
       </div>
-    </section>
+    </PageShell>
   );
 }

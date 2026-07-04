@@ -19,6 +19,7 @@ import {
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { StatePanel } from "@/components/ui/state-panel";
+import { PageShell } from "@/components/page-shell";
 
 function profileUpdateError(error: ApiError): string {
   const detail = apiErrorMessage(error, "");
@@ -290,23 +291,10 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
 }
 
 export default function ProfileEditPage() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const { profile, loading, error, isLoggedIn, retry } = useCurrentUserProfile();
 
   return (
-    <section
-      className="relative min-h-screen overflow-hidden px-6 pb-20 pt-28 transition-colors sm:pt-32"
-      style={{
-        backgroundImage: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#f9f7f2,#e7dfcb)",
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-20">
-        <div className="absolute right-1/4 top-32 h-[500px] w-[500px] rounded-full bg-[#7dd3a3] blur-[140px]" />
-      </div>
-
+    <PageShell paddingClassName="relative min-h-screen overflow-hidden px-6 pb-20 pt-28 sm:pt-32" orb="right">
       <div className="relative">
         {/* loading을 먼저 확인: hydration 전(로그인 미확정)에 비로그인 패널이 깜빡이지 않도록. */}
         {loading ? (
@@ -333,6 +321,6 @@ export default function ProfileEditPage() {
           <ProfileEditForm key={`${profile.id}:${profile.name}:${profile.profileImageUrl ?? ""}`} profile={profile} />
         )}
       </div>
-    </section>
+    </PageShell>
   );
 }
