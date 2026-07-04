@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Bookmark, Heart, MessageCircle, Send } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -28,8 +27,6 @@ export function FeedPostCard({
   identity: string | null;
   onOpen: () => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -169,10 +166,10 @@ export function FeedPostCard({
         className="rounded-2xl border overflow-hidden shadow-[0_20px_50px_-25px_rgba(0,0,0,0.4)]"
       >
         <div className="flex items-center gap-3 p-4">
-          <Avatar name={p.author.name} verified={p.author.verified} />
+          <Avatar name={p.author.name} verified={p.author.verified} src={p.author.profileImageUrl ?? undefined} />
           <div className="flex-1">
-            <div style={{ color: dark ? "#f9f7f2" : "#0f1f22", fontSize: 14 }}>{p.author.name}</div>
-            <div className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{p.time}</div>
+            <div style={{ color: "var(--foreground)", fontSize: 14 }}>{p.author.name}</div>
+            <div className="text-[11px] opacity-60" style={{ color: "var(--foreground)" }}>{p.time}</div>
           </div>
         </div>
 
@@ -189,16 +186,16 @@ export function FeedPostCard({
         )}
 
         <div className="p-4 space-y-3">
-          <p style={{ color: dark ? "#f9f7f2" : "#0f1f22", fontSize: 14, lineHeight: 1.6 }}>{p.text}</p>
+          <p style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }}>{p.text}</p>
           <div className="flex flex-wrap gap-1.5">
             {p.tags.map((t) => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: dark ? "rgba(125,211,163,0.12)" : "rgba(125,211,163,0.2)", color: dark ? "#7dd3a3" : "#1c4044" }}>
+              <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>
                 {t}
               </span>
             ))}
           </div>
-          <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
-            <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+          <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+            <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
               <motion.button whileTap={{ scale: 0.85 }} onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
                 <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
               </motion.button>
@@ -217,18 +214,18 @@ export function FeedPostCard({
               disabled={bookmarking || refreshing}
               aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
               className="transition-colors disabled:opacity-50"
-              style={{ color: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}
+              style={{ color: bookmarked ? "#7dd3a3" : "var(--foreground-muted)" }}
             >
               <Bookmark size={14} fill={bookmarked ? "#7dd3a3" : "transparent"} />
             </motion.button>
           </div>
 
           {showComments && (
-            <div className="pt-3 border-t space-y-3" style={{ borderColor: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}>
+            <div className="pt-3 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
               {commentsError ? (
                 <p className="text-[12px]" style={{ color: "#ed5c48" }}>{commentsError}</p>
               ) : comments.length === 0 ? (
-                <p className="text-[12px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                <p className="text-[12px] opacity-50" style={{ color: "var(--foreground)" }}>
                   {commentsLoaded ? "첫 댓글을 남겨보세요." : "댓글을 불러오는 중…"}
                 </p>
               ) : (
@@ -241,10 +238,10 @@ export function FeedPostCard({
                       src={c.author.profileImageUrl ?? undefined}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                      <div className="text-[12px]" style={{ color: "var(--foreground)" }}>
                         {c.author.name} <span className="opacity-50">· {c.time}</span>
                       </div>
-                      <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}>{c.text}</p>
+                      <p className="text-[13px]" style={{ color: "var(--border)" }}>{c.text}</p>
                     </div>
                   </div>
                 ))
@@ -258,15 +255,15 @@ export function FeedPostCard({
                     placeholder="댓글 달기…"
                     maxLength={MAX_COMMENT_LENGTH}
                     className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
-                    style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.04)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                    style={{ background: "var(--border)", color: "var(--foreground)" }}
                   />
                   <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
                     <Send size={14} />
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 text-center" style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}>
-                  <p className="text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+                <div className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 text-center" style={{ background: "var(--border)" }}>
+                  <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
                     로그인해야 댓글을 작성할 수 있어요.
                   </p>
                   <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-4 py-1.5 text-[12px] text-[#0f1f22]">

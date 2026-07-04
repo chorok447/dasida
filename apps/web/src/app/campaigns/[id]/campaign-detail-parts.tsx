@@ -135,7 +135,7 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
-              <Avatar name={c.author.name} verified={c.author.verified} />
+              <Avatar name={c.author.name} verified={c.author.verified} src={c.author.profileImageUrl ?? undefined} />
               <span style={{ color: "var(--foreground)" }}>{c.author.name}</span>
               <span className="text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>· 캠페인 주최자</span>
             </div>

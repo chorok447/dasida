@@ -27,4 +27,9 @@ interface PostRepository : JpaRepository<Post, String> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Post p set p.author.name = :name, p.author.verified = false, p.author.profileImageUrl = null where p.authorUserId = :userId")
     fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
+
+    /** 프로필 변경 시 기존 작성물의 author snapshot(name·이미지)을 최신 값으로 맞춘다. verified 는 유지. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.author.name = :name, p.author.profileImageUrl = :imageUrl where p.authorUserId = :userId")
+    fun syncAuthorProfile(@Param("userId") userId: Long, @Param("name") name: String, @Param("imageUrl") imageUrl: String?): Int
 }
