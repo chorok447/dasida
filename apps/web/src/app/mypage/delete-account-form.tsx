@@ -19,7 +19,7 @@ function deleteAccountError(error: ApiError): string {
   return detail || "계정 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.";
 }
 
-export function DeleteAccountForm() {
+export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -87,7 +87,10 @@ export function DeleteAccountForm() {
   };
 
   return (
-    <section className="mx-auto mt-4 max-w-5xl px-6 sm:px-8" aria-labelledby="delete-account-title">
+    <section
+      className={embedded ? undefined : "mx-auto mt-4 max-w-5xl px-6 sm:px-8"}
+      aria-labelledby="delete-account-title"
+    >
       <details
         className="rounded-3xl border border-red-500/25 bg-red-500/5 p-5 sm:p-7"
         onToggle={() => setError("")}

@@ -27,7 +27,7 @@ data class AuthResponse(val token: String, val name: String, val verified: Boole
  * 토큰 발급 내부 결과. refreshToken 은 응답 body 에 노출하지 않고 httpOnly 쿠키로만 전달한다
  * (JS 접근 차단 — body 에 실으면 localStorage 저장 유혹이 생겨 쿠키 전환 의미가 없어진다).
  */
-data class IssuedTokens(val response: AuthResponse, val refreshToken: String)
+data class IssuedTokens(val response: AuthResponse, val refreshToken: String, val userId: Long)
 
 @Schema(description = "내 프로필")
 data class UserProfileResponse(
@@ -79,3 +79,18 @@ data class DeleteAccountRequest(
 data class DeleteAccountResponse(val deleted: Boolean)
 
 data class LogoutResponse(val loggedOut: Boolean)
+
+data class AccessLogResponse(
+    val id: Long,
+    val ipAddress: String,
+    val os: String,
+    val accessedAt: String,
+)
+
+data class AccessLogPageResponse(
+    val content: List<AccessLogResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)

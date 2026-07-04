@@ -601,6 +601,27 @@ class AuthControllerTest(
     }
 
     @Test
+    fun `로그인 시 접속 기록이 남고 내 목록으로 조회된다`() {
+        savePasswordUser(email = "access@dasida.com")
+        val loginBody = mvc.post("/api/auth/login") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"access@dasida.com","password":"Current1!"}"""
+            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0)")
+            header("X-Forwarded-For", "203.0.113.50")
+        }.andExpect { status { isOk() } }
+            .andReturn().response.contentAsString
+        val token = objectMapper.readTree(loginBody).get("token").asText()
+
+        mvc.get("/api/auth/access-logs") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[0].ipAddress") { value("203.0.113.50") }
+            jsonPath("$.content[0].os") { value("Windows") }
+        }
+    }
+
+    @Test
     fun `틀린 비밀번호는 401`() {
         mvc.post("/api/auth/signup") {
             contentType = MediaType.APPLICATION_JSON

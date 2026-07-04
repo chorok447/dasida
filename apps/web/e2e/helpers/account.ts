@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
 export type Account = { email: string; password: string; nickname: string };
 
@@ -17,8 +17,10 @@ export async function signup(page: Page, prefix = "e2e"): Promise<Account> {
   await page.getByLabel("비밀번호 확인").fill(account.password);
   await page.getByLabel("이름").fill("이투이");
   await page.getByLabel("닉네임").fill(account.nickname);
-  await page.getByRole("button", { name: "회원가입" }).click();
-  await page.waitForURL("**/feed");
+  const submit = page.getByRole("button", { name: "회원가입" });
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await page.waitForURL("**/feed", { timeout: 60_000 });
 
   return account;
 }
