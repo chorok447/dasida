@@ -16,7 +16,7 @@ type ProfileState = {
 };
 
 export function useCurrentUserProfile() {
-  const { token } = useAuthSession();
+  const { token, hydrated } = useAuthSession();
   const [reloadTick, setReloadTick] = useState(0);
   const [state, setState] = useState<ProfileState>(() => ({
     identity: token,
@@ -91,7 +91,8 @@ export function useCurrentUserProfile() {
 
   return {
     profile: state.profile,
-    loading: !!token && state.status === "loading",
+    // hydration 전에는 로그인 여부가 미확정이므로 loading으로 취급해 비로그인 UI 깜빡임을 막는다.
+    loading: !hydrated || (!!token && state.status === "loading"),
     error: state.error,
     isLoggedIn: !!token,
     retry,

@@ -181,7 +181,7 @@ export default function NotificationsClient() {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const router = useRouter();
-  const { token, isLoggedIn } = useAuthSession();
+  const { token, isLoggedIn, hydrated } = useAuthSession();
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(0);
@@ -199,11 +199,10 @@ export default function NotificationsClient() {
   const requestIdentity = JSON.stringify([token, page, filter, retryTick]);
 
   // 비로그인은 로그인 페이지로(로그인 후 알림으로 복귀).
-  // isLoggedIn만 보면 직접 URL 진입 시 hydration 첫 렌더의 서버 스냅샷(비로그인)이 캡처되어
-  // 로그인 상태에서도 튕기므로, localStorage의 실제 토큰을 함께 확인한다.
+  // hydration 전에는 서버 스냅샷(비로그인)이라 로그인 여부가 미확정이므로 판단하지 않는다.
   useEffect(() => {
-    if (!isLoggedIn && !getToken()) router.replace("/login?next=/notifications");
-  }, [isLoggedIn, router]);
+    if (hydrated && !isLoggedIn) router.replace("/login?next=/notifications");
+  }, [hydrated, isLoggedIn, router]);
 
   // 검색 페이지와 동일한 stale 방어: generation + token 으로 늦은 응답이 최신을 덮지 못하게 한다.
   useEffect(() => {
@@ -358,7 +357,8 @@ export default function NotificationsClient() {
   const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
   const fg = dark ? "#f9f7f2" : "#0f1f22";
 
-  if (!isLoggedIn) {
+  // hydration 전에는 로그인 여부 미확정 → 아래 본문(로딩 상태)으로 렌더해 깜빡임을 막는다.
+  if (hydrated && !isLoggedIn) {
     return (
       <section className="min-h-screen flex items-center justify-center" style={{ color: fg }}>
         <p className="text-[14px] opacity-70">로그인 페이지로 이동합니다…</p>

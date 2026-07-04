@@ -189,7 +189,15 @@ export default function MyPageClient() {
       </div>
 
       <div className="relative pb-20">
-        {!isLoggedIn ? (
+        {/* loading을 먼저 확인: hydration 전(로그인 미확정)에 비로그인 패널이 깜빡이지 않도록. */}
+        {loading ? (
+          <div className="px-6 pt-32">
+            <StatePanel className="mx-auto min-h-72 max-w-3xl">
+              <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
+              <p>사용자 정보를 불러오는 중입니다.</p>
+            </StatePanel>
+          </div>
+        ) : !isLoggedIn ? (
           <div className="px-6 pt-32">
             <StatePanel className="mx-auto min-h-72 max-w-3xl">
               <LogIn size={30} className="text-[#7dd3a3]" />
@@ -197,13 +205,6 @@ export default function MyPageClient() {
               <Link href="/login" className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
                 로그인 페이지로 이동
               </Link>
-            </StatePanel>
-          </div>
-        ) : loading ? (
-          <div className="px-6 pt-32">
-            <StatePanel className="mx-auto min-h-72 max-w-3xl">
-              <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
-              <p>사용자 정보를 불러오는 중입니다.</p>
             </StatePanel>
           </div>
         ) : error || !profile ? (
