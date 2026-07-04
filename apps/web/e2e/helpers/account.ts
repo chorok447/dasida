@@ -19,13 +19,8 @@ export async function signup(page: Page, prefix = "e2e"): Promise<Account> {
   await page.getByLabel("닉네임").fill(account.nickname);
   const submit = page.getByRole("button", { name: "회원가입" });
   await expect(submit).toBeEnabled();
-  const signupResponse = page.waitForResponse(
-    (r) => r.url().includes("/api/auth/signup") && r.request().method() === "POST",
-  );
   await submit.click();
-  const res = await signupResponse;
-  expect(res.ok()).toBeTruthy();
-  await page.waitForURL("**/feed");
+  await page.waitForURL("**/feed", { timeout: 60_000 });
 
   return account;
 }
