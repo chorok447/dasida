@@ -58,6 +58,8 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.POST, "/api/notifications/**").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/reports/mine").authenticated()
                 it.requestMatchers(HttpMethod.POST, "/api/reports").authenticated()
+                it.requestMatchers(HttpMethod.POST, "/api/media").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 it.anyRequest().authenticated()
             }

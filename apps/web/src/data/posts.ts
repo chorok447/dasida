@@ -1,4 +1,5 @@
-// 게시물 데이터는 백엔드(GET /api/posts)가 source of truth. 여기엔 타입 + 마이페이지 page fetcher.
+import { richTextPlainLength } from "@/lib/rich-text-length";
+import { mergeRichBodyForEditor, splitRichBodyHtml } from "@/lib/rich-body-html";
 import { apiGet, apiPut } from "@/lib/api";
 import type { CommentPageLocationResponse } from "@/data/comments";
 
@@ -49,11 +50,12 @@ export function normalizePostImages(images: string[]): string[] {
 }
 
 export function validatePostCompose(values: PostComposeValues): PostComposeValidationResult {
-  const text = values.text.trim();
-  if (!text) {
+  const { html, images: inlineImages } = splitRichBodyHtml(values.text.trim());
+  const plainLength = richTextPlainLength(html);
+  if (plainLength === 0 && values.images.length === 0 && inlineImages.length === 0) {
     return { ok: false, message: "내용을 입력해주세요.", field: "text" };
   }
-  if (text.length > POST_MAX_TEXT_LENGTH) {
+  if (plainLength > POST_MAX_TEXT_LENGTH) {
     return {
       ok: false,
       message: `내용은 ${POST_MAX_TEXT_LENGTH}자 이하여야 합니다.`,
@@ -77,7 +79,7 @@ export function validatePostCompose(values: PostComposeValues): PostComposeValid
     };
   }
 
-  const images = normalizePostImages(values.images);
+  const images = normalizePostImages([...values.images, ...inlineImages]);
   if (images.length > POST_MAX_IMAGES) {
     return {
       ok: false,
@@ -96,11 +98,20 @@ export function validatePostCompose(values: PostComposeValues): PostComposeValid
   return {
     ok: true,
     payload: {
-      text,
+      text: html,
       images,
       tags,
       campaignId: values.campaign.trim() || null,
     },
+  };
+}
+
+export function postToComposeValues(post: Post): PostComposeValues {
+  return {
+    text: mergeRichBodyForEditor(post.text, post.images),
+    images: [],
+    tags: post.tags,
+    campaign: post.campaignId ?? "",
   };
 }
 

@@ -1,11 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 import { signup } from "./helpers/account";
+import { fillPostContent } from "./helpers/post-content";
 
 /** 새 글을 작성하고 마이페이지 '상세 보기'로 게시글 상세에 진입한 뒤 URL을 반환한다. */
 async function createPostAndOpenDetail(page: Page, text: string): Promise<string> {
   await page.goto("/posts/new");
   await expect(page.getByRole("heading", { name: "새 글 쓰기" })).toBeVisible();
-  await page.getByLabel(/내용/).fill(text);
+  await fillPostContent(page, text);
   await page.getByRole("button", { name: "게시하기" }).click();
   await page.waitForURL("**/feed");
 

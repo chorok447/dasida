@@ -13,6 +13,7 @@ import {
   type Post,
   type PostComposeField,
   type PostComposeValues,
+  postToComposeValues,
   validatePostCompose,
 } from "@/data/posts";
 
@@ -62,12 +63,7 @@ export default function PostEditPage() {
           setLoad({ kind: "forbidden" });
           return;
         }
-        setValues({
-          text: post.text,
-          images: post.images,
-          tags: post.tags,
-          campaign: post.campaignId ?? "",
-        });
+        setValues(postToComposeValues(post));
         setLoad({ kind: "ready" });
       })
       .catch((error) => {

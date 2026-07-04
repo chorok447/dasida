@@ -1,5 +1,7 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
 import { apiDelete, apiGet, apiPut } from "@/lib/api";
+import { mergeCampaignBodyForEditor } from "@/lib/rich-body-html";
+import { richTextPlainLength } from "@/lib/rich-text-length";
 import type { CommentPageLocationResponse } from "@/data/comments";
 
 export type CampaignStatus = "open" | "upcoming" | "closed";
@@ -236,6 +238,7 @@ export function campaignRecruitMeta(campaign: Campaign) {
 
 /** 백엔드 CampaignValidators 와 동일한 제한. */
 export const CAMPAIGN_MAX_CAPACITY = 10_000;
+export const CAMPAIGN_MAX_BODY_LENGTH = 8000;
 
 export const CAMPAIGN_COMPOSE_DRAFT_KEY = "dasida:campaign-compose-draft";
 
@@ -289,7 +292,7 @@ export function campaignToComposeValues(campaign: Campaign): CampaignComposeValu
   return {
     title: campaign.title,
     summary: campaign.summary,
-    body: campaign.body.paragraphs.join("\n\n"),
+    body: mergeCampaignBodyForEditor(campaign.body.paragraphs, campaign.body.images),
     thumb: campaign.thumb,
     recruitStart: campaign.recruitStart,
     recruitEnd: campaign.recruitEnd,
@@ -369,6 +372,15 @@ export function validateCampaignCompose(values: CampaignComposeValues): Campaign
       ok: false,
       message: "진행 시작일은 진행 종료일보다 늦을 수 없습니다.",
       field: "runEnd",
+    };
+  }
+
+  const bodyPlainLength = richTextPlainLength(values.body);
+  if (bodyPlainLength > CAMPAIGN_MAX_BODY_LENGTH) {
+    return {
+      ok: false,
+      message: `본문은 ${CAMPAIGN_MAX_BODY_LENGTH.toLocaleString()}자 이하여야 합니다.`,
+      field: "body",
     };
   }
 
