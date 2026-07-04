@@ -4,7 +4,6 @@ import { useRef } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Pencil, Trash2, Users, Loader2, LogIn, CheckCircle2 } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
@@ -25,8 +24,6 @@ function StatusBadge({ c }: { c: Campaign }) {
 }
 
 export function CampaignHeaderCard({ c }: { c: Campaign }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -54,8 +51,8 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
           rotateX: rX,
           rotateY: rY,
           transformStyle: "preserve-3d",
-          background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+          background: "var(--card)",
+          borderColor: "var(--border)",
         }}
         className="rounded-3xl border overflow-hidden shadow-[0_40px_80px_-30px_rgba(0,0,0,0.4)]"
       >
@@ -78,7 +75,7 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
                 style={{
                   fontFamily: "'Black Han Sans', sans-serif",
                   fontSize: "clamp(28px, 3vw, 40px)",
-                  color: dark ? "#f9f7f2" : "#0f1f22",
+                  color: "var(--foreground)",
                   lineHeight: 1.2,
                 }}
               >
@@ -90,16 +87,16 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
                   title={c.title}
                   text={c.summary}
                   className="flex h-9 w-9 items-center justify-center rounded-full"
-                  style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
+                  style={{ background: "var(--border)", color: "var(--foreground)" }}
                 />
               </div>
             </div>
 
-            <p className="text-[14px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+            <p className="text-[14px]" style={{ color: "var(--foreground-muted)" }}>
               {c.summary}
             </p>
 
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.85)" }}>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]" style={{ color: "var(--foreground)" }}>
               <div>
                 <div className="opacity-60 mb-0.5">모집 기간</div>
                 <div>{c.recruitStart} ~ {c.recruitEnd}</div>
@@ -121,7 +118,7 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
             <div>
               <div
                 className="h-2 w-full rounded-full overflow-hidden"
-                style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
+                style={{ background: "var(--border)" }}
               >
                 <motion.div
                   initial={{ width: 0 }}
@@ -131,16 +128,16 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
                   style={{ background: campaignRecruitMeta(c).color }}
                 />
               </div>
-              <div className="flex justify-between text-[12px] mt-2" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+              <div className="flex justify-between text-[12px] mt-2" style={{ color: "var(--foreground-muted)" }}>
                 <span>{Math.round(pct)}% 달성</span>
                 <span>{c.daysLeftLabel}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+            <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
               <Avatar name={c.author.name} verified={c.author.verified} />
-              <span style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>
-              <span className="text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>· 캠페인 주최자</span>
+              <span style={{ color: "var(--foreground)" }}>{c.author.name}</span>
+              <span className="text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>· 캠페인 주최자</span>
             </div>
           </div>
         </div>
@@ -166,8 +163,6 @@ export function CampaignStatusManagement({
   onChange: (status: "open" | "closed") => void;
   onDelete: () => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   if (!ownershipConfirmed) return null;
 
   const target = c.status === "upcoming" ? "open" : c.status === "open" ? "closed" : null;
@@ -177,9 +172,9 @@ export function CampaignStatusManagement({
     <div
       className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.7)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
+        background: "var(--card)",
+        borderColor: "var(--border)",
+        color: "var(--foreground)",
       }}
     >
       <div>
@@ -196,8 +191,8 @@ export function CampaignStatusManagement({
             disabled ? "pointer-events-none opacity-45" : ""
           }`}
           style={{
-            background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-            color: dark ? "#f9f7f2" : "#1c4044",
+            background: "var(--border)",
+            color: "var(--foreground)",
           }}
         >
           <Users size={14} /> 참가자 관리
@@ -212,8 +207,8 @@ export function CampaignStatusManagement({
               disabled ? "pointer-events-none opacity-45" : ""
             }`}
             style={{
-              background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-              color: dark ? "#f9f7f2" : "#1c4044",
+              background: "var(--border)",
+              color: "var(--foreground)",
             }}
           >
             <Pencil size={14} /> 캠페인 수정
@@ -266,14 +261,12 @@ export function CampaignCTABar({
   disabled: boolean;
   loggedIn: boolean;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const panelStyle = {
-    background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.78)",
-    borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    background: "var(--card)",
+    borderColor: "var(--border)",
+    color: "var(--foreground)",
   };
-  const joinedStyle = { background: "rgba(125,211,163,0.18)", color: dark ? "#7dd3a3" : "#1c4044", fontSize: 16 };
+  const joinedStyle = { background: "rgba(125,211,163,0.18)", color: "var(--accent-secondary)", fontSize: 16 };
   const pending = action !== null;
 
   if (c.joinedByMe) {
@@ -326,7 +319,7 @@ export function CampaignCTABar({
           className="flex flex-col items-center gap-3 rounded-2xl border px-6 py-6 text-center"
           style={panelStyle}
         >
-          <p className="text-[14px]" style={{ color: dark ? "rgba(255,255,255,0.75)" : "rgba(28,64,68,0.75)" }}>
+          <p className="text-[14px]" style={{ color: "var(--foreground-muted)" }}>
             로그인 후 캠페인에 참여할 수 있어요.
           </p>
           <button
@@ -371,7 +364,7 @@ export function CampaignCTABar({
       className="w-full rounded-2xl border px-6 py-5 text-center"
       style={{
         ...panelStyle,
-        color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)",
+        color: "var(--foreground-muted)",
       }}
     >
       <p className="text-[15px] font-medium">{unavailableMessage}</p>
@@ -381,21 +374,19 @@ export function CampaignCTABar({
 }
 
 export function CampaignContentTab({ c }: { c: Campaign }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   return (
     <div
       className="rounded-3xl border p-10 space-y-8"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
-      <h2 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 26, color: dark ? "#f9f7f2" : "#0f1f22" }}>
+      <h2 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 26, color: "var(--foreground)" }}>
         {c.body.heading}
       </h2>
       {c.body.paragraphs.map((p, i) => (
-        <p key={i} style={{ color: dark ? "rgba(255,255,255,0.75)" : "rgba(28,64,68,0.8)", lineHeight: 1.8 }}>
+        <p key={i} style={{ color: "var(--foreground-muted)", lineHeight: 1.8 }}>
           {p}
         </p>
       ))}

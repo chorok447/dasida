@@ -27,7 +27,8 @@ const thumbPresets = [
 type CampaignComposeFormProps = {
   values: CampaignComposeValues;
   onChange: (values: CampaignComposeValues) => void;
-  dark: boolean;
+  /** @deprecated 색상이 CSS 토큰으로 바뀌어 사용하지 않는다. 호출부 정리 후 제거 예정. */
+  dark?: boolean;
   fieldErrors?: Partial<Record<CampaignComposeField, string>>;
   onFieldErrorClear?: (field: CampaignComposeField) => void;
   showDraftSaved?: boolean;
@@ -35,19 +36,19 @@ type CampaignComposeFormProps = {
   titleInputId?: string;
 };
 
-function ImagePreview({ src, dark }: { src: string; dark: boolean }) {
+function ImagePreview({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
     return (
       <div
         className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px]"
-        style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+        style={{ background: "var(--border)" }}
         role="img"
         aria-label="이미지를 불러올 수 없어요"
       >
-        <ImageIcon size={18} style={{ color: dark ? "rgba(255,255,255,0.35)" : "rgba(28,64,68,0.35)" }} aria-hidden />
-        <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>이미지를 불러올 수 없어요</span>
+        <ImageIcon size={18} style={{ color: "var(--foreground-muted)" }} aria-hidden />
+        <span style={{ color: "var(--foreground-muted)" }}>이미지를 불러올 수 없어요</span>
       </div>
     );
   }
@@ -65,7 +66,6 @@ function ImagePreview({ src, dark }: { src: string; dark: boolean }) {
 export function CampaignComposeForm({
   values,
   onChange,
-  dark,
   fieldErrors = {},
   onFieldErrorClear,
   showDraftSaved = false,
@@ -84,11 +84,11 @@ export function CampaignComposeForm({
   const [thumbInput, setThumbInput] = useState("");
   const [thumbInputError, setThumbInputError] = useState("");
 
-  const labelStyle = { color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" };
+  const labelStyle = { color: "var(--foreground-muted)" };
   const controlStyle = {
-    background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-    border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)"}`,
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    background: "var(--card)",
+    border: "1px solid var(--border)",
+    color: "var(--foreground)",
   };
 
   const patch = (partial: Partial<CampaignComposeValues>) => onChange({ ...values, ...partial });
@@ -136,7 +136,7 @@ export function CampaignComposeForm({
   return (
     <div className="space-y-6">
       {showDraftSaved ? (
-        <p className="text-[12px]" style={{ color: dark ? "#7dd3a3" : "#1c4044" }} role="status" aria-live="polite">
+        <p className="text-[12px]" style={{ color: "var(--accent-secondary)" }} role="status" aria-live="polite">
           임시 저장됨
         </p>
       ) : null}
@@ -252,14 +252,14 @@ export function CampaignComposeForm({
             <li
               className="flex items-center gap-3 rounded-xl p-2"
               style={{
-                background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)",
-                border: `1px solid ${dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)"}`,
+                background: "var(--border)",
+                border: "1px solid var(--border)",
               }}
             >
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                <ImagePreview src={values.thumb} dark={dark} />
+                <ImagePreview src={values.thumb} />
               </div>
-              <p className="min-w-0 flex-1 truncate text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }} title={values.thumb}>
+              <p className="min-w-0 flex-1 truncate text-[12px]" style={{ color: "var(--foreground)" }} title={values.thumb}>
                 {values.thumb}
               </p>
               <button
@@ -276,7 +276,7 @@ export function CampaignComposeForm({
         ) : null}
 
         <div className="mt-3">
-          <p className="mb-2 text-[11px] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <p className="mb-2 text-[11px] opacity-70" style={{ color: "var(--foreground)" }}>
             또는 추천 이미지 선택
           </p>
           <div className="grid grid-cols-5 gap-2">
@@ -305,12 +305,12 @@ export function CampaignComposeForm({
         <p className="mb-2 text-[12px] tracking-[0.2em] uppercase" style={labelStyle}>
           일정
         </p>
-        <p id={dateHelperId} className="mb-3 text-[12px] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+        <p id={dateHelperId} className="mb-3 text-[12px] opacity-70" style={{ color: "var(--foreground)" }}>
           모집 기간은 진행 시작일 이전에 끝나야 하며, 진행 기간은 모집 종료 이후에 시작합니다.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor={recruitStartInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <label htmlFor={recruitStartInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: "var(--foreground)" }}>
               모집 시작일
             </label>
             <input
@@ -337,7 +337,7 @@ export function CampaignComposeForm({
             ) : null}
           </div>
           <div>
-            <label htmlFor={recruitEndInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <label htmlFor={recruitEndInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: "var(--foreground)" }}>
               모집 종료일
             </label>
             <input
@@ -361,7 +361,7 @@ export function CampaignComposeForm({
             ) : null}
           </div>
           <div>
-            <label htmlFor={runStartInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <label htmlFor={runStartInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: "var(--foreground)" }}>
               진행 시작일
             </label>
             <input
@@ -386,7 +386,7 @@ export function CampaignComposeForm({
             ) : null}
           </div>
           <div>
-            <label htmlFor={runEndInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <label htmlFor={runEndInputId} className="mb-2 block text-[12px] opacity-80" style={{ color: "var(--foreground)" }}>
               진행 종료일
             </label>
             <input
@@ -439,7 +439,7 @@ export function CampaignComposeForm({
             {fieldErrors.capacity}
           </p>
         ) : (
-          <p className="mt-1.5 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <p className="mt-1.5 text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
             모집 인원이 차면 자동으로 모집이 종료됩니다.
           </p>
         )}

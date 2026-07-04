@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, MessageCircle, Bookmark, ChevronLeft, ChevronRight, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
@@ -22,8 +21,6 @@ import { PostDetailComments } from "./post-detail-comments";
 
 export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const p = post;
   const [idx, setIdx] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
@@ -159,7 +156,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
           <button
             onClick={() => router.push("/feed")}
             className="inline-flex items-center gap-2 text-[13px] opacity-70 hover:opacity-100"
-            style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+            style={{ color: "var(--foreground)" }}
           >
             <ArrowLeft size={14} /> 피드로 돌아가기
           </button>
@@ -169,7 +166,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               <Link
                 href={`/posts/${p.id}/edit`}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
-                style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                style={{ background: "var(--border)", color: "var(--foreground)" }}
               >
                 <Pencil size={13} /> 수정
               </Link>
@@ -204,8 +201,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               rotateX: rX,
               rotateY: rY,
               transformStyle: "preserve-3d",
-              background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-              borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+              background: "var(--card)",
+              borderColor: "var(--border)",
             }}
             className="rounded-3xl border overflow-hidden shadow-[0_40px_80px_-30px_rgba(0,0,0,0.4)] grid grid-cols-1 md:grid-cols-[1.2fr_1fr]"
           >
@@ -260,18 +257,18 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               <div className="flex items-center gap-3">
                 <Avatar name={p.author.name} verified={p.author.verified} size={40} />
                 <div>
-                  <div style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{p.author.name}</div>
-                  <div className="text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{p.time}</div>
+                  <div style={{ color: "var(--foreground)" }}>{p.author.name}</div>
+                  <div className="text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>{p.time}</div>
                 </div>
               </div>
 
-              <p style={{ color: dark ? "rgba(255,255,255,0.9)" : "rgba(28,64,68,0.9)", lineHeight: 1.7 }}>
+              <p style={{ color: "var(--foreground)", lineHeight: 1.7 }}>
                 {p.text}
               </p>
 
               <div className="flex flex-wrap gap-1.5">
                 {p.tags.map((t) => (
-                  <span key={t} className="text-[12px] px-2.5 py-0.5 rounded-full" style={{ background: dark ? "rgba(125,211,163,0.12)" : "rgba(125,211,163,0.2)", color: dark ? "#7dd3a3" : "#1c4044" }}>
+                  <span key={t} className="text-[12px] px-2.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>
                     {t}
                   </span>
                 ))}
@@ -282,8 +279,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                   className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer"
                   onClick={() => router.push(`/campaigns/${linkedCampaign.id}`)}
                   style={{
-                    background: dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.15)",
-                    border: `1px solid ${dark ? "rgba(125,211,163,0.2)" : "rgba(125,211,163,0.3)"}`,
+                    background: "var(--accent-soft)",
+                    border: "1px solid rgba(125,211,163,0.25)",
                   }}
                 >
                   <FallbackImage
@@ -292,21 +289,21 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                     className="w-10 h-10 rounded-lg object-cover"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] opacity-70" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>연결된 캠페인</div>
-                    <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{linkedCampaign.title}</div>
+                    <div className="text-[11px] opacity-70" style={{ color: "var(--foreground)" }}>연결된 캠페인</div>
+                    <div className="text-[13px] truncate" style={{ color: "var(--foreground)" }}>{linkedCampaign.title}</div>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-3 border-t" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+              <div className="flex items-center gap-2 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   onClick={onLike}
                   disabled={liking || refreshing}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
                   style={{
-                    background: liked ? "rgba(237,92,72,0.15)" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                    color: liked ? "#ed5c48" : dark ? "#f9f7f2" : "#0f1f22",
+                    background: liked ? "rgba(237,92,72,0.15)" : "var(--border)",
+                    color: liked ? "#ed5c48" : "var(--foreground)",
                   }}
                 >
                   <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} /> {likes}
@@ -315,14 +312,14 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                   onClick={() => commentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                   aria-label="댓글 보기"
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
-                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                  style={{ background: "var(--border)", color: "var(--foreground)" }}
                 >
                   <MessageCircle size={14} /> {commentCount}
                 </button>
                 <ShareButton
                   title={p.text.slice(0, 80)}
                   className="flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px]"
-                  style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                  style={{ background: "var(--border)", color: "var(--foreground)" }}
                 />
                 <motion.button
                   whileTap={{ scale: 0.85 }}
@@ -331,8 +328,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                   aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
                   className="ml-auto w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-50"
                   style={{
-                    background: bookmarked ? "#7dd3a3" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                    color: bookmarked ? "#0f1f22" : dark ? "#f9f7f2" : "#0f1f22",
+                    background: bookmarked ? "#7dd3a3" : "var(--border)",
+                    color: bookmarked ? "#0f1f22" : "var(--foreground)",
                   }}
                 >
                   <Bookmark size={14} fill={bookmarked ? "#0f1f22" : "transparent"} />

@@ -7,7 +7,10 @@
   --surface-deep: #1c4044;
   --surface-dark: #0f1f22;
   --accent: #7dd3a3;
+  /* 액센트 계열 보조 텍스트(태그·eyebrow). 라이트는 딥틸, 다크는 민트. */
   --accent-secondary: #1c4044;
+  /* 액센트 틴트 배경(태그 pill 등). */
+  --accent-soft: rgba(125, 211, 163, 0.2);
   --foreground: #0f1f22;
   --foreground-muted: rgba(28, 64, 68, 0.65);
   --border: rgba(28, 64, 68, 0.08);
@@ -18,6 +21,8 @@
 .dark {
   --surface: #0f1f22;
   --surface-muted: #1c4044;
+  --accent-secondary: #7dd3a3;
+  --accent-soft: rgba(125, 211, 163, 0.12);
   --foreground: #f9f7f2;
   --foreground-muted: rgba(255, 255, 255, 0.65);
   --border: rgba(255, 255, 255, 0.08);
