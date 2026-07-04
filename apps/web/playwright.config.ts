@@ -22,7 +22,10 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: "./gradlew bootRun",
+      // e2e 는 스펙마다 신규 계정을 만들어 한 IP 에서 signup 이 몰린다.
+      // 운영 기본값(10회/60초)이면 스위트 전체 병렬 실행 시 429 로 깨지므로 테스트 서버만 한도를 올린다.
+      command:
+        "./gradlew bootRun --args='--app.rate-limit.auth.signup.limit=1000 --app.rate-limit.auth.login.limit=1000'",
       cwd: "../api",
       url: "http://localhost:8080/actuator/health",
       reuseExistingServer: true,
