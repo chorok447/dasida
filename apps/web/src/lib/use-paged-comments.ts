@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, apiErrorMessage } from "@/lib/api";
-import { clearSession, getSessionId } from "@/lib/auth";
+import { clearSession, getSessionId, PROFILE_EVENT } from "@/lib/auth";
 import { beginAuthedRequest, clearSessionIfUnauthorized, staleByIdentity } from "@/lib/authed-request";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useCommentTargetScroll } from "@/lib/use-comment-target-scroll";
@@ -223,6 +223,12 @@ export function usePagedComments<C extends { id: string; text: string }>(args: U
     currentState.status === "success",
     !!currentState.response?.content.some((comment) => comment.id === targetCommentId),
   );
+
+  useEffect(() => {
+    const onProfileUpdated = () => setReloadTick((tick) => tick + 1);
+    window.addEventListener(PROFILE_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(PROFILE_EVENT, onProfileUpdated);
+  }, []);
 
   const reload = () => setReloadTick((tick) => tick + 1);
 

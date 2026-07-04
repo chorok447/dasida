@@ -8,6 +8,7 @@ import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDeleteVoid } from "@/lib/api";
 import { usePagedComments } from "@/lib/use-paged-comments";
 import { Avatar } from "@/components/avatar";
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -113,7 +114,7 @@ export function PostDetailComments({
       >
         {token ? (
           <>
-            <Avatar name="나" size={36} />
+            <CurrentUserAvatar size={36} />
             <input
               aria-label="댓글 내용"
               value={composeText}

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Image as ImageIcon } from "lucide-react";
-import { Avatar } from "@/components/avatar";
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
@@ -272,7 +272,7 @@ export default function PostCreateClient() {
               }}
             >
               <div className="flex items-center gap-3 p-4">
-                <Avatar name="나" />
+                <CurrentUserAvatar />
                 <div>
                   <div className="text-[14px]" style={{ color: "var(--foreground)" }}>
                     {authorName}

@@ -9,10 +9,10 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiGet } from "@/lib/api";
-import { getSessionId } from "@/lib/auth";
+import { getSessionId, PROFILE_EVENT } from "@/lib/auth";
 import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { Avatar } from "@/components/avatar";
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
 import { PageShell } from "@/components/page-shell";
 import { FeedPostCard } from "@/app/feed/feed-post-card";
 import { FeedSideHot, FeedSideRecommend } from "@/app/feed/feed-sidebar";
@@ -162,6 +162,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const [retryTick, setRetryTick] = useState(0);
   const generationRef = useRef(0);
 
+  useEffect(() => {
+    const onProfileUpdated = () => setRetryTick((tick) => tick + 1);
+    window.addEventListener(PROFILE_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(PROFILE_EVENT, onProfileUpdated);
+  }, []);
+
   const urlState = useMemo<UrlState>(() => {
     const sort = searchParams.get("sort");
     return {
@@ -281,7 +287,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
               borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
             }}
           >
-            <Avatar name="나" />
+            <CurrentUserAvatar />
             <span className="flex-1 opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
               지금 어떤 업사이클을 하고 있나요?
             </span>
