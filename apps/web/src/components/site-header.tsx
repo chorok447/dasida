@@ -99,7 +99,7 @@ export function SiteHeader() {
               background: pathname === "/search" ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
               color: pathname === "/search" ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
             }}
-            aria-label="통합 검색"
+            aria-label="검색 페이지로 이동"
           >
             <Search size={16} />
             <span className="hidden xl:inline text-[12px]">검색</span>
