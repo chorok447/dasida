@@ -26,3 +26,16 @@ test("캠페인 탭과 정렬이 URL에 반영된다", async ({ page }) => {
   await page.locator("select").first().selectOption("popular");
   await page.waitForURL(/sort=popular/);
 });
+
+test("게시글 탭 검색 URL의 page가 canonical 형태로 정규화된다", async ({ page }) => {
+  await page.goto("/search?type=posts&page=-1&sort=latest");
+  await page.waitForURL(/\/search\?type=posts&sort=latest&page=0$/);
+});
+
+test("게시글 탭에서 page 변경이 URL에 반영된다", async ({ page }) => {
+  await page.goto("/search?type=posts");
+  await page.waitForURL(/type=posts/);
+
+  await page.goto("/search?type=posts&page=1&sort=latest");
+  await page.waitForURL(/\/search\?type=posts&sort=latest&page=1$/);
+});

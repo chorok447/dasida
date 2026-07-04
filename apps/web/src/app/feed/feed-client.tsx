@@ -8,8 +8,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { apiGet, ApiError } from "@/lib/api";
-import { clearSession, getSessionId } from "@/lib/auth";
+import { apiGet } from "@/lib/api";
+import { getSessionId } from "@/lib/auth";
+import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { PageShell } from "@/components/page-shell";
@@ -232,14 +233,11 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
     const requestToken = token;
     if (getSessionId() !== requestToken) return;
 
-    const generation = ++generationRef.current;
-    let cancelled = false;
-    const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
+    const guard = beginAuthedRequest(generationRef, requestToken);
 
     apiGet<PostSearchResponse>(searchPath)
       .then((nextResponse) => {
-        if (!isCurrent()) return;
+        if (!guard.isCurrent()) return;
         setSearchState({
           identity: requestIdentity,
           queryIdentity,
@@ -249,11 +247,8 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
         });
       })
       .catch((error) => {
-        if (!isCurrent()) return;
-        if (error instanceof ApiError && error.status === 401 && requestToken) {
-          clearSession();
-          return;
-        }
+        if (!guard.isCurrent()) return;
+        if (clearSessionIfUnauthorized(error, requestToken)) return;
         setSearchState((previous) => {
           const previousResponse = previous.queryIdentity === queryIdentity ? previous.response : null;
           const fallback = previousResponse && previous.token !== requestToken
@@ -269,9 +264,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
         });
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return guard.cancel;
   }, [queryIdentity, requestIdentity, searchPath, token]);
 
   return (

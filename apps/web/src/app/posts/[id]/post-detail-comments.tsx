@@ -7,6 +7,7 @@ import { Pencil, Send, Trash2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDeleteVoid, ApiError, apiErrorMessage } from "@/lib/api";
 import { getSessionId, clearSession } from "@/lib/auth";
+import { useCommentTargetScroll } from "@/lib/use-comment-target-scroll";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { ReportButton } from "@/components/report-button";
@@ -221,17 +222,11 @@ export function PostDetailComments({
     };
   }, [commentsPage, commentsRequestIdentity, onCountChange, postId, router, targetLocationPage, targetLocationStatus, token, updateCommentsPage]);
 
-  useEffect(() => {
-    if (!targetCommentId || currentCommentsStatus !== "success") return;
-    if (!currentCommentsResponse?.content.some((comment) => comment.id === targetCommentId)) return;
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(`comment-${targetCommentId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [currentCommentsResponse, currentCommentsStatus, targetCommentId]);
+  useCommentTargetScroll(
+    targetCommentId,
+    currentCommentsStatus === "success",
+    !!currentCommentsResponse?.content.some((comment) => comment.id === targetCommentId),
+  );
 
   const retryComments = () => {
     setReloadTick((t) => t + 1);

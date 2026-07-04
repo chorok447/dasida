@@ -13,10 +13,13 @@ import {
   type CampaignCommentsResponse,
 } from "@/data/campaigns";
 import { ApiError, apiDeleteVoid, apiErrorMessage, apiGet, apiPost } from "@/lib/api";
-import { clearSession, getSessionId } from "@/lib/auth";
+import { getSessionId, clearSession } from "@/lib/auth";
+import { beginAuthedRequest, clearSessionIfUnauthorized, staleByIdentity } from "@/lib/authed-request";
+import { useCommentTargetScroll } from "@/lib/use-comment-target-scroll";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { CampaignCommentItem } from "./campaign-comment-item";
+import { CampaignCommentCompose } from "./campaign-comment-compose";
 
 type CommentListState = {
   identity: string;
@@ -93,9 +96,12 @@ export function CampaignComments({
     response: null,
     error: "",
   });
-  const currentState: CommentListState = listState.identity === requestIdentity
-    ? listState
-    : { identity: requestIdentity, status: "loading", response: null, error: "" };
+  const currentState = staleByIdentity(listState, requestIdentity, {
+    identity: requestIdentity,
+    status: "loading",
+    response: null,
+    error: "",
+  });
   const currentStatus = currentState.status;
   const currentResponse = currentState.response;
 
@@ -152,16 +158,13 @@ export function CampaignComments({
     const requestToken = token;
     if (getSessionId() !== requestToken) return;
 
-    const generation = ++generationRef.current;
-    let cancelled = false;
-    const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
+    const guard = beginAuthedRequest(generationRef, requestToken);
 
     apiGet<CampaignCommentsResponse>(
       `/api/campaigns/${campaignId}/comments?page=${page}&size=20`,
     )
       .then((response) => {
-        if (!isCurrent()) return;
+        if (!guard.isCurrent()) return;
         if (response.content.length === 0 && page > 0 && response.totalPages > 0) {
           setPage(Math.min(page - 1, response.totalPages - 1));
           return;
@@ -169,9 +172,8 @@ export function CampaignComments({
         setListState({ identity: requestIdentity, status: "success", response, error: "" });
       })
       .catch((error) => {
-        if (!isCurrent()) return;
-        if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+        if (!guard.isCurrent()) return;
+        if (clearSessionIfUnauthorized(error, requestToken)) {
           router.push("/login");
           return;
         }
@@ -185,22 +187,14 @@ export function CampaignComments({
         });
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return guard.cancel;
   }, [campaignId, page, requestIdentity, router, targetLocationPage, targetLocationStatus, token]);
 
-  useEffect(() => {
-    if (!targetCommentId || currentStatus !== "success") return;
-    if (!currentResponse?.content.some((comment) => comment.id === targetCommentId)) return;
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(`comment-${targetCommentId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [currentResponse, currentStatus, targetCommentId]);
+  useCommentTargetScroll(
+    targetCommentId,
+    currentStatus === "success",
+    !!currentResponse?.content.some((comment) => comment.id === targetCommentId),
+  );
 
   const reload = () => setRetryTick((tick) => tick + 1);
 
@@ -384,17 +378,14 @@ export function CampaignComments({
   return (
     <div
       className="rounded-3xl border p-5 sm:p-8"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <h2 className="text-[18px] font-semibold" style={{ color: "var(--foreground)" }}>
             댓글 {currentState.status === "success" && response ? response.totalElements.toLocaleString() : ""}
           </h2>
-          <p className="mt-1 text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <p className="mt-1 text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
             캠페인에 대한 의견과 질문을 남겨보세요.
           </p>
         </div>
@@ -410,51 +401,17 @@ export function CampaignComments({
         </button>
       </div>
 
-      <div className="mt-6">
-        {token ? (
-          <form onSubmit={submitComment} className="rounded-2xl border p-4" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
-            <label htmlFor="campaign-comment" className="text-[12px] font-medium" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-              댓글 작성
-            </label>
-            <textarea
-              id="campaign-comment"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              maxLength={500}
-              rows={4}
-              placeholder="댓글을 입력해주세요."
-              className="ui-control mt-2 resize-none bg-transparent px-3 py-3"
-              style={{ borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)", color: dark ? "#f9f7f2" : "#0f1f22" }}
-            />
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-[11px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                {text.length} / 500
-              </span>
-              <button
-                type="submit"
-                disabled={submitting || text.trim().length === 0}
-                className="inline-flex items-center gap-2 rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22] disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
-                {submitting ? "등록 중…" : "댓글 등록"}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border px-5 py-6 text-center" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
-            <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
-              로그인해야 댓글을 작성할 수 있어요.
-            </p>
-            <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
-              로그인하기
-            </button>
-          </div>
-        )}
-        {mutationError ? <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{mutationError}</p> : null}
-        {targetLocationMessage ? (
-          <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{targetLocationMessage}</p>
-        ) : null}
-      </div>
+      <CampaignCommentCompose
+        token={token}
+        text={text}
+        submitting={submitting}
+        mutationError={mutationError}
+        onTextChange={setText}
+        onSubmit={submitComment}
+      />
+      {targetLocationMessage ? (
+        <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{targetLocationMessage}</p>
+      ) : null}
 
       <div className="mt-7 space-y-3">
         {currentState.status === "loading" ? (
