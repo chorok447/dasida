@@ -32,6 +32,7 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm --filter web lint
+      - run: pnpm --filter web test
       - run: pnpm --filter web build
 
   api:
