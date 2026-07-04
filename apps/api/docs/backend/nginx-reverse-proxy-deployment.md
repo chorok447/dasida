@@ -42,7 +42,7 @@ Nginx (host) :80 / :443
 | api / web | Docker Compose — [`compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (+ single VM 시 [`compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml)) |
 | Nginx | **호스트 설치** 1차 권장. compose service(Nginx container)는 후속 선택지 |
 | api/web container port | **`127.0.0.1` bind** (base compose template 기본값) — Nginx upstream `127.0.0.1:3000|8080` |
-| DB / Redis | **public 노출 금지** — compose internal 또는 external managed ([single-vm-compose-deployment.md](./single-vm-compose-deployment.md)) |
+| DB / Redis | **public 노출 금지** — compose internal 또는 external managed ([single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)) |
 
 ### Docker Hub image pin
 
@@ -264,4 +264,4 @@ Nginx 뒤에서 HTTPS origin 을 애플리케이션이 인식하려면 `X-Forwar
 - [github-secrets-and-environments.md](./github-secrets-and-environments.md) — Secrets/Variables 분류
 - [deploy/compose.prod.example.yml](../../../../deploy/compose.prod.example.yml) — api/web compose template
 - [deploy/compose.single-vm.example.yml](../../../../deploy/compose.single-vm.example.yml) — single VM mysql/redis override
-- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 compose 전략
+- [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) — VM 1대 compose 전략

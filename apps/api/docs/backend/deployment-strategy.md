@@ -26,7 +26,7 @@
 
 **Public ingress**: 호스트 **Nginx** reverse proxy(80/443) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md).
 
-**초기 single VM**: Nginx(host) + Compose(web/api/mysql/redis) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md).
+**초기 single VM**: Nginx(host) + Compose(web/api/mysql/redis) — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md).
 
 ### 추천 이유
 
@@ -82,40 +82,9 @@ prod 다중 API replica를 쓸 경우 rate limit·logout denylist는 **공유 Re
 
 ---
 
-## 필요한 운영 변수 (이름만)
+## 필요한 운영 변수
 
-값은 서버 env / secret manager에만 둔다. **저장소·이 문서에 커밋하지 않는다.**
-
-### API
-
-| 변수 | 비고 |
-|------|------|
-| `SPRING_PROFILES_ACTIVE` | `prod` |
-| `JWT_SECRET` | ≥32바이트, `dev-insecure` 접두 금지 |
-| `DB_URL` | JDBC URL |
-| `DB_USER` | MySQL 사용자 |
-| `DB_PASSWORD` | MySQL 비밀번호 |
-| `APP_CORS_ALLOWED_ORIGINS` | 운영 Web origin(comma-separated) |
-| `SPRING_DATA_REDIS_HOST` | Redis/Valkey (store 전환·다중 인스턴스 시) |
-| `SPRING_DATA_REDIS_PORT` | 기본 6379 |
-| `SPRING_DATA_REDIS_PASSWORD` | 인증 사용 시 |
-
-추가 설정(별도 구현 PR): `app.rate-limit.store=redis`, `app.auth.denylist.store=redis`.
-
-### Web
-
-| 변수 | 비고 |
-|------|------|
-| `NEXT_PUBLIC_API_URL` | **build arg** — 운영 API URL. 런타임 env만으로는 이미 빌드된 image에서 바뀌지 않음 |
-
-`NODE_ENV=production`은 `Dockerfile.prod` 기본값.
-
-### Compose / image pull
-
-| 변수 | 비고 |
-|------|------|
-| `DOCKERHUB_USERNAME` | Docker Hub namespace ([`.env.prod.example`](../../../../deploy/.env.prod.example)) |
-| `DASIDA_IMAGE_TAG` | `sha-<shortsha>` pin 권장 |
+이름·수집·검증은 [production-env-values-template.md](./production-env-values-template.md), Secrets/Variables 분류는 [github-secrets-and-environments.md](./github-secrets-and-environments.md) 를 따른다. **값은 서버 env / secret manager 에만 둔다.**
 
 ---
 
@@ -164,18 +133,14 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 
 ## Rollback
 
-1. 배포 시 사용한 `sha-<shortsha>` 를 배포 기록에 남긴다.
-2. 장애 시 compose manifest의 image tag를 **이전 sha**로 되돌리고 `docker compose up -d` (또는 동일 runbook).
-3. `main` tag는 “최신” pointer이므로 rollback pin으로 쓰지 않는다.
-4. Web URL 변경이 있었다면 해당 시점의 **Web image sha**도 함께 되돌려야 한다.
-5. DB schema migration 도구는 현재 없음 — rollback은 **애플리케이션 image** 수준.
+절차·주의사항은 [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md#rollback) 를 따른다. 핵심: 배포는 `sha-<shortsha>` pin, `main` tag 는 rollback pin 으로 쓰지 않는다, rollback 은 application image 수준(DB migration 도구 없음).
 
 ---
 
 ## 후속 작업 (코드/인프라 PR로 분리)
 
 1. ~~운영 compose manifest 초안~~ → **예시 template** [`deploy/compose.prod.example.yml`](../../../../deploy/compose.prod.example.yml) (서버 runbook·실제 `compose.prod.yml` 은 deploy 시 복사·커스터마이즈)
-2. ~~Single VM compose override~~ → [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) — [single-vm-compose-deployment.md](./single-vm-compose-deployment.md)
+2. ~~Single VM compose override~~ → [`deploy/compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
 3. Nginx reverse proxy runbook (host install, vhost, TLS) — [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md)
 4. 서버 runbook: Docker Hub login, pull, deploy, rollback — [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md)
 5. MySQL backup/restore — [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md)
@@ -193,7 +158,6 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 - [main-release-readiness.md](./main-release-readiness.md) — merge 전 체크리스트
 - [container-images.md](./container-images.md) — Docker Hub·CI
 - [nginx-reverse-proxy-deployment.md](./nginx-reverse-proxy-deployment.md) — Nginx ingress·TLS·도메인
-- [single-vm-compose-deployment.md](./single-vm-compose-deployment.md) — VM 1대 Compose·volume·스펙
-- [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) — amd64 VM 배포 runbook (문서만)
+- [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md) — single VM 아키텍처·배포 runbook (문서만)
 - [mysql-backup-restore-runbook.md](./mysql-backup-restore-runbook.md) — MySQL backup/restore
 - [redis-security-store-policy.md](./redis-security-store-policy.md) — rate limit / denylist
