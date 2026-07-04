@@ -1,5 +1,6 @@
 package com.dasida.api.post
 
+import com.dasida.api.common.splitRichBodyHtml
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 
@@ -13,8 +14,23 @@ private const val MAX_COMMENT_LENGTH = 500
 fun normalizePostText(text: String): String {
     val trimmed = text.trim()
     if (trimmed.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
-    if (trimmed.length > MAX_TEXT_LENGTH) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
+    if (richTextPlainLength(trimmed) > MAX_TEXT_LENGTH) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
+    }
     return trimmed
+}
+
+/** 본문 HTML 이미지를 images 배열로 옮긴 뒤 text·images 를 검증한다. */
+fun normalizePostFields(text: String, images: List<String>): Pair<String, List<String>> {
+    val (html, inlineImages) = splitRichBodyHtml(text.trim())
+    val normalizedText = normalizePostText(html)
+    val mergedImages = normalizeImages((images + inlineImages).distinct())
+    return normalizedText to mergedImages
+}
+
+private fun richTextPlainLength(value: String): Int {
+    if (!value.contains('<')) return value.length
+    return value.replace(Regex("<[^>]*>"), "").trim().length
 }
 
 fun normalizeTags(tags: List<String>): List<String> {

@@ -14,12 +14,9 @@ import type { Campaign } from "@/data/campaigns";
 import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CampaignComments } from "./campaign-comments";
-import {
-  CampaignCTABar,
-  CampaignContentTab,
-  CampaignHeaderCard,
-  CampaignStatusManagement,
-} from "./campaign-detail-parts";
+import { CampaignCTABar } from "./campaign-detail-cta";
+import { CampaignContentTab } from "./campaign-detail-parts";
+import { CampaignHeaderCard, CampaignStatusManagement } from "./campaign-detail-header";
 
 type Tab = "content" | "comments";
 

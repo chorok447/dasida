@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bookmark, Heart, MessageCircle, Users } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
+import { PostText } from "@/components/post-text";
 import { ReportButton } from "@/components/report-button";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import type { Post } from "@/data/posts";
@@ -110,9 +111,11 @@ export function PostResultCard({ post }: { post: Post }) {
         </div>
       )}
       <div className="space-y-3 p-4">
-        <p className="line-clamp-3 text-[14px] leading-6" style={{ color: "var(--foreground)" }}>
-          {post.text}
-        </p>
+        <PostText
+          text={post.text}
+          className="line-clamp-3 text-[14px] leading-6"
+          style={{ color: "var(--foreground)" }}
+        />
         <div className="flex flex-wrap gap-1.5">
           {post.tags.slice(0, 3).map((tag) => (
             <span key={tag} className="rounded-full bg-[#7dd3a3]/15 px-2 py-0.5 text-[10px] text-[#148a90]">{tag}</span>

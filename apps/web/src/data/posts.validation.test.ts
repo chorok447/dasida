@@ -19,6 +19,18 @@ describe("validatePostCompose", () => {
     }
   });
 
+  it("moves inline images from text to images array", () => {
+    const result = validatePostCompose({
+      ...base,
+      text: '<p>본문</p><p><img src="https://a.com/x.jpg" alt="" /></p>',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload.text).toBe("<p>본문</p>");
+      expect(result.payload.images).toEqual(["https://a.com/x.jpg"]);
+    }
+  });
+
   it("rejects too many tags", () => {
     const tags = Array.from({ length: 11 }, (_, i) => `#tag${i}`);
     const result = validatePostCompose({ ...base, tags });

@@ -1,5 +1,6 @@
 package com.dasida.api.campaign
 
+import com.dasida.api.common.splitRichBodyHtml
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 
@@ -57,10 +58,11 @@ fun normalizeCampaignInput(
     }
 
     val normalizedBody = body.trim()
+    val (paragraphHtml, imageUrls) = splitRichBodyHtml(normalizedBody)
     return NormalizedCampaignInput(
         title = normalizedTitle,
         summary = summary.trim(),
-        body = CampaignBody("캠페인 소개", listOf(normalizedBody).filter { it.isNotBlank() }, emptyList()),
+        body = CampaignBody("캠페인 소개", listOf(paragraphHtml).filter { it.isNotBlank() }, imageUrls),
         thumb = thumb.trim(),
         recruitStart = recruitStart.toString(),
         recruitEnd = recruitEnd.toString(),

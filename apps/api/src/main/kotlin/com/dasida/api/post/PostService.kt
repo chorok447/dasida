@@ -320,7 +320,7 @@ class PostService(
         images: List<String>,
         campaignId: String?,
     ): NormalizedFields {
-        val normalizedText = normalizePostText(text)
+        val (normalizedText, mergedImages) = normalizePostFields(text, images)
         val cid = campaignId?.trim()?.ifBlank { null }
         // 단순 existsById 면 확인과 저장 사이에 캠페인이 삭제돼 orphan campaignId 가 생길 수 있다.
         // write lock 으로 캠페인을 잡아 두면 삭제가 게시글 commit 까지 직렬화돼 orphan 을 막는다.
@@ -328,7 +328,7 @@ class PostService(
         if (cid != null && campaigns.findByIdForUpdate(cid) == null) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign not found")
         }
-        return NormalizedFields(normalizedText, normalizeTags(tags), normalizeImages(images), cid)
+        return NormalizedFields(normalizedText, normalizeTags(tags), mergedImages, cid)
     }
 
     private data class NormalizedFields(
