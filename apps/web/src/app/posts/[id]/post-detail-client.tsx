@@ -255,7 +255,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
             <div className="p-7 flex flex-col gap-5">
               <div className="flex items-center gap-3">
-                <Avatar name={p.author.name} verified={p.author.verified} size={40} />
+                <Avatar name={p.author.name} verified={p.author.verified} size={40} src={p.author.profileImageUrl ?? undefined} />
                 <div>
                   <div style={{ color: "var(--foreground)" }}>{p.author.name}</div>
                   <div className="text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>{p.time}</div>

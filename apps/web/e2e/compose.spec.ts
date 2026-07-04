@@ -32,6 +32,27 @@ test("프로필 표시 이름을 변경하면 마이페이지에 반영된다", 
   await expect(page.getByText(newName).first()).toBeVisible();
 });
 
+test("프로필 이미지를 등록하면 기존 글의 피드 아바타에 반영된다", async ({ page }) => {
+  const account = await signup(page, "e2e-avatar");
+
+  // 프로필 이미지 등록 전에 글을 먼저 작성 — 기존 작성물 snapshot 전파를 검증한다
+  const text = `아바타 전파 확인 ${Date.now()}`;
+  await page.goto("/posts/new");
+  await page.getByLabel(/내용/).fill(text);
+  await page.getByRole("button", { name: "게시하기" }).click();
+  await page.waitForURL("**/feed");
+
+  // 실제 로드 가능한 URL 이어야 한다(onError 시 기본 아바타로 떨어짐) — 앱 자신의 favicon 사용
+  await page.goto("/profile/edit");
+  await page.getByLabel("프로필 이미지 URL").fill("http://localhost:3000/favicon.ico");
+  await page.getByRole("button", { name: "저장하기" }).click();
+  await page.waitForURL("**/mypage");
+
+  await page.goto("/feed");
+  await expect(page.getByText(text).first()).toBeVisible();
+  await expect(page.locator(`img[alt="${account.nickname} 프로필 이미지"]`).first()).toBeVisible();
+});
+
 test("작성한 글을 편집하면 상세에 반영된다", async ({ page }) => {
   const stamp = Date.now();
   await signup(page, "e2e-edit");

@@ -8,11 +8,8 @@ import { ReportButton } from "@/components/report-button";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import type { Post } from "@/data/posts";
 import { progressPercent } from "@/lib/progress";
-import { useTheme } from "@/lib/theme-context";
 
 export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const progress = progressPercent(campaign.joined, campaign.capacity);
   const meta = campaignRecruitMeta(campaign);
 
@@ -61,10 +58,10 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
             </p>
           </div>
           <div>
-            <div className="h-1.5 overflow-hidden rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
+            <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
               <div className="h-full rounded-full" style={{ width: `${progress}%`, background: meta.color }} />
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <div className="mt-2 flex items-center justify-between text-[11px] opacity-60" style={{ color: "var(--foreground)" }}>
               <span className="flex items-center gap-1.5">
                 <Users size={12} /> {campaign.joined} / {campaign.capacity}명
               </span>
@@ -78,8 +75,6 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
 }
 
 export function PostResultCard({ post }: { post: Post }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const image = post.images[0];
 
   return (
@@ -92,12 +87,12 @@ export function PostResultCard({ post }: { post: Post }) {
       }}
     >
       <div className="flex items-center gap-3 p-4">
-        <Avatar name={post.author.name} verified={post.author.verified} />
+        <Avatar name={post.author.name} verified={post.author.verified} src={post.author.profileImageUrl ?? undefined} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <p className="truncate text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
             {post.author.name}
           </p>
-          <p className="text-[11px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{post.time}</p>
+          <p className="text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>{post.time}</p>
         </div>
         {post.bookmarkedByMe ? <Bookmark size={15} fill="#7dd3a3" className="shrink-0 text-[#7dd3a3]" /> : null}
       </div>
@@ -115,7 +110,7 @@ export function PostResultCard({ post }: { post: Post }) {
         </div>
       )}
       <div className="space-y-3 p-4">
-        <p className="line-clamp-3 text-[14px] leading-6" style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.82)" }}>
+        <p className="line-clamp-3 text-[14px] leading-6" style={{ color: "var(--foreground)" }}>
           {post.text}
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -123,7 +118,7 @@ export function PostResultCard({ post }: { post: Post }) {
             <span key={tag} className="rounded-full bg-[#7dd3a3]/15 px-2 py-0.5 text-[10px] text-[#148a90]">{tag}</span>
           ))}
         </div>
-        <div className="flex items-center gap-4 border-t pt-3 text-[12px] opacity-65" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
+        <div className="flex items-center gap-4 border-t pt-3 text-[12px] opacity-65" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
           <span className="flex items-center gap-1" style={post.likedByMe ? { color: "#ed5c48" } : undefined}>
             <Heart size={13} fill={post.likedByMe ? "#ed5c48" : "none"} /> {post.likes}
           </span>
