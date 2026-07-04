@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import {
   CampaignComposeForm,
   CampaignComposeSubmitButton,
@@ -55,7 +55,7 @@ export default function CampaignCreatePage() {
   });
 
   useEffect(() => {
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인이 필요합니다.");
       router.replace("/login");
     }
@@ -104,7 +104,7 @@ export default function CampaignCreatePage() {
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       toast.error("로그인이 필요합니다.");
       router.push("/login");
@@ -117,12 +117,12 @@ export default function CampaignCreatePage() {
 
     try {
       const created = await apiPost<Campaign>("/api/campaigns", validation.payload);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       clearDraft();
       toast.success("캠페인이 등록되었습니다.");
       router.replace(`/campaigns/${created.id}`);
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");

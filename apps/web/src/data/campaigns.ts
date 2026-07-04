@@ -161,7 +161,7 @@ export type CampaignParticipantRemovalResponse = {
   joined: number;
 };
 
-/** 개설자용 참가자 강제 퇴장. apiDelete 가 getToken() 으로 인증 헤더를 붙이며 갱신된 joined 를 반환한다. */
+/** 개설자용 참가자 강제 퇴장. apiDelete 가 getSessionId() 으로 인증 헤더를 붙이며 갱신된 joined 를 반환한다. */
 export function removeCampaignParticipant(
   campaignId: string,
   participantId: string,
@@ -200,7 +200,6 @@ export function fetchCampaignCommentPageLocation(
   const query = new URLSearchParams({ size: String(size) });
   return apiGet<CommentPageLocationResponse>(
     `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}/page?${query.toString()}`,
-    null,
   );
 }
 
@@ -208,12 +207,10 @@ export function updateCampaignComment(
   campaignId: string,
   commentId: string,
   body: UpdateCampaignCommentRequest,
-  token: string,
 ): Promise<CampaignComment> {
   return apiPut<CampaignComment>(
     `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}`,
     body,
-    token,
   );
 }
 

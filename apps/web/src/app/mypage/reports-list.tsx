@@ -10,7 +10,7 @@ import {
   REPORT_TARGET_LABELS,
   type ReportItem,
 } from "@/data/reports";
-import { getToken } from "@/lib/auth";
+import { getSessionId } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { useTheme } from "@/lib/theme-context";
 import { PaginatedSection } from "./paginated-section";
@@ -76,9 +76,9 @@ export function ReportsList({ page, onPageChange }: { page: number; onPageChange
       page={page}
       onPageChange={onPageChange}
       fetcher={(currentPage) => {
-        const token = getToken();
+        const token = getSessionId();
         return token
-          ? fetchMyReports({ page: currentPage, size: 20 }, token)
+          ? fetchMyReports({ page: currentPage, size: 20 })
           : Promise.reject(new ApiError(401, "/api/reports/mine"));
       }}
       loadingLabel="신고 내역을 불러오는 중입니다."

@@ -44,7 +44,7 @@ export default function SignupPage() {
     setError("");
     try {
       const res = await apiPost<AuthResponse>("/api/auth/signup", { email, password, name: nickname });
-      setSession(res.token, res.name);
+      setSession(res.name);
       router.push("/feed");
     } catch (e) {
       setSubmitting(false);

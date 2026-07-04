@@ -7,7 +7,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Bookmark, ExternalLink, Heart, MessageCircle } from "lucide-react";
 import { apiDelete, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useTheme } from "@/lib/theme-context";
 import { fetchBookmarkedPostsPage, type Post } from "@/data/posts";
 import { PaginatedSection } from "./paginated-section";
@@ -104,7 +104,7 @@ export function SavedPostsGrid({ page, onPageChange }: { page: number; onPageCha
 
   const removeBookmark = async (postId: string, reload: () => void) => {
     if (removingId) return;
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       return;
@@ -113,7 +113,7 @@ export function SavedPostsGrid({ page, onPageChange }: { page: number; onPageCha
     setActionError("");
     try {
       await apiDelete<Post>(`/api/posts/${postId}/bookmark`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       reload();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {

@@ -9,7 +9,7 @@ import { ArrowLeft, Heart, Share2, MessageCircle, FileText, Pencil, Trash2, User
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
@@ -429,7 +429,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetCommentId = searchParams.get("commentId")?.trim() || null;
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [tab, setTab] = useState<Tab>(() => targetCommentId ? "comments" : "content");
@@ -459,7 +459,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     `/api/campaigns/${campaign.id}`,
     (updated) => {
       setC(updated);
-      setOwnershipToken(updated.ownedByMe ? getToken() : null);
+      setOwnershipToken(updated.ownedByMe ? getSessionId() : null);
     },
     () => {
       setOwnershipToken(null);
@@ -479,19 +479,19 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const join = async () => {
     if (mutationBusy()) return;
-    if (!getToken()) return;
-    const requestToken = getToken();
+    if (!getSessionId()) return;
+    const requestToken = getSessionId();
     if (!requestToken) return;
     participationUpdatingRef.current = true;
     setParticipationAction("join");
     invalidatePending();
     try {
       const updated = await apiPost<Campaign>(`/api/campaigns/${c.id}/join`, {});
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setC(updated);
       toast.success("캠페인에 참여했습니다.");
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인 후 캠페인에 참여할 수 있어요.");
@@ -511,25 +511,25 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const leave = async () => {
     if (mutationBusy()) return;
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인 후 캠페인에 참여할 수 있어요.");
       router.push("/login");
       return;
     }
     if (!confirm("캠페인 참여를 취소할까요?\n모집 마감 후에는 취소할 수 없습니다.")) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return;
     participationUpdatingRef.current = true;
     setParticipationAction("leave");
     invalidatePending();
     try {
       const updated = await apiDelete<Campaign>(`/api/campaigns/${c.id}/join`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setC(updated); // joined/progress/joinedByMe 즉시 갱신
       toast.success("참여가 취소되었습니다.");
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인 후 캠페인에 참여할 수 있어요.");
@@ -550,7 +550,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const updateStatus = async (target: "open" | "closed") => {
     if (mutationBusy()) return; // 참여/취소·삭제와 동시 실행 금지
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
@@ -561,17 +561,17 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
       : confirm("모집을 마감할까요? 다시 시작할 수 없습니다.");
     if (!confirmed) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return;
     statusUpdatingRef.current = true;
     setStatusUpdating(true);
     invalidatePending();
     try {
       const updated = await apiPut<Campaign>(`/api/campaigns/${c.id}/status`, { status: target });
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setC(updated);
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");
@@ -593,25 +593,25 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const deleteCampaign = async () => {
     if (mutationBusy()) return; // 참여/취소·모집 시작과 동시 실행 금지
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
     }
     if (!confirm("이 캠페인을 삭제할까요?\n삭제한 캠페인은 복구할 수 없습니다.")) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return;
     deletingRef.current = true;
     setDeleting(true);
     invalidatePending(); // 진행 중 재조회 결과가 삭제 동작과 경합하지 않게
     try {
       await apiDeleteVoid(`/api/campaigns/${c.id}`);
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       // 삭제된 상세가 history 에 남지 않도록 replace 로 이동. 다른 state 는 갱신하지 않는다.
       router.replace("/mypage");
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");

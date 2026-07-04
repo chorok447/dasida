@@ -33,7 +33,7 @@ import {
 } from "@/data/campaigns";
 import type { Post, PostSearchResponse } from "@/data/posts";
 import { ApiError, apiGet } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { progressPercent } from "@/lib/progress";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
@@ -270,7 +270,7 @@ function PostResultCard({ post }: { post: Post }) {
 export default function SearchClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
@@ -332,7 +332,7 @@ export default function SearchClient() {
 
   useEffect(() => {
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const campaignParams = new URLSearchParams();
     if (urlState.query) campaignParams.set("q", urlState.query);
@@ -362,7 +362,7 @@ export default function SearchClient() {
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     const load = async () => {
       let campaigns: CampaignSearchResponse | null = null;

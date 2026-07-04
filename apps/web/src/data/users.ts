@@ -46,7 +46,6 @@ export function validateProfileUpdate(input: { name: string; profileImageUrl: st
 
 export function updateProfile(
   body: UpdateProfileRequest,
-  token: string,
 ): Promise<UpdateProfileResponse> {
-  return apiPut<UpdateProfileResponse>("/api/auth/me", body, token);
+  return apiPut<UpdateProfileResponse>("/api/auth/me", body);
 }

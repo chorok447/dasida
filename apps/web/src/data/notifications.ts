@@ -79,17 +79,15 @@ export async function markAllNotificationsRead(): Promise<NotificationReadAllRes
 
 export async function deleteNotification(
   id: string,
-  token: string,
 ): Promise<NotificationDeleteResponse> {
-  const res = await apiDelete<NotificationDeleteResponse>(`/api/notifications/${id}`, token);
+  const res = await apiDelete<NotificationDeleteResponse>(`/api/notifications/${id}`);
   emitNotificationsChanged();
   return res;
 }
 
 export async function deleteReadNotifications(
-  token: string,
 ): Promise<NotificationDeleteReadResponse> {
-  const res = await apiDelete<NotificationDeleteReadResponse>("/api/notifications/read", token);
+  const res = await apiDelete<NotificationDeleteReadResponse>("/api/notifications/read");
   emitNotificationsChanged();
   return res;
 }

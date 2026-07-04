@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
-import { getToken, clearSession } from "@/lib/auth";
+import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { PostComposeForm, PostComposeSubmitButton } from "@/components/post-compose-form";
 import {
@@ -25,7 +25,7 @@ type LoadState =
 export default function PostEditPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const submittingRef = useRef(false);
@@ -49,7 +49,7 @@ export default function PostEditPage() {
   }, []);
 
   useEffect(() => {
-    if (!getToken()) {
+    if (!getSessionId()) {
       router.replace("/login");
       return;
     }
@@ -124,7 +124,7 @@ export default function PostEditPage() {
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       toast.error("로그인이 필요합니다.");
       router.push("/login");
@@ -137,11 +137,11 @@ export default function PostEditPage() {
 
     try {
       await apiPut(`/api/posts/${id}`, validation.payload);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       toast.success("게시글이 수정되었습니다.");
       router.replace(`/posts/${id}`);
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");

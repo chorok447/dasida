@@ -13,7 +13,7 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
 import { RecommendedCampaigns } from "@/components/recommended-campaigns";
 import { ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import {
   deleteNotification,
   deleteReadNotifications,
@@ -181,7 +181,7 @@ export default function NotificationsClient() {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const router = useRouter();
-  const { token, isLoggedIn, hydrated } = useAuthSession();
+  const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(0);
@@ -207,10 +207,10 @@ export default function NotificationsClient() {
   // 검색 페이지와 동일한 stale 방어: generation + token 으로 늦은 응답이 최신을 덮지 못하게 한다.
   useEffect(() => {
     const requestToken = token;
-    if (!requestToken || getToken() !== requestToken) return;
+    if (!requestToken || getSessionId() !== requestToken) return;
     const generation = ++generationRef.current;
     let cancelled = false;
-    const isCurrent = () => !cancelled && generation === generationRef.current && getToken() === requestToken;
+    const isCurrent = () => !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     fetchNotifications(page, PAGE_SIZE, filter === "unread")
       .then((res) => {
@@ -298,16 +298,16 @@ export default function NotificationsClient() {
   const removeOne = async (id: string) => {
     if (deletingIds.has(id)) return;
     const requestToken = token;
-    if (!requestToken || getToken() !== requestToken) return;
+    if (!requestToken || getSessionId() !== requestToken) return;
     setDeletingIds((ids) => new Set(ids).add(id));
     setActionError("");
     try {
-      await deleteNotification(id, requestToken);
-      if (getToken() !== requestToken) return;
+      await deleteNotification(id);
+      if (getSessionId() !== requestToken) return;
       if (list.length === 1 && page > 0) setPage((currentPage) => currentPage - 1);
       else setRetryTick((tick) => tick + 1);
     } catch (requestError) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
         clearSession();
         router.replace("/login?next=/notifications");
@@ -332,16 +332,16 @@ export default function NotificationsClient() {
     if (cleaningRead || !hasReadNotifications) return;
     if (!window.confirm("읽은 알림을 모두 삭제할까요?\n삭제한 알림은 복구할 수 없습니다.")) return;
     const requestToken = token;
-    if (!requestToken || getToken() !== requestToken) return;
+    if (!requestToken || getSessionId() !== requestToken) return;
     setCleaningRead(true);
     setActionError("");
     try {
-      await deleteReadNotifications(requestToken);
-      if (getToken() !== requestToken) return;
+      await deleteReadNotifications();
+      if (getSessionId() !== requestToken) return;
       if (page === 0) setRetryTick((tick) => tick + 1);
       else setPage(0);
     } catch (requestError) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
         clearSession();
         router.replace("/login?next=/notifications");

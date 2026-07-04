@@ -13,17 +13,17 @@ export type AuthedRefresh = {
 };
 
 /**
- * 서버 컴포넌트는 토큰 없이 GET 하므로 likedByMe/joinedByMe 가 항상 false 로 내려온다.
- * 이 훅은 클라이언트에서 인증 token 변화를 구독해 사용자별 상태를 다시 동기화한다.
+ * 서버 컴포넌트는 인증 쿠키 없이 GET 하므로 likedByMe/joinedByMe 가 항상 false 로 내려온다.
+ * 이 훅은 클라이언트에서 세션 변화를 구독해 사용자별 상태를 다시 동기화한다(인증은 쿠키가 전달).
  *
- * - 로그인 상태로 마운트 → 토큰 포함 GET.
- * - 로그아웃(token→null) → public GET 으로 likedByMe/joinedByMe=false 반영.
- * - 다른 token 으로 변경 → 새 사용자 기준 재조회.
+ * - 로그인 상태로 마운트 → 쿠키 포함 GET.
+ * - 로그아웃(sessionId→null) → public GET 으로 likedByMe/joinedByMe=false 반영.
+ * - 다른 세션으로 변경(재로그인) → 새 사용자 기준 재조회.
  * - 최초 마운트 + 비로그인 → 서버 렌더가 이미 public 이라 재조회 생략.
  * - seq(generation) ref 로 최신 요청만 apply, unmount/변경 후 도착분은 무시.
  * - 실패해도 서버 렌더 데이터를 fallback 으로 두고 loading 을 풀어준다.
  *
- * @param neutralize identity(token) 변경 시 재조회 전에 호출. 사용자별 상태(likedByMe/joinedByMe)를
+ * @param neutralize identity(sessionId) 변경 시 재조회 전에 호출. 사용자별 상태(likedByMe/joinedByMe)를
  *   즉시 neutral 로 되돌려, 이후 GET 이 실패해도 이전 사용자 상태가 남지 않게 한다. likes/joined 숫자는 유지.
  */
 export function useAuthedRefresh<T>(
@@ -31,7 +31,7 @@ export function useAuthedRefresh<T>(
   apply: (data: T) => void,
   neutralize?: () => void,
 ): AuthedRefresh {
-  const { token } = useAuthSession();
+  const { sessionId } = useAuthSession();
   // apply/neutralize 를 deps 에 넣지 않기 위해 ref 로 안정화. ref 쓰기는 렌더 밖(effect)에서만.
   const applyRef = useRef(apply);
   const neutralizeRef = useRef(neutralize);
@@ -54,13 +54,13 @@ export function useAuthedRefresh<T>(
     const wasFirst = firstRef.current;
     firstRef.current = false;
     // 최초 마운트면서 비로그인: 서버 렌더 public 데이터 그대로 사용.
-    if (wasFirst && !token) return;
+    if (wasFirst && !sessionId) return;
 
     // identity 변경(로그아웃·토큰교체·로그인)이면 재조회 전에 사용자별 상태를 즉시 neutral 로.
     // GET 이 실패해도 이전 사용자 상태가 남지 않는다. 최초 마운트는 서버 렌더가 이미 neutral 이라 제외.
     if (!wasFirst) neutralizeRef.current?.();
 
-    let cancelled = false; // path/token 변경·unmount 시 이 요청을 무효화(로컬 플래그)
+    let cancelled = false; // path/세션 변경·unmount 시 이 요청을 무효화(로컬 플래그)
     const seq = ++seqRef.current;
     // 최신 요청(seq 일치)이고 아직 유효(!cancelled)할 때만 반영.
     const isLatest = () => !cancelled && seq === seqRef.current;
@@ -80,7 +80,7 @@ export function useAuthedRefresh<T>(
     return () => {
       cancelled = true;
     };
-  }, [path, token]);
+  }, [path, sessionId]);
 
   return { refreshing, invalidatePending };
 }

@@ -18,7 +18,7 @@ import {
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
@@ -194,7 +194,7 @@ function PostCard({
   const rX = useTransform(sy, [-0.5, 0.5], [5, -5]);
 
   const router = useRouter();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const [likes, setLikes] = useState(p.likes);
   const [liked, setLiked] = useState(p.likedByMe);
   const [liking, setLiking] = useState(false);
@@ -226,19 +226,19 @@ function PostCard({
   };
 
   const onLike = async () => {
-    if (!getToken()) return promptLogin("로그인 후 이용할 수 있어요.");
+    if (!getSessionId()) return promptLogin("로그인 후 이용할 수 있어요.");
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
-    const requestToken = getToken(); // 요청 identity 캡처
+    const requestToken = getSessionId(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
       else toast.error("좋아요 처리에 실패했습니다.");
     } finally {
@@ -247,7 +247,7 @@ function PostCard({
   };
 
   const onBookmark = async () => {
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) return promptLogin("로그인 후 이용할 수 있어요.");
     if (bookmarking || refreshing) return;
     setBookmarking(true);
@@ -255,10 +255,10 @@ function PostCard({
       const updated = bookmarked
         ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
         : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setBookmarked(updated.bookmarkedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) promptLogin("로그인 후 이용할 수 있어요.", true);
       else toast.error("북마크 처리에 실패했습니다.");
     } finally {
@@ -286,7 +286,7 @@ function PostCard({
     const text = commentText.trim();
     if (!text || busy) return;
     if (text.length > MAX_COMMENT_LENGTH) return toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
-    if (!getToken()) return promptLogin("로그인해야 댓글을 작성할 수 있어요.");
+    if (!getSessionId()) return promptLogin("로그인해야 댓글을 작성할 수 있어요.");
     setBusy(true);
     try {
       const created = await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
@@ -523,7 +523,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme } = useTheme();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
   const generationRef = useRef(0);
@@ -574,7 +574,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   }, [updateUrl]);
 
   const goToNewPost = () => {
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인 후 글을 작성할 수 있어요.");
       router.push("/login?next=/posts/new");
       return;
@@ -594,12 +594,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
   useEffect(() => {
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     apiGet<PostSearchResponse>(searchPath)
       .then((nextResponse) => {

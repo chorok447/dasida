@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { Pagination } from "@/components/ui/pagination";
@@ -49,7 +49,7 @@ export function PaginatedSection<T>({
   loadingLabel: string;
   errorLabel: string;
 }) {
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
@@ -73,7 +73,7 @@ export function PaginatedSection<T>({
     const requestToken = token;
     const generation = ++generationRef.current;
     let cancelled = false;
-    const isCurrent = () => !cancelled && generation === generationRef.current && getToken() === requestToken;
+    const isCurrent = () => !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     fetcherRef.current(page)
       .then((data) => {

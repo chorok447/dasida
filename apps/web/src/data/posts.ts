@@ -173,7 +173,6 @@ export type PostCommentsPageResponse = {
 export function fetchPostCommentsPage(
   postId: string,
   params: { page?: number; size?: number } = {},
-  token?: string | null,
 ): Promise<PostCommentsPageResponse> {
   const query = new URLSearchParams({
     page: String(params.page ?? 0),
@@ -181,7 +180,6 @@ export function fetchPostCommentsPage(
   });
   return apiGet<PostCommentsPageResponse>(
     `/api/posts/${encodeURIComponent(postId)}/comments/page?${query.toString()}`,
-    token,
   );
 }
 
@@ -193,7 +191,6 @@ export function fetchPostCommentPageLocation(
   const query = new URLSearchParams({ size: String(size) });
   return apiGet<CommentPageLocationResponse>(
     `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}/page?${query.toString()}`,
-    null,
   );
 }
 
@@ -201,11 +198,9 @@ export function updatePostComment(
   postId: string,
   commentId: string,
   body: UpdatePostCommentRequest,
-  token: string,
 ): Promise<PostComment> {
   return apiPut<PostComment>(
     `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
     body,
-    token,
   );
 }
