@@ -3,6 +3,7 @@ package com.dasida.api.auth
 import com.dasida.api.security.AuthCookies
 import com.dasida.api.security.AuthUser
 import com.dasida.api.security.authCookieToken
+import com.dasida.api.security.refreshCookieToken
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -35,12 +36,20 @@ class AuthController(
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     fun signup(@RequestBody req: SignupRequest, res: HttpServletResponse): AuthResponse =
-        authService.signup(req).also { res.setAuthCookie(it.token) }
+        res.setAuthCookies(authService.signup(req))
 
     @Operation(summary = "로그인")
     @PostMapping("/login")
     fun login(@RequestBody req: LoginRequest, res: HttpServletResponse): AuthResponse =
-        authService.login(req).also { res.setAuthCookie(it.token) }
+        res.setAuthCookies(authService.login(req))
+
+    @Operation(summary = "토큰 재발급. refresh 쿠키로 access·refresh 를 재발급한다(rotation).")
+    @PostMapping("/refresh")
+    fun refresh(req: HttpServletRequest, res: HttpServletResponse): AuthResponse {
+        val refreshToken = req.refreshCookieToken()
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "no refresh token")
+        return res.setAuthCookies(authService.refresh(refreshToken))
+    }
 
     @Operation(summary = "로그아웃")
     @SecurityRequirement(name = "bearerAuth")
@@ -57,8 +66,8 @@ class AuthController(
             ?.takeIf { it.isNotEmpty() }
             ?: req.authCookieToken()
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
-        return authService.logout(token).also {
-            res.addHeader(HttpHeaders.SET_COOKIE, authCookies.expire().toString())
+        return authService.logout(token, req.refreshCookieToken()).also {
+            res.expireAuthCookies()
         }
     }
 
@@ -111,7 +120,8 @@ class AuthController(
         res: HttpServletResponse,
     ): DeleteAccountResponse =
         authService.deleteAccount(requireUserId(principal), req).also {
-            res.addHeader(HttpHeaders.SET_COOKIE, authCookies.expire().toString())
+            // 탈퇴 사용자는 필터·refresh 모두에서 거절되므로 denylist 없이 쿠키만 정리한다.
+            res.expireAuthCookies()
         }
 
     private fun requireUserId(principal: AuthUser?): Long =
@@ -119,5 +129,17 @@ class AuthController(
 
     private fun HttpServletResponse.setAuthCookie(token: String) {
         addHeader(HttpHeaders.SET_COOKIE, authCookies.issue(token).toString())
+    }
+
+    /** access·refresh 쿠키를 함께 발급하고 body 용 응답만 돌려준다(refresh 는 쿠키로만 전달). */
+    private fun HttpServletResponse.setAuthCookies(tokens: IssuedTokens): AuthResponse {
+        setAuthCookie(tokens.response.token)
+        addHeader(HttpHeaders.SET_COOKIE, authCookies.issueRefresh(tokens.refreshToken).toString())
+        return tokens.response
+    }
+
+    private fun HttpServletResponse.expireAuthCookies() {
+        addHeader(HttpHeaders.SET_COOKIE, authCookies.expire().toString())
+        addHeader(HttpHeaders.SET_COOKIE, authCookies.expireRefresh().toString())
     }
 }

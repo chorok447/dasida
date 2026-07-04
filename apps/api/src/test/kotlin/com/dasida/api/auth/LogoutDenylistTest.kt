@@ -68,7 +68,7 @@ class LogoutDenylistTest(
     @Test
     fun `만료된 토큰 로그아웃은 401 - denylist 에 등록되지 않는다`() {
         // 앱과 동일한 서명키로 이미 만료된 토큰을 만든다(음수 TTL). 필터가 만료로 401 처리한다.
-        val expired = JwtService(secret, -1000, "").issue(saveUser("logout-expired@dasida.com"))
+        val expired = JwtService(secret, -1000, 1209600000, "").issue(saveUser("logout-expired@dasida.com"))
 
         mvc.post("/api/auth/logout") { headers { add("Authorization", "Bearer $expired") } }
             .andExpect { status { isUnauthorized() } }
