@@ -23,6 +23,12 @@ data class LoginRequest(
 @Schema(description = "인증 응답. token 은 이후 요청에 Bearer 로 사용한다.")
 data class AuthResponse(val token: String, val name: String, val verified: Boolean)
 
+/**
+ * 토큰 발급 내부 결과. refreshToken 은 응답 body 에 노출하지 않고 httpOnly 쿠키로만 전달한다
+ * (JS 접근 차단 — body 에 실으면 localStorage 저장 유혹이 생겨 쿠키 전환 의미가 없어진다).
+ */
+data class IssuedTokens(val response: AuthResponse, val refreshToken: String)
+
 @Schema(description = "내 프로필")
 data class UserProfileResponse(
     val id: Long,

@@ -29,6 +29,7 @@ class JwtAuthenticationBoundaryTest(
         val forgedJwt = JwtService(
             "forged-test-secret-that-is-at-least-32-bytes!!",
             86_400_000,
+            1_209_600_000,
             "",
         )
         val forgedToken = forgedJwt.issue(

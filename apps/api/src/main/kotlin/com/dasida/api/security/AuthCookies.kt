@@ -16,24 +16,38 @@ import java.time.Duration
 @Component
 class AuthCookies(
     @param:Value("\${app.jwt.ttl-millis}") private val ttlMillis: Long,
+    @param:Value("\${app.jwt.refresh-ttl-millis}") private val refreshTtlMillis: Long,
     @param:Value("\${app.jwt.cookie-secure:false}") private val secure: Boolean,
 ) {
-    fun issue(token: String): ResponseCookie = builder(token).maxAge(Duration.ofMillis(ttlMillis)).build()
+    fun issue(token: String): ResponseCookie =
+        builder(NAME, token, "/").maxAge(Duration.ofMillis(ttlMillis)).build()
 
-    fun expire(): ResponseCookie = builder("").maxAge(Duration.ZERO).build()
+    fun expire(): ResponseCookie = builder(NAME, "", "/").maxAge(Duration.ZERO).build()
 
-    private fun builder(value: String): ResponseCookie.ResponseCookieBuilder =
-        ResponseCookie.from(NAME, value)
+    // refresh 쿠키는 Path=/api/auth 로 제한해 일반 API 요청에는 실리지 않게 한다(노출 면 최소화).
+    fun issueRefresh(token: String): ResponseCookie =
+        builder(REFRESH_NAME, token, REFRESH_PATH).maxAge(Duration.ofMillis(refreshTtlMillis)).build()
+
+    fun expireRefresh(): ResponseCookie = builder(REFRESH_NAME, "", REFRESH_PATH).maxAge(Duration.ZERO).build()
+
+    private fun builder(name: String, value: String, path: String): ResponseCookie.ResponseCookieBuilder =
+        ResponseCookie.from(name, value)
             .httpOnly(true)
             .secure(secure)
             .sameSite("Lax")
-            .path("/")
+            .path(path)
 
     companion object {
         const val NAME = "dasida_token"
+        const val REFRESH_NAME = "dasida_refresh"
+        const val REFRESH_PATH = "/api/auth"
     }
 }
 
 /** 요청의 인증 쿠키 값. 없거나 비어 있으면 null. */
 fun HttpServletRequest.authCookieToken(): String? =
     cookies?.firstOrNull { it.name == AuthCookies.NAME }?.value?.takeIf { it.isNotBlank() }
+
+/** 요청의 refresh 쿠키 값. 없거나 비어 있으면 null. */
+fun HttpServletRequest.refreshCookieToken(): String? =
+    cookies?.firstOrNull { it.name == AuthCookies.REFRESH_NAME }?.value?.takeIf { it.isNotBlank() }
