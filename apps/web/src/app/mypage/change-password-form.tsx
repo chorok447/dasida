@@ -8,7 +8,7 @@ import {
   PASSWORD_POLICY_MESSAGE,
 } from "@/data/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
-import { clearSession, getToken, setSession } from "@/lib/auth";
+import { clearSession, getSessionId, setSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 
@@ -56,7 +56,7 @@ export function ChangePasswordForm({ profileName }: { profileName: string }) {
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       router.push("/login");
@@ -68,19 +68,19 @@ export function ChangePasswordForm({ profileName }: { profileName: string }) {
     setError("");
     setSuccess("");
     try {
-      const response = await changePassword({ currentPassword, newPassword }, requestToken);
-      if (getToken() !== requestToken) return;
+      const response = await changePassword({ currentPassword, newPassword });
+      if (getSessionId() !== requestToken) return;
       if (!response.changed) {
         setError("비밀번호 변경에 실패했습니다. 잠시 후 다시 시도해주세요.");
         return;
       }
-      if (response.token) setSession(response.token, profileName);
+      if (response.token) setSession(profileName);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setSuccess("비밀번호가 변경되었습니다.");
     } catch (requestError) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
         clearSession();
         router.push("/login");

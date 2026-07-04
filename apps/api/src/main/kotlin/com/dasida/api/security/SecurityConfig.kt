@@ -27,6 +27,8 @@ class SecurityConfig(
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
+            // CSRF 토큰 미사용: 인증 쿠키가 SameSite=Lax(AuthCookies)라 cross-site POST 에 실리지 않고,
+            // CORS origin 허용 목록으로 브라우저 교차 출처 요청을 제한한다.
             .csrf { it.disable() }
             .cors { }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }

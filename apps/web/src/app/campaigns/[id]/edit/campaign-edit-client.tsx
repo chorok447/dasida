@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -66,7 +66,7 @@ function composeValuesChanged(a: CampaignComposeValues, b: CampaignComposeValues
 
 export default function CampaignEditClient({ id }: { id: string }) {
   const router = useRouter();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const savingRef = useRef(false);
@@ -83,14 +83,14 @@ export default function CampaignEditClient({ id }: { id: string }) {
     : { identity, kind: "loading" };
 
   useEffect(() => {
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       router.replace("/login");
       return;
     }
 
     let cancelled = false;
-    const isCurrent = () => !cancelled && getToken() === requestToken;
+    const isCurrent = () => !cancelled && getSessionId() === requestToken;
     apiGet<Campaign>(`/api/campaigns/${id}`)
       .then((campaign) => {
         if (!isCurrent()) return;
@@ -156,7 +156,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       toast.error("로그인이 필요합니다.");
@@ -170,11 +170,11 @@ export default function CampaignEditClient({ id }: { id: string }) {
 
     try {
       const updated = await apiPut<Campaign>(`/api/campaigns/${id}`, validation.payload);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       toast.success("캠페인이 수정되었습니다.");
       router.replace(`/campaigns/${updated.id}`);
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");

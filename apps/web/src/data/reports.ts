@@ -52,17 +52,16 @@ export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
   CAMPAIGN_COMMENT: "캠페인 댓글",
 };
 
-export function createReport(body: CreateReportRequest, token: string): Promise<ReportItem> {
-  return apiPost<ReportItem>("/api/reports", body, token);
+export function createReport(body: CreateReportRequest): Promise<ReportItem> {
+  return apiPost<ReportItem>("/api/reports", body);
 }
 
 export function fetchMyReports(
   params: { page?: number; size?: number },
-  token: string,
 ): Promise<ReportsPageResponse> {
   const query = new URLSearchParams({
     page: String(params.page ?? 0),
     size: String(params.size ?? 20),
   });
-  return apiGet<ReportsPageResponse>(`/api/reports/mine?${query.toString()}`, token);
+  return apiGet<ReportsPageResponse>(`/api/reports/mine?${query.toString()}`);
 }

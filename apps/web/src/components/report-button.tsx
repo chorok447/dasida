@@ -10,7 +10,7 @@ import {
   type ReportReason,
   type ReportTargetType,
 } from "@/data/reports";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
 import { useTheme } from "@/lib/theme-context";
 
@@ -47,7 +47,7 @@ export function ReportButton({
 
   const open = () => {
     if (submitting) return;
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error(loginToast);
       goToLogin();
       return;
@@ -73,7 +73,7 @@ export function ReportButton({
       setError("신고 내용을 500자 이하로 입력해주세요.");
       return;
     }
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       toast.error(loginToast);
       goToLogin();
@@ -90,15 +90,14 @@ export function ReportButton({
           reason,
           detail: normalizedDetail || null,
         },
-        requestToken,
       );
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setReason("");
       setDetail("");
       dialogRef.current?.close();
       toast.success("신고가 접수되었습니다.");
     } catch (caught) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (caught instanceof ApiError && caught.status === 401) {
         clearSession();
         dialogRef.current?.close();

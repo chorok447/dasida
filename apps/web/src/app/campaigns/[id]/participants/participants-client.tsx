@@ -7,7 +7,7 @@ import { ArrowLeft, RefreshCw, ShieldCheck, UserMinus, Users } from "lucide-reac
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { apiGet, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import {
@@ -46,7 +46,7 @@ function StateShell({ children }: { children: React.ReactNode }) {
 
 export default function ParticipantsClient({ id }: { id: string }) {
   const router = useRouter();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const requestGenerationRef = useRef(0);
@@ -63,7 +63,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
 
   useEffect(() => {
     // hydration 중 useAuthSession의 server snapshot은 null일 수 있어 실제 localStorage 값을 확인한다.
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       requestInFlightRef.current = false;
       router.replace("/login");
@@ -76,7 +76,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     const isCurrent = () =>
       !cancelled
       && generation === requestGenerationRef.current
-      && getToken() === requestToken;
+      && getSessionId() === requestToken;
 
     apiGet<CampaignParticipantsResponse>(
       `/api/campaigns/${encodeURIComponent(id)}/participants?page=${page}&size=${PAGE_SIZE}`,

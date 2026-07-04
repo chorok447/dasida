@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, LogIn, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError, apiErrorMessage } from "@/lib/api";
-import { clearSession, getToken, notifyProfileUpdated, setSession } from "@/lib/auth";
+import { clearSession, getSessionId, notifyProfileUpdated, setSession } from "@/lib/auth";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useTheme } from "@/lib/theme-context";
 import {
@@ -103,7 +103,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       toast.error("로그인이 필요합니다.");
@@ -116,15 +116,14 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
     try {
       const response = await updateProfile(
         { name: validation.name, profileImageUrl: validation.profileImageUrl },
-        requestToken,
       );
-      if (getToken() !== requestToken) return;
-      setSession(response.token, response.profile.name);
+      if (getSessionId() !== requestToken) return;
+      setSession(response.profile.name);
       notifyProfileUpdated();
       toast.success("프로필이 저장되었습니다.");
       router.push("/mypage");
     } catch (requestError) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (requestError instanceof ApiError && requestError.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");

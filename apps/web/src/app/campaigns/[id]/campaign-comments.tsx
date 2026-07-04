@@ -14,7 +14,7 @@ import {
   type CampaignCommentsResponse,
 } from "@/data/campaigns";
 import { ApiError, apiDeleteVoid, apiErrorMessage, apiGet, apiPost } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 
@@ -214,7 +214,7 @@ export function CampaignComments({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [page, setPage] = useState(0);
@@ -322,16 +322,15 @@ export function CampaignComments({
     if (targetLocationStatus === "loading") return;
     if (targetLocationPage !== undefined && targetLocationPage !== null && targetLocationPage !== page) return;
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     apiGet<CampaignCommentsResponse>(
       `/api/campaigns/${campaignId}/comments?page=${page}&size=20`,
-      requestToken,
     )
       .then((response) => {
         if (!isCurrent()) return;
@@ -381,7 +380,7 @@ export function CampaignComments({
     event.preventDefault();
     if (submittingRef.current) return;
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       router.push("/login");
       return;
@@ -397,13 +396,13 @@ export function CampaignComments({
     setMutationError("");
     try {
       await apiPost<CampaignComment>(`/api/campaigns/${campaignId}/comments`, { text: normalized });
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setText("");
       clearTargetComment();
       if (page === 0) reload();
       else setPage(0);
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         router.push("/login");
@@ -432,7 +431,7 @@ export function CampaignComments({
 
   const deleteComment = async (comment: CampaignComment) => {
     if (deletingRef.current.has(comment.id)) return;
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       router.push("/login");
       return;
@@ -444,10 +443,10 @@ export function CampaignComments({
     setMutationError("");
     try {
       await apiDeleteVoid(`/api/campaigns/${campaignId}/comments/${comment.id}`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       refreshAfterDelete();
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         router.push("/login");
@@ -492,7 +491,7 @@ export function CampaignComments({
       setEditError("댓글은 1자 이상 500자 이하로 입력해주세요.");
       return;
     }
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       setEditingCommentId(null);
@@ -509,9 +508,8 @@ export function CampaignComments({
         campaignId,
         comment.id,
         { text: normalized },
-        requestToken,
       );
-      if (getToken() !== requestToken || generation !== editGenerationRef.current) return;
+      if (getSessionId() !== requestToken || generation !== editGenerationRef.current) return;
       if (!currentState.response?.content.some((item) => item.id === comment.id)) {
         setEditingCommentId(null);
         reload();
@@ -529,7 +527,7 @@ export function CampaignComments({
       setEditingCommentId(null);
       setEditText("");
     } catch (error) {
-      if (getToken() !== requestToken || generation !== editGenerationRef.current) return;
+      if (getSessionId() !== requestToken || generation !== editGenerationRef.current) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         setEditingCommentId(null);

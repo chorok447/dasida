@@ -13,3 +13,6 @@ springdoc:
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
+  jwt:
+    # 운영은 HTTPS 전제 → 인증 쿠키를 Secure 로 강제한다.
+    cookie-secure: true

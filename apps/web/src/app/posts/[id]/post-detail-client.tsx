@@ -8,7 +8,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { ArrowLeft, Heart, MessageCircle, Share2, Bookmark, Send, ChevronLeft, ChevronRight, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiDelete, apiDeleteVoid, ApiError, apiErrorMessage } from "@/lib/api";
-import { getToken, clearSession } from "@/lib/auth";
+import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
@@ -50,7 +50,7 @@ function parseCommentsPage(value: string | null): number {
 export default function PostDetailClient({ post, linkedCampaign }: { post: Post; linkedCampaign: Campaign | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const p = post;
@@ -84,7 +84,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
 
   const onDelete = async () => {
     if (deleting) return;
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       toast.error("로그인이 필요합니다.");
       router.push("/login");
@@ -94,10 +94,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setDeleting(true);
     try {
       await apiDeleteVoid(`/api/posts/${p.id}`);
-      if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 이동 취소
+      if (getSessionId() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 이동 취소
       router.push("/mypage");
     } catch (e) {
-      if (getToken() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
+      if (getSessionId() !== requestToken) return; // 오래된 응답을 현재 상태에 반영하지 않음
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");
@@ -238,9 +238,9 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     const isCurrent = () =>
       !cancelled &&
       generation === commentsRequestGenerationRef.current &&
-      getToken() === requestToken;
+      getSessionId() === requestToken;
 
-    fetchPostCommentsPage(p.id, { page: commentsPage, size: 20 }, requestToken)
+    fetchPostCommentsPage(p.id, { page: commentsPage, size: 20 })
       .then((response) => {
         if (!isCurrent()) return;
         if (response.content.length === 0 && commentsPage > 0) {
@@ -304,16 +304,16 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       toast.error(`댓글은 ${MAX_COMMENT_LENGTH}자 이하여야 합니다.`);
       return;
     }
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인해야 댓글을 작성할 수 있어요.");
       router.push("/login");
       return;
     }
     setSubmittingComment(true);
-    const requestToken = getToken(); // 요청 identity 캡처
+    const requestToken = getSessionId(); // 요청 identity 캡처
     try {
       await apiPost<PostComment>(`/api/posts/${p.id}/comments`, { text });
-      if (getToken() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 요청 중 로그아웃/토큰교체 → 무시
       setCommentCount((c) => c + 1);
       setCommentText("");
       if (commentsPage === 0 && rawCommentsPage === "0") {
@@ -322,7 +322,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         updateCommentsPage(0, commentsPage === 0);
       }
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인해야 댓글을 작성할 수 있어요.");
@@ -336,7 +336,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   const deleteComment = async (commentId: string) => {
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       toast.error("로그인이 필요합니다.");
@@ -350,7 +350,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setDeletingCommentIds(new Set(deletingCommentIdsRef.current));
     try {
       await apiDeleteVoid(`/api/posts/${p.id}/comments/${commentId}`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setCommentCount((current) => Math.max(0, current - 1));
       const response = currentCommentsState.response;
       if (response && response.content.length === 1 && commentsPage > 0) {
@@ -359,7 +359,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
         retryComments();
       }
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         toast.error("로그인이 필요합니다.");
@@ -400,7 +400,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       setEditCommentError(`댓글은 1자 이상 ${MAX_COMMENT_LENGTH}자 이하로 입력해주세요.`);
       return;
     }
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       setEditingCommentId(null);
@@ -413,8 +413,8 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     setSavingCommentId(commentId);
     setEditCommentError("");
     try {
-      const updated = await updatePostComment(p.id, commentId, { text }, requestToken);
-      if (getToken() !== requestToken || generation !== editRequestGenerationRef.current) return;
+      const updated = await updatePostComment(p.id, commentId, { text });
+      if (getSessionId() !== requestToken || generation !== editRequestGenerationRef.current) return;
       if (!currentCommentsState.response?.content.some((comment) => comment.id === commentId)) {
         setEditingCommentId(null);
         retryComments();
@@ -432,7 +432,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       setEditingCommentId(null);
       setEditCommentText("");
     } catch (error) {
-      if (getToken() !== requestToken || generation !== editRequestGenerationRef.current) return;
+      if (getSessionId() !== requestToken || generation !== editRequestGenerationRef.current) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         setEditingCommentId(null);
@@ -457,7 +457,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   const onLike = async () => {
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인 후 이용할 수 있어요.");
       router.push("/login");
       return;
@@ -465,16 +465,16 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
     if (liking || refreshing) return; // 연타 방지 + 재조회 중 차단
     setLiking(true);
     invalidatePending(); // 늦게 도착할 재조회가 좋아요 결과를 덮어쓰지 않게
-    const requestToken = getToken(); // 요청 identity 캡처
+    const requestToken = getSessionId(); // 요청 identity 캡처
     try {
       const updated = liked
         ? await apiDelete<Post>(`/api/posts/${p.id}/like`)
         : await apiPost<Post>(`/api/posts/${p.id}/like`, {});
-      if (getToken() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
+      if (getSessionId() !== requestToken) return; // 응답 전 로그아웃/토큰교체 → 무시
       setLikes(updated.likes);
       setLiked(updated.likedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
+      if (getSessionId() !== requestToken) return; // 이미 로그아웃한 사용자 재이동 방지
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인 후 이용할 수 있어요.");
@@ -488,7 +488,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   };
 
   const onBookmark = async () => {
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       toast.error("로그인 후 이용할 수 있어요.");
       router.push("/login");
@@ -501,10 +501,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
       const updated = bookmarked
         ? await apiDelete<Post>(`/api/posts/${p.id}/bookmark`)
         : await apiPost<Post>(`/api/posts/${p.id}/bookmark`, {});
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       setBookmarked(updated.bookmarkedByMe);
     } catch (e) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
         toast.error("로그인 후 이용할 수 있어요.");

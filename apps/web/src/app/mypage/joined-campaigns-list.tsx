@@ -9,7 +9,7 @@ import { ListEmptyState } from "@/components/list-empty-state";
 import { FallbackImage } from "@/components/fallback-image";
 import { RecommendedCampaigns } from "@/components/recommended-campaigns";
 import { apiDelete, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import {
@@ -199,7 +199,7 @@ export function UserCampaignsList({
 
   const leaveCampaign = async (campaignId: string, reload: () => void) => {
     if (leavingId) return;
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       clearSession();
       return;
@@ -208,7 +208,7 @@ export function UserCampaignsList({
     setActionError("");
     try {
       await apiDelete<Campaign>(`/api/campaigns/${campaignId}/join`);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       reload();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {

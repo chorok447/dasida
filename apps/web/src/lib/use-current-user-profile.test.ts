@@ -47,7 +47,7 @@ describe("useCurrentUserProfile", () => {
   });
 
   it("로그인 상태면 loading 후 프로필을 불러온다", async () => {
-    setSession("jwt-1", "홍길동");
+    setSession("홍길동");
     const { promise, resolve } = deferred<UserProfile>();
     apiGetMock.mockReturnValue(promise);
 
@@ -62,17 +62,17 @@ describe("useCurrentUserProfile", () => {
   });
 
   it("401 응답이면 세션을 비운다", async () => {
-    setSession("expired", "홍길동");
+    setSession("홍길동");
     apiGetMock.mockRejectedValue(new ApiError(401, "/api/auth/me"));
 
     const { result } = renderHook(() => useCurrentUserProfile());
     await waitFor(() => expect(result.current.isLoggedIn).toBe(false));
     expect(result.current.profile).toBeNull();
-    expect(localStorage.getItem("dasida.token")).toBeNull();
+    expect(localStorage.getItem("dasida.session")).toBeNull();
   });
 
   it("401 외 오류는 세션을 유지하고 에러 메시지를 노출한다", async () => {
-    setSession("jwt-1", "홍길동");
+    setSession("홍길동");
     apiGetMock.mockRejectedValue(new ApiError(500, "/api/auth/me"));
 
     const { result } = renderHook(() => useCurrentUserProfile());
@@ -83,7 +83,7 @@ describe("useCurrentUserProfile", () => {
   });
 
   it("응답 도착 전에 로그아웃하면 늦은 응답을 무시한다", async () => {
-    setSession("jwt-1", "홍길동");
+    setSession("홍길동");
     const { promise, resolve } = deferred<UserProfile>();
     apiGetMock.mockReturnValue(promise);
 

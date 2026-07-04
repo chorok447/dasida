@@ -28,7 +28,7 @@ import {
   type CampaignSearchSort,
   type CampaignStatus,
 } from "@/data/campaigns";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { ApiError, apiGet } from "@/lib/api";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
@@ -440,7 +440,7 @@ function buildCampaignsHref(state: UrlState): string {
 export default function CampaignListClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuthSession();
+  const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
@@ -490,7 +490,7 @@ export default function CampaignListClient() {
 
   useEffect(() => {
     const requestToken = token;
-    if (getToken() !== requestToken) return;
+    if (getSessionId() !== requestToken) return;
 
     const params = new URLSearchParams();
     if (urlState.query) params.set("q", urlState.query);
@@ -510,7 +510,7 @@ export default function CampaignListClient() {
     const generation = ++generationRef.current;
     let cancelled = false;
     const isCurrent = () =>
-      !cancelled && generation === generationRef.current && getToken() === requestToken;
+      !cancelled && generation === generationRef.current && getSessionId() === requestToken;
 
     apiGet<CampaignSearchResponse>(`/api/campaigns/search?${params.toString()}`)
       .then((response) => {

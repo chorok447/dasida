@@ -8,7 +8,7 @@ import { useTheme } from "@/lib/theme-context";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
-import { clearSession, getToken } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import {
   PostComposeForm,
@@ -76,7 +76,7 @@ export default function PostCreatePage() {
   }, []);
 
   useEffect(() => {
-    if (!getToken()) {
+    if (!getSessionId()) {
       toast.error("로그인 후 글을 작성할 수 있어요.");
       router.replace("/login?next=/posts/new");
     }
@@ -126,7 +126,7 @@ export default function PostCreatePage() {
       return;
     }
 
-    const requestToken = getToken();
+    const requestToken = getSessionId();
     if (!requestToken) {
       toast.error("로그인 후 글을 작성할 수 있어요.");
       router.push("/login?next=/posts/new");
@@ -139,12 +139,12 @@ export default function PostCreatePage() {
 
     try {
       await apiPost("/api/posts", validation.payload);
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       clearDraft();
       toast.success("게시글이 등록되었습니다.");
       router.push("/feed");
     } catch (error) {
-      if (getToken() !== requestToken) return;
+      if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
         clearSession();
         toast.error("로그인 후 글을 작성할 수 있어요.");

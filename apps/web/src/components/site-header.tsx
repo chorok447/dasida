@@ -7,7 +7,7 @@ import { Bell, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { getToken } from "@/lib/auth";
+import { getSessionId } from "@/lib/auth";
 import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
@@ -28,7 +28,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const onNotifications = pathname === "/notifications";
-  const { isLoggedIn, name, logout, token } = useAuthSession();
+  const { isLoggedIn, name, logout, sessionId: token } = useAuthSession();
   // 카운트를 조회 시점의 token 과 함께 보관 → 토큰이 바뀌면 이전 사용자 값을 표시하지 않는다(reset 용 동기 setState 회피).
   const [unreadState, setUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
   const unreadGenRef = useRef(0);
@@ -44,12 +44,12 @@ export function SiteHeader() {
       fetchNotificationUnreadCount()
         .then((res) => {
           // 늦은 응답/토큰 변경 시 무시. 실패 시 badge 만 숨기고 헤더는 유지.
-          if (generation === unreadGenRef.current && getToken() === requestToken) {
+          if (generation === unreadGenRef.current && getSessionId() === requestToken) {
             setUnreadState({ token: requestToken, count: res.unreadCount });
           }
         })
         .catch(() => {
-          if (generation === unreadGenRef.current && getToken() === requestToken) {
+          if (generation === unreadGenRef.current && getSessionId() === requestToken) {
             setUnreadState({ token: requestToken, count: 0 });
           }
         });
