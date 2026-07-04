@@ -3,6 +3,8 @@
 
 import { useEffect, useId, useState } from "react";
 import { Image as ImageIcon, Link2, Loader2, Plus, X } from "lucide-react";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import { ImageFileUploadButton } from "@/components/image-file-upload-button";
 import { toast } from "sonner";
 import {
   isValidPostImageUrl,
@@ -133,6 +135,20 @@ export function PostComposeForm({
     onFieldErrorClear?.("images");
   };
 
+  const addUploadedImage = (url: string) => {
+    const normalized = Array.from(new Set([...values.images, url]));
+    if (normalized.length > POST_MAX_IMAGES) {
+      toast.error(`이미지는 최대 ${POST_MAX_IMAGES}개까지 가능합니다.`);
+      return;
+    }
+    if (normalized.length === values.images.length) {
+      toast.error("이미 추가된 이미지입니다.");
+      return;
+    }
+    patch({ images: normalized });
+    onFieldErrorClear?.("images");
+  };
+
   const textErrorId = `${textInputId}-error`;
   const imageErrorId = `${imageInputId}-error`;
   const tagErrorId = `${tagInputId}-error`;
@@ -149,41 +165,29 @@ export function PostComposeForm({
         <label htmlFor={textInputId} className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={labelStyle}>
           내용 <span className="sr-only">(필수)</span>
         </label>
-        <textarea
+        <RichTextEditor
           id={textInputId}
           value={values.text}
-          onChange={(e) => {
-            patch({ text: e.target.value });
+          onChange={(text) => {
+            patch({ text });
             onFieldErrorClear?.("text");
           }}
-          rows={5}
           placeholder="어떤 업사이클을 하고 계신가요?"
           required
           aria-invalid={Boolean(fieldErrors.text)}
           aria-describedby={fieldErrors.text ? textErrorId : undefined}
           maxLength={POST_MAX_TEXT_LENGTH}
-          className="ui-control resize-none rounded-2xl p-4 placeholder:opacity-50"
-          style={controlStyle}
         />
-        <div className="mt-1.5 flex items-start justify-between gap-3">
-          {fieldErrors.text ? (
-            <p id={textErrorId} className="text-[12px] text-red-500" role="alert">
-              {fieldErrors.text}
-            </p>
-          ) : (
-            <span className="text-[12px] opacity-0" aria-hidden>
-              .
-            </span>
-          )}
-          <p className="shrink-0 text-[11px] tabular-nums opacity-60" style={{ color: "var(--foreground)" }} aria-live="polite">
-            {values.text.length}/{POST_MAX_TEXT_LENGTH}
+        {fieldErrors.text ? (
+          <p id={textErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+            {fieldErrors.text}
           </p>
-        </div>
+        ) : null}
       </div>
 
       <div>
         <label htmlFor={imageInputId} className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={labelStyle}>
-          이미지 URL <span className="normal-case tracking-normal opacity-70">(선택, 최대 {POST_MAX_IMAGES}개)</span>
+          이미지 <span className="normal-case tracking-normal opacity-70">(URL 또는 파일, 최대 {POST_MAX_IMAGES}개)</span>
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1">
@@ -224,8 +228,12 @@ export function PostComposeForm({
             aria-label="이미지 URL 추가"
           >
             <Plus size={14} aria-hidden />
-            추가
+            URL 추가
           </button>
+          <ImageFileUploadButton
+            disabled={values.images.length >= POST_MAX_IMAGES}
+            onUploaded={addUploadedImage}
+          />
         </div>
         {(fieldErrors.images || imageInputError) ? (
           <p id={imageErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">

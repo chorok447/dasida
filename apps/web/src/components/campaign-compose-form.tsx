@@ -3,10 +3,12 @@
 
 import { useEffect, useId, useState } from "react";
 import { Image as ImageIcon, Link2, Loader2, Plus, X } from "lucide-react";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { toast } from "sonner";
 import { fashionPhotos, marketPhotos, naturePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 import {
   CAMPAIGN_COMPOSE_DRAFT_KEY,
+  CAMPAIGN_MAX_BODY_LENGTH,
   CAMPAIGN_MAX_CAPACITY,
   DEFAULT_CAMPAIGN_COMPOSE_VALUES,
   isValidCampaignImageUrl,
@@ -449,20 +451,19 @@ export function CampaignComposeForm({
         <label htmlFor={bodyInputId} className="mb-2 block text-[12px] tracking-[0.2em] uppercase" style={labelStyle}>
           본문 <span className="normal-case tracking-normal opacity-70">(선택)</span>
         </label>
-        <textarea
+        <RichTextEditor
           id={bodyInputId}
           value={values.body}
-          onChange={(e) => {
-            patch({ body: e.target.value });
+          onChange={(body) => {
+            patch({ body });
             onFieldErrorClear?.("body");
           }}
-          rows={8}
-          disabled={disabled}
           placeholder="캠페인의 배경과 진행 방식, 참여자에게 제공되는 것 등을 자세히 적어주세요."
+          minHeight={200}
+          disabled={disabled}
           aria-invalid={Boolean(fieldErrors.body)}
           aria-describedby={fieldErrors.body ? bodyErrorId : undefined}
-          className="ui-control w-full resize-none placeholder:opacity-50"
-          style={controlStyle}
+          maxLength={CAMPAIGN_MAX_BODY_LENGTH}
         />
         {fieldErrors.body ? (
           <p id={bodyErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">

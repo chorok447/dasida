@@ -177,6 +177,27 @@ class PostControllerTest(
     }
 
     @Test
+    fun `html text 는 태그 제외 길이로 검증한다`() {
+        val ok = "<p><strong>${"가".repeat(999)}</strong></p>"
+        postPost("""{"text":"$ok"}""").andExpect { status { isCreated() } }
+
+        val tooLong = "<p>${"가".repeat(1001)}</p>"
+        postPost("""{"text":"$tooLong"}""").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `본문 inline img 는 images 배열로 분리된다`() {
+        postPost(
+            """{"text":"<p>소개</p><p><img src=\"https://example.com/a.jpg\" /></p>","images":[]}""",
+        ).andExpect {
+            status { isCreated() }
+            jsonPath("$.text") { value("<p>소개</p>") }
+            jsonPath("$.images.length()") { value(1) }
+            jsonPath("$.images[0]") { value("https://example.com/a.jpg") }
+        }
+    }
+
+    @Test
     fun `tags 는 trim 중복제거 hash prefix 처리되어 저장된다`() {
         postPost("""{"text":"태그","tags":[" 테스트 ","#테스트","업사이클"]}""").andExpect {
             status { isCreated() }

@@ -10,6 +10,7 @@ import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
+import { PostText } from "@/components/post-text";
 import { ReportButton } from "@/components/report-button";
 import { ShareButton } from "@/components/share-button";
 import type { Post, PostComment } from "@/data/posts";
@@ -186,7 +187,7 @@ export function FeedPostCard({
         )}
 
         <div className="p-4 space-y-3">
-          <p style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }}>{p.text}</p>
+          <PostText text={p.text} style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }} />
           <div className="flex flex-wrap gap-1.5">
             {p.tags.map((t) => (
               <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>
