@@ -13,8 +13,8 @@
 | Docker Hub pull/smoke (로컬) | **검증 완료** — 상세 [container-images.md](./container-images.md#docker-hub-검증-main-push-2026-07-03) |
 | CD / 실제 서버 배포 | **미구현** (`.github/workflows/cd.yml` placeholder) |
 | `NEXT_PUBLIC_API_URL` (Web image) | **placeholder** — 운영 URL 확정·재빌드 필요 |
-| prod Redis store (rate limit / denylist) | **미적용** — prod 기본은 in-memory ([redis-security-store-policy.md](./redis-security-store-policy.md)) |
-| `application-prod.yml` | OpenAPI 비활성·CORS 주입·인증 쿠키 `Secure` 강제만 정의. DB/Redis/JWT 값 **없음** |
+| prod Redis store (rate limit / denylist) | **설정 완료** — prod 는 redis store 고정, host env 필수(fail-fast). Redis 인프라 provisioning 은 별도 ([redis-security-store-policy.md](./redis-security-store-policy.md)) |
+| `application-prod.yml` | OpenAPI 비활성·CORS 주입·인증 쿠키 `Secure` 강제·Redis store 고정(`redis`) 정의. DB/Redis/JWT **secret 값은 없음**(env 주입) |
 
 **main merge ≠ production deploy.** main merge 후 Docker Hub image push까지만 자동이며, **실제 서버 배포는 별도 승인·별도 작업**이다.
 
@@ -43,16 +43,16 @@ GitHub UI/CLI 생성·검증 절차: [github-secrets-setup-runbook.md](./github-
 
 ### 1-2. API (Redis / Valkey — prod 다중 인스턴스 시 사실상 필수)
 
-현재 prod 프로파일에는 Redis store 설정이 **없다**. 단일 인스턴스·in-memory 허용이 아니라면 아래를 준비하고 **별도 구현 PR**로 `application-prod`·배포 manifest에 반영한다.
+prod 프로파일은 두 store 모두 **redis 로 고정**됐고, `SPRING_DATA_REDIS_HOST` 미주입 시 기동이 실패한다(fail-fast — in-memory 로 조용히 내려앉지 않음). 남은 것은 Redis 인프라 provisioning 과 접속 값 주입이다.
 
 | 항목 | 형태 | 설명 | prod 준비 |
 |------|------|------|-----------|
-| `SPRING_DATA_REDIS_HOST` | Secret/env | Redis/Valkey 호스트 | [ ] |
-| `SPRING_DATA_REDIS_PORT` | env | 포트(기본 6379) | [ ] |
-| `SPRING_DATA_REDIS_PASSWORD` | Secret | 인증 사용 시 | [ ] |
+| `SPRING_DATA_REDIS_HOST` | Secret/env | Redis/Valkey 호스트. **필수**(미설정 시 기동 실패) | [ ] |
+| `SPRING_DATA_REDIS_PORT` | env | 포트(기본 6379, relaxed binding) | [ ] |
+| `SPRING_DATA_REDIS_PASSWORD` | Secret | 인증 사용 시(미사용이면 주입하지 않음) | [ ] |
 | TLS / `rediss://` | 인프라·설정 | managed Redis TLS 요구 시 연결 방식 결정 | [ ] |
-| `app.rate-limit.store=redis` | 설정 | rate limit 공유 store ([정책 문서](./redis-security-store-policy.md)) | [ ] TODO |
-| `app.auth.denylist.store=redis` | 설정 | logout denylist 공유 store | [ ] TODO |
+| `app.rate-limit.store=redis` | 설정 | rate limit 공유 store ([정책 문서](./redis-security-store-policy.md)) | [x] `application-prod.yml` |
+| `app.auth.denylist.store=redis` | 설정 | logout denylist 공유 store | [x] `application-prod.yml` |
 
 ### 1-3. Web (빌드·런타임)
 
