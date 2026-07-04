@@ -20,7 +20,7 @@ function changePasswordError(error: ApiError): string {
   return detail || "비밀번호 변경에 실패했습니다. 잠시 후 다시 시도해주세요.";
 }
 
-export function ChangePasswordForm({ profileName }: { profileName: string }) {
+export function ChangePasswordForm({ profileName, embedded = false }: { profileName: string; embedded?: boolean }) {
   const router = useRouter();
   const submittingRef = useRef(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -101,7 +101,7 @@ export function ChangePasswordForm({ profileName }: { profileName: string }) {
 
   return (
     <section
-      className="mx-auto mb-10 max-w-5xl px-6 sm:px-8"
+      className={embedded ? undefined : "mx-auto mb-10 max-w-5xl px-6 sm:px-8"}
       aria-labelledby="change-password-title"
     >
       <div

@@ -6,7 +6,9 @@ import { CountUp, StaggerItem } from "@/components/scroll-reveal";
 import { fetchBookmarkedPostsPage, fetchMyPostsPage } from "@/data/posts";
 import { fetchJoinedCampaignsPage, fetchMyCampaignsPage } from "@/data/campaigns";
 
-type SummaryTab = "posts" | "campaigns" | "created" | "saved";
+import type { MypageTab } from "./mypage-types";
+
+type SummaryTab = Extract<MypageTab, "posts" | "campaigns" | "created" | "saved">;
 
 type Counts = Record<SummaryTab, number>;
 
@@ -53,7 +55,11 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
   const bone = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
 
   return (
-    <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 px-6 pb-10 sm:grid-cols-4 sm:px-8">
+    <div className="mx-auto max-w-5xl px-6 sm:px-8">
+      <p className="mb-3 text-[11px] tracking-[0.24em] uppercase" style={{ color: "var(--foreground-muted)" }}>
+        활동 요약
+      </p>
+      <div className="grid grid-cols-2 gap-3 pb-8 sm:grid-cols-4">
       {TILES.map(({ tab, label }, i) => (
         <StaggerItem key={tab} index={i}>
           <button
@@ -86,6 +92,7 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
           </button>
         </StaggerItem>
       ))}
+      </div>
     </div>
   );
 }

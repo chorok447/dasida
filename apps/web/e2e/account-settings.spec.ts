@@ -25,7 +25,7 @@ async function logout(page: Page) {
 test("비밀번호를 변경하면 새 비밀번호로만 로그인된다", async ({ page }) => {
   const account = await signup(page, "e2e-pw");
 
-  await page.goto("/mypage");
+  await page.goto("/mypage?tab=account");
   const section = page.getByRole("region", { name: "비밀번호 변경" });
   await section.getByLabel("현재 비밀번호").fill(account.password);
   await section.getByLabel("새 비밀번호", { exact: true }).fill(NEW_PASSWORD);
@@ -49,7 +49,7 @@ test("이메일을 변경하면 새 이메일로 로그인된다", async ({ page
   const account = await signup(page, "e2e-email");
   const newEmail = `changed-${Date.now()}@example.com`;
 
-  await page.goto("/mypage");
+  await page.goto("/mypage?tab=account");
   const section = page.getByRole("region", { name: "이메일 변경" });
   await section.getByLabel("새 이메일").fill(newEmail);
   await section.getByLabel("현재 비밀번호").fill(account.password);
@@ -66,7 +66,7 @@ test("이메일을 변경하면 새 이메일로 로그인된다", async ({ page
 test("확인 문구와 비밀번호를 입력해 탈퇴하면 계정이 삭제된다", async ({ page }) => {
   const account = await signup(page, "e2e-del");
 
-  await page.goto("/mypage");
+  await page.goto("/mypage?tab=account");
   const section = page.getByRole("region", { name: "위험 영역" });
   // 위험 영역은 접혀 있어 summary 클릭으로 펼친다
   await section.locator("summary").click();

@@ -1,5 +1,6 @@
 package com.dasida.api.auth
 
+import com.dasida.api.common.ClientRequestInfo
 import com.dasida.api.security.AuthCookies
 import com.dasida.api.security.AuthUser
 import com.dasida.api.security.authCookieToken
@@ -30,25 +31,28 @@ import org.springframework.web.server.ResponseStatusException
 class AuthController(
     private val authService: AuthService,
     private val authCookies: AuthCookies,
+    private val accessLogService: AccessLogService,
 ) {
 
     @Operation(summary = "회원가입")
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    fun signup(@RequestBody req: SignupRequest, res: HttpServletResponse): AuthResponse =
-        res.setAuthCookies(authService.signup(req))
+    fun signup(@RequestBody req: SignupRequest, http: HttpServletRequest, res: HttpServletResponse): AuthResponse =
+        res.setAuthCookies(authService.signup(req).also { accessLogService.record(it.userId, ClientRequestInfo.from(http)) })
 
     @Operation(summary = "로그인")
     @PostMapping("/login")
-    fun login(@RequestBody req: LoginRequest, res: HttpServletResponse): AuthResponse =
-        res.setAuthCookies(authService.login(req))
+    fun login(@RequestBody req: LoginRequest, http: HttpServletRequest, res: HttpServletResponse): AuthResponse =
+        res.setAuthCookies(authService.login(req).also { accessLogService.record(it.userId, ClientRequestInfo.from(http)) })
 
     @Operation(summary = "토큰 재발급. refresh 쿠키로 access·refresh 를 재발급한다(rotation).")
     @PostMapping("/refresh")
     fun refresh(req: HttpServletRequest, res: HttpServletResponse): AuthResponse {
         val refreshToken = req.refreshCookieToken()
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "no refresh token")
-        return res.setAuthCookies(authService.refresh(refreshToken))
+        val tokens = authService.refresh(refreshToken)
+        accessLogService.record(tokens.userId, ClientRequestInfo.from(req))
+        return res.setAuthCookies(tokens)
     }
 
     @Operation(summary = "로그아웃")
@@ -76,6 +80,15 @@ class AuthController(
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal principal: AuthUser?): UserProfileResponse =
         authService.getMe(requireUserId(principal))
+
+    @Operation(summary = "접속 기록 조회(최근 1년)")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/access-logs")
+    fun accessLogs(
+        @AuthenticationPrincipal principal: AuthUser?,
+        page: Int = 0,
+        size: Int = 20,
+    ): AccessLogPageResponse = accessLogService.listForUser(requireUserId(principal), page, size)
 
     // 프로필/비밀번호/이메일 변경은 claim 이 갱신된 토큰을 재발급한다 → 인증 쿠키도 함께 교체한다.
 

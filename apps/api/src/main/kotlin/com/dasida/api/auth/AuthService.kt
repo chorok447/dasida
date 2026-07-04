@@ -31,6 +31,7 @@ class AuthService(
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
     private val denylist: TokenDenylistStore,
+    private val accessLogs: AccessLogService,
     private val clock: Clock,
 ) {
     // 유저 없을 때 BCrypt 시간을 맞추기 위한 더미 해시(1회 계산). 타이밍 기반 가입여부 노출 방지용.
@@ -117,7 +118,11 @@ class AuthService(
     }
 
     private fun issueTokens(user: User): IssuedTokens =
-        IssuedTokens(user.toAuthResponse(jwt.issue(user)), jwt.issueRefresh(user))
+        IssuedTokens(
+            user.toAuthResponse(jwt.issue(user)),
+            jwt.issueRefresh(user),
+            requireNotNull(user.id),
+        )
 
     @Transactional(readOnly = true)
     fun getMe(userId: Long): UserProfileResponse = activeUser(userId).toProfile()
@@ -204,6 +209,7 @@ class AuthService(
         postComments.anonymizeAuthor(id, DELETED_USER_NAME)
         campaigns.anonymizeAuthor(id, DELETED_USER_NAME)
         campaignComments.anonymizeAuthor(id, DELETED_USER_NAME)
+        accessLogs.deleteForUser(id)
         return DeleteAccountResponse(deleted = true)
     }
 

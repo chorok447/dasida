@@ -22,9 +22,11 @@ function changeEmailError(error: ApiError): string {
 export function ChangeEmailForm({
   currentEmail,
   onChanged,
+  embedded = false,
 }: {
   currentEmail: string;
   onChanged: (email: string) => void;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const submittingRef = useRef(false);
@@ -99,7 +101,10 @@ export function ChangeEmailForm({
   };
 
   return (
-    <section className="mx-auto mb-6 max-w-5xl px-6 sm:px-8" aria-labelledby="change-email-title">
+    <section
+      className={embedded ? undefined : "mx-auto mb-6 max-w-5xl px-6 sm:px-8"}
+      aria-labelledby="change-email-title"
+    >
       <div
         className="rounded-3xl border p-5 sm:p-7"
         style={{ background: "var(--card)", borderColor: "var(--border)" }}
