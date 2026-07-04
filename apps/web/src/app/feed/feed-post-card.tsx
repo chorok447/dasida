@@ -163,8 +163,8 @@ export function FeedPostCard({
           rotateX: rX,
           rotateY: rY,
           transformStyle: "preserve-3d",
-          background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
         }}
         className="rounded-2xl border overflow-hidden shadow-[0_20px_50px_-25px_rgba(0,0,0,0.4)]"
       >

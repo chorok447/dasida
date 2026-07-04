@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildFeedHref, parsePageParam, useCanonicalUrl } from "./use-url-query";
+import { buildFeedHref, buildCampaignsHref, parsePageParam, useCanonicalUrl } from "./use-url-query";
 
 const replace = vi.fn();
 
@@ -36,6 +36,25 @@ describe("buildFeedHref", () => {
     expect(
       buildFeedHref({ query: "업사이클", campaignOnly: true, sort: "popular", page: 2 }),
     ).toBe("/feed?q=%EC%97%85%EC%82%AC%EC%9D%B4%ED%81%B4&campaignOnly=true&sort=popular&page=2");
+  });
+});
+
+describe("buildCampaignsHref", () => {
+  it("기본값이면 sort와 page만 포함한다", () => {
+    expect(
+      buildCampaignsHref({
+        query: "",
+        filter: "all",
+        recruitState: null,
+        availableOnly: false,
+        sort: "latest",
+        page: 0,
+        recruitEndFrom: "",
+        recruitEndTo: "",
+        runStartFrom: "",
+        runStartTo: "",
+      }),
+    ).toBe("/campaigns?sort=latest&page=0");
   });
 });
 

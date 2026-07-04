@@ -14,7 +14,7 @@ test("로그인 후 알림 페이지가 빈 상태로 표시된다", async ({ pa
   await expect(page.getByText("알림이 없습니다.")).toBeVisible();
 });
 
-test("캠페인 참여 시 개설자에게 알림이 생성된다", async ({ browser }) => {
+test("캠페인 참여 시 개설자에게 알림이 생성되고 읽음·삭제할 수 있다", async ({ browser }) => {
   const ownerContext = await browser.newContext();
   const joinerContext = await browser.newContext();
   const ownerPage = await ownerContext.newPage();
@@ -51,6 +51,13 @@ test("캠페인 참여 시 개설자에게 알림이 생성된다", async ({ bro
   await ownerPage.goto("/notifications");
   await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).toBeVisible();
   await expect(ownerPage.getByRole("link", { name: /캠페인에 참여했습니다/ })).toBeVisible();
+
+  await ownerPage.getByRole("button", { name: "읽음으로 표시" }).click();
+  await expect(ownerPage.getByRole("heading", { name: "알림" })).toBeVisible();
+  await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).not.toBeVisible();
+
+  await ownerPage.getByRole("button", { name: "알림 삭제" }).click();
+  await expect(ownerPage.getByText("알림이 없습니다.")).toBeVisible();
 
   await ownerContext.close();
   await joinerContext.close();

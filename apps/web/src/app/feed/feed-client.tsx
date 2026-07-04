@@ -6,18 +6,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Image as ImageIcon,
   RefreshCw,
-  Sparkles,
-  TrendingUp,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
-import { progressPercent } from "@/lib/progress";
 import { apiGet, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
-import { FallbackImage } from "@/components/fallback-image";
 import { PageShell } from "@/components/page-shell";
 import { FeedPostCard } from "@/app/feed/feed-post-card";
+import { FeedSideHot, FeedSideRecommend } from "@/app/feed/feed-sidebar";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { SearchField } from "@/components/search-field";
@@ -26,7 +23,7 @@ import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import type { PostSearchResponse, PostSearchSort } from "@/data/posts";
-import { statusMeta, type Campaign } from "@/data/campaigns";
+import type { Campaign } from "@/data/campaigns";
 import { useCanonicalUrl, parsePageParam, buildFeedHref, type FeedUrlState } from "@/lib/use-url-query";
 
 type UrlState = FeedUrlState;
@@ -151,76 +148,6 @@ function FeedControls({
         </label>
       </div>
       <ActiveFilterChips chips={chips} onClearAll={chips.length > 0 ? onResetAll : undefined} />
-    </div>
-  );
-}
-
-function SideHot({ campaigns }: { campaigns: Campaign[] }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <TrendingUp size={14} style={{ color: "#7dd3a3" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-          진행 중인 캠페인
-        </h3>
-      </div>
-      <div className="space-y-3">
-        {campaigns.map((c) => {
-          const pct = progressPercent(c.joined, c.capacity);
-          return (
-            <div key={c.id} className="flex gap-3 items-center">
-              <FallbackImage
-                src={c.thumb}
-                alt={`${c.title} 캠페인 이미지`}
-                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-                  {c.title}
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1 rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: statusMeta[c.status].color }} />
-                  </div>
-                  <span className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{pct}%</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function SideRecommend() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} style={{ color: "#7dd3a3" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: dark ? "#f9f7f2" : "#0f1f22" }}>
-          크리에이터 추천
-        </h3>
-      </div>
-      <p className="text-[13px] leading-relaxed opacity-65" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
-        팔로우와 추천 크리에이터 기능은 준비 중이에요.
-      </p>
     </div>
   );
 }
@@ -481,8 +408,8 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-5">
-            <SideHot campaigns={campaigns} />
-            <SideRecommend />
+            <FeedSideHot campaigns={campaigns} />
+            <FeedSideRecommend />
           </div>
         </aside>
       </div>

@@ -28,8 +28,8 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
         href={`/campaigns/${campaign.id}`}
         className="group block overflow-hidden rounded-2xl border transition-transform hover:-translate-y-1"
         style={{
-          background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+          background: "var(--card)",
+          borderColor: "var(--border)",
         }}
       >
         <div className="relative aspect-[16/9] overflow-hidden">
@@ -53,10 +53,10 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
         </div>
         <div className="space-y-3 p-5">
           <div>
-            <h3 className="line-clamp-1 text-[17px] font-semibold" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <h3 className="line-clamp-1 text-[17px] font-semibold" style={{ color: "var(--foreground)" }}>
               {campaign.title}
             </h3>
-            <p className="mt-1.5 line-clamp-2 text-[13px] leading-6 opacity-65" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <p className="mt-1.5 line-clamp-2 text-[13px] leading-6 opacity-65" style={{ color: "var(--foreground)" }}>
               {campaign.summary}
             </p>
           </div>
@@ -87,8 +87,8 @@ export function PostResultCard({ post }: { post: Post }) {
       href={`/posts/${post.id}`}
       className="group overflow-hidden rounded-2xl border transition-transform hover:-translate-y-1"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
       <div className="flex items-center gap-3 p-4">
