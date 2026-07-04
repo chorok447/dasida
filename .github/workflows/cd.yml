@@ -1,15 +1,11 @@
 name: CD
 
-# main 대상 PR: Docker image build 검증만(push=false). Docker Hub login 없음.
 # main merge push: CI workflow 성공 후에만 Docker Hub push (workflow_run 게이트).
+# main 대상 PR 의 image build 검증은 image-verify.yml 이 담당한다.
 # 실제 서버 배포 step 은 provider 확정 후 image push 뒤에 추가한다.
-# fork PR secret 노출 위험 때문에 pull_request_target 은 사용하지 않는다.
 # DOCKERHUB_USERNAME(Variable), DOCKERHUB_TOKEN(Secret) — push job 에서만 사용.
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_run:
     workflows: [CI]
     types: [completed]
@@ -23,53 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # main 대상 Ready PR: 이미지 빌드 검증만. push/login/production secret 사용 금지.
-  image-verify:
-    name: ${{ matrix.app }} image
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - app: api
-            context: apps/api
-            file: apps/api/Dockerfile.prod
-            build-args: ""
-          - app: web
-            context: .
-            file: apps/web/Dockerfile.prod
-            build-args: NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://ci-build-placeholder.invalid' }}
-    env:
-      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME || 'dasida-ci-placeholder' }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: docker/setup-buildx-action@v4
-
-      - id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: docker.io/${{ env.DOCKERHUB_USERNAME }}/dasida-${{ matrix.app }}
-          tags: type=sha,prefix=sha-,format=short
-
-      - uses: docker/build-push-action@v7
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: ${{ matrix.build-args }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # main push 의 CI 가 성공했을 때만 Docker Hub push. CI 실패 시 이미지가 나가지 않는다.
   image-push:
     name: ${{ matrix.app }} image
     if: >-
-      github.event_name == 'workflow_run' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
