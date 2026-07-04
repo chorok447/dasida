@@ -25,3 +25,15 @@ test("시드 캠페인 상세를 열 수 있다", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "강아지를 위한 업사이클링 댕교복" })).toBeVisible();
   await expect(page.getByRole("button", { name: "캠페인 목록" })).toBeVisible();
 });
+
+test("캠페인 목록 URL이 canonical 형태로 정규화된다", async ({ page }) => {
+  await page.goto("/campaigns?page=-1&sort=popular");
+  await page.waitForURL(/\/campaigns\?sort=popular&page=0$/);
+});
+
+test("캠페인 목록 정렬이 URL에 반영된다", async ({ page }) => {
+  await page.goto("/campaigns");
+
+  await page.locator("select").filter({ has: page.locator('option[value="popular"]') }).selectOption("popular");
+  await page.waitForURL(/sort=popular/);
+});

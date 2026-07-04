@@ -26,3 +26,13 @@ test("캠페인 탭과 정렬이 URL에 반영된다", async ({ page }) => {
   await page.locator("select").first().selectOption("popular");
   await page.waitForURL(/sort=popular/);
 });
+
+test("게시글 탭에서 페이지네이션이 URL에 반영된다", async ({ page }) => {
+  await page.goto("/search?type=posts&q=업사이클");
+
+  const next = page.getByRole("button", { name: "다음 페이지" });
+  if (await next.isEnabled()) {
+    await next.click();
+    await page.waitForURL(/page=1/);
+  }
+});

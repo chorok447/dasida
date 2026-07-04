@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { clearSession, getSessionId } from "@/lib/auth";
+import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
+import { emptyPageFallback } from "@/lib/paginated-section-utils";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
 import { Pagination } from "@/components/ui/pagination";
@@ -71,26 +72,21 @@ export function PaginatedSection<T>({
   useEffect(() => {
     if (!token) return;
     const requestToken = token;
-    const generation = ++generationRef.current;
-    let cancelled = false;
-    const isCurrent = () => !cancelled && generation === generationRef.current && getSessionId() === requestToken;
+    const guard = beginAuthedRequest(generationRef, requestToken);
 
     fetcherRef.current(page)
       .then((data) => {
-        if (!isCurrent()) return;
-        // 현재 page 가 비었고 이전 page 가 있으면 이전 page 로 이동(삭제/취소로 마지막 항목이 빠진 경우).
-        if (data.content.length === 0 && data.page > 0) {
-          onPageChangeRef.current(Math.max(0, data.page - 1));
+        if (!guard.isCurrent()) return;
+        const fallbackPage = emptyPageFallback(data);
+        if (fallbackPage !== null) {
+          onPageChangeRef.current(fallbackPage);
           return;
         }
         setStore({ identity, token: requestToken, status: "success", data });
       })
       .catch((error) => {
-        if (!isCurrent()) return;
-        if (error instanceof ApiError && error.status === 401) {
-          clearSession();
-          return;
-        }
+        if (!guard.isCurrent()) return;
+        if (clearSessionIfUnauthorized(error, requestToken)) return;
         if (error instanceof ApiError && error.status === 403) {
           setStore({ identity, token: requestToken, status: "forbidden", data: null });
           return;
@@ -104,9 +100,7 @@ export function PaginatedSection<T>({
         }));
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return guard.cancel;
     // identity 가 token·page·retry·identityKey 를 모두 포함한다. fetcher/onPageChange 는 ref 로 참조.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity]);
@@ -149,7 +143,7 @@ export function PaginatedSection<T>({
     );
   }
 
-  const fg = dark ? "#f9f7f2" : "#0f1f22";
+  const fg = "var(--foreground)";
   const subtle = dark ? "rgba(255,255,255,0.07)" : "rgba(28,64,68,0.07)";
   return (
     <div className="space-y-6" aria-busy={loading || undefined}>
