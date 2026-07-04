@@ -3,6 +3,7 @@
 import { type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { CurrentUserAvatar } from "@/components/current-user-avatar";
 
 export function CampaignCommentCompose({
   token,
@@ -32,16 +33,19 @@ export function CampaignCommentCompose({
           <label htmlFor="campaign-comment" className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>
             댓글 작성
           </label>
-          <textarea
-            id="campaign-comment"
-            value={text}
-            onChange={(event) => onTextChange(event.target.value)}
-            maxLength={500}
-            rows={4}
-            placeholder="댓글을 입력해주세요."
-            className="ui-control mt-2 resize-none bg-transparent px-3 py-3"
-            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
-          />
+          <div className="mt-2 flex gap-3">
+            <CurrentUserAvatar size={36} />
+            <textarea
+              id="campaign-comment"
+              value={text}
+              onChange={(event) => onTextChange(event.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="댓글을 입력해주세요."
+              className="ui-control min-w-0 flex-1 resize-none bg-transparent px-3 py-3"
+              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+            />
+          </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
             <span className="text-[11px] opacity-55" style={{ color: "var(--foreground)" }}>
               {text.length} / 500
