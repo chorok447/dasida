@@ -15,10 +15,14 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -30,8 +34,10 @@ import java.util.UUID
         "app.rate-limit.store=memory",
         "app.rate-limit.content.comment.limit=2",
         "app.rate-limit.content.report.limit=2",
+        "app.rate-limit.content.media.limit=2",
         "app.rate-limit.content.comment.window-seconds=60",
         "app.rate-limit.content.report.window-seconds=60",
+        "app.rate-limit.content.media.window-seconds=60",
         "app.rate-limit.auth.login.limit=10000",
         "app.rate-limit.auth.signup.limit=10000",
     ],
@@ -100,6 +106,30 @@ class ContentWriteRateLimitTest(
             status { isTooManyRequests() }
             header { exists("Retry-After") }
         }
+    }
+
+    @Test
+    fun `이미지 업로드는 IP당 limit 초과 시 429를 반환한다`() {
+        val pngBytes = byteArrayOf(
+            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x00,
+        )
+        repeat(2) {
+            mvc.perform(
+                multipart("/api/media")
+                    .file(MockMultipartFile("file", "photo.png", "image/png", pngBytes))
+                    .header("Authorization", "Bearer $token")
+                    .header("X-Forwarded-For", "203.0.113.14"),
+            ).andExpect(status().isOk)
+        }
+        mvc.perform(
+            multipart("/api/media")
+                .file(MockMultipartFile("file", "photo.png", "image/png", pngBytes))
+                .header("Authorization", "Bearer $token")
+                .header("X-Forwarded-For", "203.0.113.14"),
+        )
+            .andExpect(status().isTooManyRequests)
+            .andExpect(header().exists("Retry-After"))
     }
 
     @Test

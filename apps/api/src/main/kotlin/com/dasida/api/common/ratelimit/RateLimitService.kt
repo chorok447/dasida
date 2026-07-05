@@ -48,6 +48,7 @@ class RateLimitService(
             RateLimitRule.AUTH_SIGNUP -> properties.auth.signup
             RateLimitRule.COMMENT_CREATE -> properties.content.comment
             RateLimitRule.REPORT_CREATE -> properties.content.report
+            RateLimitRule.MEDIA_UPLOAD -> properties.content.media
         }
 
     companion object {

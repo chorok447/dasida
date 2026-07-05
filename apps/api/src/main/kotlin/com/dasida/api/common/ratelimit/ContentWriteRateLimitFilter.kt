@@ -1,5 +1,6 @@
 package com.dasida.api.common.ratelimit
 
+import com.dasida.api.common.clientIp
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -40,6 +41,7 @@ class ContentWriteRateLimitFilter(
         if (request.method != HttpMethod.POST.name()) return null
         val path = request.requestURI.removeSuffix("/")
         if (path == "/api/reports") return RateLimitRule.REPORT_CREATE
+        if (path == "/api/media") return RateLimitRule.MEDIA_UPLOAD
         if (isCommentCreatePath(path)) return RateLimitRule.COMMENT_CREATE
         return null
     }
@@ -50,13 +52,5 @@ class ContentWriteRateLimitFilter(
         return segments[0] == "api" &&
             segments[1] in setOf("posts", "campaigns") &&
             segments[3] == "comments"
-    }
-
-    private fun clientIp(request: HttpServletRequest): String {
-        val forwarded = request.getHeader("X-Forwarded-For")
-        if (!forwarded.isNullOrBlank()) {
-            return forwarded.split(",").first().trim()
-        }
-        return request.remoteAddr ?: "unknown"
     }
 }
