@@ -1,5 +1,6 @@
 package com.dasida.api.common.ratelimit
 
+import com.dasida.api.common.clientIp
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -44,13 +45,5 @@ class AuthRateLimitFilter(
             "/api/auth/signup" -> RateLimitRule.AUTH_SIGNUP
             else -> null
         }
-    }
-
-    private fun clientIp(request: HttpServletRequest): String {
-        val forwarded = request.getHeader("X-Forwarded-For")
-        if (!forwarded.isNullOrBlank()) {
-            return forwarded.split(",").first().trim()
-        }
-        return request.remoteAddr ?: "unknown"
     }
 }

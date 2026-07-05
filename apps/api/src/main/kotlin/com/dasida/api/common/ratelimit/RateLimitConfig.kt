@@ -28,7 +28,7 @@ class RateLimitConfig {
     ): FilterRegistrationBean<ContentWriteRateLimitFilter> =
         FilterRegistrationBean(filter).apply {
             order = Ordered.HIGHEST_PRECEDENCE + 51
-            addUrlPatterns("/api/reports", "/api/posts/*", "/api/campaigns/*")
+            addUrlPatterns("/api/reports", "/api/posts/*", "/api/campaigns/*", "/api/media")
         }
 }
 

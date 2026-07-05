@@ -22,12 +22,26 @@ function ensurePurifyHooks() {
   });
   DOMPurify.addHook("afterSanitizeAttributes", (node) => {
     if (node.tagName !== "IMG") return;
-    const src = node.getAttribute("src") ?? "";
-    if (!src.startsWith("http://") && !src.startsWith("https://")) {
+    if (!isSafeImageSrc(node.getAttribute("src") ?? "")) {
       node.remove();
     }
   });
   hooksReady = true;
+}
+
+/**
+ * 이미지는 https 만 허용해 https 배포에서 mixed content 로 깨지지 않게 한다.
+ * http 는 로컬 개발(localhost·127.0.0.1 업로드 서빙)만 예외. 링크(a href)는 탐색이라 http 허용 유지.
+ */
+function isSafeImageSrc(src: string): boolean {
+  if (src.startsWith("https://")) return true;
+  if (!src.startsWith("http://")) return false;
+  try {
+    const host = new URL(src).hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  } catch {
+    return false;
+  }
 }
 
 export function sanitizeRichHtml(html: string): string {

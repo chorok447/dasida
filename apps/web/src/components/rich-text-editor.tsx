@@ -84,8 +84,11 @@ export function RichTextEditor({
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadingRef = useRef(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [textLength, setTextLength] = useState(() => richTextLengthFallback(value));
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -135,19 +138,34 @@ export function RichTextEditor({
     editor.commands.setContent(incoming || "");
   }, [editor, value]);
 
-  const setLink = useCallback(() => {
+  // window.prompt 대신 인라인 입력 행: 모바일·스크린리더에서 동작이 일관되고 스타일도 통제된다.
+  const toggleLinkEditor = useCallback(() => {
     if (!editor || disabled) return;
+    if (linkOpen) {
+      setLinkOpen(false);
+      return;
+    }
     const previous = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("링크 URL (https://…)", previous ?? "https://");
-    if (url === null) return;
-    const trimmed = url.trim();
+    setLinkUrl(previous ?? "https://");
+    setLinkOpen(true);
+  }, [editor, disabled, linkOpen]);
+
+  const linkUrlValid = (() => {
+    const trimmed = linkUrl.trim();
+    return !trimmed || trimmed.startsWith("http://") || trimmed.startsWith("https://");
+  })();
+
+  const applyLink = useCallback(() => {
+    if (!editor) return;
+    const trimmed = linkUrl.trim();
+    if (trimmed && !trimmed.startsWith("http://") && !trimmed.startsWith("https://")) return;
+    setLinkOpen(false);
     if (!trimmed) {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) return;
     editor.chain().focus().extendMarkRange("link").setLink({ href: trimmed }).run();
-  }, [editor, disabled]);
+  }, [editor, linkUrl]);
 
   const onImagePick = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -156,11 +174,12 @@ export function RichTextEditor({
 
     uploadingRef.current = true;
     setUploading(true);
+    setUploadError("");
     try {
       const url = await uploadMedia(file);
       editor.chain().focus().setImage({ src: url, alt: "본문 이미지" }).run();
     } catch (error) {
-      window.alert(uploadMediaErrorMessage(error, "이미지 업로드에 실패했습니다."));
+      setUploadError(uploadMediaErrorMessage(error, "이미지 업로드에 실패했습니다."));
     } finally {
       uploadingRef.current = false;
       setUploading(false);
@@ -229,7 +248,7 @@ export function RichTextEditor({
           >
             <ListOrdered size={15} aria-hidden />
           </ToolbarButton>
-          <ToolbarButton label="링크" disabled={disabled || !editor} onClick={setLink}>
+          <ToolbarButton label="링크" disabled={disabled || !editor} active={linkOpen} onClick={toggleLinkEditor}>
             <Link2 size={15} aria-hidden />
           </ToolbarButton>
           <ToolbarButton
@@ -254,6 +273,51 @@ export function RichTextEditor({
         </p>
       </div>
 
+      {mode === "edit" && linkOpen ? (
+        <div className="flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--border)" }}>
+          <label htmlFor={`${id}-link-url`} className="sr-only">
+            링크 URL
+          </label>
+          <input
+            id={`${id}-link-url`}
+            type="url"
+            value={linkUrl}
+            onChange={(event) => setLinkUrl(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                applyLink();
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setLinkOpen(false);
+              }
+            }}
+            placeholder="https://…"
+            aria-invalid={!linkUrlValid}
+            className="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[13px] focus:outline-none"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--foreground)" }}
+          />
+          <button
+            type="button"
+            onClick={applyLink}
+            disabled={!linkUrlValid}
+            className="rounded-lg px-3 py-1.5 text-[12px] font-medium disabled:opacity-40"
+            style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}
+          >
+            적용
+          </button>
+          <button
+            type="button"
+            onClick={() => setLinkOpen(false)}
+            className="rounded-lg px-2.5 py-1.5 text-[12px]"
+            style={{ color: "var(--foreground-muted)" }}
+          >
+            취소
+          </button>
+        </div>
+      ) : null}
+
       <input
         ref={fileRef}
         type="file"
@@ -262,6 +326,12 @@ export function RichTextEditor({
         onChange={(event) => void onImagePick(event)}
         disabled={disabled || uploading}
       />
+
+      {uploadError ? (
+        <p className="border-b px-4 py-2 text-[12px] text-red-500" style={{ borderColor: "var(--border)" }} role="alert">
+          {uploadError}
+        </p>
+      ) : null}
 
       <div className="px-4 py-3 text-[14px] leading-relaxed" style={{ color: "var(--foreground)" }}>
         {mode === "edit" ? (

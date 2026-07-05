@@ -23,6 +23,13 @@ describe("sanitize-rich-html", () => {
     expect(out).toContain("bad");
   });
 
+  it("이미지 src 는 https 또는 로컬 개발 http(localhost)만 허용한다", () => {
+    expect(sanitizeRichHtml('<p><img src="https://cdn.example.com/a.png" alt="a"></p>')).toContain("<img");
+    expect(sanitizeRichHtml('<p><img src="http://localhost:8080/uploads/a.png" alt="a"></p>')).toContain("<img");
+    expect(sanitizeRichHtml('<p><img src="http://127.0.0.1:8080/uploads/a.png" alt="a"></p>')).toContain("<img");
+    expect(sanitizeRichHtml('<p><img src="http://tracker.example.com/a.png" alt="a"></p>')).not.toContain("<img");
+  });
+
   it("isRichHtml 은 마크업 여부를 판별한다", () => {
     expect(isRichHtml("<p>x</p>")).toBe(true);
     expect(isRichHtml("**굵게**")).toBe(false);
