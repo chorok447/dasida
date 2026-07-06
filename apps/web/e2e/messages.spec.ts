@@ -52,7 +52,10 @@ test("게시글 상세에서 작성자에게 메시지를 보낸다", async ({ p
   await page.getByRole("button", { name: "게시하기" }).click();
   await page.waitForURL("**/feed");
 
-  const postHref = await page.getByRole("link", { name: new RegExp(postText) }).first().getAttribute("href");
+  await page.goto("/mypage");
+  const postLink = page.locator('a[href^="/posts/"]').filter({ hasText: postText }).first();
+  await expect(postLink).toBeVisible({ timeout: 15_000 });
+  const postHref = await postLink.getAttribute("href");
   expect(postHref).toMatch(/\/posts\//);
 
   await logout(page);
