@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import {
   Heart,
@@ -9,12 +11,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
+  Send,
 } from "lucide-react";
 import { AuthorHeader } from "@/components/author-header";
 import { FallbackImage } from "@/components/fallback-image";
 import { PostText } from "@/components/post-text";
 import { RichBodyImageGrid } from "@/components/rich-body-image-grid";
 import { ShareButton } from "@/components/share-button";
+import { createConversation } from "@/data/messages";
+import { getSessionId } from "@/lib/auth";
+import { useAuthSession } from "@/lib/use-auth-session";
+import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import type { Post } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
 
@@ -57,6 +64,10 @@ export function PostDetailHero({
   onOpenCampaign: (id: string) => void;
   onScrollToComments: () => void;
 }) {
+  const router = useRouter();
+  const { sessionId } = useAuthSession();
+  const { profile } = useCurrentUserProfile();
+  const [messagePending, setMessagePending] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -64,6 +75,23 @@ export function PostDetailHero({
   const sy = useSpring(my, { stiffness: 150, damping: 22 });
   const rY = useTransform(sx, [-0.5, 0.5], [-5, 5]);
   const rX = useTransform(sy, [-0.5, 0.5], [4, -4]);
+  const showMessage = Boolean(sessionId && p.authorId && profile?.id !== p.authorId);
+
+  const startMessage = async () => {
+    if (!getSessionId() || !p.authorId) {
+      toast.error("로그인 후 메시지를 보낼 수 있어요.");
+      return;
+    }
+    setMessagePending(true);
+    try {
+      const conv = await createConversation(p.authorId);
+      router.push(`/messages/${conv.id}`);
+    } catch {
+      toast.error("대화를 시작하지 못했어요.");
+    } finally {
+      setMessagePending(false);
+    }
+  };
 
   return (
     <div style={{ perspective: 1400 }}>
@@ -132,14 +160,30 @@ export function PostDetailHero({
         </div>
 
         <div className="p-7 flex flex-col gap-5">
-          <AuthorHeader
-            name={p.author.name}
-            verified={p.author.verified}
-            profileImageUrl={p.author.profileImageUrl}
-            authorId={p.authorId}
-            avatarSize={40}
-            time={p.time}
-          />
+          <div className="flex items-start justify-between gap-3">
+            <AuthorHeader
+              name={p.author.name}
+              verified={p.author.verified}
+              profileImageUrl={p.author.profileImageUrl}
+              authorId={p.authorId}
+              avatarSize={40}
+              time={p.time}
+              className="min-w-0 flex-1"
+            />
+            {showMessage ? (
+              <button
+                type="button"
+                disabled={messagePending}
+                onClick={() => void startMessage()}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium disabled:opacity-50"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)", background: "var(--card)" }}
+                aria-label="메시지 보내기"
+              >
+                <Send size={14} aria-hidden />
+                메시지
+              </button>
+            ) : null}
+          </div>
 
           <PostText text={p.text} style={{ color: "var(--foreground)", lineHeight: 1.7 }} />
 

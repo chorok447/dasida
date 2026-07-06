@@ -42,3 +42,30 @@ test("프로필에서 메시지를 보내고 알림·답장·목록이 동작한
   await page.getByLabel("전송").click();
   await expect(page.getByText(replyText)).toBeVisible({ timeout: 10_000 });
 });
+
+test("게시글 상세에서 작성자에게 메시지를 보낸다", async ({ page }) => {
+  await signup(page, "e2e-dm-post-author");
+  const postText = `DM상세 ${Date.now()}`;
+
+  await page.goto("/posts/new");
+  await fillPostContent(page, postText);
+  await page.getByRole("button", { name: "게시하기" }).click();
+  await page.waitForURL("**/feed");
+
+  await page.goto("/mypage");
+  const postLink = page.locator('a[href^="/posts/"]').filter({ hasText: postText }).first();
+  await expect(postLink).toBeVisible({ timeout: 15_000 });
+  const postHref = await postLink.getAttribute("href");
+  expect(postHref).toMatch(/\/posts\//);
+
+  await logout(page);
+  await signup(page, "e2e-dm-post-viewer");
+  await page.goto(postHref!);
+  await page.getByRole("button", { name: "메시지 보내기" }).click();
+  await page.waitForURL("**/messages/**");
+
+  const messageText = `상세DM ${Date.now()}`;
+  await page.getByPlaceholder(/메시지 입력/).fill(messageText);
+  await page.getByLabel("전송").click();
+  await expect(page.getByText(messageText)).toBeVisible({ timeout: 10_000 });
+});
