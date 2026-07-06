@@ -6,7 +6,6 @@ import { CheckCircle2, Monitor, Pencil, PenLine, Plus } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { fetchAccessLogsPage, type AccessLogItem } from "@/data/access-logs";
 import type { UserProfile } from "@/data/users";
-import { useTheme } from "@/lib/theme-context";
 
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
@@ -19,8 +18,6 @@ function formatAccessTime(value: string): string {
 }
 
 export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [lastAccess, setLastAccess] = useState<AccessLogItem | null>(null);
 
   useEffect(() => {
@@ -62,7 +59,7 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
                 style={{
                   fontFamily: "'Black Han Sans', sans-serif",
                   fontSize: "clamp(30px, 5vw, 40px)",
-                  color: dark ? "#f9f7f2" : "var(--foreground)",
+                  color: "var(--foreground)",
                 }}
               >
                 {profile.name}
@@ -75,10 +72,7 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
               ) : (
                 <span
                   className="rounded-full px-2.5 py-1 text-[11px]"
-                  style={{
-                    background: dark ? "rgba(255,255,255,0.07)" : "var(--border)",
-                    color: "var(--foreground-muted)",
-                  }}
+                  style={{ background: "var(--badge-muted-bg)", color: "var(--foreground-muted)" }}
                 >
                   일반 사용자
                 </span>
@@ -107,22 +101,16 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
               </Link>
               <Link
                 href="/campaigns/new"
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px]"
-                style={{
-                  border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "var(--border)"}`,
-                  color: dark ? "rgba(255,255,255,0.85)" : "var(--foreground)",
-                }}
+                className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[12px]"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
               >
                 <Plus size={13} aria-hidden />
                 캠페인 만들기
               </Link>
               <Link
                 href="/profile/edit"
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px]"
-                style={{
-                  border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "var(--border)"}`,
-                  color: dark ? "rgba(255,255,255,0.85)" : "var(--foreground)",
-                }}
+                className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[12px]"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
               >
                 <Pencil size={13} aria-hidden />
                 프로필 편집
