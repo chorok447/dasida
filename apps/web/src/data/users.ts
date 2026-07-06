@@ -18,6 +18,7 @@ export type PublicUser = {
   followerCount: number;
   followingCount: number;
   followedByMe?: boolean | null;
+  blockedByMe?: boolean | null;
 };
 
 export type RecommendedUsersResponse = {
@@ -46,6 +47,14 @@ export async function followUser(id: number): Promise<void> {
 
 export async function unfollowUser(id: number): Promise<void> {
   await apiDeleteVoid(`/api/users/${id}/follow`);
+}
+
+export async function blockUser(id: number): Promise<void> {
+  await apiPostVoid(`/api/users/${id}/block`);
+}
+
+export async function unblockUser(id: number): Promise<void> {
+  await apiDeleteVoid(`/api/users/${id}/block`);
 }
 
 export function fetchMyFollowingPage(page: number, size = 10): Promise<PublicUserPageResponse> {

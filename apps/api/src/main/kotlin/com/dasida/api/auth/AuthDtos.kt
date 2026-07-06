@@ -48,6 +48,7 @@ data class PublicUserResponse(
     val followerCount: Long = 0,
     val followingCount: Long = 0,
     val followedByMe: Boolean? = null,
+    val blockedByMe: Boolean? = null,
 )
 
 data class FollowStatusResponse(val followed: Boolean)

@@ -21,6 +21,7 @@ class UserFollowService(
     private val posts: PostRepository,
     private val authService: AuthService,
     private val notifications: NotificationService,
+    private val userBlocks: UserBlockService,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -137,6 +138,7 @@ class UserFollowService(
             followerCount = follows.countByFolloweeId(id),
             followingCount = follows.countByFollowerId(id),
             followedByMe = viewerId?.let { follows.existsByFollowerIdAndFolloweeId(it, id) },
+            blockedByMe = viewerId?.let { userBlocks.isBlockedBy(it, id) },
         )
     }
 
