@@ -17,6 +17,10 @@ class UserBlockService(
     @Transactional(readOnly = true)
     fun isBlockedEitherWay(a: Long, b: Long): Boolean = blocks.isBlockedEitherWay(a, b)
 
+    @Transactional(readOnly = true)
+    fun isBlockedBy(blockerId: Long, blockedId: Long): Boolean =
+        blocks.existsByBlockerIdAndBlockedId(blockerId, blockedId)
+
     @Transactional
     fun block(blockerId: Long, blockedId: Long) {
         if (blockerId == blockedId) {

@@ -133,6 +133,41 @@ class UserControllerTest(
     }
 
     @Test
+    fun `차단 상태가 공개 프로필에 반영된다`() {
+        val blocker = users.save(User(email = "bl-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "차단자"))
+        val target = users.save(User(email = "bt-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "대상"))
+        val blockerId = requireNotNull(blocker.id)
+        val targetId = requireNotNull(target.id)
+        val token = jwt.issue(blocker)
+
+        mvc.get("/api/users/$targetId") {
+            header("Authorization", "Bearer $token")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.blockedByMe", Matchers.`is`(false)) }
+
+        mvc.post("/api/users/$targetId/block") {
+            header("Authorization", "Bearer $token")
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/users/$targetId") {
+            header("Authorization", "Bearer $token")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.blockedByMe", Matchers.`is`(true)) }
+
+        mvc.delete("/api/users/$targetId/block") {
+            header("Authorization", "Bearer $token")
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/users/$targetId") {
+            header("Authorization", "Bearer $token")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.blockedByMe", Matchers.`is`(false)) }
+    }
+
+    @Test
     fun `없는 사용자는 404`() {
         mvc.get("/api/users/999999999")
             .andExpect { status { isNotFound() } }
