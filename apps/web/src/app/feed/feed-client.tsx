@@ -15,7 +15,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { CurrentUserAvatar } from "@/components/current-user-avatar";
 import { PageShell } from "@/components/page-shell";
 import { FeedPostCard } from "@/app/feed/feed-post-card";
-import { FeedSideHot, FeedSideRecommend } from "@/app/feed/feed-sidebar";
+import { FeedSideHot } from "@/app/feed/feed-sidebar";
 import { FeedControls, feedHasActiveFilters } from "@/app/feed/feed-controls";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { StaggerItem } from "@/components/scroll-reveal";
@@ -97,12 +97,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
   const updateUrl = useCallback((changes: Partial<UrlState>, replace = false) => {
     const next = { ...urlState, ...changes };
-    const params = new URLSearchParams();
-    if (next.query) params.set("q", next.query);
-    if (next.campaignOnly) params.set("campaignOnly", "true");
-    params.set("sort", next.sort);
-    params.set("page", next.page.toString());
-    const href = `/feed?${params.toString()}`;
+    const href = buildFeedHref(next);
     if (replace) router.replace(href, { scroll: false });
     else router.push(href, { scroll: false });
   }, [router, urlState]);
@@ -303,7 +298,6 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-5">
             <FeedSideHot campaigns={campaigns} />
-            <FeedSideRecommend />
           </div>
         </aside>
       </div>

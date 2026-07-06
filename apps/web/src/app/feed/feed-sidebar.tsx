@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { FallbackImage } from "@/components/fallback-image";
 import { statusMeta, type Campaign } from "@/data/campaigns";
 import { progressPercent } from "@/lib/progress";
@@ -47,22 +47,6 @@ export function FeedSideHot({ campaigns }: { campaigns: Campaign[] }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-export function FeedSideRecommend() {
-  return (
-    <div className="rounded-2xl border p-5" style={cardStyle}>
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} style={{ color: "var(--accent)" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: "var(--foreground)" }}>
-          크리에이터 추천
-        </h3>
-      </div>
-      <p className="text-[13px] leading-relaxed opacity-65" style={{ color: "var(--foreground)" }}>
-        팔로우와 추천 크리에이터 기능은 준비 중이에요.
-      </p>
     </div>
   );
 }
