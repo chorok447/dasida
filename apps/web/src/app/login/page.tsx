@@ -79,7 +79,6 @@ export default function LoginPage() {
             <input type="checkbox" className="h-4 w-4 accent-[#7dd3a3]" />
             이메일 기억하기
           </label>
-          <span className="opacity-60">비밀번호 찾기 준비 중</span>
         </div>
 
         <button
