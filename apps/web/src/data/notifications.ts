@@ -111,6 +111,7 @@ export function relativeTime(item: Pick<NotificationItem, "createdAt" | "time">)
 export function notificationTypeLabel(type: string): string {
   if (type === "CAMPAIGN_JOINED") return "캠페인 참여";
   if (type === "USER_FOLLOWED") return "새 팔로워";
+  if (type === "MESSAGE_RECEIVED") return "새 메시지";
   if (type === "POST_COMMENT_CREATED") return "게시글 댓글";
   if (type === "CAMPAIGN_COMMENT_CREATED") return "캠페인 댓글";
   return "알림";
