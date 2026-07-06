@@ -16,6 +16,7 @@ enum class PostSearchSort {
 data class PostSearchCondition(
     val query: String?,
     val campaignOnly: Boolean,
+    val authorUserIds: List<Long>?,
     val sort: PostSearchSort,
     val page: Int,
     val size: Int,
@@ -46,6 +47,12 @@ class QuerydslPostSearchRepository(
             )
         }
         if (condition.campaignOnly) predicates.and(post.campaignId.isNotNull)
+        condition.authorUserIds?.let { authorIds ->
+            if (authorIds.isEmpty()) {
+                return PostSearchResult(content = emptyList(), totalElements = 0)
+            }
+            predicates.and(post.authorUserId.`in`(authorIds))
+        }
 
         val content = queryFactory
             .selectFrom(post)

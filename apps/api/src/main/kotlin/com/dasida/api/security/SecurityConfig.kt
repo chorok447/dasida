@@ -54,6 +54,11 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/mine/page").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/*/participants").authenticated()
                 // 알림은 사용자별 데이터 → 일반 GET permitAll 보다 먼저 보호한다.
+                it.requestMatchers(HttpMethod.GET, "/api/users/recommended").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/users/me/following", "/api/users/me/followers").authenticated()
+                it.requestMatchers(HttpMethod.POST, "/api/users/*/follow").authenticated()
+                it.requestMatchers(HttpMethod.DELETE, "/api/users/*/follow").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/users/*/follow").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/notifications/**").authenticated()
                 it.requestMatchers(HttpMethod.POST, "/api/notifications/**").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/reports/mine").authenticated()

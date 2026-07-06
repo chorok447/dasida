@@ -32,6 +32,7 @@ class AuthService(
     private val campaignComments: CampaignCommentRepository,
     private val denylist: TokenDenylistStore,
     private val accessLogs: AccessLogService,
+    private val userFollows: UserFollowRepository,
     private val clock: Clock,
 ) {
     // 유저 없을 때 BCrypt 시간을 맞추기 위한 더미 해시(1회 계산). 타이밍 기반 가입여부 노출 방지용.
@@ -127,19 +128,6 @@ class AuthService(
     @Transactional(readOnly = true)
     fun getMe(userId: Long): UserProfileResponse = activeUser(userId).toProfile()
 
-    @Transactional(readOnly = true)
-    fun getPublicProfile(userId: Long): PublicUserResponse {
-        val user = publicUser(userId)
-        val id = requireNotNull(user.id)
-        return PublicUserResponse(
-            id = id,
-            name = user.name,
-            verified = user.verified,
-            profileImageUrl = user.profileImageUrl,
-            postCount = posts.countByAuthorUserId(id),
-        )
-    }
-
     /** 공개 프로필 조회용. 탈퇴·미존재는 404. */
     fun publicUser(userId: Long): User {
         val user = repo.findById(userId).orElseThrow {
@@ -234,6 +222,7 @@ class AuthService(
         campaigns.anonymizeAuthor(id, DELETED_USER_NAME)
         campaignComments.anonymizeAuthor(id, DELETED_USER_NAME)
         accessLogs.deleteForUser(id)
+        userFollows.deleteAllForUser(id)
         return DeleteAccountResponse(deleted = true)
     }
 
