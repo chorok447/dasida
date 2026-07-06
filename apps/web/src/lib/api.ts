@@ -137,3 +137,9 @@ export async function apiDeleteVoid(path: string): Promise<void> {
   const res = await apiFetch(path, { method: "DELETE" });
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
 }
+
+/** 본문 없는 POST(204). */
+export async function apiPostVoid(path: string): Promise<void> {
+  const res = await apiFetch(path, { method: "POST" });
+  if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
+}

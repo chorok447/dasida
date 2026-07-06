@@ -1,15 +1,50 @@
 "use client";
 
+import { useCallback, useState } from "react";
+import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { Avatar } from "@/components/avatar";
 import { PageShell } from "@/components/page-shell";
-import type { PublicUser } from "@/data/users";
+import {
+  fetchPublicUser,
+  followUser,
+  unfollowUser,
+  type PublicUser,
+} from "@/data/users";
+import { getSessionId } from "@/lib/auth";
+import { useAuthSession } from "@/lib/use-auth-session";
+import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useTheme } from "@/lib/theme-context";
 import { UserPostsGrid } from "./user-posts-grid";
 
-export function UserProfileClient({ user }: { user: PublicUser }) {
+export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
   const { theme } = useTheme();
+  const { sessionId } = useAuthSession();
+  const { profile } = useCurrentUserProfile();
   const dark = theme === "dark";
+  const [user, setUser] = useState(initialUser);
+  const [pending, setPending] = useState(false);
+  const isSelf = profile?.id === user.id;
+
+  const toggleFollow = useCallback(async () => {
+    if (!getSessionId()) {
+      toast.error("로그인 후 팔로우할 수 있어요.");
+      return;
+    }
+    const nextFollowed = !(user.followedByMe === true);
+    setPending(true);
+    try {
+      if (nextFollowed) await followUser(user.id);
+      else await unfollowUser(user.id);
+      const refreshed = await fetchPublicUser(user.id);
+      setUser(refreshed);
+    } catch {
+      toast.error("팔로우 상태를 변경하지 못했어요.");
+    } finally {
+      setPending(false);
+    }
+  }, [user.followedByMe, user.id]);
 
   return (
     <PageShell paddingClassName="relative min-h-screen overflow-hidden" orb="right">
@@ -55,7 +90,37 @@ export function UserProfileClient({ user }: { user: PublicUser }) {
                 </div>
                 <p className="mt-3 text-[14px]" style={{ color: "var(--foreground-muted)" }}>
                   게시글 {user.postCount.toLocaleString("ko-KR")}개
+                  {" · "}
+                  {isSelf ? (
+                    <>
+                      <Link href="/mypage/followers" className="underline underline-offset-2">
+                        팔로워 {user.followerCount.toLocaleString("ko-KR")}
+                      </Link>
+                      {" · "}
+                      <Link href="/mypage/following" className="underline underline-offset-2">
+                        팔로잉 {user.followingCount.toLocaleString("ko-KR")}
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      팔로워 {user.followerCount.toLocaleString("ko-KR")} · 팔로잉 {user.followingCount.toLocaleString("ko-KR")}
+                    </>
+                  )}
                 </p>
+                {!isSelf && sessionId ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={toggleFollow}
+                    className="mt-4 rounded-full px-5 py-2 text-[13px] font-medium disabled:opacity-50"
+                    style={{
+                      background: user.followedByMe ? "var(--accent-soft)" : "var(--accent)",
+                      color: user.followedByMe ? "var(--accent-secondary)" : "#0f1f22",
+                    }}
+                  >
+                    {user.followedByMe ? "팔로잉" : "팔로우"}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

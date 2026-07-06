@@ -14,6 +14,7 @@ import type { PostSearchSort } from "@/data/posts";
 export type FeedUrlState = {
   query: string;
   campaignOnly: boolean;
+  followingOnly: boolean;
   sort: PostSearchSort;
   page: number;
 };
@@ -32,6 +33,7 @@ export function buildFeedHref(state: FeedUrlState): string {
   const params = new URLSearchParams();
   if (state.query) params.set("q", state.query);
   if (state.campaignOnly) params.set("campaignOnly", "true");
+  if (state.followingOnly) params.set("followingOnly", "true");
   params.set("sort", state.sort);
   params.set("page", state.page.toString());
   return `/feed?${params.toString()}`;
