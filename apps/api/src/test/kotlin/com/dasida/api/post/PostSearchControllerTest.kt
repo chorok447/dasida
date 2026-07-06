@@ -1,6 +1,7 @@
 package com.dasida.api.post
 
 import com.dasida.api.auth.User
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.security.JwtService
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
@@ -10,6 +11,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -22,6 +24,7 @@ class PostSearchControllerTest(
     @param:Autowired private val postRepo: PostRepository,
     @param:Autowired private val likeRepo: PostLikeRepository,
     @param:Autowired private val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired private val users: UserRepository,
 ) {
     private val token = jwt.issue(
         User(id = 1, email = "post-search@test.com", passwordHash = "x", name = "검색 사용자", verified = true),
@@ -309,5 +312,41 @@ class PostSearchControllerTest(
             jsonPath("$.content") { isArray() }
             jsonPath("$.page") { value(0) }
         }
+    }
+
+    @Test
+    fun `팔로잉 필터는 팔로우한 작성자 글만 반환한다`() {
+        val follower = users.save(
+            User(email = "follower-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "팔로워"),
+        )
+        val author = users.save(
+            User(email = "author-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "작성자"),
+        )
+        val other = users.save(
+            User(email = "other-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "다른이"),
+        )
+        val followerId = requireNotNull(follower.id)
+        val authorId = requireNotNull(author.id)
+        val otherId = requireNotNull(other.id)
+        val followedPost = savePost(text = marker("followed"), authorUserId = authorId)
+        savePost(text = marker("followed"), authorUserId = otherId)
+        val followerToken = jwt.issue(follower)
+
+        mvc.post("/api/users/$authorId/follow") {
+            headers { add("Authorization", "Bearer $followerToken") }
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/posts/search") {
+            param("followingOnly", "true")
+            headers { add("Authorization", "Bearer $followerToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()", Matchers.`is`(1))
+            jsonPath("$.content[0].id", Matchers.`is`(followedPost))
+        }
+
+        mvc.get("/api/posts/search") {
+            param("followingOnly", "true")
+        }.andExpect { status { isUnauthorized() } }
     }
 }

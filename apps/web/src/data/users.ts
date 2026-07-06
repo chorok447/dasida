@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from "@/lib/api";
+import { apiDeleteVoid, apiGet, apiPostVoid, apiPut } from "@/lib/api";
 import type { PostPageResponse } from "@/data/posts";
 
 export type UserProfile = {
@@ -15,10 +15,47 @@ export type PublicUser = {
   verified: boolean;
   profileImageUrl?: string | null;
   postCount: number;
+  followerCount: number;
+  followingCount: number;
+  followedByMe?: boolean | null;
+};
+
+export type RecommendedUsersResponse = {
+  items: PublicUser[];
+};
+
+export type PublicUserPageResponse = {
+  content: PublicUser[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
 
 export function fetchPublicUser(id: number): Promise<PublicUser> {
   return apiGet<PublicUser>(`/api/users/${id}`);
+}
+
+export function fetchRecommendedUsers(size = 4): Promise<RecommendedUsersResponse> {
+  return apiGet<RecommendedUsersResponse>(`/api/users/recommended?size=${size}`);
+}
+
+export async function followUser(id: number): Promise<void> {
+  await apiPostVoid(`/api/users/${id}/follow`);
+}
+
+export async function unfollowUser(id: number): Promise<void> {
+  await apiDeleteVoid(`/api/users/${id}/follow`);
+}
+
+export function fetchMyFollowingPage(page: number, size = 10): Promise<PublicUserPageResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return apiGet<PublicUserPageResponse>(`/api/users/me/following?${params.toString()}`);
+}
+
+export function fetchMyFollowersPage(page: number, size = 10): Promise<PublicUserPageResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return apiGet<PublicUserPageResponse>(`/api/users/me/followers?${params.toString()}`);
 }
 
 export function fetchUserPostsPage(userId: number, page: number, size = 10): Promise<PostPageResponse> {

@@ -15,7 +15,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { CurrentUserAvatar } from "@/components/current-user-avatar";
 import { PageShell } from "@/components/page-shell";
 import { FeedPostCard } from "@/app/feed/feed-post-card";
-import { FeedSideHot } from "@/app/feed/feed-sidebar";
+import { FeedSideHot, FeedSideRecommend } from "@/app/feed/feed-sidebar";
 import { FeedControls, feedHasActiveFilters } from "@/app/feed/feed-controls";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { StaggerItem } from "@/components/scroll-reveal";
@@ -68,6 +68,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
     return {
       query: searchParams.get("q") ?? "",
       campaignOnly: searchParams.get("campaignOnly") === "true",
+      followingOnly: searchParams.get("followingOnly") === "true",
       sort: sort === "popular" || sort === "discussed" ? sort : "latest",
       page: parsePageParam(searchParams.get("page")),
     };
@@ -118,12 +119,19 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const searchPath = useMemo(() => {
     const params = new URLSearchParams();
     if (urlState.query) params.set("q", urlState.query);
-    params.set("campaignOnly", urlState.campaignOnly.toString());
+    if (urlState.campaignOnly) params.set("campaignOnly", "true");
+    if (urlState.followingOnly && token) params.set("followingOnly", "true");
     params.set("sort", urlState.sort);
     params.set("page", urlState.page.toString());
     params.set("size", "10");
     return `/api/posts/search?${params.toString()}`;
-  }, [urlState.campaignOnly, urlState.page, urlState.query, urlState.sort]);
+  }, [token, urlState.campaignOnly, urlState.followingOnly, urlState.page, urlState.query, urlState.sort]);
+
+  useEffect(() => {
+    if (!token && urlState.followingOnly) {
+      updateUrl({ followingOnly: false }, true);
+    }
+  }, [token, updateUrl, urlState.followingOnly]);
 
   useEffect(() => {
     const requestToken = token;
@@ -208,8 +216,9 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
             onSearch={commitSearch}
             onSort={(sort) => updateUrl({ sort, page: 0 })}
             onCampaignOnly={(campaignOnly) => updateUrl({ campaignOnly, page: 0 })}
+            onFollowingOnly={token ? (followingOnly) => updateUrl({ followingOnly, page: 0 }) : undefined}
             onPatch={(changes) => updateUrl(changes)}
-            onResetAll={() => updateUrl({ query: "", campaignOnly: false, sort: "latest", page: 0 })}
+            onResetAll={() => updateUrl({ query: "", campaignOnly: false, followingOnly: false, sort: "latest", page: 0 })}
           />
 
           {requestStatus === "loading" && !response ? (
@@ -243,14 +252,16 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
               title={feedHasActiveFilters(urlState) ? "검색 결과가 없어요." : "아직 게시글이 없어요."}
               description={
                 feedHasActiveFilters(urlState)
-                  ? "다른 검색어를 입력하거나 필터를 초기화해보세요."
+                  ? urlState.followingOnly
+                    ? "팔로우한 작성자의 게시글이 없어요."
+                    : "다른 검색어를 입력하거나 필터를 초기화해보세요."
                   : "첫 업사이클 이야기를 남겨보세요."
               }
               action={
                 feedHasActiveFilters(urlState) ? (
                   <button
                     type="button"
-                    onClick={() => updateUrl({ query: "", campaignOnly: false, sort: "latest", page: 0 })}
+                    onClick={() => updateUrl({ query: "", campaignOnly: false, followingOnly: false, sort: "latest", page: 0 })}
                     className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
                   >
                     전체 게시글 보기
@@ -298,6 +309,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-5">
             <FeedSideHot campaigns={campaigns} />
+            <FeedSideRecommend />
           </div>
         </aside>
       </div>

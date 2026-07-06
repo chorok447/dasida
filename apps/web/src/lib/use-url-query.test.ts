@@ -27,14 +27,20 @@ describe("parsePageParam", () => {
 
 describe("buildFeedHref", () => {
   it("기본값이면 sort와 page만 포함한다", () => {
-    expect(buildFeedHref({ query: "", campaignOnly: false, sort: "latest", page: 0 })).toBe(
+    expect(buildFeedHref({ query: "", campaignOnly: false, followingOnly: false, sort: "latest", page: 0 })).toBe(
       "/feed?sort=latest&page=0",
     );
   });
 
+  it("팔로잉 필터를 반영한다", () => {
+    expect(
+      buildFeedHref({ query: "", campaignOnly: false, followingOnly: true, sort: "latest", page: 0 }),
+    ).toBe("/feed?followingOnly=true&sort=latest&page=0");
+  });
+
   it("검색어와 필터를 반영한다", () => {
     expect(
-      buildFeedHref({ query: "업사이클", campaignOnly: true, sort: "popular", page: 2 }),
+      buildFeedHref({ query: "업사이클", campaignOnly: true, followingOnly: false, sort: "popular", page: 2 }),
     ).toBe("/feed?q=%EC%97%85%EC%82%AC%EC%9D%B4%ED%81%B4&campaignOnly=true&sort=popular&page=2");
   });
 });

@@ -45,6 +45,21 @@ data class PublicUserResponse(
     val verified: Boolean,
     val profileImageUrl: String? = null,
     val postCount: Long,
+    val followerCount: Long = 0,
+    val followingCount: Long = 0,
+    val followedByMe: Boolean? = null,
+)
+
+data class FollowStatusResponse(val followed: Boolean)
+
+data class RecommendedUsersResponse(val items: List<PublicUserResponse>)
+
+data class PublicUserPageResponse(
+    val content: List<PublicUserResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
 )
 
 @Schema(description = "프로필 수정 요청")

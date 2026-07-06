@@ -1,5 +1,6 @@
 package com.dasida.api.post
 
+import com.dasida.api.auth.UserFollowService
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
@@ -22,6 +23,7 @@ class PostService(
     private val repo: PostRepository,
     private val campaigns: CampaignRepository,
     private val users: UserRepository,
+    private val userFollows: UserFollowService,
     private val likeRepo: PostLikeRepository,
     private val bookmarkRepo: PostBookmarkRepository,
     private val commentRepo: PostCommentRepository,
@@ -58,11 +60,16 @@ class PostService(
         currentUserId: Long?,
         q: String?,
         campaignOnly: Boolean,
+        followingOnly: Boolean,
         sort: String,
         page: Int,
         size: Int,
     ): PostSearchResponse {
         checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)
+
+        if (followingOnly && currentUserId == null) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "login required for following feed")
+        }
 
         val query = q?.trim()?.takeIf { it.isNotEmpty() }
         if (query != null && query.length > MAX_SEARCH_QUERY_LENGTH) {
@@ -78,10 +85,17 @@ class PostService(
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid post sort")
         }
 
+        val authorUserIds = if (followingOnly) {
+            userFollows.followeeIdsFor(requireNotNull(currentUserId))
+        } else {
+            null
+        }
+
         val result = postSearch.search(
             PostSearchCondition(
                 query = query,
                 campaignOnly = campaignOnly,
+                authorUserIds = authorUserIds,
                 sort = searchSort,
                 page = page,
                 size = size,
