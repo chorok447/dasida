@@ -127,6 +127,30 @@ class AuthService(
     @Transactional(readOnly = true)
     fun getMe(userId: Long): UserProfileResponse = activeUser(userId).toProfile()
 
+    @Transactional(readOnly = true)
+    fun getPublicProfile(userId: Long): PublicUserResponse {
+        val user = publicUser(userId)
+        val id = requireNotNull(user.id)
+        return PublicUserResponse(
+            id = id,
+            name = user.name,
+            verified = user.verified,
+            profileImageUrl = user.profileImageUrl,
+            postCount = posts.countByAuthorUserId(id),
+        )
+    }
+
+    /** 공개 프로필 조회용. 탈퇴·미존재는 404. */
+    fun publicUser(userId: Long): User {
+        val user = repo.findById(userId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
+        }
+        if (user.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
+        }
+        return user
+    }
+
     @Transactional
     fun updateProfile(userId: Long, req: UpdateProfileRequest): UpdateProfileResponse {
         val user = activeUser(userId)

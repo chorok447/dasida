@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Image as ImageIcon,
 } from "lucide-react";
-import { Avatar } from "@/components/avatar";
+import { AuthorHeader } from "@/components/author-header";
 import { FallbackImage } from "@/components/fallback-image";
 import { PostText } from "@/components/post-text";
 import { RichBodyImageGrid } from "@/components/rich-body-image-grid";
@@ -132,13 +132,14 @@ export function PostDetailHero({
         </div>
 
         <div className="p-7 flex flex-col gap-5">
-          <div className="flex items-center gap-3">
-            <Avatar name={p.author.name} verified={p.author.verified} size={40} src={p.author.profileImageUrl ?? undefined} />
-            <div>
-              <div style={{ color: "var(--foreground)" }}>{p.author.name}</div>
-              <div className="text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>{p.time}</div>
-            </div>
-          </div>
+          <AuthorHeader
+            name={p.author.name}
+            verified={p.author.verified}
+            profileImageUrl={p.author.profileImageUrl}
+            authorId={p.authorId}
+            avatarSize={40}
+            time={p.time}
+          />
 
           <PostText text={p.text} style={{ color: "var(--foreground)", lineHeight: 1.7 }} />
 

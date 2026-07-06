@@ -9,8 +9,9 @@ import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Avatar } from "@/components/avatar";
+import { AuthorHeader } from "@/components/author-header";
 import { FallbackImage } from "@/components/fallback-image";
-import { PostText } from "@/components/post-text";
+import { PostPreview } from "@/components/post-text";
 import { ReportButton } from "@/components/report-button";
 import { ShareButton } from "@/components/share-button";
 import type { Post, PostComment } from "@/data/posts";
@@ -167,11 +168,15 @@ export function FeedPostCard({
         className="rounded-2xl border overflow-hidden shadow-[0_20px_50px_-25px_rgba(0,0,0,0.4)]"
       >
         <div className="flex items-center gap-3 p-4">
-          <Avatar name={p.author.name} verified={p.author.verified} src={p.author.profileImageUrl ?? undefined} />
-          <div className="flex-1">
-            <div style={{ color: "var(--foreground)", fontSize: 14 }}>{p.author.name}</div>
-            <div className="text-[11px] opacity-60" style={{ color: "var(--foreground)" }}>{p.time}</div>
-          </div>
+          <AuthorHeader
+            className="flex-1"
+            name={p.author.name}
+            verified={p.author.verified}
+            profileImageUrl={p.author.profileImageUrl}
+            authorId={p.authorId}
+            time={p.time}
+            timeClassName="text-[11px] opacity-60"
+          />
         </div>
 
         {p.images.length === 1 ? (
@@ -187,7 +192,7 @@ export function FeedPostCard({
         )}
 
         <div className="p-4 space-y-3">
-          <PostText text={p.text} style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }} />
+          <PostPreview text={p.text} style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }} maxLength={320} />
           <div className="flex flex-wrap gap-1.5">
             {p.tags.map((t) => (
               <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>

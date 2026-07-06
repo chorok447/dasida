@@ -63,6 +63,7 @@ data class PostCommentsPageResponse(
 data class PostResponse(
     val id: String,
     val author: Author,
+    val authorId: Long? = null,
     val time: String,
     val text: String,
     val tags: List<String>,

@@ -72,6 +72,13 @@ class PostController(
         @AuthenticationPrincipal user: AuthUser,
     ): PostPageResponse = postService.getMyBookmarksPage(user.id, page, size)
 
+    @Operation(summary = "sitemap용 게시글 id 목록", description = "공개 API. id 만 페이지 단위로 반환한다.")
+    @GetMapping("/sitemap-ids")
+    fun sitemapIds(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "500") size: Int,
+    ) = postService.listSitemapIds(page, size)
+
     @Operation(summary = "게시글 상세 조회", description = "공개 API. JWT 가 있으면 사용자별 상태를 포함한다.")
     @GetMapping("/{id}")
     fun get(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?): PostResponse =

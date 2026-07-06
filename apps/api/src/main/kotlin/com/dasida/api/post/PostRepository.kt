@@ -16,6 +16,8 @@ interface PostRepository : JpaRepository<Post, String> {
 
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Post>
 
+    fun countByAuthorUserId(authorUserId: Long): Long
+
     /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Post p where p.id = :id")
@@ -32,4 +34,7 @@ interface PostRepository : JpaRepository<Post, String> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Post p set p.author.name = :name, p.author.profileImageUrl = :imageUrl where p.authorUserId = :userId")
     fun syncAuthorProfile(@Param("userId") userId: Long, @Param("name") name: String, @Param("imageUrl") imageUrl: String?): Int
+
+    @Query("SELECT p.id FROM Post p ORDER BY p.seq DESC, p.id ASC")
+    fun findIds(pageable: Pageable): Page<String>
 }
