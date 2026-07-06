@@ -2,6 +2,7 @@ package com.dasida.api.auth
 
 import com.dasida.api.campaign.CampaignCommentRepository
 import com.dasida.api.campaign.CampaignRepository
+import com.dasida.api.message.DmDeletionService
 import com.dasida.api.post.PostCommentRepository
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.JwtService
@@ -33,6 +34,7 @@ class AuthService(
     private val denylist: TokenDenylistStore,
     private val accessLogs: AccessLogService,
     private val userFollows: UserFollowRepository,
+    private val dmDeletion: DmDeletionService,
     private val clock: Clock,
 ) {
     // 유저 없을 때 BCrypt 시간을 맞추기 위한 더미 해시(1회 계산). 타이밍 기반 가입여부 노출 방지용.
@@ -223,6 +225,7 @@ class AuthService(
         campaignComments.anonymizeAuthor(id, DELETED_USER_NAME)
         accessLogs.deleteForUser(id)
         userFollows.deleteAllForUser(id)
+        dmDeletion.deleteAllForUser(id)
         return DeleteAccountResponse(deleted = true)
     }
 
