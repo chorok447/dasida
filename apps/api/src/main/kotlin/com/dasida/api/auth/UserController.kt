@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Users", description = "공개 사용자 프로필·팔로우 API")
 class UserController(
     private val userFollowService: UserFollowService,
+    private val userBlockService: UserBlockService,
     private val postService: PostService,
 ) {
     @Operation(summary = "추천 크리에이터", description = "로그인 사용자에게 팔로우 후보를 반환한다.")
@@ -88,4 +89,20 @@ class UserController(
     @GetMapping("/{id}/follow")
     fun followStatus(@PathVariable id: Long, @AuthenticationPrincipal user: AuthUser): FollowStatusResponse =
         userFollowService.isFollowing(user.id, id)
+
+    @Operation(summary = "사용자 차단")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/block")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun block(@PathVariable id: Long, @AuthenticationPrincipal user: AuthUser) {
+        userBlockService.block(user.id, id)
+    }
+
+    @Operation(summary = "사용자 차단 해제")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{id}/block")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun unblock(@PathVariable id: Long, @AuthenticationPrincipal user: AuthUser) {
+        userBlockService.unblock(user.id, id)
+    }
 }

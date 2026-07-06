@@ -3,16 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell, MessageCircle, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { getSessionId } from "@/lib/auth";
 import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
+import { DM_EVENT, fetchDmUnreadCount } from "@/data/messages";
 import { MAIN_NAV_ITEMS } from "@/lib/nav-items";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
-const PROTECTED_PREFIXES = ["/posts/new", "/campaigns/new", "/mypage", "/profile/edit"];
+const PROTECTED_PREFIXES = ["/posts/new", "/campaigns/new", "/mypage", "/profile/edit", "/messages"];
 
 export function SiteHeader() {
   const { theme } = useTheme();
@@ -20,11 +21,14 @@ export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const onNotifications = pathname === "/notifications";
+  const onMessages = pathname.startsWith("/messages");
   const { isLoggedIn, name, logout, sessionId: token } = useAuthSession();
-  // 카운트를 조회 시점의 token 과 함께 보관 → 토큰이 바뀌면 이전 사용자 값을 표시하지 않는다(reset 용 동기 setState 회피).
   const [unreadState, setUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
+  const [dmUnreadState, setDmUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
   const unreadGenRef = useRef(0);
+  const dmUnreadGenRef = useRef(0);
   const unread = unreadState.token === token ? unreadState.count : 0;
+  const dmUnread = dmUnreadState.token === token ? dmUnreadState.count : 0;
 
   // 로그인 상태에서만 unread count 조회. 로그아웃(token=null)이면 요청하지 않고 badge 는 위 파생값으로 0.
   // token 변경 시 재조회, 알림 페이지의 읽음 처리(NOTIF_EVENT) 후에도 갱신. polling 은 하지 않음.
@@ -49,6 +53,28 @@ export function SiteHeader() {
     refresh();
     window.addEventListener(NOTIF_EVENT, refresh);
     return () => window.removeEventListener(NOTIF_EVENT, refresh);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const requestToken = token;
+    const refresh = () => {
+      const generation = ++dmUnreadGenRef.current;
+      fetchDmUnreadCount()
+        .then((res) => {
+          if (generation === dmUnreadGenRef.current && getSessionId() === requestToken) {
+            setDmUnreadState({ token: requestToken, count: res.unreadCount });
+          }
+        })
+        .catch(() => {
+          if (generation === dmUnreadGenRef.current && getSessionId() === requestToken) {
+            setDmUnreadState({ token: requestToken, count: 0 });
+          }
+        });
+    };
+    refresh();
+    window.addEventListener(DM_EVENT, refresh);
+    return () => window.removeEventListener(DM_EVENT, refresh);
   }, [token]);
 
   const onLogout = () => {
@@ -103,6 +129,28 @@ export function SiteHeader() {
           >
             <Search size={16} />
             <span className="hidden xl:inline text-[12px]">검색</span>
+          </Link>
+          <Link
+            href="/messages"
+            className="relative hidden h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none sm:flex"
+            style={{
+              background: onMessages ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
+              color: onMessages ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+            }}
+            aria-label={dmUnread > 0 ? `DM, 읽지 않음 ${dmUnread > 99 ? "99+" : dmUnread}개` : "DM"}
+            aria-current={onMessages ? "page" : undefined}
+          >
+            <MessageCircle size={16} aria-hidden />
+            <span className="hidden lg:inline text-[12px]">DM</span>
+            {isLoggedIn && dmUnread > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[10px] font-semibold leading-none"
+                style={{ background: "#ed5c48", color: "#ffffff" }}
+                aria-hidden
+              >
+                {dmUnread > 99 ? "99+" : dmUnread}
+              </span>
+            )}
           </Link>
           <Link
             href="/notifications"

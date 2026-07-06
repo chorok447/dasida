@@ -12,6 +12,7 @@ import {
 function iconFor(type: string) {
   if (type === "CAMPAIGN_JOINED") return <Users size={16} aria-hidden />;
   if (type === "USER_FOLLOWED") return <UserPlus size={16} aria-hidden />;
+  if (type === "MESSAGE_RECEIVED") return <MessageCircle size={16} aria-hidden />;
   if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} aria-hidden />;
   return <Bell size={16} aria-hidden />;
 }
