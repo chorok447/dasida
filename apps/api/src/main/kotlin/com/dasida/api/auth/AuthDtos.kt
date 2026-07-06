@@ -38,6 +38,15 @@ data class UserProfileResponse(
     val profileImageUrl: String? = null,
 )
 
+@Schema(description = "공개 프로필(타인 조회용)")
+data class PublicUserResponse(
+    val id: Long,
+    val name: String,
+    val verified: Boolean,
+    val profileImageUrl: String? = null,
+    val postCount: Long,
+)
+
 @Schema(description = "프로필 수정 요청")
 data class UpdateProfileRequest(
     @field:Schema(description = "변경할 표시 이름", example = "홍길동")

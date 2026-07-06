@@ -1,4 +1,5 @@
-import { apiPut } from "@/lib/api";
+import { apiGet, apiPut } from "@/lib/api";
+import type { PostPageResponse } from "@/data/posts";
 
 export type UserProfile = {
   id: number;
@@ -7,6 +8,23 @@ export type UserProfile = {
   verified: boolean;
   profileImageUrl?: string | null;
 };
+
+export type PublicUser = {
+  id: number;
+  name: string;
+  verified: boolean;
+  profileImageUrl?: string | null;
+  postCount: number;
+};
+
+export function fetchPublicUser(id: number): Promise<PublicUser> {
+  return apiGet<PublicUser>(`/api/users/${id}`);
+}
+
+export function fetchUserPostsPage(userId: number, page: number, size = 10): Promise<PostPageResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return apiGet<PostPageResponse>(`/api/users/${userId}/posts?${params.toString()}`);
+}
 
 export type UpdateProfileRequest = {
   name: string;

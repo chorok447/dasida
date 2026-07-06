@@ -3,6 +3,7 @@ package com.dasida.api.post
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
+import com.dasida.api.common.SitemapIdsResponse
 import com.dasida.api.security.AuthUser
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -35,6 +36,20 @@ class PostService(
         return posts.map {
             it.toResponse(viewerId = currentUserId, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
         }
+    }
+
+    /** sitemap 전용 id 목록. JSON 본문 없이 id 만 페이지 단위로 반환한다. */
+    @Transactional(readOnly = true)
+    fun listSitemapIds(page: Int, size: Int): SitemapIdsResponse {
+        checkPageParams(page, size, MAX_SITEMAP_PAGE_SIZE)
+        val result = repo.findIds(PageRequest.of(page, size))
+        return SitemapIdsResponse(
+            ids = result.content,
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
     }
 
     /** 공개 검색. Querydsl content/count와 현재 page 상호작용 bulk 조회를 분리한다. */
@@ -83,6 +98,34 @@ class PostService(
                     likedByMe = it.id in likedIds,
                     bookmarkedByMe = it.id in bookmarkedIds,
                 )
+            },
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
+    }
+
+    /** 특정 사용자의 공개 게시글 목록. */
+    @Transactional(readOnly = true)
+    fun getPostsByAuthorPage(authorUserId: Long, viewerId: Long?, page: Int, size: Int): PostPageResponse {
+        val author = users.findById(authorUserId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
+        }
+        if (author.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
+        }
+        validatePageParams(page, size)
+        val result = repo.findByAuthorUserId(
+            authorUserId,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
+        )
+        val postIds = result.content.map { it.id }
+        val likedIds = likedByPage(viewerId, postIds)
+        val bookmarkedIds = bookmarkedByPage(viewerId, postIds)
+        return PostPageResponse(
+            content = result.content.map {
+                it.toResponse(viewerId = viewerId, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
             },
             page = page,
             size = size,
@@ -359,6 +402,7 @@ class PostService(
     private companion object {
         const val MAX_SEARCH_PAGE_SIZE = 50
         const val MAX_SEARCH_QUERY_LENGTH = 100
+        const val MAX_SITEMAP_PAGE_SIZE = 500
 
         fun totalPages(totalElements: Long, size: Int): Int =
             if (totalElements == 0L) 0 else ((totalElements - 1) / size + 1).toInt()

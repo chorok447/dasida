@@ -1,0 +1,35 @@
+package com.dasida.api.auth
+
+import com.dasida.api.post.PostPageResponse
+import com.dasida.api.post.PostService
+import com.dasida.api.security.AuthUser
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+
+/** HTTP adapter. 공개 프로필 조회만 담당한다. */
+@RestController
+@RequestMapping("/api/users")
+@Tag(name = "Users", description = "공개 사용자 프로필 API")
+class UserController(
+    private val authService: AuthService,
+    private val postService: PostService,
+) {
+    @Operation(summary = "공개 프로필 조회", description = "이메일 등 민감 정보는 포함하지 않는다.")
+    @GetMapping("/{id}")
+    fun profile(@PathVariable id: Long): PublicUserResponse = authService.getPublicProfile(id)
+
+    @Operation(summary = "사용자 게시글 목록", description = "공개 API. JWT 가 있으면 좋아요/북마크 상태를 포함한다.")
+    @GetMapping("/{id}/posts")
+    fun posts(
+        @PathVariable id: Long,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): PostPageResponse = postService.getPostsByAuthorPage(id, user?.id, page, size)
+}

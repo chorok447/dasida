@@ -27,4 +27,7 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Campaign c set c.author.name = :name, c.author.profileImageUrl = :imageUrl where c.authorUserId = :userId")
     fun syncAuthorProfile(@Param("userId") userId: Long, @Param("name") name: String, @Param("imageUrl") imageUrl: String?): Int
+
+    @Query("SELECT c.id FROM Campaign c ORDER BY c.seq DESC, c.id ASC")
+    fun findIds(pageable: Pageable): Page<String>
 }

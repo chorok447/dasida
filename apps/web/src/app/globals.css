@@ -15,6 +15,8 @@
   --foreground-muted: rgba(28, 64, 68, 0.65);
   --border: rgba(28, 64, 68, 0.08);
   --card: #ffffff;
+  --chip-bg: rgba(28, 64, 68, 0.06);
+  --badge-muted-bg: rgba(28, 64, 68, 0.08);
   --page-gradient: linear-gradient(180deg, var(--surface), var(--surface-muted));
 }
 
@@ -27,6 +29,8 @@
   --foreground-muted: rgba(255, 255, 255, 0.65);
   --border: rgba(255, 255, 255, 0.08);
   --card: rgba(255, 255, 255, 0.04);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --badge-muted-bg: rgba(255, 255, 255, 0.07);
   --page-gradient: linear-gradient(180deg, var(--surface-dark), var(--surface-muted));
 }
 

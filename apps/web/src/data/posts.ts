@@ -120,6 +120,7 @@ export type PostSearchSort = "latest" | "popular" | "discussed";
 export type Post = {
   id: string;
   author: { name: string; verified: boolean; profileImageUrl?: string | null };
+  authorId?: number | null;
   time: string;
   text: string;
   tags: string[];
