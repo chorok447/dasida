@@ -96,10 +96,7 @@ export function FeedSideRecommend() {
   const [pendingId, setPendingId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!sessionId) {
-      setItems([]);
-      return;
-    }
+    if (!sessionId) return;
     fetchRecommendedUsers(4)
       .then((res) => setItems(res.items))
       .catch(() => setItems([]));
