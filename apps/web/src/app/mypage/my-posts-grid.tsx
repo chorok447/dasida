@@ -3,7 +3,7 @@
 import { StaggerItem } from "@/components/scroll-reveal";
 import { FallbackImage } from "@/components/fallback-image";
 import { ListEmptyState } from "@/components/list-empty-state";
-import { PostText } from "@/components/post-text";
+import { PostPreview } from "@/components/post-text";
 import Link from "next/link";
 import { ExternalLink, Heart, MessageCircle, PenLine } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
@@ -46,7 +46,7 @@ function MyPostCard({ post }: { post: Post }) {
               color: dark ? "#f9f7f2" : "#0f1f22",
             }}
           >
-            <PostText text={post.text} className="line-clamp-4 text-[15px] leading-7" />
+            <PostPreview text={post.text} className="line-clamp-4 text-[15px] leading-7" maxLength={280} />
           </div>
         )}
 
@@ -55,7 +55,7 @@ function MyPostCard({ post }: { post: Post }) {
             <span className="truncate text-[13px] font-medium">{post.author.name}</span>
             <span className="shrink-0 text-[11px] opacity-55">{post.time}</span>
           </div>
-          {image ? <PostText text={post.text} className="line-clamp-2 text-[13px] leading-6 opacity-80" /> : null}
+          {image ? <PostPreview text={post.text} className="line-clamp-2 text-[13px] leading-6 opacity-80" maxLength={120} /> : null}
           {post.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {post.tags.map((tag) => (

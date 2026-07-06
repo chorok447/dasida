@@ -3,7 +3,7 @@
 import { StaggerItem } from "@/components/scroll-reveal";
 import { FallbackImage } from "@/components/fallback-image";
 import { ListEmptyState } from "@/components/list-empty-state";
-import { PostText } from "@/components/post-text";
+import { PostPreview } from "@/components/post-text";
 import { useState } from "react";
 import Link from "next/link";
 import { Bookmark, ExternalLink, Heart, MessageCircle } from "lucide-react";
@@ -57,7 +57,7 @@ function SavedPostCard({
               color: dark ? "#f9f7f2" : "#0f1f22",
             }}
           >
-            <PostText text={post.text} className="line-clamp-4 text-[15px] leading-7" />
+            <PostPreview text={post.text} className="line-clamp-4 text-[15px] leading-7" maxLength={280} />
           </div>
         )}
 
@@ -66,7 +66,7 @@ function SavedPostCard({
             <span className="truncate text-[13px] font-medium">{post.author.name}</span>
             <span className="shrink-0 text-[11px] opacity-55">{post.time}</span>
           </div>
-          {image ? <PostText text={post.text} className="line-clamp-2 text-[13px] leading-6 opacity-80" /> : null}
+          {image ? <PostPreview text={post.text} className="line-clamp-2 text-[13px] leading-6 opacity-80" maxLength={120} /> : null}
           <div className="flex items-center gap-4 text-[12px] opacity-65">
             <span className="flex items-center gap-1">
               <Heart size={13} /> {post.likes}

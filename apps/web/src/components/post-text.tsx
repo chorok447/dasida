@@ -2,8 +2,28 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { isRichHtml, sanitizeRichHtml } from "@/lib/sanitize-rich-html";
+import { richTextPlainPreview } from "@/lib/rich-text-length";
 
 const BOLD_RE = /\*\*([^*]+)\*\*/g;
+
+/** 목록·카드용 plain 미리보기. */
+export function PostPreview({
+  text,
+  className = "",
+  style,
+  maxLength = 160,
+}: {
+  text: string;
+  className?: string;
+  style?: CSSProperties;
+  maxLength?: number;
+}) {
+  return (
+    <p className={`break-words ${className}`.trim()} style={style}>
+      {richTextPlainPreview(text, maxLength)}
+    </p>
+  );
+}
 
 /** 게시글·캠페인 본문 — HTML(리치) 또는 레거시 plain/markdown. */
 export function PostText({
