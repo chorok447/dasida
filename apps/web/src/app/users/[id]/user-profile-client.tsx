@@ -11,6 +11,8 @@ import {
   fetchPublicUser,
   followUser,
   unfollowUser,
+  blockUser,
+  unblockUser,
   type PublicUser,
 } from "@/data/users";
 import { createConversation } from "@/data/messages";
@@ -18,6 +20,7 @@ import { getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useTheme } from "@/lib/theme-context";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { UserPostsGrid } from "./user-posts-grid";
 
 export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
@@ -25,11 +28,14 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
   const { theme } = useTheme();
   const { sessionId } = useAuthSession();
   const { profile } = useCurrentUserProfile();
+  const confirm = useConfirm();
   const dark = theme === "dark";
   const [user, setUser] = useState(initialUser);
   const [pending, setPending] = useState(false);
+  const [blockPending, setBlockPending] = useState(false);
   const [messagePending, setMessagePending] = useState(false);
   const isSelf = profile?.id === user.id;
+  const blockedByMe = user.blockedByMe === true;
 
   const toggleFollow = useCallback(async () => {
     if (!getSessionId()) {
@@ -65,6 +71,43 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
       setMessagePending(false);
     }
   }, [router, user.id]);
+
+  const toggleBlock = useCallback(async () => {
+    if (!getSessionId()) {
+      toast.error("로그인 후 차단할 수 있어요.");
+      return;
+    }
+    if (blockedByMe) {
+      setBlockPending(true);
+      try {
+        await unblockUser(user.id);
+        setUser(await fetchPublicUser(user.id));
+        toast.success("차단을 해제했어요.");
+      } catch {
+        toast.error("차단 해제에 실패했어요.");
+      } finally {
+        setBlockPending(false);
+      }
+      return;
+    }
+    const ok = await confirm({
+      title: `${user.name}님을 차단할까요?`,
+      message: "차단하면 메시지와 새 대화를 보낼 수 없어요. 기존 대화는 읽기만 가능합니다.",
+      confirmLabel: "차단",
+      destructive: true,
+    });
+    if (!ok) return;
+    setBlockPending(true);
+    try {
+      await blockUser(user.id);
+      setUser(await fetchPublicUser(user.id));
+      toast.success("차단했어요.");
+    } catch {
+      toast.error("차단에 실패했어요.");
+    } finally {
+      setBlockPending(false);
+    }
+  }, [blockedByMe, confirm, user.id, user.name]);
 
   return (
     <PageShell paddingClassName="relative min-h-screen overflow-hidden" orb="right">
@@ -141,18 +184,33 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
                     >
                       {user.followedByMe ? "팔로잉" : "팔로우"}
                     </button>
+                    {!blockedByMe ? (
+                      <button
+                        type="button"
+                        disabled={messagePending}
+                        onClick={() => void startMessage()}
+                        className="rounded-full border px-5 py-2 text-[13px] font-medium disabled:opacity-50"
+                        style={{
+                          borderColor: "var(--border)",
+                          color: "var(--foreground)",
+                          background: "var(--card)",
+                        }}
+                      >
+                        메시지 보내기
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      disabled={messagePending}
-                      onClick={() => void startMessage()}
+                      disabled={blockPending}
+                      onClick={() => void toggleBlock()}
                       className="rounded-full border px-5 py-2 text-[13px] font-medium disabled:opacity-50"
                       style={{
-                        borderColor: "var(--border)",
-                        color: "var(--foreground)",
+                        borderColor: blockedByMe ? "var(--border)" : "rgba(237,92,72,0.35)",
+                        color: blockedByMe ? "var(--foreground-muted)" : "#ed5c48",
                         background: "var(--card)",
                       }}
                     >
-                      메시지 보내기
+                      {blockedByMe ? "차단 해제" : "차단"}
                     </button>
                   </div>
                 ) : null}
