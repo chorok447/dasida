@@ -2,6 +2,7 @@ package com.dasida.api.campaign
 
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.checkPageParams
+import com.dasida.api.common.SitemapIdsResponse
 import com.dasida.api.post.Author
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.AuthUser
@@ -36,6 +37,20 @@ class CampaignService(
         // N+1 회피: 내가 참여한 campaignId 를 한 번에 조회.
         val joinedIds = joinedByPage(currentUserId, campaigns.map { it.id })
         return campaigns.map { it.toResponse(viewerId = currentUserId, joinedByMe = it.id in joinedIds, today = today) }
+    }
+
+    /** sitemap 전용 id 목록. JSON 본문 없이 id 만 페이지 단위로 반환한다. */
+    @Transactional(readOnly = true)
+    fun listSitemapIds(page: Int, size: Int): SitemapIdsResponse {
+        checkPageParams(page, size, MAX_SITEMAP_PAGE_SIZE)
+        val result = repo.findIds(PageRequest.of(page, size))
+        return SitemapIdsResponse(
+            ids = result.content,
+            page = page,
+            size = size,
+            totalElements = result.totalElements,
+            totalPages = totalPages(result.totalElements, size),
+        )
     }
 
     /** 공개 검색. content/count는 Querydsl로 분리하고 현재 page의 참여 상태만 bulk 조회한다. */
@@ -362,6 +377,7 @@ class CampaignService(
         val CAMPAIGN_STATUSES = setOf("open", "upcoming", "closed")
         const val MAX_SEARCH_PAGE_SIZE = 50
         const val MAX_SEARCH_QUERY_LENGTH = 100
+        const val MAX_SITEMAP_PAGE_SIZE = 500
 
         fun totalPages(totalElements: Long, size: Int): Int =
             if (totalElements == 0L) 0 else ((totalElements - 1) / size + 1).toInt()
