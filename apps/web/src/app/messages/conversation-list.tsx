@@ -15,7 +15,7 @@ import {
   relativeDmTime,
   type ConversationSummary,
 } from "@/data/messages";
-import { useDmSocket } from "@/lib/use-dm-socket";
+import { openDmSocket } from "@/lib/dm-ws";
 
 export function ConversationListClient() {
   const router = useRouter();
@@ -66,8 +66,9 @@ function ConversationListBody({
   const { isLoggedIn } = useAuthSession();
   const [inboxPatches, setInboxPatches] = useState<ConversationSummary[]>([]);
 
-  useDmSocket(
-    {
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const sock = openDmSocket({
       viewerId: null,
       onInbox: (summary) => {
         setInboxPatches((current) => {
@@ -75,9 +76,9 @@ function ConversationListBody({
           return [...rest, summary];
         });
       },
-    },
-    isLoggedIn,
-  );
+    });
+    return () => sock.close();
+  }, [isLoggedIn]);
 
   const mergeList = useCallback(
     (items: ConversationSummary[]) => {

@@ -17,16 +17,6 @@ export type DmWsHandlers = {
   onInbox?: (summary: ConversationSummary, totalUnread: number) => void;
 };
 
-type InternalHandlers = {
-  getViewerId: () => number | null;
-  shouldReconnect?: () => boolean;
-  onMessage?: DmWsHandlers["onMessage"];
-  onTyping?: DmWsHandlers["onTyping"];
-  onRead?: DmWsHandlers["onRead"];
-  onPresence?: DmWsHandlers["onPresence"];
-  onInbox?: DmWsHandlers["onInbox"];
-};
-
 export type DmSocket = {
   subscribe: (conversationId: string) => void;
   unsubscribe: (conversationId: string) => void;
@@ -39,7 +29,7 @@ function wsUrl(): string {
 }
 
 /** 단일 연결·자동 재연결. JWT는 httpOnly 쿠키로 핸드셰이크에 실린다. */
-export function openDmSocket(handlers: InternalHandlers): DmSocket {
+export function openDmSocket(handlers: DmWsHandlers): DmSocket {
   let ws: WebSocket | null = null;
   let closed = false;
   let retryMs = 1500;
@@ -72,7 +62,7 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
       }
       const { type, conversationId, payload } = frame;
       if (!type || !conversationId || !payload) return;
-      const viewerId = handlers.getViewerId();
+      const viewerId = handlers.viewerId;
 
       if (type === "message") {
         const p = payload as DmWsMessagePayload;
@@ -109,7 +99,6 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
     };
     ws.onclose = () => {
       if (closed || !opened) return;
-      if (handlers.shouldReconnect && !handlers.shouldReconnect()) return;
       reconnectTimer = window.setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 15_000);
     };

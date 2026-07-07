@@ -20,8 +20,7 @@ import {
 } from "@/data/messages";
 import type { PublicUser } from "@/data/users";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
-import { dmSendTyping, dmSubscribe } from "@/lib/dm-socket-shared";
-import { useDmSocket } from "@/lib/use-dm-socket";
+import { openDmSocket, type DmSocket } from "@/lib/dm-ws";
 
 function dmDateLabel(iso: string): string {
   const d = new Date(iso);
@@ -52,6 +51,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const [peerReadMessageId, setPeerReadMessageId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
+  const socketRef = useRef<DmSocket | null>(null);
 
   useEffect(() => {
     if (hydrated && !isLoggedIn) router.replace(`/login?next=/messages/${conversationId}`);
@@ -90,10 +90,10 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     return guard.cancel;
   }, [conversationId, token, router]);
 
-  const viewerId = profile?.id ?? null;
-
-  useDmSocket(
-    {
+  useEffect(() => {
+    if (!token) return;
+    const viewerId = profile?.id ?? null;
+    const sock = openDmSocket({
       viewerId,
       onMessage: (convId, msg) => {
         if (convId !== conversationId) return;
@@ -111,32 +111,31 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
         if (convId !== conversationId || userId === viewerId) return;
         setPeerOnline(online);
       },
-    },
-    Boolean(token),
-  );
-
-  useEffect(() => {
-    if (!token) return;
-    const unsub = dmSubscribe(conversationId);
+    });
+    socketRef.current = sock;
+    sock.subscribe(conversationId);
     return () => {
-      unsub();
+      sock.unsubscribe(conversationId);
+      sock.close();
+      socketRef.current = null;
       setPeerTyping(false);
       setPeerOnline(false);
     };
-  }, [conversationId, token]);
+  }, [conversationId, token, profile?.id]);
 
   useEffect(() => {
-    if (!token || !draft.trim()) {
-      if (token) dmSendTyping(conversationId, false);
+    const sock = socketRef.current;
+    if (!sock || !draft.trim()) {
+      sock?.sendTyping(conversationId, false);
       return;
     }
-    const start = window.setTimeout(() => dmSendTyping(conversationId, true), 300);
-    const stop = window.setTimeout(() => dmSendTyping(conversationId, false), 2500);
+    const start = window.setTimeout(() => sock.sendTyping(conversationId, true), 300);
+    const stop = window.setTimeout(() => sock.sendTyping(conversationId, false), 2500);
     return () => {
       window.clearTimeout(start);
       window.clearTimeout(stop);
     };
-  }, [draft, conversationId, token]);
+  }, [draft, conversationId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
