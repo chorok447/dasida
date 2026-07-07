@@ -30,7 +30,7 @@ import { NotificationRow } from "./notification-row";
 
 const PAGE_SIZE = 20;
 
-type NotificationFilterId = "all" | "unread" | "social" | "campaign" | "follow" | "message";
+type NotificationFilterId = "all" | "social" | "campaign" | "follow" | "message";
 
 const FILTER_GROUP_TYPES: Partial<Record<NotificationFilterId, string[]>> = {
   social: ["POST_LIKED", "POST_COMMENT_CREATED", "CAMPAIGN_COMMENT_CREATED"],
@@ -41,7 +41,6 @@ const FILTER_GROUP_TYPES: Partial<Record<NotificationFilterId, string[]>> = {
 
 const filters: { id: NotificationFilterId; label: string }[] = [
   { id: "all", label: "전체" },
-  { id: "unread", label: "안 읽음" },
   { id: "social", label: "좋아요·댓글" },
   { id: "campaign", label: "캠페인" },
   { id: "follow", label: "팔로우" },
@@ -58,6 +57,7 @@ export default function NotificationsClient() {
   const confirm = useConfirm();
 
   const [filter, setFilter] = useState<NotificationFilterId>("all");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [retryTick, setRetryTick] = useState(0);
   const [result, setResult] = useState<Result>({ identity: "", status: "success", data: null });
@@ -69,8 +69,8 @@ export default function NotificationsClient() {
 
   const generationRef = useRef(0);
 
-  // 요청 identity(토큰·페이지·필터·retry). 저장된 결과가 이 값과 다르면 아직 로딩 중으로 간주(동기 setState 회피).
-  const requestIdentity = JSON.stringify([token, page, filter, retryTick]);
+  // 요청 identity(토큰·페이지·필터·안읽음·retry). 저장된 결과가 이 값과 다르면 아직 로딩 중으로 간주(동기 setState 회피).
+  const requestIdentity = JSON.stringify([token, page, filter, unreadOnly, retryTick]);
 
   // 비로그인은 로그인 페이지로(로그인 후 알림으로 복귀).
   // hydration 전에는 서버 스냅샷(비로그인)이라 로그인 여부가 미확정이므로 판단하지 않는다.
@@ -84,7 +84,7 @@ export default function NotificationsClient() {
     if (!requestToken || getSessionId() !== requestToken) return;
     const guard = beginAuthedRequest(generationRef, requestToken);
 
-    fetchNotifications(page, PAGE_SIZE, filter === "unread", FILTER_GROUP_TYPES[filter])
+    fetchNotifications(page, PAGE_SIZE, unreadOnly, FILTER_GROUP_TYPES[filter])
       .then((res) => {
         if (!guard.isCurrent()) return;
         if (res.content.length === 0 && page > 0) {
@@ -103,7 +103,7 @@ export default function NotificationsClient() {
       });
 
     return guard.cancel;
-  }, [requestIdentity, token, page, filter, router]);
+  }, [requestIdentity, token, page, filter, unreadOnly, router]);
 
   const current = result.identity === requestIdentity;
   const loading = !current;
@@ -112,13 +112,19 @@ export default function NotificationsClient() {
   const list = data?.content ?? [];
   const unreadCount = data?.unreadCount ?? 0;
   const totalPages = data?.totalPages ?? 0;
-  const hasReadNotifications = filter === "all" && (data?.totalElements ?? 0) > unreadCount;
+  const hasReadNotifications = filter === "all" && !unreadOnly && (data?.totalElements ?? 0) > unreadCount;
 
   const changeFilter = (next: NotificationFilterId) => {
     if (next === filter) return;
     setActionError("");
     setPage(0);
     setFilter(next);
+  };
+
+  const toggleUnreadOnly = () => {
+    setActionError("");
+    setPage(0);
+    setUnreadOnly((prev) => !prev);
   };
 
   const markAll = async () => {
@@ -254,28 +260,42 @@ export default function NotificationsClient() {
         </div>
 
         <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-          <div
-            className="flex gap-1 p-1 rounded-full"
-            style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
-          >
-            {filters.map((f) => {
-              const active = filter === f.id;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => changeFilter(f.id)}
-                  aria-pressed={active}
-                  className="relative px-4 py-2 text-[13px] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-                  style={{ color: active ? "var(--surface-dark)" : "var(--foreground-muted)" }}
-                >
-                  {active && (
-                    <motion.div layoutId="notif-filter-pill" className="absolute inset-0 rounded-full" style={{ background: "var(--accent)" }} />
-                  )}
-                  <span className="relative">{f.label}</span>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div
+              className="flex gap-1 p-1 rounded-full"
+              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+            >
+              {filters.map((f) => {
+                const active = filter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => changeFilter(f.id)}
+                    aria-pressed={active}
+                    className="relative px-4 py-2 text-[13px] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+                    style={{ color: active ? "var(--surface-dark)" : "var(--foreground-muted)" }}
+                  >
+                    {active && (
+                      <motion.div layoutId="notif-filter-pill" className="absolute inset-0 rounded-full" style={{ background: "var(--accent)" }} />
+                    )}
+                    <span className="relative">{f.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={toggleUnreadOnly}
+              aria-pressed={unreadOnly}
+              className="px-3.5 py-2 text-[13px] rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              style={{
+                background: unreadOnly ? "var(--accent)" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                color: unreadOnly ? "var(--surface-dark)" : "var(--foreground-muted)",
+              }}
+            >
+              안읽음만
+            </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -327,15 +347,15 @@ export default function NotificationsClient() {
             <StatePanel compact>
               <Bell size={32} className="opacity-35" aria-hidden />
               <p className="font-medium">
-                {filter === "unread" ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
+                {unreadOnly ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
               </p>
               <p className="text-[12px] opacity-60">
-                {filter === "unread"
+                {unreadOnly
                   ? "새 알림이 오면 이 목록에 표시됩니다."
                   : "관심 있는 캠페인에 참여하면 소식을 알림으로 받을 수 있어요."}
               </p>
             </StatePanel>
-            {filter === "all" ? <RecommendedCampaigns heading="참여해볼 만한 캠페인" /> : null}
+            {filter === "all" && !unreadOnly ? <RecommendedCampaigns heading="참여해볼 만한 캠페인" /> : null}
           </div>
         ) : (
           <div className="space-y-2">
