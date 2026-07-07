@@ -59,7 +59,7 @@ export function SiteHeader() {
     if (!token) return;
     const requestToken = token;
     const refresh = (event?: Event) => {
-      const totalUnread = (event as CustomEvent<DmChangedDetail>).detail?.totalUnread;
+      const totalUnread = (event as CustomEvent<DmChangedDetail> | undefined)?.detail?.totalUnread;
       if (typeof totalUnread === "number") {
         if (getSessionId() === requestToken) {
           setDmUnreadState({ token: requestToken, count: totalUnread });
