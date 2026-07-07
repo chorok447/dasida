@@ -128,7 +128,7 @@ class AuthService(
         )
 
     @Transactional(readOnly = true)
-    fun getMe(userId: Long): UserProfileResponse = activeUser(userId).toProfile()
+    fun getMe(userId: Long): UserProfileResponse = repo.findActiveOrThrow(userId).toProfile()
 
     /** 공개 프로필 조회용. 탈퇴·미존재는 404. */
     fun publicUser(userId: Long): User {
@@ -143,7 +143,7 @@ class AuthService(
 
     @Transactional
     fun updateProfile(userId: Long, req: UpdateProfileRequest): UpdateProfileResponse {
-        val user = activeUser(userId)
+        val user = repo.findActiveOrThrow(userId)
         user.name = normalizeName(req.name)
         user.profileImageUrl = normalizeProfileImageUrl(req.profileImageUrl)
         user.notifyCampaignUpdates = req.notifyCampaignUpdates
@@ -157,7 +157,7 @@ class AuthService(
 
     @Transactional
     fun changePassword(userId: Long, req: ChangePasswordRequest): ChangePasswordResponse {
-        val user = activeUser(userId)
+        val user = repo.findActiveOrThrow(userId)
         if (req.currentPassword.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
         }
@@ -174,7 +174,7 @@ class AuthService(
 
     @Transactional
     fun changeEmail(userId: Long, req: ChangeEmailRequest): ChangeEmailResponse {
-        val user = activeUser(userId)
+        val user = repo.findActiveOrThrow(userId)
         if (req.currentPassword.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
         }
@@ -202,7 +202,7 @@ class AuthService(
 
     @Transactional
     fun deleteAccount(userId: Long, req: DeleteAccountRequest): DeleteAccountResponse {
-        val user = activeUser(userId)
+        val user = repo.findActiveOrThrow(userId)
         if (req.currentPassword.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
         }
@@ -228,17 +228,6 @@ class AuthService(
         userFollows.deleteAllForUser(id)
         dmDeletion.deleteAllForUser(id)
         return DeleteAccountResponse(deleted = true)
-    }
-
-    /** DB 최신 사용자. 존재하지 않거나 탈퇴(deletedAt != null)한 사용자의 토큰은 인증 실패로 처리한다. */
-    private fun activeUser(userId: Long): User {
-        val user = repo.findById(userId).orElseThrow {
-            ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
-        }
-        if (user.deletedAt != null) {
-            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
-        }
-        return user
     }
 
     private companion object {

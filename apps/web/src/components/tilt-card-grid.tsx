@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { Leaf, Recycle, Sprout, Shirt, Coffee, Package } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { useTilt } from "@/lib/use-tilt";
 
 type Card = {
   icon: React.ReactNode;
@@ -22,38 +23,24 @@ const cards: Card[] = [
 ];
 
 function TiltCard({ card }: { card: Card }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 200, damping: 20 });
-  const sy = useSpring(my, { stiffness: 200, damping: 20 });
-  const rotateY = useTransform(sx, [-0.5, 0.5], [-22, 22]);
-  const rotateX = useTransform(sy, [-0.5, 0.5], [18, -18]);
+  const { ref, sx, sy, rotateX, rotateY, onMouseMove, reset } = useTilt({
+    stiffness: 200,
+    damping: 20,
+    rotateYRange: [-22, 22],
+    rotateXRange: [18, -18],
+  });
   const glare = useTransform(() => {
     const x = 50 + sx.get() * 60;
     const y = 50 + sy.get() * 60;
     return `radial-gradient(400px circle at ${x}% ${y}%, rgba(255,255,255,0.35), transparent 50%)`;
   });
 
-  const reduce = useReducedMotion();
-
-  function onMove(e: React.MouseEvent) {
-    if (reduce) return;
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
-    mx.set((e.clientX - r.left) / r.width - 0.5);
-    my.set((e.clientY - r.top) / r.height - 0.5);
-  }
-
   return (
     <div style={{ perspective: 1000 }}>
       <motion.div
         ref={ref}
-        onMouseMove={onMove}
-        onMouseLeave={() => {
-          mx.set(0);
-          my.set(0);
-        }}
+        onMouseMove={onMouseMove}
+        onMouseLeave={reset}
         whileHover={{ scale: 1.03 }}
         style={{
           rotateX,

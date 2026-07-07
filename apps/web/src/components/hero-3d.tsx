@@ -1,20 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { useState } from "react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
+import { useTilt } from "@/lib/use-tilt";
 
 export function Hero3D() {
-  const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const dark = theme === "dark";
 
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 120, damping: 18 });
-  const sy = useSpring(my, { stiffness: 120, damping: 18 });
-  const rotateY = useTransform(sx, [-0.5, 0.5], [-18, 18]);
-  const rotateX = useTransform(sy, [-0.5, 0.5], [14, -14]);
+  const { ref, rotateX, rotateY, onMouseMove, reset } = useTilt({
+    stiffness: 120,
+    damping: 18,
+    rotateYRange: [-18, 18],
+    rotateXRange: [14, -14],
+  });
 
   const { scrollY } = useScroll();
   const bgY = useTransform(scrollY, [0, 800], ["0%", "40%"]);
@@ -24,25 +24,14 @@ export function Hero3D() {
 
   const [hover, setHover] = useState(false);
 
-  const reduce = useReducedMotion();
-
-  function handleMove(e: React.MouseEvent) {
-    if (reduce) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    mx.set((e.clientX - rect.left) / rect.width - 0.5);
-    my.set((e.clientY - rect.top) / rect.height - 0.5);
-  }
-
   return (
     <section
       ref={ref}
-      onMouseMove={handleMove}
+      onMouseMove={onMouseMove}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => {
         setHover(false);
-        mx.set(0);
-        my.set(0);
+        reset();
       }}
       className="relative w-full min-h-screen flex items-center justify-center overflow-hidden transition-colors"
       style={{

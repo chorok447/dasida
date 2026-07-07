@@ -28,7 +28,6 @@ export function useConfirm() {
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<OpenState | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
 
   const confirm = useCallback((options: ConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
@@ -43,85 +42,86 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setState(null);
   }, []);
 
-  useEffect(() => {
-    if (!state) return;
-    cancelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [close, state]);
-
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      {state ? <ConfirmDialogUI state={state} cancelRef={cancelRef} onClose={close} /> : null}
+      {state ? <ConfirmDialogUI state={state} onClose={close} /> : null}
     </ConfirmContext.Provider>
   );
 }
 
-function ConfirmDialogUI({
-  state,
-  cancelRef,
-  onClose,
-}: {
-  state: OpenState;
-  cancelRef: React.RefObject<HTMLButtonElement | null>;
-  onClose: (result: boolean) => void;
-}) {
+function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (result: boolean) => void }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // 네이티브 <dialog>.showModal()이 포커스 트랩·top-layer 렌더링을 기본 제공한다.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const onCancel = (e: Event) => {
+      // 브라우저 기본 auto-close 대신 onClose(false)로 통일해 Promise resolve를 보장한다.
+      e.preventDefault();
+      onClose(false);
+    };
+    dialog.addEventListener("cancel", onCancel);
+    dialog.showModal();
+    cancelRef.current?.focus();
+    return () => {
+      dialog.removeEventListener("cancel", onCancel);
+      dialog.close();
+    };
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/45"
-        aria-label="닫기"
-        onClick={() => onClose(false)}
-      />
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-desc"
-        className="relative w-full max-w-sm rounded-2xl border p-6 shadow-xl"
-        style={{
-          background: dark ? "#1c4044" : "#ffffff",
-          borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
-          color: dark ? "#f9f7f2" : "#0f1f22",
-        }}
-      >
-        <h2 id="confirm-dialog-title" className="text-[16px] font-semibold">
-          {state.title ?? "확인"}
-        </h2>
-        <p id="confirm-dialog-desc" className="mt-2 whitespace-pre-line text-[14px] opacity-80">
-          {state.message}
-        </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={() => onClose(false)}
-            className="rounded-full px-4 py-2 text-[13px] transition-colors hover:bg-white/10"
-            style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
-          >
-            {state.cancelLabel ?? "취소"}
-          </button>
-          <button
-            type="button"
-            onClick={() => onClose(true)}
-            className="rounded-full px-4 py-2 text-[13px] font-medium"
-            style={{
-              background: state.destructive ? "#ed5c48" : "#7dd3a3",
-              color: state.destructive ? "#ffffff" : "#0f1f22",
-            }}
-          >
-            {state.confirmLabel ?? "확인"}
-          </button>
-        </div>
+    <dialog
+      ref={dialogRef}
+      role="alertdialog"
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-desc"
+      className="w-[calc(100%-2rem)] max-w-sm rounded-2xl border p-6 shadow-xl backdrop:bg-black/45"
+      style={{
+        background: dark ? "#1c4044" : "#ffffff",
+        borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+        color: dark ? "#f9f7f2" : "#0f1f22",
+      }}
+      onClick={(e) => {
+        // dialog 박스 바깥(= backdrop 영역) 클릭 시 닫는다.
+        const rect = dialogRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const inDialog = rect.top <= e.clientY && e.clientY <= rect.bottom && rect.left <= e.clientX && e.clientX <= rect.right;
+        if (!inDialog) onClose(false);
+      }}
+    >
+      <h2 id="confirm-dialog-title" className="text-[16px] font-semibold">
+        {state.title ?? "확인"}
+      </h2>
+      <p id="confirm-dialog-desc" className="mt-2 whitespace-pre-line text-[14px] opacity-80">
+        {state.message}
+      </p>
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          ref={cancelRef}
+          type="button"
+          onClick={() => onClose(false)}
+          className="rounded-full px-4 py-2 text-[13px] transition-colors hover:bg-white/10"
+          style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
+        >
+          {state.cancelLabel ?? "취소"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onClose(true)}
+          className="rounded-full px-4 py-2 text-[13px] font-medium"
+          style={{
+            background: state.destructive ? "#ed5c48" : "#7dd3a3",
+            color: state.destructive ? "#ffffff" : "#0f1f22",
+          }}
+        >
+          {state.confirmLabel ?? "확인"}
+        </button>
       </div>
-    </div>
+    </dialog>
   );
 }
