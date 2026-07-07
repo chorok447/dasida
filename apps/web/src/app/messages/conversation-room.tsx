@@ -126,8 +126,8 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   }, [conversationId, token]);
 
   useEffect(() => {
-    if (!draft.trim()) {
-      dmSendTyping(conversationId, false);
+    if (!token || !draft.trim()) {
+      if (token) dmSendTyping(conversationId, false);
       return;
     }
     const start = window.setTimeout(() => dmSendTyping(conversationId, true), 300);
@@ -136,7 +136,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
       window.clearTimeout(start);
       window.clearTimeout(stop);
     };
-  }, [draft, conversationId]);
+  }, [draft, conversationId, token]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

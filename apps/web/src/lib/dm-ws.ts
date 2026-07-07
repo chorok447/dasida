@@ -55,8 +55,10 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
 
   const connect = () => {
     if (closed) return;
+    let opened = false;
     ws = new WebSocket(wsUrl());
     ws.onopen = () => {
+      opened = true;
       retryMs = 1500;
       flushSubs();
     };
@@ -105,7 +107,7 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
       }
     };
     ws.onclose = () => {
-      if (closed) return;
+      if (closed || !opened) return;
       reconnectTimer = window.setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 15_000);
     };

@@ -77,5 +77,6 @@ export function dmSubscribe(conversationId: string): () => void {
 }
 
 export function dmSendTyping(conversationId: string, active: boolean) {
+  if (handlers.size === 0) return;
   ensureSocket().sendTyping(conversationId, active);
 }
