@@ -51,7 +51,6 @@ export default function NotificationsClient() {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(0);
   const [retryTick, setRetryTick] = useState(0);
-  const [campaignNotify, setCampaignNotify] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
   const [result, setResult] = useState<Result>({ identity: "", status: "success", data: null });
   const [busy, setBusy] = useState(false); // 모두 읽음 in-flight (중복 클릭 방지)
@@ -61,21 +60,16 @@ export default function NotificationsClient() {
   const [actionError, setActionError] = useState("");
 
   const generationRef = useRef(0);
-
-  useEffect(() => {
-    if (profile) setCampaignNotify(profile.notifyCampaignUpdates ?? true);
-  }, [profile]);
+  const campaignNotify = profile?.notifyCampaignUpdates ?? true;
 
   const toggleCampaignNotify = async () => {
     if (!profile || savingNotify) return;
     const next = !campaignNotify;
-    setCampaignNotify(next);
     setSavingNotify(true);
     try {
       await updateProfile({ name: profile.name, profileImageUrl: profile.profileImageUrl ?? null, notifyCampaignUpdates: next });
       notifyProfileUpdated();
     } catch {
-      setCampaignNotify(!next);
       toast.error("알림 설정을 저장하지 못했습니다.");
     } finally {
       setSavingNotify(false);
