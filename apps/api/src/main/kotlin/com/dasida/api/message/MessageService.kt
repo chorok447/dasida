@@ -27,6 +27,7 @@ class MessageService(
     private val userFollowService: UserFollowService,
     private val userBlocks: UserBlockService,
     private val notifications: NotificationService,
+    private val dmHub: DmSessionHub,
     private val clock: Clock,
 ) {
     @Transactional
@@ -175,6 +176,16 @@ class MessageService(
             body = "${sender?.name ?: "사용자"}: $preview",
             href = "/messages/$conversationId",
         )
+        dmHub.publishMessage(
+            conversationId,
+            DmMessagePayload(
+                id = message.id,
+                senderId = message.senderId,
+                content = message.content,
+                createdAt = message.createdAt.toString(),
+            ),
+            excludeUserId = userId,
+        )
         return message.toResponse(userId)
     }
 
@@ -185,6 +196,11 @@ class MessageService(
         if (latest != null) {
             member.lastReadMessageId = latest.id
             members.save(member)
+            dmHub.publishRead(
+                conversationId,
+                DmReadPayload(userId = userId, lastReadMessageId = latest.id),
+                excludeUserId = userId,
+            )
         }
         return MarkReadResponse(read = true)
     }

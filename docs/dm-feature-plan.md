@@ -292,16 +292,18 @@ NotificationType.MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
 
 ---
 
-## 11. Phase 2+ (문서만, 구현 안 함)
+## 11. Phase 2 — WebSocket (진행 중)
 
-| Phase | 내용 |
-|-------|------|
-| **2** | WebSocket (`/ws/messages`), 실시간 push, typing, 읽음 실시간 |
-| **3** | 이미지(기존 `/api/media` 재사용), 파일, 검색, reply, 수정/삭제 |
+| 항목 | 상태 |
+|------|------|
+| `GET /ws/messages` WebSocket (쿠키 JWT) | ✅ |
+| 실시간 메시지 push | ✅ |
+| typing 이벤트 | ✅ |
+| 읽음 실시간 반영 | ✅ |
+| 온라인(대화방 구독 중) | ✅ |
+| Redis pub/sub (다중 인스턴스) | ⏭ Phase 2+ |
 
----
-
-## 12. 완료 조건 (MVP)
+## 12. Phase 3 (문서만)
 
 ```bash
 ./gradlew test

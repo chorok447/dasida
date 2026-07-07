@@ -19,6 +19,8 @@ import {
   type MessageItem,
 } from "@/data/messages";
 import type { PublicUser } from "@/data/users";
+import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
+import { openDmSocket, type DmSocket } from "@/lib/dm-ws";
 
 function dmDateLabel(iso: string): string {
   const d = new Date(iso);
@@ -38,13 +40,18 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const { theme } = useTheme();
   const dark = theme === "dark";
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
+  const { profile } = useCurrentUserProfile();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [peer, setPeer] = useState<PublicUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [peerTyping, setPeerTyping] = useState(false);
+  const [peerOnline, setPeerOnline] = useState(false);
+  const [peerReadMessageId, setPeerReadMessageId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
+  const socketRef = useRef<DmSocket | null>(null);
 
   useEffect(() => {
     if (hydrated && !isLoggedIn) router.replace(`/login?next=/messages/${conversationId}`);
@@ -84,6 +91,53 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   }, [conversationId, token, router]);
 
   useEffect(() => {
+    if (!token) return;
+    const viewerId = profile?.id ?? null;
+    const sock = openDmSocket({
+      viewerId,
+      onMessage: (convId, msg) => {
+        if (convId !== conversationId) return;
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      },
+      onTyping: (convId, userId, active) => {
+        if (convId !== conversationId || userId === viewerId) return;
+        setPeerTyping(active);
+      },
+      onRead: (convId, userId, lastReadMessageId) => {
+        if (convId !== conversationId || userId === viewerId) return;
+        setPeerReadMessageId(lastReadMessageId);
+      },
+      onPresence: (convId, userId, online) => {
+        if (convId !== conversationId || userId === viewerId) return;
+        setPeerOnline(online);
+      },
+    });
+    socketRef.current = sock;
+    sock.subscribe(conversationId);
+    return () => {
+      sock.unsubscribe(conversationId);
+      sock.close();
+      socketRef.current = null;
+      setPeerTyping(false);
+      setPeerOnline(false);
+    };
+  }, [conversationId, token, profile?.id]);
+
+  useEffect(() => {
+    const sock = socketRef.current;
+    if (!sock || !draft.trim()) {
+      sock?.sendTyping(conversationId, false);
+      return;
+    }
+    const start = window.setTimeout(() => sock.sendTyping(conversationId, true), 300);
+    const stop = window.setTimeout(() => sock.sendTyping(conversationId, false), 2500);
+    return () => {
+      window.clearTimeout(start);
+      window.clearTimeout(stop);
+    };
+  }, [draft, conversationId]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
@@ -113,6 +167,13 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     }
   };
 
+  const lastMineIndex = messages.reduce<number | null>((acc, msg, idx) => (msg.mine ? idx : acc), null);
+  const readThroughIndex = peerReadMessageId
+    ? messages.findIndex((m) => m.id === peerReadMessageId)
+    : -1;
+  const showReadReceipt =
+    lastMineIndex != null && readThroughIndex >= 0 && readThroughIndex >= lastMineIndex;
+
   return (
     <PageShell paddingClassName="relative flex min-h-screen flex-col" orb="none">
       <header
@@ -132,13 +193,18 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
             <ArrowLeft size={18} />
           </Link>
           {peer ? (
-            <AuthorHeader
-              name={peer.name}
-              verified={peer.verified}
-              profileImageUrl={peer.profileImageUrl}
-              authorId={peer.id}
-              avatarSize={36}
-            />
+            <div className="min-w-0 flex-1">
+              <AuthorHeader
+                name={peer.name}
+                verified={peer.verified}
+                profileImageUrl={peer.profileImageUrl}
+                authorId={peer.id}
+                avatarSize={36}
+              />
+              {peerOnline ? (
+                <p className="mt-0.5 text-[11px] text-[#7dd3a3]">온라인</p>
+              ) : null}
+            </div>
           ) : (
             <span className="text-[14px] opacity-70">대화</span>
           )}
@@ -191,6 +257,16 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
             })()}
           </ul>
         )}
+        {peerTyping ? (
+          <p className="text-[12px] opacity-60" style={{ color: "var(--foreground-muted)" }}>
+            입력 중…
+          </p>
+        ) : null}
+        {showReadReceipt ? (
+          <p className="text-right text-[11px] opacity-50" style={{ color: "var(--foreground-muted)" }}>
+            읽음
+          </p>
+        ) : null}
         <div ref={bottomRef} />
       </div>
 
