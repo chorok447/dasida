@@ -12,7 +12,9 @@ const handlers = new Set<HandlerEntry>();
 const subCounts = new Map<string, number>();
 let socket: DmSocket | null = null;
 
-function dispatch<K extends keyof DmWsHandlers>(
+type HandlerKey = Exclude<keyof DmWsHandlers, "viewerId">;
+
+function dispatch<K extends HandlerKey>(
   key: K,
   ...args: Parameters<NonNullable<DmWsHandlers[K]>>
 ) {

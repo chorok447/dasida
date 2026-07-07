@@ -68,7 +68,7 @@ export function SiteHeader() {
   useEffect(() => {
     if (!token) return;
     const requestToken = token;
-    const refresh = (event: Event) => {
+    const refresh = (event?: Event) => {
       const totalUnread = (event as CustomEvent<DmChangedDetail>).detail?.totalUnread;
       if (typeof totalUnread === "number") {
         if (getSessionId() === requestToken) {
