@@ -42,7 +42,7 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
   let ws: WebSocket | null = null;
   let closed = false;
   let retryMs = 1500;
-  let reconnectTimer: ReturnType<typeof window.setTimeout> | null = null;
+  let reconnectTimer: number | null = null;
   const pendingSubs = new Set<string>();
 
   const send = (data: object) => {
