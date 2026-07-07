@@ -20,7 +20,8 @@ import {
 } from "@/data/messages";
 import type { PublicUser } from "@/data/users";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
-import { openDmSocket, type DmSocket } from "@/lib/dm-ws";
+import { dmSendTyping, dmSubscribe } from "@/lib/dm-socket-shared";
+import { useDmSocket } from "@/lib/use-dm-socket";
 
 function dmDateLabel(iso: string): string {
   const d = new Date(iso);
@@ -51,7 +52,6 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const [peerReadMessageId, setPeerReadMessageId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
-  const socketRef = useRef<DmSocket | null>(null);
 
   useEffect(() => {
     if (hydrated && !isLoggedIn) router.replace(`/login?next=/messages/${conversationId}`);
@@ -90,47 +90,45 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     return guard.cancel;
   }, [conversationId, token, router]);
 
+  const viewerId = profile?.id ?? null;
+
+  useDmSocket({
+    viewerId,
+    onMessage: (convId, msg) => {
+      if (convId !== conversationId) return;
+      setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+    },
+    onTyping: (convId, userId, active) => {
+      if (convId !== conversationId || userId === viewerId) return;
+      setPeerTyping(active);
+    },
+    onRead: (convId, userId, lastReadMessageId) => {
+      if (convId !== conversationId || userId === viewerId) return;
+      setPeerReadMessageId(lastReadMessageId);
+    },
+    onPresence: (convId, userId, online) => {
+      if (convId !== conversationId || userId === viewerId) return;
+      setPeerOnline(online);
+    },
+  });
+
   useEffect(() => {
     if (!token) return;
-    const viewerId = profile?.id ?? null;
-    const sock = openDmSocket({
-      viewerId,
-      onMessage: (convId, msg) => {
-        if (convId !== conversationId) return;
-        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
-      },
-      onTyping: (convId, userId, active) => {
-        if (convId !== conversationId || userId === viewerId) return;
-        setPeerTyping(active);
-      },
-      onRead: (convId, userId, lastReadMessageId) => {
-        if (convId !== conversationId || userId === viewerId) return;
-        setPeerReadMessageId(lastReadMessageId);
-      },
-      onPresence: (convId, userId, online) => {
-        if (convId !== conversationId || userId === viewerId) return;
-        setPeerOnline(online);
-      },
-    });
-    socketRef.current = sock;
-    sock.subscribe(conversationId);
+    const unsub = dmSubscribe(conversationId);
     return () => {
-      sock.unsubscribe(conversationId);
-      sock.close();
-      socketRef.current = null;
+      unsub();
       setPeerTyping(false);
       setPeerOnline(false);
     };
-  }, [conversationId, token, profile?.id]);
+  }, [conversationId, token]);
 
   useEffect(() => {
-    const sock = socketRef.current;
-    if (!sock || !draft.trim()) {
-      sock?.sendTyping(conversationId, false);
+    if (!draft.trim()) {
+      dmSendTyping(conversationId, false);
       return;
     }
-    const start = window.setTimeout(() => sock.sendTyping(conversationId, true), 300);
-    const stop = window.setTimeout(() => sock.sendTyping(conversationId, false), 2500);
+    const start = window.setTimeout(() => dmSendTyping(conversationId, true), 300);
+    const stop = window.setTimeout(() => dmSendTyping(conversationId, false), 2500);
     return () => {
       window.clearTimeout(start);
       window.clearTimeout(stop);

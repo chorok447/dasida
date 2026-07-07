@@ -301,7 +301,9 @@ NotificationType.MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
 | typing 이벤트 | ✅ |
 | 읽음 실시간 반영 | ✅ |
 | 온라인(대화방 구독 중) | ✅ |
-| Redis pub/sub (다중 인스턴스) | ⏭ Phase 2+ |
+| Redis pub/sub (다중 인스턴스) | ✅ |
+| 헤더 배지 로컬 갱신 (inbox `totalUnread`) | ✅ |
+| 전역 단일 DM WebSocket | ✅ |
 
 ## 12. Phase 3 (문서만)
 

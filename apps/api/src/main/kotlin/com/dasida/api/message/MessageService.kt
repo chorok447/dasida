@@ -186,6 +186,7 @@ class MessageService(
             ),
             excludeUserId = userId,
         )
+        notifyInbox(conversation, conversationId)
         return message.toResponse(userId)
     }
 
@@ -201,6 +202,7 @@ class MessageService(
                 DmReadPayload(userId = userId, lastReadMessageId = latest.id),
                 excludeUserId = userId,
             )
+            conversations.findById(conversationId).orElse(null)?.let { notifyInbox(it, conversationId) }
         }
         return MarkReadResponse(read = true)
     }
@@ -211,6 +213,19 @@ class MessageService(
 
     private fun peerUserId(conversation: Conversation, userId: Long): Long =
         if (conversation.userLowId == userId) conversation.userHighId else conversation.userLowId
+
+    private fun notifyInbox(conversation: Conversation, conversationId: String) {
+        for (userId in listOf(conversation.userLowId, conversation.userHighId)) {
+            dmHub.publishInbox(
+                userId,
+                conversationId,
+                DmInboxPayload(
+                    summary = toSummary(conversation, userId),
+                    totalUnread = unreadCount(userId).unreadCount,
+                ),
+            )
+        }
+    }
 
     private fun toSummary(
         conversation: Conversation,

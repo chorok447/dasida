@@ -46,8 +46,13 @@ export type MessagePageResponse = {
 
 export const DM_EVENT = "dasida-dm";
 
-export function emitDmChanged() {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(DM_EVENT));
+export type DmChangedDetail = {
+  totalUnread?: number;
+};
+
+export function emitDmChanged(detail?: DmChangedDetail) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<DmChangedDetail>(DM_EVENT, { detail }));
 }
 
 export function createConversation(peerUserId: number): Promise<ConversationSummary> {
@@ -81,6 +86,19 @@ export async function sendMessage(conversationId: string, content: string): Prom
 export async function markConversationRead(conversationId: string): Promise<void> {
   await apiPost<{ read: boolean }>(`/api/messages/conversations/${conversationId}/read`, {});
   emitDmChanged();
+}
+
+export function mergeConversationList(
+  items: ConversationSummary[],
+  patch: ConversationSummary,
+  page: number,
+): ConversationSummary[] {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  if (byId.has(patch.id)) byId.set(patch.id, patch);
+  else if (page === 0) byId.set(patch.id, patch);
+  return [...byId.values()].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
 }
 
 export function relativeDmTime(iso: string): string {

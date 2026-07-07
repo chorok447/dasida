@@ -138,6 +138,8 @@ compose local 스택(`docker compose -f compose.local.yml up`)은 MySQL·API·We
 
 Redis 연결 smoke test(선택): compose 기동 후 `REDIS_SMOKE=true ./gradlew test --tests RedisCompatibleStoreConnectionTest`
 
+DM WS Redis fan-out smoke(선택): `REDIS_SMOKE=true ./gradlew test --tests DmWsFanoutRedisTest`
+
 #### 설정 property
 
 `app.rate-limit.*` (`RateLimitProperties`)로 제어한다. 환경변수 바인딩은 Spring Boot relaxed binding(`APP_RATE_LIMIT_*`)을 따른다.
