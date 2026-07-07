@@ -18,5 +18,6 @@ class User(
     var name: String,
     val verified: Boolean = false,
     @Column(name = "profile_image_url", length = 500) var profileImageUrl: String? = null,
+    @Column(name = "notify_campaign_updates", nullable = false) var notifyCampaignUpdates: Boolean = true,
     @Column(name = "deleted_at") @JsonIgnore var deletedAt: Instant? = null,
 )

@@ -7,6 +7,7 @@ export type UserProfile = {
   name: string;
   verified: boolean;
   profileImageUrl?: string | null;
+  notifyCampaignUpdates?: boolean;
 };
 
 export type PublicUser = {
@@ -75,6 +76,7 @@ export function fetchUserPostsPage(userId: number, page: number, size = 10): Pro
 export type UpdateProfileRequest = {
   name: string;
   profileImageUrl: string | null;
+  notifyCampaignUpdates?: boolean;
 };
 
 export type UpdateProfileResponse = {

@@ -1,11 +1,15 @@
 package com.dasida.api.notification
 
 import com.dasida.api.auth.User
+import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.Campaign
 import com.dasida.api.campaign.CampaignBody
+import com.dasida.api.campaign.CampaignParticipant
+import com.dasida.api.campaign.CampaignParticipantRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.campaign.CreateCampaignCommentRequest
 import com.dasida.api.campaign.FixedClockTestConfiguration
+import com.dasida.api.campaign.UpdateCampaignStatusRequest
 import com.dasida.api.post.Author
 import com.dasida.api.post.CreateCommentRequest
 import com.dasida.api.post.Post
@@ -21,6 +25,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -35,6 +40,8 @@ class NotificationEventTest(
     @param:Autowired private val mapper: JsonMapper,
     @param:Autowired private val posts: PostRepository,
     @param:Autowired private val campaigns: CampaignRepository,
+    @param:Autowired private val participants: CampaignParticipantRepository,
+    @param:Autowired private val users: UserRepository,
     @param:Autowired private val notifications: NotificationRepository,
 ) {
     private val owner = 1L
@@ -68,12 +75,12 @@ class NotificationEventTest(
         return id
     }
 
-    private fun saveCampaign(authorUserId: Long?): String {
+    private fun saveCampaign(authorUserId: Long?, status: String = "open"): String {
         val id = "c-${UUID.randomUUID()}"
         campaigns.saveAndFlush(
             Campaign(
                 id = id,
-                status = "open",
+                status = status,
                 title = "캠페인 제목",
                 summary = "요약",
                 thumb = "https://example.com/t.png",
@@ -109,6 +116,17 @@ class NotificationEventTest(
     private fun join(campaignId: String, bearer: String) = mvc.post("/api/campaigns/$campaignId/join") {
         headers { add("Authorization", "Bearer $bearer") }
     }
+
+    private fun like(postId: String, bearer: String) = mvc.post("/api/posts/$postId/like") {
+        headers { add("Authorization", "Bearer $bearer") }
+    }
+
+    private fun updateStatus(campaignId: String, target: String, bearer: String) =
+        mvc.put("/api/campaigns/$campaignId/status") {
+            headers { add("Authorization", "Bearer $bearer") }
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(UpdateCampaignStatusRequest(status = target))
+        }
 
     @Test
     fun `내 게시글에 타인이 댓글을 달면 알림이 생성된다`() {
@@ -193,5 +211,72 @@ class NotificationEventTest(
         join(campaignId, actorToken).andExpect { status { isOk() } }
         campaignComment(campaignId, actorToken).andExpect { status { isCreated() } }
         assertThat(eventsAbout(campaignId)).isEmpty()
+    }
+
+    @Test
+    fun `내 게시글에 타인이 좋아요를 누르면 알림이 생성된다`() {
+        val postId = savePost(authorUserId = owner)
+        like(postId, actorToken).andExpect { status { isOk() } }
+
+        val list = eventsAbout(postId)
+        assertThat(list).hasSize(1)
+        assertThat(list[0].userId).isEqualTo(owner)
+        assertThat(list[0].type).isEqualTo(NotificationType.POST_LIKED)
+        assertThat(list[0].href).isEqualTo("/posts/$postId")
+        assertThat(list[0].title).contains("테스트 사용자 2")
+        assertThat(list[0].body).isEqualTo("본문")
+    }
+
+    @Test
+    fun `내가 내 게시글에 좋아요를 누르면 알림이 없다`() {
+        val postId = savePost(authorUserId = owner)
+        like(postId, ownerToken).andExpect { status { isOk() } }
+        assertThat(eventsAbout(postId)).isEmpty()
+    }
+
+    @Test
+    fun `멱등 좋아요는 알림을 추가 생성하지 않는다`() {
+        val postId = savePost(authorUserId = owner)
+        like(postId, actorToken).andExpect { status { isOk() } }
+        like(postId, actorToken).andExpect { status { isOk() } }
+        assertThat(eventsAbout(postId)).hasSize(1)
+    }
+
+    @Test
+    fun `캠페인 모집 시작 시 참여자에게 알림이 생성된다`() {
+        val campaignId = saveCampaign(authorUserId = owner, status = "upcoming")
+        participants.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", campaignId, actor))
+        updateStatus(campaignId, "open", ownerToken).andExpect { status { isOk() } }
+
+        val list = eventsAbout(campaignId).filter { it.type == NotificationType.CAMPAIGN_STATUS_CHANGED }
+        assertThat(list).hasSize(1)
+        assertThat(list[0].userId).isEqualTo(actor)
+        assertThat(list[0].title).isEqualTo("모집이 시작되었습니다")
+        assertThat(list[0].body).isEqualTo("캠페인 제목")
+        assertThat(list[0].href).isEqualTo("/campaigns/$campaignId")
+    }
+
+    @Test
+    fun `캠페인 모집 마감 시 참여자에게 알림이 생성된다`() {
+        val campaignId = saveCampaign(authorUserId = owner, status = "open")
+        participants.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", campaignId, actor))
+        updateStatus(campaignId, "closed", ownerToken).andExpect { status { isOk() } }
+
+        val list = eventsAbout(campaignId).filter { it.type == NotificationType.CAMPAIGN_STATUS_CHANGED }
+        assertThat(list).hasSize(1)
+        assertThat(list[0].userId).isEqualTo(actor)
+        assertThat(list[0].title).isEqualTo("모집이 마감되었습니다")
+    }
+
+    @Test
+    fun `캠페인 알림을 끈 참여자는 상태 변경 알림을 받지 않는다`() {
+        val campaignId = saveCampaign(authorUserId = owner, status = "upcoming")
+        participants.saveAndFlush(CampaignParticipant("cp-${UUID.randomUUID()}", campaignId, actor))
+        val actorUser = users.findById(actor).get()
+        actorUser.notifyCampaignUpdates = false
+        users.saveAndFlush(actorUser)
+
+        updateStatus(campaignId, "open", ownerToken).andExpect { status { isOk() } }
+        assertThat(eventsAbout(campaignId).filter { it.type == NotificationType.CAMPAIGN_STATUS_CHANGED }).isEmpty()
     }
 }

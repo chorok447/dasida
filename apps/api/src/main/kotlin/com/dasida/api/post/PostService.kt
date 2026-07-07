@@ -5,6 +5,8 @@ import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.SitemapIdsResponse
+import com.dasida.api.notification.NotificationService
+import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -28,6 +30,7 @@ class PostService(
     private val bookmarkRepo: PostBookmarkRepository,
     private val commentRepo: PostCommentRepository,
     private val postSearch: PostSearchRepository,
+    private val notifications: NotificationService,
 ) {
     @Transactional(readOnly = true)
     fun listPosts(currentUserId: Long?): List<PostResponse> {
@@ -252,6 +255,17 @@ class PostService(
             likeRepo.save(PostLike("plk-${UUID.randomUUID()}", postId, userId))
             post.likes += 1
             repo.save(post)
+            val liker = users.findById(userId).orElseThrow {
+                ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
+            }
+            notifications.notify(
+                recipientUserId = post.authorUserId,
+                actorUserId = userId,
+                type = NotificationType.POST_LIKED,
+                title = "${liker.name}님이 내 게시글을 좋아합니다",
+                body = post.text,
+                href = "/posts/$postId",
+            )
         }
         return post.toResponse(
             viewerId = userId,

@@ -3,6 +3,8 @@ package com.dasida.api.campaign
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.SitemapIdsResponse
+import com.dasida.api.notification.NotificationService
+import com.dasida.api.notification.NotificationType
 import com.dasida.api.post.Author
 import com.dasida.api.post.PostRepository
 import com.dasida.api.security.AuthUser
@@ -30,6 +32,7 @@ class CampaignService(
     private val posts: PostRepository,
     private val comments: CampaignCommentRepository,
     private val clock: Clock,
+    private val notifications: NotificationService,
 ) {
     @Transactional(readOnly = true)
     fun listCampaigns(currentUserId: Long?): List<CampaignResponse> {
@@ -295,6 +298,22 @@ class CampaignService(
                 }
                 else -> throw ResponseStatusException(HttpStatus.CONFLICT, "invalid status transition")
             }
+            val title = if (target == "open") "모집이 시작되었습니다" else "모집이 마감되었습니다"
+            participants.findByCampaignId(campaignId)
+                .asSequence()
+                .filter { it.userId != userId }
+                .forEach { participant ->
+                    val recipient = users.findById(participant.userId).orElse(null) ?: return@forEach
+                    if (!recipient.notifyCampaignUpdates) return@forEach
+                    notifications.notify(
+                        recipientUserId = participant.userId,
+                        actorUserId = userId,
+                        type = NotificationType.CAMPAIGN_STATUS_CHANGED,
+                        title = title,
+                        body = campaign.title,
+                        href = "/campaigns/$campaignId",
+                    )
+                }
         }
 
         return campaign.toResponse(
