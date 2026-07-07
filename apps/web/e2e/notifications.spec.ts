@@ -63,6 +63,14 @@ test("캠페인 참여 시 개설자에게 알림이 생성되고 읽음·삭제
   await expect(ownerPage.getByRole("heading", { name: "알림", exact: true })).toBeVisible();
   await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).not.toBeVisible();
 
+  // types + 안읽음만 조합(AND): 읽음 처리된 알림은 타입이 맞아도 안읽음만 볼 때는 안 보인다.
+  await ownerPage.getByRole("button", { name: "캠페인", exact: true }).click();
+  await ownerPage.getByRole("button", { name: "안읽음만", exact: true }).click();
+  await expect(ownerPage.getByText("알림이 없습니다.")).toBeVisible();
+  await ownerPage.getByRole("button", { name: "안읽음만", exact: true }).click();
+  await expect(ownerPage.getByRole("link", { name: /캠페인에 참여했습니다/ })).toBeVisible();
+  await ownerPage.getByRole("button", { name: "전체", exact: true }).click();
+
   await ownerPage.getByRole("button", { name: "알림 삭제" }).click();
   await expect(ownerPage.getByText("알림이 없습니다.")).toBeVisible();
 

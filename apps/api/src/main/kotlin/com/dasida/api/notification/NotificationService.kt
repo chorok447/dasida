@@ -29,6 +29,7 @@ class NotificationService(private val repo: NotificationRepository) {
         validatePageable(page, size)
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("seq"), Sort.Order.asc("id")))
         val result = when {
+            types.isNotEmpty() && unreadOnly -> repo.findByUserIdAndTypeInAndReadAtIsNull(userId, types, pageable)
             types.isNotEmpty() -> repo.findByUserIdAndTypeIn(userId, types, pageable)
             unreadOnly -> repo.findByUserIdAndReadAtIsNull(userId, pageable)
             else -> repo.findByUserId(userId, pageable)
