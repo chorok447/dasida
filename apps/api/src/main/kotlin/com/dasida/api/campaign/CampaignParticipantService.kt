@@ -23,6 +23,7 @@ import java.util.UUID
 class CampaignParticipantService(
     private val repo: CampaignRepository,
     private val participants: CampaignParticipantRepository,
+    private val bookmarkRepo: CampaignBookmarkRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
     private val clock: Clock,
@@ -42,7 +43,12 @@ class CampaignParticipantService(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         // lock 보유 상태에서 재확인 → 같은 유저 동시 요청도 직렬화되어 idempotent.
         if (participants.existsByCampaignIdAndUserId(campaignId, user.id)) {
-            return campaign.toResponse(viewerId = user.id, joinedByMe = true, today = today)
+            return campaign.toResponse(
+                viewerId = user.id,
+                joinedByMe = true,
+                bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, user.id),
+                today = today,
+            )
         }
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign is not open")
@@ -72,7 +78,12 @@ class CampaignParticipantService(
             body = campaign.title,
             href = "/campaigns/$campaignId/participants",
         )
-        return campaign.toResponse(viewerId = user.id, joinedByMe = true, today = today)
+        return campaign.toResponse(
+            viewerId = user.id,
+            joinedByMe = true,
+            bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, user.id),
+            today = today,
+        )
     }
 
     /**
@@ -89,14 +100,24 @@ class CampaignParticipantService(
         val campaign = repo.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         val participant = participants.findByCampaignIdAndUserId(campaignId, userId)
-            ?: return campaign.toResponse(viewerId = userId, joinedByMe = false, today = today)
+            ?: return campaign.toResponse(
+                viewerId = userId,
+                joinedByMe = false,
+                bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId),
+                today = today,
+            )
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is not open")
         }
         participants.delete(participant)
         campaign.joined = maxOf(0, campaign.joined - 1)
         repo.save(campaign)
-        return campaign.toResponse(viewerId = userId, joinedByMe = false, today = today)
+        return campaign.toResponse(
+            viewerId = userId,
+            joinedByMe = false,
+            bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId),
+            today = today,
+        )
     }
 
     /** 개설자용 참가자 목록. 참가자 page와 사용자 bulk 조회만 수행하며 campaign row lock은 사용하지 않는다. */

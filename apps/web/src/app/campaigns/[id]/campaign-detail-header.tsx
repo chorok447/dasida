@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Pencil, Trash2, Users } from "lucide-react";
+import { Pencil, Trash2, Users, Bookmark } from "lucide-react";
 import { progressPercent } from "@/lib/progress";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
@@ -23,7 +23,19 @@ function StatusBadge({ c }: { c: Campaign }) {
   );
 }
 
-export function CampaignHeaderCard({ c }: { c: Campaign }) {
+export function CampaignHeaderCard({
+  c,
+  bookmarked,
+  bookmarking,
+  onBookmark,
+  bookmarkDisabled,
+}: {
+  c: Campaign;
+  bookmarked?: boolean;
+  bookmarking?: boolean;
+  onBookmark?: () => void;
+  bookmarkDisabled?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -82,6 +94,21 @@ export function CampaignHeaderCard({ c }: { c: Campaign }) {
                 {c.title}
               </h1>
               <div className="flex gap-2 flex-shrink-0">
+                {onBookmark ? (
+                  <button
+                    type="button"
+                    onClick={onBookmark}
+                    disabled={bookmarkDisabled || bookmarking}
+                    aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
+                    className="flex h-9 w-9 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
+                    style={{
+                      background: bookmarked ? "#7dd3a3" : "var(--border)",
+                      color: bookmarked ? "#0f1f22" : "var(--foreground)",
+                    }}
+                  >
+                    <Bookmark size={14} fill={bookmarked ? "#0f1f22" : "transparent"} />
+                  </button>
+                ) : null}
                 <ReportButton targetType="CAMPAIGN" targetId={c.id} ownedByMe={c.ownedByMe} className="!h-9 !px-3" />
                 <ShareButton
                   title={c.title}

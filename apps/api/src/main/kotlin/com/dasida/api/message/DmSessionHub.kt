@@ -82,7 +82,8 @@ class DmSessionHub(
         when (envelope.kind) {
             "inbox" -> {
                 val userId = envelope.userId ?: return
-                val inbox = mapper.convertValue(envelope.payload, DmInboxPayload::class.java)
+                val payload = envelope.payload ?: return
+                val inbox = mapper.convertValue(payload, DmInboxPayload::class.java)
                 deliverInbox(userId, envelope.conversationId, inbox)
             }
             "room" -> {

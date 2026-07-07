@@ -6,6 +6,7 @@ import java.time.LocalDate
 fun Campaign.toResponse(
     viewerId: Long?,
     joinedByMe: Boolean,
+    bookmarkedByMe: Boolean,
     today: LocalDate,
 ): CampaignResponse {
     val recruitment = recruitmentOn(today)
@@ -17,7 +18,7 @@ fun Campaign.toResponse(
         runEnd = canonicalCampaignDateOrOriginal(runEnd),
         capacity = capacity, joined = joined, daysLeftLabel = recruitment.daysLeftLabel,
         recruitable = recruitment.recruitable, recruitState = recruitment.state.value,
-        author = author, body = body, joinedByMe = joinedByMe,
+        author = author, body = body, joinedByMe = joinedByMe, bookmarkedByMe = bookmarkedByMe,
         ownedByMe = authorUserId != null && authorUserId == viewerId,
     )
 }

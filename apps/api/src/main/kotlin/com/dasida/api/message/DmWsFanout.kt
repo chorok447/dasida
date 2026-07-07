@@ -28,7 +28,10 @@ class DmWsFanout(
     }
 
     fun relay(envelope: DmRelayEnvelope) {
-        redis.convertAndSend(CHANNEL, mapper.writeValueAsString(envelope.copy(origin = instanceId)))
+        // ponytail: Redis 실패해도 로컬 WS·DB 트랜잭션은 유지 (side-channel fan-out)
+        runCatching {
+            redis.convertAndSend(CHANNEL, mapper.writeValueAsString(envelope.copy(origin = instanceId)))
+        }
     }
 
     override fun onMessage(message: Message, pattern: ByteArray?) {

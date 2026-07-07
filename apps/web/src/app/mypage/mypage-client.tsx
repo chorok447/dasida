@@ -7,6 +7,7 @@ import { LogIn, RefreshCw } from "lucide-react";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { ActivitySummary } from "./activity-summary";
 import { MyPostsGrid } from "./my-posts-grid";
+import { SavedCampaignsGrid } from "./saved-campaigns-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { UserCampaignsList } from "./joined-campaigns-list";
 import { ReportsList } from "./reports-list";
@@ -29,6 +30,7 @@ export default function MyPageClient() {
   const searchParams = useSearchParams();
   const { profile, loading, error, isLoggedIn, retry } = useCurrentUserProfile();
   const [emailOverride, setEmailOverride] = useState<{ userId: number; email: string } | null>(null);
+  const [savedCampaignPage, setSavedCampaignPage] = useState(0);
 
   const tab = parseMypageTab(searchParams.get("tab"));
   const page = parsePage(searchParams.get("page"));
@@ -46,7 +48,10 @@ export default function MyPageClient() {
     [router, pathname],
   );
 
-  const onSelectTab = useCallback((nextTab: MypageTab) => navigate(nextTab, 0), [navigate]);
+  const onSelectTab = useCallback((nextTab: MypageTab) => {
+    if (nextTab !== "saved") setSavedCampaignPage(0);
+    navigate(nextTab, 0);
+  }, [navigate]);
   const onPageChange = useCallback((nextPage: number) => navigate(tab, nextPage), [navigate, tab]);
 
   return (
@@ -100,8 +105,19 @@ export default function MyPageClient() {
                 </div>
               ) : null}
               {tab === "saved" ? (
-                <div role="tabpanel" id="mypage-panel-saved" aria-labelledby="mypage-tab-saved">
-                  <SavedPostsGrid page={page} onPageChange={onPageChange} />
+                <div role="tabpanel" id="mypage-panel-saved" aria-labelledby="mypage-tab-saved" className="space-y-12">
+                  <section>
+                    <h2 className="mb-6 text-[15px] font-medium" style={{ color: "var(--foreground)" }}>
+                      저장한 게시글
+                    </h2>
+                    <SavedPostsGrid page={page} onPageChange={onPageChange} />
+                  </section>
+                  <section>
+                    <h2 className="mb-6 text-[15px] font-medium" style={{ color: "var(--foreground)" }}>
+                      저장한 캠페인
+                    </h2>
+                    <SavedCampaignsGrid page={savedCampaignPage} onPageChange={setSavedCampaignPage} />
+                  </section>
                 </div>
               ) : null}
               {tab === "account" ? (

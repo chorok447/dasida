@@ -32,6 +32,7 @@ class CampaignControllerTest(
     @param:Autowired val jwt: JwtService,
     @param:Autowired val campaignRepo: CampaignRepository,
     @param:Autowired val participantRepo: CampaignParticipantRepository,
+    @param:Autowired val bookmarkRepo: CampaignBookmarkRepository,
     @param:Autowired val postRepo: PostRepository,
     @param:Autowired val userRepo: UserRepository,
     @param:Autowired val notificationRepo: NotificationRepository,
@@ -1607,5 +1608,153 @@ class CampaignControllerTest(
         savePostLinkedTo(other) // 다른 캠페인에만 연결된 게시글
         deleteCampaign(target).andExpect { status { isNoContent() } }
         assertThat(campaignRepo.existsById(target)).isFalse()
+    }
+
+    // ---- 북마크 ----
+
+    @Test
+    fun `북마크 추가와 삭제는 인증 없으면 401`() {
+        val id = saveCampaign()
+        mvc.post("/api/campaigns/$id/bookmark").andExpect { status { isUnauthorized() } }
+        mvc.delete("/api/campaigns/$id/bookmark").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `없는 campaign 북마크 추가와 삭제는 404`() {
+        mvc.post("/api/campaigns/nope/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { status { isNotFound() } }
+        mvc.delete("/api/campaigns/nope/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `북마크 POST 응답은 bookmarkedByMe true`() {
+        val id = saveCampaign()
+        mvc.post("/api/campaigns/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarkedByMe") { value(true) }
+            }
+    }
+
+    @Test
+    fun `같은 북마크 POST를 반복해도 row는 하나이고 모두 200`() {
+        val id = saveCampaign()
+        repeat(2) {
+            mvc.post("/api/campaigns/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+                .andExpect { status { isOk() } }
+        }
+        assertThat(bookmarkRepo.countByCampaignId(id)).isEqualTo(1)
+    }
+
+    @Test
+    fun `북마크 DELETE 응답은 bookmarkedByMe false`() {
+        val id = saveCampaign()
+        bookmarkRepo.saveAndFlush(CampaignBookmark("cbk-delete", id, 1))
+        mvc.delete("/api/campaigns/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarkedByMe") { value(false) }
+            }
+        assertThat(bookmarkRepo.countByCampaignId(id)).isZero()
+    }
+
+    @Test
+    fun `북마크하지 않은 DELETE도 idempotent 200`() {
+        val id = saveCampaign()
+        mvc.delete("/api/campaigns/$id/bookmark") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarkedByMe") { value(false) }
+            }
+    }
+
+    @Test
+    fun `비로그인 GET은 bookmarkedByMe false`() {
+        val id = saveCampaign()
+        mvc.get("/api/campaigns/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.bookmarkedByMe") { value(false) }
+        }
+        mvc.get("/api/campaigns").andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].bookmarkedByMe") { value(Matchers.hasItem(false)) }
+        }
+    }
+
+    @Test
+    fun `로그인 사용자가 북마크한 단건과 목록은 bookmarkedByMe true`() {
+        val id = saveCampaign()
+        bookmarkRepo.saveAndFlush(CampaignBookmark("cbk-get", id, 1))
+        mvc.get("/api/campaigns/$id") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.bookmarkedByMe") { value(true) }
+        }
+        mvc.get("/api/campaigns") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')].bookmarkedByMe") { value(Matchers.hasItem(true)) }
+        }
+    }
+
+    @Test
+    fun `비로그인 북마크 목록 요청은 401`() {
+        mvc.get("/api/campaigns/bookmarks").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `북마크가 없으면 빈 배열`() {
+        mvc.get("/api/campaigns/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `현재 사용자가 북마크한 캠페인만 반환한다`() {
+        val bookmarkedId = saveCampaign()
+        saveCampaign()
+        bookmarkRepo.saveAndFlush(CampaignBookmark("cbk-list-mine", bookmarkedId, 1))
+
+        mvc.get("/api/campaigns/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].id") { value(bookmarkedId) }
+        }
+    }
+
+    @Test
+    fun `다른 사용자의 북마크는 반환하지 않는다`() {
+        val otherUserCampaignId = saveCampaign()
+        bookmarkRepo.saveAndFlush(CampaignBookmark("cbk-list-other", otherUserCampaignId, 2))
+
+        mvc.get("/api/campaigns/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `북마크 목록의 bookmarkedByMe는 모두 true`() {
+        val firstId = saveCampaign()
+        val secondId = saveCampaign()
+        bookmarkRepo.saveAllAndFlush(
+            listOf(
+                CampaignBookmark("cbk-all-true-1", firstId, 1),
+                CampaignBookmark("cbk-all-true-2", secondId, 1),
+            ),
+        )
+
+        mvc.get("/api/campaigns/bookmarks") { headers { add("Authorization", "Bearer $token") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[*].bookmarkedByMe") { value(Matchers.everyItem(Matchers.equalTo(true))) }
+        }
+    }
+
+    @Test
+    fun `삭제하면 북마크 row도 함께 삭제된다`() {
+        val id = saveCampaign(status = "upcoming", authorUserId = 1)
+        bookmarkRepo.saveAndFlush(CampaignBookmark("cbk-del", id, 2))
+        deleteCampaign(id).andExpect { status { isNoContent() } }
+        assertThat(bookmarkRepo.countByCampaignId(id)).isEqualTo(0)
     }
 }
