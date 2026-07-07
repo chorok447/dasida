@@ -53,7 +53,7 @@ class MessageControllerTest(
             .andExpect { jsonPath("$.peer.name", Matchers.`is`("밥")) }
             .andReturn().response.contentAsString
 
-        val conversationId = mapper.readTree(createdJson).get("id").asText()
+        val conversationId = mapper.readTree(createdJson).get("id").asString()
 
         mvc.post("/api/messages/conversations") {
             header("Authorization", "Bearer $aliceToken")

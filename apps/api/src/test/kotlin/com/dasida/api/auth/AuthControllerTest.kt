@@ -610,7 +610,7 @@ class AuthControllerTest(
             header("X-Forwarded-For", "203.0.113.50")
         }.andExpect { status { isOk() } }
             .andReturn().response.contentAsString
-        val token = objectMapper.readTree(loginBody).get("token").asText()
+        val token = objectMapper.readTree(loginBody).get("token").asString()
 
         mvc.get("/api/auth/access-logs") {
             headers { add("Authorization", "Bearer $token") }
