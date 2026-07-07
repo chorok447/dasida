@@ -58,10 +58,11 @@ export function NotificationSettingsForm({ embedded = false }: { embedded?: bool
         </div>
 
         <div className="flex items-center justify-between py-2.5">
-          <span className="text-[13px]" style={{ color: "var(--foreground)" }}>캠페인 알림</span>
+          <span id="campaign-notify-label" className="text-[13px]" style={{ color: "var(--foreground)" }}>캠페인 알림</span>
           <button
             type="button"
             role="switch"
+            aria-labelledby="campaign-notify-label"
             aria-checked={campaignNotify}
             disabled={!profile || saving}
             onClick={toggle}
