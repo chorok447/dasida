@@ -10,7 +10,6 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { getSessionId } from "@/lib/auth";
 import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
 import { DM_EVENT, fetchDmUnreadCount, type DmChangedDetail } from "@/data/messages";
-import { useDmSocket } from "@/lib/use-dm-socket";
 import { MAIN_NAV_ITEMS } from "@/lib/nav-items";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
@@ -30,18 +29,6 @@ export function SiteHeader() {
   const dmUnreadGenRef = useRef(0);
   const unread = unreadState.token === token ? unreadState.count : 0;
   const dmUnread = dmUnreadState.token === token ? dmUnreadState.count : 0;
-
-  useDmSocket(
-    {
-      viewerId: null,
-      onInbox: (_summary, totalUnread) => {
-        if (getSessionId() === token) {
-          setDmUnreadState({ token, count: totalUnread });
-        }
-      },
-    },
-    Boolean(token),
-  );
 
   // 로그인 상태에서만 unread count 조회.
   // token 변경 시 재조회, 알림 페이지의 읽음 처리(NOTIF_EVENT) 후에도 갱신. polling 은 하지 않음.
