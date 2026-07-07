@@ -32,7 +32,6 @@ export async function signup(page: Page, prefix = "e2e"): Promise<Account> {
   await page.getByLabel("이메일").fill(account.email);
   await page.getByLabel("비밀번호", { exact: true }).fill(account.password);
   await page.getByLabel("비밀번호 확인").fill(account.password);
-  await page.getByLabel("이름").fill("이투이");
   await page.getByLabel("닉네임").fill(account.nickname);
   const submit = page.getByRole("button", { name: "회원가입" });
   await expect(submit).toBeEnabled();
