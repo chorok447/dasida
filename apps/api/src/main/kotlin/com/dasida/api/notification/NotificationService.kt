@@ -19,13 +19,19 @@ import java.util.UUID
 class NotificationService(private val repo: NotificationRepository) {
 
     @Transactional(readOnly = true)
-    fun getNotifications(userId: Long, page: Int, size: Int, unreadOnly: Boolean): NotificationsResponse {
+    fun getNotifications(
+        userId: Long,
+        page: Int,
+        size: Int,
+        unreadOnly: Boolean,
+        types: List<String> = emptyList(),
+    ): NotificationsResponse {
         validatePageable(page, size)
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("seq"), Sort.Order.asc("id")))
-        val result = if (unreadOnly) {
-            repo.findByUserIdAndReadAtIsNull(userId, pageable)
-        } else {
-            repo.findByUserId(userId, pageable)
+        val result = when {
+            types.isNotEmpty() -> repo.findByUserIdAndTypeIn(userId, types, pageable)
+            unreadOnly -> repo.findByUserIdAndReadAtIsNull(userId, pageable)
+            else -> repo.findByUserId(userId, pageable)
         }
         return NotificationsResponse(
             content = result.content.map { it.toResponse() },

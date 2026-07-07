@@ -11,6 +11,7 @@ import java.time.Instant
 interface NotificationRepository : JpaRepository<Notification, String> {
     fun findByUserId(userId: Long, pageable: Pageable): Page<Notification>
     fun findByUserIdAndReadAtIsNull(userId: Long, pageable: Pageable): Page<Notification>
+    fun findByUserIdAndTypeIn(userId: Long, types: List<String>, pageable: Pageable): Page<Notification>
     fun countByUserIdAndReadAtIsNull(userId: Long): Long
     fun findByIdAndUserId(id: String, userId: Long): Notification?
 

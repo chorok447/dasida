@@ -4,12 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { Bell, CheckCheck, Trash2, Loader2, Settings } from "lucide-react";
+import { Bell, CheckCheck, Trash2, Loader2 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
-import { notifyProfileUpdated } from "@/lib/auth";
-import { updateProfile } from "@/data/users";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
@@ -33,9 +30,22 @@ import { NotificationRow } from "./notification-row";
 
 const PAGE_SIZE = 20;
 
-const filters: { id: "all" | "unread"; label: string }[] = [
+type NotificationFilterId = "all" | "unread" | "social" | "campaign" | "follow" | "message";
+
+const FILTER_GROUP_TYPES: Partial<Record<NotificationFilterId, string[]>> = {
+  social: ["POST_LIKED", "POST_COMMENT_CREATED", "CAMPAIGN_COMMENT_CREATED"],
+  campaign: ["CAMPAIGN_JOINED", "CAMPAIGN_PARTICIPATION_REMOVED", "CAMPAIGN_STATUS_CHANGED"],
+  follow: ["USER_FOLLOWED"],
+  message: ["MESSAGE_RECEIVED"],
+};
+
+const filters: { id: NotificationFilterId; label: string }[] = [
   { id: "all", label: "전체" },
   { id: "unread", label: "안 읽음" },
+  { id: "social", label: "좋아요·댓글" },
+  { id: "campaign", label: "캠페인" },
+  { id: "follow", label: "팔로우" },
+  { id: "message", label: "메시지" },
 ];
 
 type Result = { identity: string; status: "success" | "error"; data: NotificationsResponse | null };
@@ -45,13 +55,11 @@ export default function NotificationsClient() {
   const dark = theme === "dark";
   const router = useRouter();
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
-  const { profile } = useCurrentUserProfile();
   const confirm = useConfirm();
 
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<NotificationFilterId>("all");
   const [page, setPage] = useState(0);
   const [retryTick, setRetryTick] = useState(0);
-  const [savingNotify, setSavingNotify] = useState(false);
   const [result, setResult] = useState<Result>({ identity: "", status: "success", data: null });
   const [busy, setBusy] = useState(false); // 모두 읽음 in-flight (중복 클릭 방지)
   const [cleaningRead, setCleaningRead] = useState(false);
@@ -60,21 +68,6 @@ export default function NotificationsClient() {
   const [actionError, setActionError] = useState("");
 
   const generationRef = useRef(0);
-  const campaignNotify = profile?.notifyCampaignUpdates ?? true;
-
-  const toggleCampaignNotify = async () => {
-    if (!profile || savingNotify) return;
-    const next = !campaignNotify;
-    setSavingNotify(true);
-    try {
-      await updateProfile({ name: profile.name, profileImageUrl: profile.profileImageUrl ?? null, notifyCampaignUpdates: next });
-      notifyProfileUpdated();
-    } catch {
-      toast.error("알림 설정을 저장하지 못했습니다.");
-    } finally {
-      setSavingNotify(false);
-    }
-  };
 
   // 요청 identity(토큰·페이지·필터·retry). 저장된 결과가 이 값과 다르면 아직 로딩 중으로 간주(동기 setState 회피).
   const requestIdentity = JSON.stringify([token, page, filter, retryTick]);
@@ -91,7 +84,7 @@ export default function NotificationsClient() {
     if (!requestToken || getSessionId() !== requestToken) return;
     const guard = beginAuthedRequest(generationRef, requestToken);
 
-    fetchNotifications(page, PAGE_SIZE, filter === "unread")
+    fetchNotifications(page, PAGE_SIZE, filter === "unread", FILTER_GROUP_TYPES[filter])
       .then((res) => {
         if (!guard.isCurrent()) return;
         if (res.content.length === 0 && page > 0) {
@@ -121,7 +114,7 @@ export default function NotificationsClient() {
   const totalPages = data?.totalPages ?? 0;
   const hasReadNotifications = filter === "all" && (data?.totalElements ?? 0) > unreadCount;
 
-  const changeFilter = (next: "all" | "unread") => {
+  const changeFilter = (next: NotificationFilterId) => {
     if (next === filter) return;
     setActionError("");
     setPage(0);
@@ -260,8 +253,6 @@ export default function NotificationsClient() {
           </h1>
         </div>
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:gap-8 lg:items-start">
-          <div className="min-w-0">
         <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
           <div
             className="flex gap-1 p-1 rounded-full"
@@ -377,46 +368,6 @@ export default function NotificationsClient() {
             onPageChange={setPage}
           />
         ) : null}
-          </div>
-
-          <aside className="hidden lg:block">
-            <div
-              className="rounded-2xl border p-5 sticky top-24"
-              style={{ background: cardBg, borderColor: cardBorder }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Settings size={14} style={{ color: "var(--accent)" }} aria-hidden />
-                <h2 className="text-[18px]" style={{ fontFamily: "'Black Han Sans', sans-serif", color: fg }}>
-                  알림 설정
-                </h2>
-              </div>
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-[13px]" style={{ color: fg }}>캠페인 알림</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={campaignNotify}
-                  disabled={!profile || savingNotify}
-                  onClick={toggleCampaignNotify}
-                  className="w-10 h-5 rounded-full p-0.5 transition-colors disabled:opacity-40"
-                  style={{
-                    background: campaignNotify
-                      ? "var(--accent)"
-                      : dark
-                        ? "rgba(255,255,255,0.15)"
-                        : "rgba(28,64,68,0.15)",
-                  }}
-                >
-                  <motion.div
-                    animate={{ x: campaignNotify ? 20 : 0 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                    className="w-4 h-4 rounded-full bg-white"
-                  />
-                </button>
-              </div>
-            </div>
-          </aside>
-        </div>
       </div>
     </PageShell>
   );

@@ -52,6 +52,13 @@ test("캠페인 참여 시 개설자에게 알림이 생성되고 읽음·삭제
   await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).toBeVisible();
   await expect(ownerPage.getByRole("link", { name: /캠페인에 참여했습니다/ })).toBeVisible();
 
+  // 타입별 필터 탭: 관련 없는 그룹에서는 안 보이고, 캠페인 그룹에서는 보인다.
+  await ownerPage.getByRole("button", { name: "팔로우", exact: true }).click();
+  await expect(ownerPage.getByText("알림이 없습니다.")).toBeVisible();
+  await ownerPage.getByRole("button", { name: "캠페인", exact: true }).click();
+  await expect(ownerPage.getByRole("link", { name: /캠페인에 참여했습니다/ })).toBeVisible();
+  await ownerPage.getByRole("button", { name: "전체", exact: true }).click();
+
   await ownerPage.getByRole("button", { name: "읽음으로 표시" }).click();
   await expect(ownerPage.getByRole("heading", { name: "알림", exact: true })).toBeVisible();
   await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).not.toBeVisible();

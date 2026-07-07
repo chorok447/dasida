@@ -52,12 +52,14 @@ export function fetchNotifications(
   page: number,
   size: number,
   unreadOnly: boolean,
+  types?: string[],
 ): Promise<NotificationsResponse> {
   const params = new URLSearchParams({
     page: String(page),
     size: String(size),
     unreadOnly: String(unreadOnly),
   });
+  if (types && types.length > 0) params.set("types", types.join(","));
   return apiGet<NotificationsResponse>(`/api/notifications?${params.toString()}`);
 }
 
