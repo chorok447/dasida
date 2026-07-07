@@ -8,6 +8,7 @@ fun User.toProfile() = UserProfileResponse(
     name = name,
     verified = verified,
     profileImageUrl = profileImageUrl,
+    notifyCampaignUpdates = notifyCampaignUpdates,
 )
 
 fun User.toAuthorSnapshot() = Author(

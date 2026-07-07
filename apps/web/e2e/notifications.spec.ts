@@ -10,7 +10,7 @@ test("로그인 후 알림 페이지가 빈 상태로 표시된다", async ({ pa
   await signup(page, "e2e-notif");
   await page.goto("/notifications");
 
-  await expect(page.getByRole("heading", { name: "알림" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "알림", exact: true })).toBeVisible();
   await expect(page.getByText("알림이 없습니다.")).toBeVisible();
 });
 
@@ -53,7 +53,7 @@ test("캠페인 참여 시 개설자에게 알림이 생성되고 읽음·삭제
   await expect(ownerPage.getByRole("link", { name: /캠페인에 참여했습니다/ })).toBeVisible();
 
   await ownerPage.getByRole("button", { name: "읽음으로 표시" }).click();
-  await expect(ownerPage.getByRole("heading", { name: "알림" })).toBeVisible();
+  await expect(ownerPage.getByRole("heading", { name: "알림", exact: true })).toBeVisible();
   await expect(ownerPage.getByRole("heading", { name: /알림 \(1\)/ })).not.toBeVisible();
 
   await ownerPage.getByRole("button", { name: "알림 삭제" }).click();

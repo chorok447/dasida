@@ -36,6 +36,7 @@ data class UserProfileResponse(
     val name: String,
     val verified: Boolean,
     val profileImageUrl: String? = null,
+    val notifyCampaignUpdates: Boolean = true,
 )
 
 @Schema(description = "공개 프로필(타인 조회용)")
@@ -69,6 +70,8 @@ data class UpdateProfileRequest(
     val name: String,
     @field:Schema(description = "프로필 이미지 URL(http/https, 최대 500자). null/blank면 제거")
     val profileImageUrl: String? = null,
+    @field:Schema(description = "캠페인 상태 변경 알림 수신 여부")
+    val notifyCampaignUpdates: Boolean = true,
 )
 
 data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)

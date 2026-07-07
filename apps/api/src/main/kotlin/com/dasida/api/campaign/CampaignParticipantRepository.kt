@@ -12,6 +12,7 @@ interface CampaignParticipantRepository : JpaRepository<CampaignParticipant, Str
     fun findByUserIdAndCampaignIdIn(userId: Long, campaignIds: Collection<String>): List<CampaignParticipant>
     fun findByUserId(userId: Long): List<CampaignParticipant>
     fun findByUserId(userId: Long, pageable: Pageable): Page<CampaignParticipant>
+    fun findByCampaignId(campaignId: String): List<CampaignParticipant>
     fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignParticipant>
     fun countByCampaignId(campaignId: String): Long
 
