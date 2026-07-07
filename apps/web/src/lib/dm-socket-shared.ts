@@ -12,6 +12,14 @@ const handlers = new Set<HandlerEntry>();
 const subCounts = new Map<string, number>();
 let socket: DmSocket | null = null;
 
+// ponytail: pagehide 시 재연결 타이머가 Playwright teardown 을 막는 걸 방지
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    socket?.close();
+    socket = null;
+  });
+}
+
 type HandlerKey = Exclude<keyof DmWsHandlers, "viewerId">;
 
 function dispatch<K extends HandlerKey>(
@@ -29,6 +37,7 @@ function dispatch<K extends HandlerKey>(
 function ensureSocket(): DmSocket {
   if (socket) return socket;
   socket = openDmSocket({
+    shouldReconnect: () => handlers.size > 0 && document.visibilityState === "visible",
     getViewerId: () => {
       for (const entry of handlers) {
         const id = entry().viewerId;

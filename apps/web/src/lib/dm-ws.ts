@@ -19,6 +19,7 @@ export type DmWsHandlers = {
 
 type InternalHandlers = {
   getViewerId: () => number | null;
+  shouldReconnect?: () => boolean;
   onMessage?: DmWsHandlers["onMessage"];
   onTyping?: DmWsHandlers["onTyping"];
   onRead?: DmWsHandlers["onRead"];
@@ -108,6 +109,7 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
     };
     ws.onclose = () => {
       if (closed || !opened) return;
+      if (handlers.shouldReconnect && !handlers.shouldReconnect()) return;
       reconnectTimer = window.setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 15_000);
     };
