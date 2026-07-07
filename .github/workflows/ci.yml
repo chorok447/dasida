@@ -102,9 +102,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Only develop may target main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          if [ "${{ github.head_ref }}" != "develop" ]; then
-            echo "::error::main 대상 PR은 develop 브랜치에서만 열 수 있습니다 (head: ${{ github.head_ref }})."
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "::error::main 대상 PR은 develop 브랜치에서만 열 수 있습니다 (head: $HEAD_REF)."
             exit 1
           fi
 
