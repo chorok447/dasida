@@ -1,6 +1,7 @@
 package com.dasida.api.post
 
 import com.dasida.api.auth.UserRepository
+import com.dasida.api.auth.findActiveOrThrow
 import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
@@ -82,7 +83,7 @@ class PostCommentService(
         val post = repo.findByIdForUpdate(postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
         val text = normalizeCommentText(req.text)
-        val authorSnapshot = activeUser(author.id).toAuthorSnapshot()
+        val authorSnapshot = users.findActiveOrThrow(author.id).toAuthorSnapshot()
         val comment = commentRepo.save(
             PostComment(
                 id = "pc-${UUID.randomUUID()}",
@@ -143,15 +144,6 @@ class PostCommentService(
         commentRepo.delete(comment)
         post.comments = maxOf(0, post.comments - 1)
     }
-
-    private fun activeUser(userId: Long) =
-        users.findById(userId).orElseThrow {
-            ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
-        }.also { user ->
-            if (user.deletedAt != null) {
-                throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
-            }
-        }
 
     private companion object {
         const val MAX_COMMENT_PAGE_SIZE = 100

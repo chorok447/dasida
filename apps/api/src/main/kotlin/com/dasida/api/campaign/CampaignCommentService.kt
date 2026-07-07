@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.auth.UserRepository
+import com.dasida.api.auth.findActiveOrThrow
 import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
@@ -78,7 +79,7 @@ class CampaignCommentService(
         val campaign = campaigns.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
 
-        val authorSnapshot = activeUser(user.id).toAuthorSnapshot()
+        val authorSnapshot = users.findActiveOrThrow(user.id).toAuthorSnapshot()
         val saved = comments.save(
             CampaignComment(
                 id = "cc-${UUID.randomUUID()}",
@@ -129,15 +130,6 @@ class CampaignCommentService(
         }
         comments.delete(comment)
     }
-
-    private fun activeUser(userId: Long) =
-        users.findById(userId).orElseThrow {
-            ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
-        }.also { user ->
-            if (user.deletedAt != null) {
-                throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "user not found")
-            }
-        }
 
     private companion object {
         const val MAX_PAGE_SIZE = 100

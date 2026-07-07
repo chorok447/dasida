@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component
 import java.security.MessageDigest
 import java.time.Duration
 import java.time.Instant
+import java.util.HexFormat
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -22,9 +23,7 @@ interface TokenDenylistStore {
 
 /** raw JWT → SHA-256 hex. 원본 토큰을 저장/로그하지 않기 위한 단방향 해시. */
 fun hashToken(token: String): String =
-    MessageDigest.getInstance("SHA-256")
-        .digest(token.toByteArray())
-        .joinToString("") { "%02x".format(it) }
+    HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.toByteArray()))
 
 private fun redisKey(tokenHash: String) = "denylist:jwt:access:sha256:$tokenHash"
 

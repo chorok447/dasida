@@ -110,8 +110,11 @@ class ReportService(
     }
 
     private inline fun <reified T : Enum<T>> enumValue(value: String, message: String): T =
-        enumValues<T>().firstOrNull { it.name == value }
-            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
+        try {
+            enumValueOf<T>(value)
+        } catch (e: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
+        }
 
     private companion object {
         const val MAX_DETAIL_LENGTH = 500
