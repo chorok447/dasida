@@ -129,21 +129,25 @@ class NotificationControllerTest(
     }
 
     @Test
-    fun `types 필터는 지정한 타입만 조회하고 unreadOnly보다 우선한다`() {
-        save(me, id = "noti-like", type = NotificationType.POST_LIKED, read = true)
-        save(me, id = "noti-comment", type = NotificationType.POST_COMMENT_CREATED)
-        save(me, id = "noti-follow", type = NotificationType.USER_FOLLOWED)
+    fun `types 필터와 unreadOnly를 함께 보내면 AND로 좁혀진다`() {
+        save(me, id = "noti-like-read", type = NotificationType.POST_LIKED, read = true)
+        save(me, id = "noti-like-unread", type = NotificationType.POST_LIKED, read = false)
+        save(me, id = "noti-comment-unread", type = NotificationType.POST_COMMENT_CREATED, read = false)
+        save(me, id = "noti-follow-unread", type = NotificationType.USER_FOLLOWED, read = false)
 
+        // types만: 읽음 여부와 무관하게 해당 타입 전부.
         list(types = listOf(NotificationType.POST_LIKED, NotificationType.POST_COMMENT_CREATED)).andExpect {
             status { isOk() }
-            jsonPath("$.content.length()") { value(2) }
-            jsonPath("$.content[*].id") { value(Matchers.containsInAnyOrder("noti-like", "noti-comment")) }
+            jsonPath("$.content.length()") { value(3) }
+            jsonPath("$.content[*].id") {
+                value(Matchers.containsInAnyOrder("noti-like-read", "noti-like-unread", "noti-comment-unread"))
+            }
         }
-        // unreadOnly=true 와 types 를 함께 보내도 types 가 우선한다(읽은 noti-like 도 포함됨).
-        list(types = listOf(NotificationType.POST_LIKED), unreadOnly = true).andExpect {
+        // types + unreadOnly: 두 조건을 모두 만족하는 것만(AND) — 읽은 noti-like-read는 제외된다.
+        list(types = listOf(NotificationType.POST_LIKED, NotificationType.POST_COMMENT_CREATED), unreadOnly = true).andExpect {
             status { isOk() }
-            jsonPath("$.content.length()") { value(1) }
-            jsonPath("$.content[0].id") { value("noti-like") }
+            jsonPath("$.content.length()") { value(2) }
+            jsonPath("$.content[*].id") { value(Matchers.containsInAnyOrder("noti-like-unread", "noti-comment-unread")) }
         }
     }
 
