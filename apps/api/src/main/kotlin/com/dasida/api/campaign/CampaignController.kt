@@ -82,6 +82,21 @@ class CampaignController(
         @AuthenticationPrincipal user: AuthUser,
     ): CampaignPageResponse = campaignService.getMyCampaignsPage(user.id, page, size)
 
+    @Operation(summary = "내 북마크 조회")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/bookmarks")
+    fun bookmarks(@AuthenticationPrincipal user: AuthUser): List<CampaignResponse> =
+        campaignService.getMyBookmarks(user.id)
+
+    @Operation(summary = "내 북마크 조회(pagination)")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/bookmarks/page")
+    fun bookmarksPage(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "9") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignPageResponse = campaignService.getMyBookmarksPage(user.id, page, size)
+
     @Operation(summary = "sitemap용 캠페인 id 목록", description = "공개 API. id 만 페이지 단위로 반환한다.")
     @GetMapping("/sitemap-ids")
     fun sitemapIds(
@@ -118,6 +133,18 @@ class CampaignController(
     @PostMapping("/{id}/join")
     fun join(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): CampaignResponse =
         participantService.joinCampaign(user, id)
+
+    @Operation(summary = "북마크")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/bookmark")
+    fun bookmark(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): CampaignResponse =
+        campaignService.bookmarkCampaign(user.id, id)
+
+    @Operation(summary = "북마크 취소")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{id}/bookmark")
+    fun unbookmark(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser): CampaignResponse =
+        campaignService.unbookmarkCampaign(user.id, id)
 
     @Operation(summary = "캠페인 참여 취소")
     @SecurityRequirement(name = "bearerAuth")

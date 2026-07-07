@@ -100,6 +100,7 @@ data class CampaignResponse(
     val author: Author,
     val body: CampaignBody,
     val joinedByMe: Boolean,
+    val bookmarkedByMe: Boolean,
     val ownedByMe: Boolean,
 )
 

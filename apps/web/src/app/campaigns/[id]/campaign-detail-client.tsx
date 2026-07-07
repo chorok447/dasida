@@ -10,7 +10,7 @@ import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
-import type { Campaign } from "@/data/campaigns";
+import { bookmarkCampaign, unbookmarkCampaign, type Campaign } from "@/data/campaigns";
 import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CampaignComments } from "./campaign-comments";
@@ -30,6 +30,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const [tab, setTab] = useState<Tab>(() => targetCommentId ? "comments" : "content");
   const activeTab: Tab = targetCommentId ? "comments" : tab;
   const [c, setC] = useState(campaign);
+  const [bookmarked, setBookmarked] = useState(campaign.bookmarkedByMe);
+  const [bookmarking, setBookmarking] = useState(false);
   const [ownershipToken, setOwnershipToken] = useState<string | null>(null);
   const participationUpdatingRef = useRef(false);
   const [participationAction, setParticipationAction] = useState<"join" | "leave" | null>(null);
@@ -52,19 +54,21 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     `/api/campaigns/${campaign.id}`,
     (updated) => {
       setC(updated);
+      setBookmarked(updated.bookmarkedByMe);
       setOwnershipToken(updated.ownedByMe ? getSessionId() : null);
     },
     () => {
       setOwnershipToken(null);
       setC((cur) => (
-        cur.joinedByMe || cur.ownedByMe
-          ? { ...cur, joinedByMe: false, ownedByMe: false }
+        cur.joinedByMe || cur.ownedByMe || cur.bookmarkedByMe
+          ? { ...cur, joinedByMe: false, ownedByMe: false, bookmarkedByMe: false }
           : cur
       ));
+      setBookmarked(false);
     },
   );
   const ownershipConfirmed = !!token && ownershipToken === token && c.ownedByMe;
-  const anyMutating = participationAction !== null || statusUpdating || deleting || refreshing;
+  const anyMutating = participationAction !== null || statusUpdating || deleting || bookmarking || refreshing;
   const mutationBusy = () =>
     participationUpdatingRef.current || statusUpdatingRef.current || deletingRef.current;
 
@@ -182,6 +186,35 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
     }
   };
 
+  const onBookmark = async () => {
+    const requestToken = getSessionId();
+    if (!requestToken) {
+      toast.error("로그인 후 이용할 수 있어요.");
+      router.push("/login");
+      return;
+    }
+    if (bookmarking || refreshing) return;
+    setBookmarking(true);
+    invalidatePending();
+    try {
+      const updated = bookmarked ? await unbookmarkCampaign(c.id) : await bookmarkCampaign(c.id);
+      if (getSessionId() !== requestToken) return;
+      setC(updated);
+      setBookmarked(updated.bookmarkedByMe);
+    } catch (e) {
+      if (getSessionId() !== requestToken) return;
+      if (e instanceof ApiError && e.status === 401) {
+        clearSession();
+        toast.error("로그인 후 이용할 수 있어요.");
+        router.push("/login");
+      } else {
+        toast.error("북마크 처리에 실패했습니다.");
+      }
+    } finally {
+      setBookmarking(false);
+    }
+  };
+
   const deleteCampaign = async () => {
     if (mutationBusy()) return;
     if (!getSessionId()) {
@@ -233,7 +266,13 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
           <ArrowLeft size={14} /> 캠페인 목록
         </button>
 
-        <CampaignHeaderCard c={c} />
+        <CampaignHeaderCard
+          c={c}
+          bookmarked={bookmarked}
+          bookmarking={bookmarking}
+          onBookmark={onBookmark}
+          bookmarkDisabled={anyMutating}
+        />
 
         <CampaignStatusManagement
           c={c}

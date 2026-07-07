@@ -1,5 +1,5 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
-import { apiDelete, apiGet, apiPut } from "@/lib/api";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { mergeCampaignBodyForEditor } from "@/lib/rich-body-html";
 import { richTextPlainLength } from "@/lib/rich-text-length";
 import type { CommentPageLocationResponse } from "@/data/comments";
@@ -107,6 +107,7 @@ export type Campaign = {
   author: { name: string; verified: boolean; profileImageUrl?: string | null };
   body: { heading: string; paragraphs: string[]; images: string[] };
   joinedByMe: boolean;
+  bookmarkedByMe: boolean;
   ownedByMe: boolean;
 };
 
@@ -155,6 +156,15 @@ function campaignsPage(path: string, page: number): Promise<CampaignPageResponse
 
 export const fetchJoinedCampaignsPage = (page: number) => campaignsPage("/api/campaigns/joined/page", page);
 export const fetchMyCampaignsPage = (page: number) => campaignsPage("/api/campaigns/mine/page", page);
+export const fetchBookmarkedCampaignsPage = (page: number) => campaignsPage("/api/campaigns/bookmarks/page", page);
+
+export function bookmarkCampaign(campaignId: string): Promise<Campaign> {
+  return apiPost<Campaign>(`/api/campaigns/${encodeURIComponent(campaignId)}/bookmark`, {});
+}
+
+export function unbookmarkCampaign(campaignId: string): Promise<Campaign> {
+  return apiDelete<Campaign>(`/api/campaigns/${encodeURIComponent(campaignId)}/bookmark`);
+}
 
 export type CampaignParticipantRemovalResponse = {
   campaignId: string;

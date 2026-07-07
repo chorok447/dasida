@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { useTheme } from "@/lib/theme-context";
 import { CountUp, StaggerItem } from "@/components/scroll-reveal";
 import { fetchBookmarkedPostsPage, fetchMyPostsPage } from "@/data/posts";
-import { fetchJoinedCampaignsPage, fetchMyCampaignsPage } from "@/data/campaigns";
+import {
+  fetchBookmarkedCampaignsPage,
+  fetchJoinedCampaignsPage,
+  fetchMyCampaignsPage,
+} from "@/data/campaigns";
 
 import type { MypageTab } from "./mypage-types";
 
@@ -16,7 +20,7 @@ const TILES: { tab: SummaryTab; label: string }[] = [
   { tab: "posts", label: "내 게시글" },
   { tab: "campaigns", label: "참여 캠페인" },
   { tab: "created", label: "개설 캠페인" },
-  { tab: "saved", label: "저장한 글" },
+  { tab: "saved", label: "저장함" },
 ];
 
 // 프로필 아래 활동 요약 KPI. 각 탭 fetcher의 totalElements만 사용(추가 API 없음).
@@ -33,14 +37,15 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
       fetchJoinedCampaignsPage(0),
       fetchMyCampaignsPage(0),
       fetchBookmarkedPostsPage(0),
+      fetchBookmarkedCampaignsPage(0),
     ])
-      .then(([posts, joined, created, saved]) => {
+      .then(([posts, joined, created, savedPosts, savedCampaigns]) => {
         if (!alive) return;
         setCounts({
           posts: posts.totalElements,
           campaigns: joined.totalElements,
           created: created.totalElements,
-          saved: saved.totalElements,
+          saved: savedPosts.totalElements + savedCampaigns.totalElements,
         });
       })
       .catch(() => alive && setFailed(true));

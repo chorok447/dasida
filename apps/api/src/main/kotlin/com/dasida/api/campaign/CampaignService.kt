@@ -26,6 +26,7 @@ class CampaignService(
     private val campaignSearch: CampaignSearchRepository,
     private val users: UserRepository,
     private val participants: CampaignParticipantRepository,
+    private val bookmarkRepo: CampaignBookmarkRepository,
     private val posts: PostRepository,
     private val comments: CampaignCommentRepository,
     private val clock: Clock,
@@ -34,9 +35,17 @@ class CampaignService(
     fun listCampaigns(currentUserId: Long?): List<CampaignResponse> {
         val today = LocalDate.now(clock)
         val campaigns = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
-        // N+1 회피: 내가 참여한 campaignId 를 한 번에 조회.
+        // N+1 회피: 내가 참여·북마크한 campaignId 를 각각 한 번에 조회.
         val joinedIds = joinedByPage(currentUserId, campaigns.map { it.id })
-        return campaigns.map { it.toResponse(viewerId = currentUserId, joinedByMe = it.id in joinedIds, today = today) }
+        val bookmarkedIds = bookmarkedByPage(currentUserId, campaigns.map { it.id })
+        return campaigns.map {
+            it.toResponse(
+                viewerId = currentUserId,
+                joinedByMe = it.id in joinedIds,
+                bookmarkedByMe = it.id in bookmarkedIds,
+                today = today,
+            )
+        }
     }
 
     /** sitemap 전용 id 목록. JSON 본문 없이 id 만 페이지 단위로 반환한다. */
@@ -136,10 +145,16 @@ class CampaignService(
             ),
         )
         val joinedIds = joinedByPage(currentUserId, result.content.map { it.id })
+        val bookmarkedIds = bookmarkedByPage(currentUserId, result.content.map { it.id })
 
         return CampaignSearchResponse(
             content = result.content.map {
-                it.toResponse(viewerId = currentUserId, joinedByMe = it.id in joinedIds, today = today)
+                it.toResponse(
+                    viewerId = currentUserId,
+                    joinedByMe = it.id in joinedIds,
+                    bookmarkedByMe = it.id in bookmarkedIds,
+                    today = today,
+                )
             },
             page = page,
             size = size,
@@ -159,8 +174,9 @@ class CampaignService(
         val today = LocalDate.now(clock)
         val campaignIds = participants.findByUserId(userId).map { it.campaignId }
         if (campaignIds.isEmpty()) return emptyList()
+        val bookmarkedIds = bookmarkRepo.findByUserIdAndCampaignIdIn(userId, campaignIds).map { it.campaignId }.toSet()
         return repo.findAllByIdInOrderBySeqDesc(campaignIds)
-            .map { it.toResponse(viewerId = userId, joinedByMe = true, today = today) }
+            .map { it.toResponse(viewerId = userId, joinedByMe = true, bookmarkedByMe = it.id in bookmarkedIds, today = today) }
     }
 
     /** 현재 사용자가 개설한 캠페인. 캠페인과 참여 상태를 각각 bulk 조회해 N+1을 피한다. */
@@ -173,8 +189,16 @@ class CampaignService(
         val joinedIds = participants.findByUserIdAndCampaignIdIn(userId, campaigns.map { it.id })
             .map { it.campaignId }
             .toSet()
+        val bookmarkedIds = bookmarkRepo.findByUserIdAndCampaignIdIn(userId, campaigns.map { it.id })
+            .map { it.campaignId }
+            .toSet()
         return campaigns.map {
-            it.toResponse(viewerId = userId, joinedByMe = it.id in joinedIds, today = today)
+            it.toResponse(
+                viewerId = userId,
+                joinedByMe = it.id in joinedIds,
+                bookmarkedByMe = it.id in bookmarkedIds,
+                today = today,
+            )
         }
     }
 
@@ -190,8 +214,11 @@ class CampaignService(
         val campaignIds = participantPage.content.map { it.campaignId }
         val byId = if (campaignIds.isEmpty()) emptyMap() else repo.findAllById(campaignIds).associateBy { it.id }
         val ordered = campaignIds.mapNotNull { byId[it] } // participant page 순서 보존, orphan 제외
+        val bookmarkedIds = bookmarkedByPage(userId, ordered.map { it.id })
         return CampaignPageResponse(
-            content = ordered.map { it.toResponse(viewerId = userId, joinedByMe = true, today = today) },
+            content = ordered.map {
+                it.toResponse(viewerId = userId, joinedByMe = true, bookmarkedByMe = it.id in bookmarkedIds, today = today)
+            },
             page = page,
             size = size,
             totalElements = participantPage.totalElements,
@@ -209,8 +236,16 @@ class CampaignService(
             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
         )
         val joinedIds = joinedByPage(userId, result.content.map { it.id })
+        val bookmarkedIds = bookmarkedByPage(userId, result.content.map { it.id })
         return CampaignPageResponse(
-            content = result.content.map { it.toResponse(viewerId = userId, joinedByMe = it.id in joinedIds, today = today) },
+            content = result.content.map {
+                it.toResponse(
+                    viewerId = userId,
+                    joinedByMe = it.id in joinedIds,
+                    bookmarkedByMe = it.id in bookmarkedIds,
+                    today = today,
+                )
+            },
             page = page,
             size = size,
             totalElements = result.totalElements,
@@ -226,6 +261,7 @@ class CampaignService(
         return campaign.toResponse(
             viewerId = currentUserId,
             joinedByMe = currentUserId != null && participants.existsByCampaignIdAndUserId(id, currentUserId),
+            bookmarkedByMe = currentUserId != null && bookmarkRepo.existsByCampaignIdAndUserId(id, currentUserId),
             today = LocalDate.now(clock),
         )
     }
@@ -264,6 +300,77 @@ class CampaignService(
         return campaign.toResponse(
             viewerId = userId,
             joinedByMe = participants.existsByCampaignIdAndUserId(campaignId, userId),
+            bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId),
+            today = LocalDate.now(clock),
+        )
+    }
+
+    /** 현재 사용자가 저장한 캠페인. 북마크/캠페인/참여를 각각 bulk 조회해 N+1을 피한다. */
+    @Transactional(readOnly = true)
+    fun getMyBookmarks(userId: Long): List<CampaignResponse> {
+        val today = LocalDate.now(clock)
+        val campaignIds = bookmarkRepo.findByUserId(userId).map { it.campaignId }.distinct()
+        if (campaignIds.isEmpty()) return emptyList()
+
+        val campaigns = repo.findAllByIdInOrderBySeqDesc(campaignIds)
+        val joinedIds = participants.findByUserIdAndCampaignIdIn(userId, campaignIds)
+            .map { it.campaignId }
+            .toSet()
+        return campaigns.map {
+            it.toResponse(viewerId = userId, joinedByMe = it.id in joinedIds, bookmarkedByMe = true, today = today)
+        }
+    }
+
+    /**
+     * 저장한 캠페인 pagination. bookmark row 를 id ASC(deterministic, createdAt 없음)로 page 한 뒤
+     * 해당 page 의 campaignId 만 bulk 조회하고 bookmark page 순서를 보존한다. 삭제된 캠페인의 orphan bookmark 는 제외.
+     */
+    @Transactional(readOnly = true)
+    fun getMyBookmarksPage(userId: Long, page: Int, size: Int): CampaignPageResponse {
+        validatePageParams(page, size)
+        val today = LocalDate.now(clock)
+        val bookmarkPage = bookmarkRepo.findByUserId(userId, PageRequest.of(page, size, Sort.by("id").ascending()))
+        val campaignIds = bookmarkPage.content.map { it.campaignId }
+        val campaignsById = if (campaignIds.isEmpty()) emptyMap() else repo.findAllById(campaignIds).associateBy { it.id }
+        val ordered = campaignIds.mapNotNull { campaignsById[it] }
+        val joinedIds = joinedByPage(userId, ordered.map { it.id })
+        return CampaignPageResponse(
+            content = ordered.map {
+                it.toResponse(viewerId = userId, joinedByMe = it.id in joinedIds, bookmarkedByMe = true, today = today)
+            },
+            page = page,
+            size = size,
+            totalElements = bookmarkPage.totalElements,
+            totalPages = totalPages(bookmarkPage.totalElements, size),
+        )
+    }
+
+    /** 북마크. 이미 저장된 경우에도 idempotent(200). */
+    @Transactional
+    fun bookmarkCampaign(userId: Long, campaignId: String): CampaignResponse {
+        val campaign = repo.findByIdForUpdate(campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        if (!bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId)) {
+            bookmarkRepo.save(CampaignBookmark("cbk-${UUID.randomUUID()}", campaignId, userId))
+        }
+        return campaign.toResponse(
+            viewerId = userId,
+            joinedByMe = participants.existsByCampaignIdAndUserId(campaignId, userId),
+            bookmarkedByMe = true,
+            today = LocalDate.now(clock),
+        )
+    }
+
+    /** 북마크 취소. 저장되지 않은 경우에도 idempotent(200). */
+    @Transactional
+    fun unbookmarkCampaign(userId: Long, campaignId: String): CampaignResponse {
+        val campaign = repo.findByIdForUpdate(campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        bookmarkRepo.findByCampaignIdAndUserId(campaignId, userId)?.let(bookmarkRepo::delete)
+        return campaign.toResponse(
+            viewerId = userId,
+            joinedByMe = participants.existsByCampaignIdAndUserId(campaignId, userId),
+            bookmarkedByMe = false,
             today = LocalDate.now(clock),
         )
     }
@@ -297,6 +404,7 @@ class CampaignService(
         return campaign.toResponse(
             viewerId = userId,
             joinedByMe = participants.existsByCampaignIdAndUserId(campaignId, userId),
+            bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId),
             today = LocalDate.now(clock),
         )
     }
@@ -331,7 +439,7 @@ class CampaignService(
                 seq = System.currentTimeMillis(),
                 authorUserId = user.id,
             ),
-        ).toResponse(viewerId = user.id, joinedByMe = false, today = LocalDate.now(clock))
+        ).toResponse(viewerId = user.id, joinedByMe = false, bookmarkedByMe = false, today = LocalDate.now(clock))
     }
 
     /**
@@ -360,6 +468,7 @@ class CampaignService(
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign has linked posts")
         }
         comments.deleteByCampaignId(campaignId)
+        bookmarkRepo.deleteByCampaignId(campaignId)
         repo.delete(campaign)
     }
 
@@ -371,6 +480,14 @@ class CampaignService(
             emptySet()
         } else {
             participants.findByUserIdAndCampaignIdIn(userId, campaignIds).map { it.campaignId }.toSet()
+        }
+
+    /** 현재 page 의 campaignId 만 대상으로 북마크 bulk 조회. 비로그인/빈 page 면 query 생략. */
+    private fun bookmarkedByPage(userId: Long?, campaignIds: List<String>): Set<String> =
+        if (userId == null || campaignIds.isEmpty()) {
+            emptySet()
+        } else {
+            bookmarkRepo.findByUserIdAndCampaignIdIn(userId, campaignIds).map { it.campaignId }.toSet()
         }
 
     private companion object {
