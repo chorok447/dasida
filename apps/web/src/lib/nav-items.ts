@@ -4,5 +4,4 @@ export const MAIN_NAV_ITEMS = [
   { label: "캠페인", href: "/campaigns" },
   { label: "DM", href: "/messages" },
   { label: "마이페이지", href: "/mypage" },
-  { label: "로고", href: "/logos" },
 ] as const;
