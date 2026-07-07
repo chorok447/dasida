@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, IdCard, Check, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, Check, ArrowRight } from "lucide-react";
 import { AuthShell, FieldInput } from "@/components/auth-shell";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
@@ -30,7 +30,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [realName, setRealName] = useState("");
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -91,7 +90,6 @@ export default function SignupPage() {
           onChange={setPasswordConfirm}
           error={passwordConfirm && password !== passwordConfirm ? "비밀번호가 일치하지 않습니다." : undefined}
         />
-        <FieldInput label="이름" name="real-name" autoComplete="name" icon={<IdCard size={18} />} placeholder="이름을 입력하세요" value={realName} onChange={setRealName} />
         <FieldInput label="닉네임" name="nickname" icon={<User size={18} />} placeholder="닉네임을 입력하세요" value={nickname} onChange={setNickname} />
 
         <button

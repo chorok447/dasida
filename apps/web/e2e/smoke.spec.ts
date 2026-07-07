@@ -16,7 +16,6 @@ test("회원가입 후 글을 작성하면 피드에 보인다", async ({ page }
   await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await page.getByLabel("비밀번호 확인").fill(password);
-  await page.getByLabel("이름").fill("이투이");
   await page.getByLabel("닉네임").fill(nickname);
   await page.getByRole("button", { name: "회원가입" }).click();
   await page.waitForURL("**/feed");
