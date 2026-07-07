@@ -23,6 +23,7 @@ repositories {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("org.springframework.boot:spring-boot-starter-websocket")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	// 스키마 마이그레이션(db/migration). Boot 4 는 자동구성이 모듈로 분리되어
 	// flyway-core 만으로는 동작하지 않고 starter-flyway 가 필요하다. MySQL 8 은 flyway-mysql 추가.
