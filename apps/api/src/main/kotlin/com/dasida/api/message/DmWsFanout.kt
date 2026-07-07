@@ -1,6 +1,6 @@
 package com.dasida.api.message
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Lazy
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener
@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component
 import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
 
-/** ponytail: Redis pub/sub — 다중 API replica 간 WS 이벤트 fan-out. Redis 없으면 빈 미등록. */
+/** ponytail: Redis pub/sub — 다중 API replica 간 WS 이벤트 fan-out. local(compose) 에서만 활성. */
 @Component
-@ConditionalOnBean(StringRedisTemplate::class)
+@ConditionalOnProperty(prefix = "app.dm.ws", name = ["fanout"], havingValue = "redis")
 class DmWsFanout(
     private val redis: StringRedisTemplate,
     private val mapper: JsonMapper,
