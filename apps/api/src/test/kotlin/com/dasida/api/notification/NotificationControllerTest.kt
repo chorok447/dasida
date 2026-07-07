@@ -53,12 +53,19 @@ class NotificationControllerTest(
         return id
     }
 
-    private fun list(unreadOnly: Boolean? = null, page: Int? = null, size: Int? = null, bearer: String? = meToken) =
+    private fun list(
+        unreadOnly: Boolean? = null,
+        page: Int? = null,
+        size: Int? = null,
+        types: List<String>? = null,
+        bearer: String? = meToken,
+    ) =
         mvc.get("/api/notifications") {
             if (bearer != null) headers { add("Authorization", "Bearer $bearer") }
             if (unreadOnly != null) param("unreadOnly", unreadOnly.toString())
             if (page != null) param("page", page.toString())
             if (size != null) param("size", size.toString())
+            if (types != null) param("types", types.joinToString(","))
         }
 
     @Test
@@ -118,6 +125,25 @@ class NotificationControllerTest(
             jsonPath("$.content.length()") { value(1) }
             jsonPath("$.content[0].id") { value("noti-unread") }
             jsonPath("$.unreadCount") { value(1) }
+        }
+    }
+
+    @Test
+    fun `types 필터는 지정한 타입만 조회하고 unreadOnly보다 우선한다`() {
+        save(me, id = "noti-like", type = NotificationType.POST_LIKED, read = true)
+        save(me, id = "noti-comment", type = NotificationType.POST_COMMENT_CREATED)
+        save(me, id = "noti-follow", type = NotificationType.USER_FOLLOWED)
+
+        list(types = listOf(NotificationType.POST_LIKED, NotificationType.POST_COMMENT_CREATED)).andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(2) }
+            jsonPath("$.content[*].id") { value(Matchers.containsInAnyOrder("noti-like", "noti-comment")) }
+        }
+        // unreadOnly=true 와 types 를 함께 보내도 types 가 우선한다(읽은 noti-like 도 포함됨).
+        list(types = listOf(NotificationType.POST_LIKED), unreadOnly = true).andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(1) }
+            jsonPath("$.content[0].id") { value("noti-like") }
         }
     }
 

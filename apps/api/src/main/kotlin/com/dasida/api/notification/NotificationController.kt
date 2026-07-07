@@ -26,8 +26,9 @@ class NotificationController(private val service: NotificationService) {
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(defaultValue = "false") unreadOnly: Boolean,
+        @RequestParam(required = false) types: List<String>?,
         @AuthenticationPrincipal user: AuthUser,
-    ): NotificationsResponse = service.getNotifications(user.id, page, size, unreadOnly)
+    ): NotificationsResponse = service.getNotifications(user.id, page, size, unreadOnly, types ?: emptyList())
 
     @Operation(summary = "읽지 않은 알림 수 조회")
     @GetMapping("/unread-count")
