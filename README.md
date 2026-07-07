@@ -78,8 +78,11 @@ docker compose -f compose.local.yml up --build
 
 | 이벤트 | 동작 |
 |--------|------|
-| `main` 대상 PR | API/Web image build 검증만 (`push=false`). **자동 머지 없음** — 수동 승인 후 merge |
+| `develop` 대상 PR | CI(web/api/e2e) 통과 시 **auto-merge** |
+| `main` 대상 PR | **develop → main 만 허용** (`main PR source gate`). image build 검증. **수동 merge** |
 | `main` push | **CI 성공 후에만** `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` push (`sha-<shortsha>`, `main` tag) |
+
+**브랜치 흐름**: 기능 브랜치 → `develop` PR (CI 통과 시 auto-merge) → 릴리스 시 `develop` → `main` PR (수동 merge). `feat/*` 등을 `main` 으로 직접 PR 하면 CI 가 거부한다.
 
 실제 서버 배포는 아직 미구현 — `cd.yml` 은 image push 까지만 수행한다. **amd64 VM 배포 runbook** [`single-vm-production-deploy-runbook.md`](apps/api/docs/backend/single-vm-production-deploy-runbook.md), **MySQL backup/restore** [`mysql-backup-restore-runbook.md`](apps/api/docs/backend/mysql-backup-restore-runbook.md). Docker Hub·Nginx는 [`container-images.md`](apps/api/docs/backend/container-images.md), [`nginx-reverse-proxy-deployment.md`](apps/api/docs/backend/nginx-reverse-proxy-deployment.md).
 
