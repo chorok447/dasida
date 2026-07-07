@@ -22,3 +22,9 @@ data class DmPresencePayload(
     val userId: Long,
     val online: Boolean,
 )
+
+/** inbox WS payload — 목록 행 + 헤더 배지용 전체 unread. */
+data class DmInboxPayload(
+    val summary: ConversationSummaryResponse,
+    val totalUnread: Int,
+)

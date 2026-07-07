@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { PageShell } from "@/components/page-shell";
 import { PaginatedSection } from "@/app/mypage/paginated-section";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useTheme } from "@/lib/theme-context";
-import { fetchConversations, relativeDmTime, type ConversationSummary } from "@/data/messages";
+import {
+  fetchConversations,
+  mergeConversationList,
+  relativeDmTime,
+  type ConversationSummary,
+} from "@/data/messages";
+import { openDmSocket } from "@/lib/dm-ws";
 
 export function ConversationListClient() {
   const router = useRouter();
@@ -44,10 +50,53 @@ export function ConversationListClient() {
         >
           메시지
         </h1>
+        <ConversationListBody key={page} page={page} onPageChange={setPage} />
+      </div>
+    </PageShell>
+  );
+}
+
+function ConversationListBody({
+  page,
+  onPageChange,
+}: {
+  page: number;
+  onPageChange: (page: number) => void;
+}) {
+  const { isLoggedIn } = useAuthSession();
+  const [inboxPatches, setInboxPatches] = useState<ConversationSummary[]>([]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const sock = openDmSocket({
+      viewerId: null,
+      onInbox: (summary) => {
+        setInboxPatches((current) => {
+          const rest = current.filter((item) => item.id !== summary.id);
+          return [...rest, summary];
+        });
+      },
+    });
+    return () => sock.close();
+  }, [isLoggedIn]);
+
+  const mergeList = useCallback(
+    (items: ConversationSummary[]) => {
+      let merged = items;
+      for (const patch of inboxPatches) {
+        merged = mergeConversationList(merged, patch, page);
+      }
+      return merged;
+    },
+    [inboxPatches, page],
+  );
+
+  return (
+    <>
         <PaginatedSection
           identityKey="dm-list"
           page={page}
-          onPageChange={setPage}
+          onPageChange={onPageChange}
           fetcher={(p) => fetchConversations(p, 20)}
           loadingLabel="대화 목록 불러오는 중"
           errorLabel="대화 목록을 불러오지 못했어요."
@@ -71,14 +120,13 @@ export function ConversationListClient() {
           }
           renderItems={(items) => (
             <ul className="space-y-2">
-              {items.map((item) => (
+              {mergeList(items).map((item) => (
                 <ConversationRow key={item.id} item={item} />
               ))}
             </ul>
           )}
         />
-      </div>
-    </PageShell>
+    </>
   );
 }
 

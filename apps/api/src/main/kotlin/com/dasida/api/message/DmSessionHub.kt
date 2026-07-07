@@ -1,17 +1,18 @@
 package com.dasida.api.message
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import tools.jackson.databind.json.JsonMapper
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * JVM 내 WebSocket 세션 허브.
- * ponytail: 단일 인스턴스 in-memory. 다중 replica 시 Redis pub/sub 브로드캐스트로 교체.
- */
 @Component
-class DmSessionHub(private val mapper: JsonMapper) {
+class DmSessionHub(
+    private val mapper: JsonMapper,
+) {
+    @Autowired(required = false)
+    private var fanout: DmWsFanout? = null
     private data class Conn(
         val session: WebSocketSession,
         val userId: Long,
@@ -49,28 +50,57 @@ class DmSessionHub(private val mapper: JsonMapper) {
     }
 
     fun publishMessage(conversationId: String, payload: DmMessagePayload, excludeUserId: Long? = null) {
-        broadcast(conversationId, "message", payload, excludeUserId)
+        deliverRoom(conversationId, "message", payload, excludeUserId)
+        relayRoom(conversationId, "message", payload, excludeUserId)
     }
 
     fun publishRead(conversationId: String, payload: DmReadPayload, excludeUserId: Long? = null) {
-        broadcast(conversationId, "read", payload, excludeUserId)
+        deliverRoom(conversationId, "read", payload, excludeUserId)
+        relayRoom(conversationId, "read", payload, excludeUserId)
     }
 
     fun publishTyping(conversationId: String, userId: Long, active: Boolean) {
-        broadcast(conversationId, "typing", DmTypingPayload(userId, active), excludeUserId = userId)
+        val payload = DmTypingPayload(userId, active)
+        deliverRoom(conversationId, "typing", payload, excludeUserId = userId)
+        relayRoom(conversationId, "typing", payload, excludeUserId = userId)
     }
 
-    private fun notifyPresence(conversationId: String, userId: Long, online: Boolean, excludeSessionId: String) {
-        broadcast(
-            conversationId,
-            "presence",
-            DmPresencePayload(userId, online),
-            excludeUserId = userId,
-            excludeSessionId = excludeSessionId,
+    fun publishInbox(userId: Long, conversationId: String, inbox: DmInboxPayload) {
+        deliverInbox(userId, conversationId, inbox)
+        fanout?.relay(
+            DmRelayEnvelope(
+                kind = "inbox",
+                userId = userId,
+                conversationId = conversationId,
+                payload = inbox,
+            ),
         )
     }
 
-    private fun broadcast(
+    /** 다른 JVM 인스턴스에서 Redis 로 수신한 이벤트 — 재 fan-out 없음. */
+    fun deliverFromRelay(envelope: DmRelayEnvelope) {
+        when (envelope.kind) {
+            "inbox" -> {
+                val userId = envelope.userId ?: return
+                val inbox = mapper.convertValue(envelope.payload, DmInboxPayload::class.java)
+                deliverInbox(userId, envelope.conversationId, inbox)
+            }
+            "room" -> {
+                val eventType = envelope.eventType ?: return
+                val payload = envelope.payload ?: return
+                deliverRoom(envelope.conversationId, eventType, payload, envelope.excludeUserId)
+            }
+        }
+    }
+
+    private fun deliverInbox(userId: Long, conversationId: String, inbox: DmInboxPayload) {
+        val json = envelope("inbox", conversationId, inbox)
+        conns.values
+            .filter { it.userId == userId && it.session.isOpen }
+            .forEach { send(it.session, json) }
+    }
+
+    private fun deliverRoom(
         conversationId: String,
         type: String,
         payload: Any,
@@ -82,6 +112,29 @@ class DmSessionHub(private val mapper: JsonMapper) {
             if (excludeUserId != null && conn.userId == excludeUserId) return@forEach
             send(conn.session, json)
         }
+    }
+
+    private fun relayRoom(conversationId: String, eventType: String, payload: Any, excludeUserId: Long?) {
+        fanout?.relay(
+            DmRelayEnvelope(
+                kind = "room",
+                conversationId = conversationId,
+                eventType = eventType,
+                payload = payload,
+                excludeUserId = excludeUserId,
+            ),
+        )
+    }
+
+    private fun notifyPresence(conversationId: String, userId: Long, online: Boolean, excludeSessionId: String) {
+        deliverRoom(
+            conversationId,
+            "presence",
+            DmPresencePayload(userId, online),
+            excludeUserId = userId,
+            excludeSessionId = excludeSessionId,
+        )
+        relayRoom(conversationId, "presence", DmPresencePayload(userId, online), excludeUserId = userId)
     }
 
     private fun peersIn(conversationId: String, excludeSessionId: String? = null): List<Conn> =
@@ -103,7 +156,6 @@ class DmSessionHub(private val mapper: JsonMapper) {
             ),
         )
 
-    /** 테스트·디버그용 구독자 수. */
     internal fun subscriberCount(conversationId: String): Int =
         peersIn(conversationId).size
 }

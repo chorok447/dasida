@@ -40,6 +40,7 @@ export function PaginatedSection<T>({
   empty,
   loadingLabel,
   errorLabel,
+  watchDeps,
 }: {
   identityKey: string;
   page: number;
@@ -49,6 +50,8 @@ export function PaginatedSection<T>({
   empty: ReactNode;
   loadingLabel: string;
   errorLabel: string;
+  /** 값이 바뀌면 현재 page 를 다시 fetch (identity·page 는 유지). */
+  watchDeps?: readonly unknown[];
 }) {
   const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
@@ -68,6 +71,17 @@ export function PaginatedSection<T>({
   const [store, setStore] = useState<Store<T>>({ identity: "", token: null, status: "success", data: null });
 
   const reload = () => setRetryTick((tick) => tick + 1);
+  const watchMountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!watchDeps?.length) return;
+    if (!watchMountedRef.current) {
+      watchMountedRef.current = true;
+      return;
+    }
+    setRetryTick((tick) => tick + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, watchDeps ?? []);
 
   useEffect(() => {
     if (!token) return;
