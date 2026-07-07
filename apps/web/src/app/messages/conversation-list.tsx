@@ -63,17 +63,21 @@ function ConversationListBody({
   page: number;
   onPageChange: (page: number) => void;
 }) {
+  const { isLoggedIn } = useAuthSession();
   const [inboxPatches, setInboxPatches] = useState<ConversationSummary[]>([]);
 
-  useDmSocket({
-    viewerId: null,
-    onInbox: (summary) => {
-      setInboxPatches((current) => {
-        const rest = current.filter((item) => item.id !== summary.id);
-        return [...rest, summary];
-      });
+  useDmSocket(
+    {
+      viewerId: null,
+      onInbox: (summary) => {
+        setInboxPatches((current) => {
+          const rest = current.filter((item) => item.id !== summary.id);
+          return [...rest, summary];
+        });
+      },
     },
-  });
+    isLoggedIn,
+  );
 
   const mergeList = useCallback(
     (items: ConversationSummary[]) => {

@@ -92,25 +92,28 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
 
   const viewerId = profile?.id ?? null;
 
-  useDmSocket({
-    viewerId,
-    onMessage: (convId, msg) => {
-      if (convId !== conversationId) return;
-      setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+  useDmSocket(
+    {
+      viewerId,
+      onMessage: (convId, msg) => {
+        if (convId !== conversationId) return;
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      },
+      onTyping: (convId, userId, active) => {
+        if (convId !== conversationId || userId === viewerId) return;
+        setPeerTyping(active);
+      },
+      onRead: (convId, userId, lastReadMessageId) => {
+        if (convId !== conversationId || userId === viewerId) return;
+        setPeerReadMessageId(lastReadMessageId);
+      },
+      onPresence: (convId, userId, online) => {
+        if (convId !== conversationId || userId === viewerId) return;
+        setPeerOnline(online);
+      },
     },
-    onTyping: (convId, userId, active) => {
-      if (convId !== conversationId || userId === viewerId) return;
-      setPeerTyping(active);
-    },
-    onRead: (convId, userId, lastReadMessageId) => {
-      if (convId !== conversationId || userId === viewerId) return;
-      setPeerReadMessageId(lastReadMessageId);
-    },
-    onPresence: (convId, userId, online) => {
-      if (convId !== conversationId || userId === viewerId) return;
-      setPeerOnline(online);
-    },
-  });
+    Boolean(token),
+  );
 
   useEffect(() => {
     if (!token) return;

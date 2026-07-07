@@ -42,6 +42,7 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
   let ws: WebSocket | null = null;
   let closed = false;
   let retryMs = 1500;
+  let reconnectTimer: ReturnType<typeof window.setTimeout> | null = null;
   const pendingSubs = new Set<string>();
 
   const send = (data: object) => {
@@ -105,7 +106,7 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
     };
     ws.onclose = () => {
       if (closed) return;
-      window.setTimeout(connect, retryMs);
+      reconnectTimer = window.setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 15_000);
     };
   };
@@ -126,6 +127,10 @@ export function openDmSocket(handlers: InternalHandlers): DmSocket {
     },
     close() {
       closed = true;
+      if (reconnectTimer != null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       ws?.close();
       ws = null;
     },
