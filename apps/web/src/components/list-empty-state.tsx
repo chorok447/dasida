@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { Search } from "lucide-react";
 import { StatePanel } from "@/components/ui/state-panel";
-import { useTheme } from "@/lib/theme-context";
 
 export function ListEmptyState({
   title,
@@ -14,9 +13,7 @@ export function ListEmptyState({
   description?: string;
   action?: ReactNode;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const fg = dark ? "#f9f7f2" : "#0f1f22";
+  const fg = "var(--foreground)";
 
   return (
     <StatePanel>

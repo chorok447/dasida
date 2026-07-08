@@ -38,7 +38,7 @@ export function LandingFlow() {
         <ScrollReveal className="text-center mb-20">
           <p
             className="tracking-[0.4em] uppercase mb-4"
-            style={{ color: dark ? "#7dd3a3" : "#1c4044" }}
+            style={{ color: "var(--accent-secondary)" }}
           >
             How it works
           </p>
@@ -46,7 +46,7 @@ export function LandingFlow() {
             style={{
               fontFamily: "'Black Han Sans', sans-serif",
               fontSize: "clamp(40px, 5vw, 72px)",
-              color: dark ? "#f9f7f2" : "#0f1f22",
+              color: "var(--foreground)",
             }}
           >
             참여는 이렇게 시작됩니다
@@ -101,7 +101,7 @@ export function LandingFlow() {
             style={{
               fontFamily: "'Black Han Sans', sans-serif",
               fontSize: "clamp(28px, 3.5vw, 44px)",
-              color: dark ? "#f9f7f2" : "#0f1f22",
+              color: "var(--foreground)",
             }}
           >
             오늘, 당신의 다시가 시작됩니다

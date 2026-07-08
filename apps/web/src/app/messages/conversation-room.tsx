@@ -181,7 +181,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
         className="fixed top-16 left-0 right-0 z-30 border-b backdrop-blur-xl"
         style={{
           background: dark ? "rgba(15,31,34,0.92)" : "rgba(249,247,242,0.94)",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+          borderColor: "var(--border)",
         }}
       >
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
@@ -275,7 +275,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
         className="fixed bottom-14 left-0 right-0 z-30 border-t backdrop-blur-xl md:bottom-0"
         style={{
           background: dark ? "rgba(15,31,34,0.95)" : "rgba(249,247,242,0.96)",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+          borderColor: "var(--border)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >

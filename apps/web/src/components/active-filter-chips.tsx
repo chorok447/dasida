@@ -25,7 +25,7 @@ export function ActiveFilterChips({
 
   return (
     <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5 sm:flex-wrap sm:overflow-visible sm:pb-0">
-      <span className="text-[12px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+      <span className="text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
         적용 중
       </span>
       {chips.map((chip) => (
@@ -36,7 +36,7 @@ export function ActiveFilterChips({
           className="inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
           style={{
             background: dark ? "rgba(125,211,163,0.14)" : "rgba(125,211,163,0.2)",
-            color: dark ? "#7dd3a3" : "#1c4044",
+            color: "var(--accent-secondary)",
           }}
           aria-label={`${chip.label} 필터 제거`}
         >
@@ -49,7 +49,7 @@ export function ActiveFilterChips({
           type="button"
           onClick={onClearAll}
           className="rounded-full px-3 py-1.5 text-[12px] underline underline-offset-2 opacity-70 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          style={{ color: "var(--foreground)" }}
         >
           {clearLabel}
         </button>

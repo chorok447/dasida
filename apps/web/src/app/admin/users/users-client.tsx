@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Search, ShieldBan, ShieldCheck, BadgeCheck } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
@@ -14,6 +16,11 @@ import {
 } from "@/data/admin";
 
 const PAGE_SIZE = 20;
+
+const FILTER_TABS: { id: "" | "suspended"; label: string }[] = [
+  { id: "", label: "전체" },
+  { id: "suspended", label: "정지 중" },
+];
 
 const SUSPEND_OPTIONS: { label: string; days: number | null }[] = [
   { label: "1일", days: 1 },
@@ -37,18 +44,23 @@ function suspendedUntilLabel(iso: string): string {
 type Result = { identity: string; status: "success" | "error"; data: AdminUsersPageResponse | null };
 
 export default function UsersClient() {
+  // 대시보드 "정지 중 회원" 카드에서 ?filter=suspended 로 진입할 수 있다.
+  const searchParams = useSearchParams();
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<"" | "suspended">(
+    searchParams.get("filter") === "suspended" ? "suspended" : "",
+  );
   const [page, setPage] = useState(0);
   const [retryTick, setRetryTick] = useState(0);
   const [result, setResult] = useState<Result>({ identity: "", status: "success", data: null });
   const generationRef = useRef(0);
 
-  const requestIdentity = JSON.stringify([q, page, retryTick]);
+  const requestIdentity = JSON.stringify([q, filter, page, retryTick]);
 
   useEffect(() => {
     const generation = ++generationRef.current;
-    fetchAdminUsers({ q, page, size: PAGE_SIZE })
+    fetchAdminUsers({ q, suspended: filter === "suspended", page, size: PAGE_SIZE })
       .then((res) => {
         if (generation !== generationRef.current) return;
         if (res.content.length === 0 && page > 0) {
@@ -61,7 +73,7 @@ export default function UsersClient() {
         if (generation !== generationRef.current) return;
         setResult({ identity: requestIdentity, status: "error", data: null });
       });
-  }, [requestIdentity, q, page]);
+  }, [requestIdentity, q, filter, page]);
 
   const current = result.identity === requestIdentity;
   const loading = !current;
@@ -116,6 +128,32 @@ export default function UsersClient() {
         </button>
       </form>
 
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="회원 필터">
+        {FILTER_TABS.map((tab) => {
+          const active = filter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                setFilter(tab.id);
+                setPage(0);
+              }}
+              className="rounded-full border px-4 py-2 text-[13px]"
+              style={
+                active
+                  ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#0f1f22" }
+                  : { background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }
+              }
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <StatePanel compact aria-busy="true">
           <Loader2 className="animate-spin" size={20} aria-hidden />
@@ -135,7 +173,13 @@ export default function UsersClient() {
         </StatePanel>
       ) : list.length === 0 ? (
         <StatePanel compact>
-          <p>{q ? `"${q}" 검색 결과가 없습니다.` : "회원이 없습니다."}</p>
+          <p>
+            {q
+              ? `"${q}" 검색 결과가 없습니다.`
+              : filter === "suspended"
+                ? "정지 중인 회원이 없습니다."
+                : "회원이 없습니다."}
+          </p>
         </StatePanel>
       ) : (
         <ul className="space-y-3">
@@ -201,10 +245,17 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
   return (
     <li className="rounded-3xl border p-5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1 text-[14px] font-semibold">
-          {user.name}
-          {user.verified && <BadgeCheck size={14} aria-hidden style={{ color: "var(--accent-secondary)" }} />}
-        </span>
+        {user.deleted ? (
+          <span className="inline-flex items-center gap-1 text-[14px] font-semibold">{user.name}</span>
+        ) : (
+          <Link
+            href={`/users/${user.id}`}
+            className="inline-flex items-center gap-1 text-[14px] font-semibold hover:underline"
+          >
+            {user.name}
+            {user.verified && <BadgeCheck size={14} aria-hidden style={{ color: "var(--accent-secondary)" }} />}
+          </Link>
+        )}
         <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
           {user.email}
         </span>

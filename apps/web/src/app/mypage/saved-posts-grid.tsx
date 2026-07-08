@@ -38,8 +38,8 @@ function SavedPostCard({
     <article
       className="overflow-hidden rounded-2xl border shadow-[0_20px_45px_-25px_rgba(0,0,0,0.45)]"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
       <Link href={`/posts/${post.id}`} className="block transition-transform hover:-translate-y-0.5">
@@ -54,14 +54,14 @@ function SavedPostCard({
               background: dark
                 ? "linear-gradient(135deg,rgba(125,211,163,0.16),rgba(255,255,255,0.03))"
                 : "linear-gradient(135deg,rgba(125,211,163,0.3),rgba(231,223,203,0.5))",
-              color: dark ? "#f9f7f2" : "#0f1f22",
+              color: "var(--foreground)",
             }}
           >
             <PostPreview text={post.text} className="line-clamp-4 text-[15px] leading-7" maxLength={280} />
           </div>
         )}
 
-        <div className="space-y-3 p-4" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+        <div className="space-y-3 p-4" style={{ color: "var(--foreground)" }}>
           <div className="flex items-center justify-between gap-3">
             <span className="truncate text-[13px] font-medium">{post.author.name}</span>
             <span className="shrink-0 text-[11px] opacity-55">{post.time}</span>
@@ -78,7 +78,7 @@ function SavedPostCard({
         </div>
       </Link>
 
-      <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+      <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
         <Link href={`/posts/${post.id}`} className={cardActionClass(dark)}>
           <ExternalLink size={12} aria-hidden /> 상세 보기
         </Link>

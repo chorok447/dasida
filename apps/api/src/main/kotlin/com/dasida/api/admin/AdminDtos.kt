@@ -139,4 +139,6 @@ data class AdminSummaryResponse(
     val campaigns: Long,
     val pendingReports: Long,
     val totalReports: Long,
+    @field:Schema(description = "현재 정지 중인 회원 수")
+    val suspendedUsers: Long,
 )

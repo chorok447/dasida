@@ -239,17 +239,17 @@ export default function CampaignEditClient({ id }: { id: string }) {
           onClick={() => router.push(`/campaigns/${id}`)}
           disabled={saving}
           className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 disabled:opacity-40"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          style={{ color: "var(--foreground)" }}
         >
           <ArrowLeft size={14} aria-hidden />
           캠페인으로 돌아가기
         </button>
 
         <div className="mb-10 text-center">
-          <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+          <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
             Edit Campaign
           </p>
-          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
             캠페인 수정
           </h1>
         </div>
@@ -258,8 +258,8 @@ export default function CampaignEditClient({ id }: { id: string }) {
           <div
             className="space-y-6 rounded-3xl border p-5 sm:p-8"
             style={{
-              background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-              borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+              background: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <CampaignComposeForm
@@ -279,7 +279,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
                 className="flex-1 rounded-xl py-3 disabled:opacity-40"
                 style={{
                   background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-                  color: dark ? "#f9f7f2" : "#0f1f22",
+                  color: "var(--foreground)",
                 }}
               >
                 취소
@@ -300,7 +300,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
             </p>
             <div
               className="overflow-hidden rounded-2xl border shadow-[0_30px_60px_-20px_rgba(0,0,0,0.4)]"
-              style={{ background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}
+              style={{ background: "var(--card)", borderColor: "var(--border)" }}
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 {values.thumb ? (
@@ -323,13 +323,13 @@ export default function CampaignEditClient({ id }: { id: string }) {
                 </span>
               </div>
               <div className="space-y-3 p-5">
-                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: dark ? "#f9f7f2" : "#0f1f22", lineHeight: 1.25 }}>
+                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: "var(--foreground)", lineHeight: 1.25 }}>
                   {values.title || "캠페인 제목"}
                 </h3>
-                <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+                <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>
                   {values.summary || "캠페인 한 줄 소개가 여기에 표시됩니다."}
                 </p>
-                <div className="space-y-1 border-t pt-2 text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)", borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+                <div className="space-y-1 border-t pt-2 text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)", borderColor: "var(--border)" }}>
                   <div>모집 {values.recruitStart} ~ {values.recruitEnd}</div>
                   <div>진행 {values.runStart} ~ {values.runEnd}</div>
                   <div>모집 인원 {values.capacity || "—"}명</div>

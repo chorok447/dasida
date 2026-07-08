@@ -83,7 +83,7 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
   const inputStyle = {
     background: dark ? "rgba(255,255,255,0.05)" : "#ffffff",
     borderColor: dark ? "rgba(248,113,113,0.28)" : "rgba(185,28,28,0.22)",
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    color: "var(--foreground)",
   };
 
   return (
@@ -110,7 +110,7 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
             계정은 복구할 수 없습니다. 기존 콘텐츠는 탈퇴한 사용자 이름으로 유지됩니다.
             계정을 탈퇴하려면 아래에 &quot;{CONFIRM_TEXT}&quot;를 입력해주세요.
           </p>
-          <label className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             현재 비밀번호
             <input
               type="password"
@@ -122,7 +122,7 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
               style={inputStyle}
             />
           </label>
-          <label className="text-[12px]" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             확인 문구
             <input
               type="text"

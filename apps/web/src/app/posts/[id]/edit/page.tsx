@@ -162,7 +162,7 @@ export default function PostEditPage() {
 
   const centerNote = (title: string, action?: React.ReactNode) =>
     shell(
-      <div className="pt-20 text-center" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+      <div className="pt-20 text-center" style={{ color: "var(--foreground)" }}>
         <p className="mb-4 text-[15px]">{title}</p>
         {action}
       </div>,
@@ -204,10 +204,10 @@ export default function PostEditPage() {
   return shell(
     <>
       <div className="mb-10 text-center">
-        <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}>
+        <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
           Edit Post
         </p>
-        <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(32px, 4vw, 52px)", color: dark ? "#f9f7f2" : "#0f1f22" }}>
+        <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(32px, 4vw, 52px)", color: "var(--foreground)" }}>
           글 수정
         </h1>
       </div>
@@ -215,8 +215,8 @@ export default function PostEditPage() {
       <div
         className="space-y-6 rounded-3xl border p-5 sm:p-8"
         style={{
-          background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-          borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+          background: "var(--card)",
+          borderColor: "var(--border)",
         }}
       >
         <PostComposeForm
@@ -237,7 +237,7 @@ export default function PostEditPage() {
             className="flex-1 rounded-xl py-3"
             style={{
               background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
-              color: dark ? "#f9f7f2" : "#0f1f22",
+              color: "var(--foreground)",
             }}
           >
             취소

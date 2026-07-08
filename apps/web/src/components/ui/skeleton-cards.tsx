@@ -7,7 +7,7 @@ import { useTheme } from "@/lib/theme-context";
 export function SkeletonCards({ count = 6, className = "" }: { count?: number; className?: string }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const bone = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
+  const bone = "var(--border)";
 
   return (
     <div className={className} role="status" aria-label="목록을 불러오는 중">

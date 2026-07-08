@@ -12,7 +12,6 @@ import {
 } from "@/data/reports";
 import { getSessionId } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
-import { useTheme } from "@/lib/theme-context";
 import { PaginatedSection } from "./paginated-section";
 
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -32,8 +31,6 @@ function targetHref(report: ReportItem): string | null {
 }
 
 function ReportCard({ report }: { report: ReportItem }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const href = targetHref(report);
   const content = (
     <>
@@ -55,9 +52,9 @@ function ReportCard({ report }: { report: ReportItem }) {
 
   const className = "block rounded-2xl border p-5 text-left shadow-[0_18px_42px_-28px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3]";
   const style = {
-    background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-    borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    background: "var(--card)",
+    borderColor: "var(--border)",
+    color: "var(--foreground)",
   };
 
   return href ? (

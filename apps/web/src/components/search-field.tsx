@@ -69,7 +69,7 @@ export function SearchField({
         placeholder={placeholder}
         aria-label={label}
         className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:opacity-45 focus-visible:ring-0"
-        style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+        style={{ color: "var(--foreground)" }}
       />
       {draft ? (
         <button

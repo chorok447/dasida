@@ -1,29 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Loader2, ScrollText } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { fetchAdminLogs, type AdminActionLogItem, type AdminActionLogsPageResponse, type AdminActionType } from "@/data/admin";
 import { REPORT_TARGET_LABELS, type ReportTargetType } from "@/data/reports";
+import { ACTION_LABELS, RESTRICTIVE_ACTIONS } from "./action-labels";
 
 const PAGE_SIZE = 20;
-
-const ACTION_LABELS: Record<AdminActionType, string> = {
-  REPORT_RESOLVED: "신고 조치 완료",
-  REPORT_DISMISSED: "신고 기각",
-  CONTENT_HIDDEN: "콘텐츠 숨김",
-  CONTENT_RESTORED: "콘텐츠 복구",
-  USER_SUSPENDED: "회원 정지",
-  USER_UNSUSPENDED: "정지 해제",
-};
-
-/** 제재 성격의 조치는 경고색, 되돌리는 조치는 보통색으로 구분한다. */
-const RESTRICTIVE_ACTIONS: ReadonlySet<AdminActionType> = new Set([
-  "REPORT_RESOLVED",
-  "CONTENT_HIDDEN",
-  "USER_SUSPENDED",
-]);
 
 function targetLabel(log: AdminActionLogItem): string {
   if (log.targetType === "REPORT") return "신고";
@@ -165,7 +151,14 @@ function LogRow({ log }: { log: AdminActionLogItem }) {
         </span>
       </div>
       <p className="mt-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
-        대상: {targetLabel(log)} · <span className="break-all">{log.targetId}</span>
+        대상: {targetLabel(log)} ·{" "}
+        {log.targetType === "USER" ? (
+          <Link href={`/users/${log.targetId}`} className="break-all hover:underline">
+            {log.targetId}
+          </Link>
+        ) : (
+          <span className="break-all">{log.targetId}</span>
+        )}
       </p>
       {log.detail && <p className="mt-1 text-[13px]">{log.detail}</p>}
     </li>

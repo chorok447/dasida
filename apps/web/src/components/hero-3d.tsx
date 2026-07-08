@@ -94,7 +94,7 @@ export function Hero3D() {
               fontFamily: "'Black Han Sans', sans-serif",
               fontSize: "clamp(48px, 7vw, 110px)",
               lineHeight: 1.05,
-              color: dark ? "#f9f7f2" : "#0f1f22",
+              color: "var(--foreground)",
               textShadow: dark ? "0 20px 60px rgba(0,0,0,0.45)" : "0 20px 60px rgba(28,64,68,0.2)",
             }}
           >

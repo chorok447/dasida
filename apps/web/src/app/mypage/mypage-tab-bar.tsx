@@ -47,7 +47,7 @@ export function MypageTabBar({
                     onClick={() => onSelect(item.id)}
                     className="relative shrink-0 rounded-lg px-3 py-2 text-[13px] transition-colors sm:px-4"
                     style={{
-                      color: active ? (dark ? "#f9f7f2" : "var(--foreground)") : "var(--foreground-muted)",
+                      color: active ? ("var(--foreground)") : "var(--foreground-muted)",
                       fontWeight: active ? 600 : 400,
                       background: active ? (dark ? "rgba(255,255,255,0.06)" : "var(--accent-soft)") : undefined,
                     }}

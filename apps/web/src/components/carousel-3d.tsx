@@ -65,7 +65,7 @@ export function Carousel3D() {
       <div className="text-center mb-20 px-8">
         <p
           className="tracking-[0.4em] uppercase mb-4"
-          style={{ color: dark ? "#7dd3a3" : "#1c4044" }}
+          style={{ color: "var(--accent-secondary)" }}
         >
           In the News
         </p>
@@ -73,7 +73,7 @@ export function Carousel3D() {
           style={{
             fontFamily: "'Black Han Sans', sans-serif",
             fontSize: "clamp(40px, 5vw, 72px)",
-            color: dark ? "#f9f7f2" : "#0f1f22",
+            color: "var(--foreground)",
           }}
         >
           업사이클링, 지금 일어나는 일

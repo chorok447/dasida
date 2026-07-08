@@ -127,13 +127,13 @@ export function CampaignComments({
         {comments.status === "loading" ? (
           <StatePanel compact>
             <Loader2 size={24} className="animate-spin text-[#7dd3a3]" />
-            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>댓글을 불러오는 중입니다.</p>
+            <p style={{ color: "var(--foreground-muted)" }}>댓글을 불러오는 중입니다.</p>
           </StatePanel>
         ) : null}
 
         {comments.status === "error" ? (
           <StatePanel compact role="alert">
-            <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>{comments.listError}</p>
+            <p style={{ color: "var(--foreground-muted)" }}>{comments.listError}</p>
             <button type="button" onClick={reload} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
               다시 시도
             </button>

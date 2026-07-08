@@ -104,6 +104,27 @@ class AdminUserSuspensionTest(
     }
 
     @Test
+    fun `정지 중 필터는 현재 정지된 회원만 반환하고 검색과 조합된다`() {
+        setSuspension(2, futureIso()).andExpect { status { isOk() } }
+
+        mvc.get("$USERS_PATH?suspended=true") {
+            headers { add("Authorization", "Bearer $adminToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(1) }
+            jsonPath("$.content[0].id") { value(2) }
+            jsonPath("$.content[0].suspended") { value(true) }
+        }
+        // 검색과 조합: 정지 중이지만 q 불일치 → 0건
+        mvc.get("$USERS_PATH?suspended=true&q=일치하지-않는-검색어") {
+            headers { add("Authorization", "Bearer $adminToken") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `정지된 사용자는 기존 토큰이 즉시 차단된다`() {
         mvc.get("/api/auth/me") {
             headers { add("Authorization", "Bearer $userToken") }

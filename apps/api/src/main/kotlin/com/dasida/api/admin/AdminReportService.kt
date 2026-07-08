@@ -114,6 +114,7 @@ class AdminReportService(
         campaigns = campaigns.count(),
         pendingReports = reports.countByStatus(ReportStatus.PENDING.name),
         totalReports = reports.count(),
+        suspendedUsers = users.countBySuspendedUntilAfter(Instant.now(clock)),
     )
 
     /** 처리 결과를 신고자에게 알린다. 신고자가 탈퇴했으면 생략. */

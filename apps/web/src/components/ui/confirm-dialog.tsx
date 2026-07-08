@@ -84,7 +84,7 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
       style={{
         background: dark ? "#1c4044" : "#ffffff",
         borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
-        color: dark ? "#f9f7f2" : "#0f1f22",
+        color: "var(--foreground)",
       }}
       onClick={(e) => {
         // dialog 박스 바깥(= backdrop 영역) 클릭 시 닫는다.

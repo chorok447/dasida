@@ -74,7 +74,7 @@ export function AuthShell({
           <div style={{ transform: "translateZ(20px)" }} className="relative">
             <p
               className="tracking-[0.4em] uppercase mb-3"
-              style={{ color: dark ? "#7dd3a3" : "#1c4044", fontSize: 11 }}
+              style={{ color: "var(--accent-secondary)", fontSize: 11 }}
             >
               {subtitle}
             </p>
@@ -82,7 +82,7 @@ export function AuthShell({
               style={{
                 fontFamily: "'Black Han Sans', sans-serif",
                 fontSize: 44,
-                color: dark ? "#f9f7f2" : "#0f1f22",
+                color: "var(--foreground)",
               }}
             >
               {title}
@@ -157,7 +157,7 @@ export function FieldInput({
           aria-invalid={Boolean(error)}
           aria-describedby={errorId}
           className="flex-1 bg-transparent outline-none placeholder:opacity-50"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          style={{ color: "var(--foreground)" }}
         />
       </div>
       {error && <p id={errorId} role="alert" className="mt-1.5 pl-1 text-[12px] text-[#ed5c48]">{error}</p>}

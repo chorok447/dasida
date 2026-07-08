@@ -1,6 +1,7 @@
 package com.dasida.api.notification
 
 import com.dasida.api.common.checkPageParams
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
@@ -11,12 +12,21 @@ import java.time.Instant
 import java.util.UUID
 
 /**
+ * 알림 생성 도메인 이벤트. 수신자가 접속 중이면 WS 로 배지를 갱신하기 위해 발행한다
+ * (구독은 message 패키지의 NotificationWsPusher — 커밋 후에만 push 되어 롤백된 알림은 새지 않는다).
+ */
+data class NotificationCreatedEvent(val recipientUserId: Long)
+
+/**
  * 알림 도메인 서비스. 두 가지 책임을 가진다.
  * 1) 도메인 이벤트(댓글/참여)에서 호출되는 알림 생성 helper. 호출자 트랜잭션에 참여한다(notify/notifyUser).
  * 2) 알림 조회/읽음/삭제 비즈니스 정책. Controller 에서 옮겨온 검증·트랜잭션·소유권 확인을 담당한다.
  */
 @Service
-class NotificationService(private val repo: NotificationRepository) {
+class NotificationService(
+    private val repo: NotificationRepository,
+    private val events: ApplicationEventPublisher,
+) {
 
     @Transactional(readOnly = true)
     fun getNotifications(
@@ -123,6 +133,7 @@ class NotificationService(private val repo: NotificationRepository) {
                 seq = System.nanoTime(),
             ),
         )
+        events.publishEvent(NotificationCreatedEvent(recipientUserId))
     }
 
     private companion object {

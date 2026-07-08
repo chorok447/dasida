@@ -27,7 +27,7 @@ function DateRangeGroup({
   onChange: (field: CampaignDateRangeField, value: string) => void;
 }) {
   const inputStyle = {
-    color: dark ? "#f9f7f2" : "#0f1f22",
+    color: "var(--foreground)",
     background: dark ? "#1c4044" : "#ffffff",
     borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
   };
@@ -84,7 +84,7 @@ export function CampaignDateRangeFilterControls({
       className="space-y-3 rounded-2xl border p-4"
       style={{
         background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.72)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        borderColor: "var(--border)",
       }}
     >
       <div className="flex items-center justify-between gap-3">
