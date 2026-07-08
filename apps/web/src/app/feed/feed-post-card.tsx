@@ -259,11 +259,18 @@ export function FeedPostCard({
                     onChange={(e) => setCommentText(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitComment())}
                     placeholder="댓글 달기…"
+                    aria-label="댓글 내용"
                     maxLength={MAX_COMMENT_LENGTH}
-                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full"
+                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
                     style={{ background: "var(--border)", color: "var(--foreground)" }}
                   />
-                  <button onClick={submitComment} disabled={busy || !commentText.trim()} className="p-2 rounded-full disabled:opacity-40" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
+                  <button
+                    onClick={submitComment}
+                    disabled={busy || !commentText.trim()}
+                    aria-label="댓글 등록"
+                    className="p-2 rounded-full disabled:opacity-40"
+                    style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                  >
                     <Send size={14} />
                   </button>
                 </div>

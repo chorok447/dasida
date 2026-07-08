@@ -108,7 +108,7 @@ export function CampaignListCard({ campaign, onOpen }: { campaign: Campaign; onO
             </div>
           </div>
           <div className="space-y-3 p-5">
-            <h3
+            <h2
               style={{
                 fontFamily: "'Black Han Sans', sans-serif",
                 fontSize: 22,
@@ -117,7 +117,7 @@ export function CampaignListCard({ campaign, onOpen }: { campaign: Campaign; onO
               }}
             >
               {campaign.title}
-            </h3>
+            </h2>
             <p className="line-clamp-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
               {campaign.summary}
             </p>

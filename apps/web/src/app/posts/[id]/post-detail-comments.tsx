@@ -128,7 +128,7 @@ export function PostDetailComments({
               placeholder="댓글 달기..."
               maxLength={MAX_COMMENT_LENGTH}
               disabled={submitting || visibleCommentsLoading || !!listError}
-              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50"
+              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
               style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
             />
             <button
