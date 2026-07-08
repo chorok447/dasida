@@ -149,7 +149,7 @@ export function CampaignCommentItem({
                 onClick={onCancel}
                 disabled={saving}
                 className="rounded-full px-4 py-2 text-[12px] disabled:opacity-40"
-                style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)", color: "var(--foreground)" }}
+                style={{ background: "var(--border)", color: "var(--foreground)" }}
               >
                 취소
               </button>

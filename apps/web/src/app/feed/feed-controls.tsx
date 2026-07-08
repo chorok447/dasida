@@ -117,7 +117,7 @@ export function FeedControls({
             onChange={(event) => onSort(event.target.value as PostSearchSort)}
             className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
             style={{
-              color: dark ? "#f9f7f2" : "#0f1f22",
+              color: "var(--foreground)",
               background: dark ? "#1c4044" : "#ffffff",
               borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
             }}

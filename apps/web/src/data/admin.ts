@@ -7,6 +7,7 @@ export type AdminSummary = {
   campaigns: number;
   pendingReports: number;
   totalReports: number;
+  suspendedUsers: number;
 };
 
 export type AdminReportTarget = {
@@ -97,6 +98,7 @@ export type AdminUsersPageResponse = {
 
 export function fetchAdminUsers(params: {
   q?: string;
+  suspended?: boolean;
   page?: number;
   size?: number;
 }): Promise<AdminUsersPageResponse> {
@@ -105,6 +107,7 @@ export function fetchAdminUsers(params: {
     size: String(params.size ?? 20),
   });
   if (params.q) query.set("q", params.q);
+  if (params.suspended) query.set("suspended", "true");
   return apiGet<AdminUsersPageResponse>(`/api/admin/users?${query.toString()}`);
 }
 

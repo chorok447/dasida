@@ -53,6 +53,37 @@ class DmSessionHubTest {
     }
 
     @Test
+    fun `notification 이벤트는 구독 없이 해당 사용자 세션에만 전달한다`() {
+        val a = mockSession("s-a")
+        val b = mockSession("s-b")
+        hub.register(a, 1L)
+        hub.register(b, 2L)
+
+        hub.publishNotification(2L, DmNotificationPayload(unreadCount = 5))
+
+        Mockito.verify(b).sendMessage(Mockito.any(TextMessage::class.java))
+        Mockito.verify(a, Mockito.never()).sendMessage(Mockito.any(TextMessage::class.java))
+    }
+
+    @Test
+    fun `relay notification 은 로컬 세션에만 전달한다`() {
+        val b = mockSession("s-b")
+        hub.register(b, 2L)
+
+        hub.deliverFromRelay(
+            DmRelayEnvelope(
+                origin = "other-instance",
+                kind = "notification",
+                userId = 2L,
+                conversationId = "",
+                payload = mapOf("unreadCount" to 5),
+            ),
+        )
+
+        Mockito.verify(b).sendMessage(Mockito.any(TextMessage::class.java))
+    }
+
+    @Test
     fun `구독한 세션에만 메시지를 브로드캐스트한다`() {
         val sender = mockSession("s-sender")
         val recipient = mockSession("s-recipient")

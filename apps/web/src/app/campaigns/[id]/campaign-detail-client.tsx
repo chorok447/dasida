@@ -261,7 +261,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         <button
           onClick={() => router.push("/campaigns")}
           className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 hover:opacity-100 transition-opacity"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          style={{ color: "var(--foreground)" }}
         >
           <ArrowLeft size={14} /> 캠페인 목록
         </button>
@@ -307,7 +307,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
                 key={t.id}
                 onClick={() => selectTab(t.id)}
                 className="relative px-5 py-3 inline-flex items-center gap-2 text-[14px]"
-                style={{ color: active ? (dark ? "#f9f7f2" : "#0f1f22") : dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}
+                style={{ color: active ? ("var(--foreground)") : dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}
               >
                 {t.icon}
                 {t.label}

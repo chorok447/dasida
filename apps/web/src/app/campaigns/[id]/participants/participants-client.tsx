@@ -201,7 +201,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
         <Link
           href={`/campaigns/${id}`}
           className="mb-6 inline-flex items-center gap-2 text-[13px] opacity-70 transition-opacity hover:opacity-100"
-          style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+          style={{ color: "var(--foreground)" }}
         >
           <ArrowLeft size={14} /> 캠페인 상세로 돌아가기
         </Link>
@@ -210,11 +210,11 @@ export default function ParticipantsClient({ id }: { id: string }) {
           className="overflow-hidden rounded-3xl border"
           style={{
             background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.8)",
-            borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
-            color: dark ? "#f9f7f2" : "#0f1f22",
+            borderColor: "var(--border)",
+            color: "var(--foreground)",
           }}
         >
-          <header className="border-b px-5 py-6 sm:px-8" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+          <header className="border-b px-5 py-6 sm:px-8" style={{ borderColor: "var(--border)" }}>
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -259,7 +259,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
                 아직 참여자가 없습니다.
               </div>
             ) : (
-              <ul className="divide-y" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+              <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
                 {data.participants.map((participant) => (
                   <li key={participant.participantId} className="flex min-h-14 flex-col items-start justify-between gap-3 py-3 sm:flex-row sm:items-center sm:gap-4">
                     <span className="min-w-0 truncate text-[14px] font-medium">{participant.name}</span>

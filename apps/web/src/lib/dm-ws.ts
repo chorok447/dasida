@@ -1,5 +1,6 @@
 import { getClientApiBaseUrl } from "@/lib/api-url";
 import { emitDmChanged, type ConversationSummary, type MessageItem } from "@/data/messages";
+import { emitNotificationsChanged } from "@/data/notifications";
 
 export type DmWsMessagePayload = {
   id: string;
@@ -61,7 +62,15 @@ export function openDmSocket(handlers: DmWsHandlers): DmSocket {
         return;
       }
       const { type, conversationId, payload } = frame;
-      if (!type || !conversationId || !payload) return;
+      if (!type || !payload) return;
+      // 알림 배지 갱신 — 대화와 무관한 사용자 단위 이벤트라 conversationId 없이 온다.
+      if (type === "notification") {
+        if (typeof payload.unreadCount === "number") {
+          emitNotificationsChanged({ unreadCount: payload.unreadCount });
+        }
+        return;
+      }
+      if (!conversationId) return;
       const viewerId = handlers.viewerId;
 
       if (type === "message") {

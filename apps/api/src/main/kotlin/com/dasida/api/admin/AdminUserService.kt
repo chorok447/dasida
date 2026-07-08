@@ -28,19 +28,15 @@ class AdminUserService(
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
-    fun getUsers(q: String?, page: Int, size: Int): AdminUsersPageResponse {
+    fun getUsers(q: String?, suspendedOnly: Boolean, page: Int, size: Int): AdminUsersPageResponse {
         checkPageParams(page, size, MAX_PAGE_SIZE)
         val query = q?.trim()?.takeIf { it.isNotEmpty() }
         if (query != null && query.length > MAX_QUERY_LENGTH) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "q must not exceed $MAX_QUERY_LENGTH characters")
         }
-        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"))
-        val result = if (query == null) {
-            users.findAll(pageable)
-        } else {
-            users.findByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(query, query, pageable)
-        }
         val now = Instant.now(clock)
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"))
+        val result = users.searchForAdmin(query?.lowercase(), suspendedOnly, now, pageable)
         return AdminUsersPageResponse(
             content = result.content.map { it.toAdminResponse(now) },
             page = result.number,

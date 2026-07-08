@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, MessageCircle, Search } from "lucide-react";
+import { Bell, MessageCircle, Search, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { getSessionId } from "@/lib/auth";
-import { fetchNotificationUnreadCount, NOTIF_EVENT } from "@/data/notifications";
-import { DM_EVENT, fetchDmUnreadCount, type DmChangedDetail } from "@/data/messages";
+import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
+import { useDmUnread, useNotificationUnread } from "@/lib/use-unread-badges";
 import { MAIN_NAV_ITEMS } from "@/lib/nav-items";
 
 // 로그아웃 시 머무르면 안 되는(인증 필요) 경로 prefix.
@@ -23,66 +21,11 @@ export function SiteHeader() {
   const onNotifications = pathname === "/notifications";
   const onMessages = pathname.startsWith("/messages");
   const { isLoggedIn, name, logout, sessionId: token } = useAuthSession();
-  const [unreadState, setUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
-  const [dmUnreadState, setDmUnreadState] = useState<{ token: string | null; count: number }>({ token: null, count: 0 });
-  const unreadGenRef = useRef(0);
-  const dmUnreadGenRef = useRef(0);
-  const unread = unreadState.token === token ? unreadState.count : 0;
-  const dmUnread = dmUnreadState.token === token ? dmUnreadState.count : 0;
-
-  // 로그인 상태에서만 unread count 조회.
-  // token 변경 시 재조회, 알림 페이지의 읽음 처리(NOTIF_EVENT) 후에도 갱신. polling 은 하지 않음.
-  useEffect(() => {
-    if (!token) return;
-    const requestToken = token;
-    const refresh = () => {
-      const generation = ++unreadGenRef.current;
-      fetchNotificationUnreadCount()
-        .then((res) => {
-          // 늦은 응답/토큰 변경 시 무시. 실패 시 badge 만 숨기고 헤더는 유지.
-          if (generation === unreadGenRef.current && getSessionId() === requestToken) {
-            setUnreadState({ token: requestToken, count: res.unreadCount });
-          }
-        })
-        .catch(() => {
-          if (generation === unreadGenRef.current && getSessionId() === requestToken) {
-            setUnreadState({ token: requestToken, count: 0 });
-          }
-        });
-    };
-    refresh();
-    window.addEventListener(NOTIF_EVENT, refresh);
-    return () => window.removeEventListener(NOTIF_EVENT, refresh);
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-    const requestToken = token;
-    const refresh = (event?: Event) => {
-      const totalUnread = (event as CustomEvent<DmChangedDetail> | undefined)?.detail?.totalUnread;
-      if (typeof totalUnread === "number") {
-        if (getSessionId() === requestToken) {
-          setDmUnreadState({ token: requestToken, count: totalUnread });
-        }
-        return;
-      }
-      const generation = ++dmUnreadGenRef.current;
-      fetchDmUnreadCount()
-        .then((res) => {
-          if (generation === dmUnreadGenRef.current && getSessionId() === requestToken) {
-            setDmUnreadState({ token: requestToken, count: res.unreadCount });
-          }
-        })
-        .catch(() => {
-          if (generation === dmUnreadGenRef.current && getSessionId() === requestToken) {
-            setDmUnreadState({ token: requestToken, count: 0 });
-          }
-        });
-    };
-    refresh();
-    window.addEventListener(DM_EVENT, refresh);
-    return () => window.removeEventListener(DM_EVENT, refresh);
-  }, [token]);
+  // 관리자에게만 /admin 진입점을 보여준다(권한 자체는 서버가 검사).
+  const { profile } = useCurrentUserProfile();
+  const isAdmin = profile?.role === "ADMIN";
+  const unread = useNotificationUnread(token);
+  const dmUnread = useDmUnread(token);
 
   const onLogout = () => {
     void logout().finally(() => {
@@ -96,11 +39,11 @@ export function SiteHeader() {
       style={{
         // 히어로 그라데이션이 비쳐도 로고/태그라인 대비 4.5:1을 지키는 최소 불투명도
         background: dark ? "rgba(15,31,34,0.82)" : "rgba(249,247,242,0.88)",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        borderColor: "var(--border)",
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2" style={{ color: dark ? "#7dd3a3" : "#1c4044" }}>
+        <Link href="/" className="flex items-center gap-2" style={{ color: "var(--accent-secondary)" }}>
           <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
           <span className="hidden text-[10px] tracking-[0.3em] opacity-90 sm:inline">UPCYCLE</span>
         </Link>
@@ -125,6 +68,21 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="flex items-center gap-2 sm:gap-3">
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
+              style={{
+                background: pathname.startsWith("/admin") ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
+                color: pathname.startsWith("/admin") ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+              }}
+              aria-label="관리자 페이지로 이동"
+              aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+            >
+              <ShieldCheck size={16} aria-hidden />
+              <span className="hidden xl:inline text-[12px]">관리자</span>
+            </Link>
+          )}
           <Link
             href="/search"
             className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"

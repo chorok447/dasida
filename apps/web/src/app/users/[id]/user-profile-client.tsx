@@ -19,17 +19,14 @@ import { createConversation } from "@/data/messages";
 import { getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
-import { useTheme } from "@/lib/theme-context";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { UserPostsGrid } from "./user-posts-grid";
 
 export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
   const router = useRouter();
-  const { theme } = useTheme();
   const { sessionId } = useAuthSession();
   const { profile } = useCurrentUserProfile();
   const confirm = useConfirm();
-  const dark = theme === "dark";
   const [user, setUser] = useState(initialUser);
   const [pending, setPending] = useState(false);
   const [blockPending, setBlockPending] = useState(false);
@@ -139,7 +136,7 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
                     style={{
                       fontFamily: "'Black Han Sans', sans-serif",
                       fontSize: "clamp(30px, 5vw, 40px)",
-                      color: dark ? "#f9f7f2" : "var(--foreground)",
+                      color: "var(--foreground)",
                     }}
                   >
                     {user.name}

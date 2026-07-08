@@ -110,8 +110,8 @@ function CampaignCard({
     <article
       className="overflow-hidden rounded-2xl border shadow-[0_20px_45px_-25px_rgba(0,0,0,0.45)]"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
       <Link href={`/campaigns/${campaign.id}`} className="block transition-transform hover:-translate-y-0.5">
@@ -146,11 +146,11 @@ function CampaignCard({
           ) : null}
           <h3
             className="line-clamp-2"
-            style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 20, color: dark ? "#f9f7f2" : "#0f1f22", lineHeight: 1.3 }}
+            style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 20, color: "var(--foreground)", lineHeight: 1.3 }}
           >
             {campaign.title}
           </h3>
-          <p className="line-clamp-2 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+          <p className="line-clamp-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
             {campaign.summary}
           </p>
           <ProgressBar campaign={campaign} />
@@ -163,7 +163,7 @@ function CampaignCard({
         </div>
       </Link>
 
-      <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)" }}>
+      <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
         <Link href={`/campaigns/${campaign.id}`} className={cardActionClass(dark)}>
           <ExternalLink size={12} aria-hidden /> 상세 보기
         </Link>

@@ -8,7 +8,6 @@ import { Avatar } from "@/components/avatar";
 import { PageShell } from "@/components/page-shell";
 import { PaginatedSection } from "@/app/mypage/paginated-section";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 import {
   fetchConversations,
   mergeConversationList,
@@ -21,8 +20,6 @@ export function ConversationListClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const page = Math.max(0, Number(searchParams.get("page") ?? "0") || 0);
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const { isLoggedIn, hydrated } = useAuthSession();
 
   useEffect(() => {
@@ -45,7 +42,7 @@ export function ConversationListClient() {
           style={{
             fontFamily: "'Black Han Sans', sans-serif",
             fontSize: "clamp(28px, 5vw, 36px)",
-            color: dark ? "#f9f7f2" : "var(--foreground)",
+            color: "var(--foreground)",
           }}
         >
           메시지

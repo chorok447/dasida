@@ -42,21 +42,21 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
       aria-label={heading}
       className="rounded-2xl border p-5"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <TrendingUp size={14} style={{ color: "#7dd3a3" }} aria-hidden />
-          <h3 className="text-[14px] font-medium" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          <h3 className="text-[14px] font-medium" style={{ color: "var(--foreground)" }}>
             {heading}
           </h3>
         </div>
         <Link
           href="/campaigns"
           className="inline-flex items-center gap-1 text-[12px] opacity-70 transition-opacity hover:opacity-100"
-          style={{ color: dark ? "#7dd3a3" : "#1c4044" }}
+          style={{ color: "var(--accent-secondary)" }}
         >
           전체 보기 <ArrowRight size={12} aria-hidden />
         </Link>
@@ -79,7 +79,7 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
                 <div className="min-w-0 flex-1">
                   <div
                     className="truncate text-[13px] group-hover:underline"
-                    style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+                    style={{ color: "var(--foreground)" }}
                   >
                     {campaign.title}
                   </div>
@@ -94,7 +94,7 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
                         style={{ width: `${pct}%`, background: statusMeta[campaign.status].color }}
                       />
                     </div>
-                    <span className="text-[11px] opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                    <span className="text-[11px] opacity-60" style={{ color: "var(--foreground)" }}>
                       {campaign.joined}/{campaign.capacity}명 · {campaign.daysLeftLabel}
                     </span>
                   </div>

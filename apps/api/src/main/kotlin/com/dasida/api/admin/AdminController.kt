@@ -58,13 +58,14 @@ class AdminController(
         @AuthenticationPrincipal admin: AuthUser,
     ): ContentVisibilityResponse = content.setVisibility(admin.id, targetType, targetId, request)
 
-    @Operation(summary = "회원 목록 조회 (이메일/이름 검색, 최신 가입 순)")
+    @Operation(summary = "회원 목록 조회 (이메일/이름 검색, 정지 중 필터, 최신 가입 순)")
     @GetMapping("/users")
     fun adminUsers(
         @RequestParam(required = false) q: String?,
+        @RequestParam(defaultValue = "false") suspended: Boolean,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
-    ): AdminUsersPageResponse = userService.getUsers(q, page, size)
+    ): AdminUsersPageResponse = userService.getUsers(q, suspended, page, size)
 
     @Operation(summary = "회원 정지/해제 (로그인·기존 토큰·refresh 즉시 차단)")
     @PatchMapping("/users/{id}/suspension")

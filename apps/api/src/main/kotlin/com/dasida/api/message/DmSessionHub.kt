@@ -66,13 +66,26 @@ class DmSessionHub(
     }
 
     fun publishInbox(userId: Long, conversationId: String, inbox: DmInboxPayload) {
-        deliverInbox(userId, conversationId, inbox)
+        deliverToUser(userId, envelope("inbox", conversationId, inbox))
         fanout?.relay(
             DmRelayEnvelope(
                 kind = "inbox",
                 userId = userId,
                 conversationId = conversationId,
                 payload = inbox,
+            ),
+        )
+    }
+
+    /** 알림 배지 갱신 이벤트. 대화와 무관한 사용자 단위 이벤트라 conversationId 는 비워 보낸다. */
+    fun publishNotification(userId: Long, payload: DmNotificationPayload) {
+        deliverToUser(userId, envelope("notification", conversationId = "", payload = payload))
+        fanout?.relay(
+            DmRelayEnvelope(
+                kind = "notification",
+                userId = userId,
+                conversationId = "",
+                payload = payload,
             ),
         )
     }
@@ -84,7 +97,13 @@ class DmSessionHub(
                 val userId = envelope.userId ?: return
                 val payload = envelope.payload ?: return
                 val inbox = mapper.convertValue(payload, DmInboxPayload::class.java)
-                deliverInbox(userId, envelope.conversationId, inbox)
+                deliverToUser(userId, envelope("inbox", envelope.conversationId, inbox))
+            }
+            "notification" -> {
+                val userId = envelope.userId ?: return
+                val payload = envelope.payload ?: return
+                val notification = mapper.convertValue(payload, DmNotificationPayload::class.java)
+                deliverToUser(userId, envelope("notification", conversationId = "", payload = notification))
             }
             "room" -> {
                 val eventType = envelope.eventType ?: return
@@ -94,8 +113,7 @@ class DmSessionHub(
         }
     }
 
-    private fun deliverInbox(userId: Long, conversationId: String, inbox: DmInboxPayload) {
-        val json = envelope("inbox", conversationId, inbox)
+    private fun deliverToUser(userId: Long, json: String) {
         conns.values
             .filter { it.userId == userId && it.session.isOpen }
             .forEach { send(it.session, json) }

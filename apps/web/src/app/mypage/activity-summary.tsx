@@ -57,7 +57,7 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
   // ponytail: 요약은 부가 정보 — 실패 시 조용히 숨기고 탭 목록이 본 역할을 한다.
   if (failed) return null;
 
-  const bone = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
+  const bone = "var(--border)";
 
   return (
     <div className="mx-auto max-w-5xl px-6 sm:px-8">
@@ -91,7 +91,7 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
             ) : (
               <div className="h-8 w-14 animate-pulse rounded-full" style={{ background: bone }} />
             )}
-            <p className="mt-2 text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+            <p className="mt-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
               {label}
             </p>
           </button>

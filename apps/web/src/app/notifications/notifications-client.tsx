@@ -228,8 +228,8 @@ export default function NotificationsClient() {
     }
   };
 
-  const cardBg = dark ? "rgba(255,255,255,0.04)" : "#ffffff";
-  const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)";
+  const cardBg = "var(--card)";
+  const cardBorder = "var(--border)";
   const fg = "var(--foreground)";
 
   // hydration 전에는 로그인 여부 미확정 → 아래 본문(로딩 상태)으로 렌더해 깜빡임을 막는다.

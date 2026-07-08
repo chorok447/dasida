@@ -28,3 +28,8 @@ data class DmInboxPayload(
     val summary: ConversationSummaryResponse,
     val totalUnread: Int,
 )
+
+/** 알림 생성 시 헤더 배지 갱신용. DM 채널에 실어 보내지만 대화와 무관한 사용자 단위 이벤트다. */
+data class DmNotificationPayload(
+    val unreadCount: Long,
+)

@@ -182,12 +182,12 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
             aria-label="새 글 작성"
             className="w-full flex items-center gap-3 p-4 rounded-2xl border mb-6 hover:-translate-y-0.5 transition-transform text-left"
             style={{
-              background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-              borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+              background: "var(--card)",
+              borderColor: "var(--border)",
             }}
           >
             <CurrentUserAvatar />
-            <span className="flex-1 opacity-60" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+            <span className="flex-1 opacity-60" style={{ color: "var(--foreground)" }}>
               지금 어떤 업사이클을 하고 있나요?
             </span>
             <span className="flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-full" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
@@ -196,7 +196,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           </button>
 
           <div className="mb-4 flex items-center justify-between gap-4">
-            <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>
+            <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>
               {response ? `검색 결과 ${response.totalElements.toLocaleString()}개` : "게시글 검색"}
             </p>
             <button
@@ -228,7 +228,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
 
           {requestStatus === "error" && !response ? (
             <StatePanel>
-              <p style={{ color: dark ? "rgba(255,255,255,0.65)" : "rgba(28,64,68,0.65)" }}>게시글을 불러오지 못했습니다.</p>
+              <p style={{ color: "var(--foreground-muted)" }}>게시글을 불러오지 못했습니다.</p>
               <button
                 type="button"
                 onClick={() => setRetryTick((tick) => tick + 1)}

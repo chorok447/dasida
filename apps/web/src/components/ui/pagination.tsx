@@ -25,7 +25,7 @@ export function Pagination({
   if (totalPages <= 0) return null;
 
   const borderColor = dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)";
-  const foreground = dark ? "#f9f7f2" : "#0f1f22";
+  const foreground = "var(--foreground)";
   const buttonClass = `inline-flex flex-1 items-center justify-center gap-1 border transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 motion-reduce:transform-none sm:flex-none ${compact ? "rounded-full px-4 py-2 text-[12px]" : "rounded-xl px-4 py-2.5 text-[13px]"}`;
 
   return (

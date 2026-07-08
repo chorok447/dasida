@@ -42,10 +42,16 @@ export type NotificationDeleteReadResponse = {
 };
 
 // 읽음 처리 후 헤더 badge 가 다시 조회하도록 알리는 이벤트(auth 이벤트와 별개).
+// WS 로 unreadCount 가 실려 오면 detail 에 담아 재조회 없이 배지를 갱신한다.
 export const NOTIF_EVENT = "dasida-notif";
 
-export function emitNotificationsChanged() {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(NOTIF_EVENT));
+export type NotifChangedDetail = {
+  unreadCount?: number;
+};
+
+export function emitNotificationsChanged(detail?: NotifChangedDetail) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<NotifChangedDetail>(NOTIF_EVENT, { detail }));
 }
 
 export function fetchNotifications(

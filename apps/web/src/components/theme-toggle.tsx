@@ -21,7 +21,7 @@ export function ThemeToggle() {
         animate={{ x: dark ? 0 : 28 }}
         transition={{ type: "spring", stiffness: 400, damping: 28 }}
         className="w-7 h-7 rounded-full flex items-center justify-center"
-        style={{ background: dark ? "#7dd3a3" : "#1c4044", color: dark ? "#0f1f22" : "#e7dfcb" }}
+        style={{ background: "var(--accent-secondary)", color: dark ? "#0f1f22" : "#e7dfcb" }}
       >
         {dark ? <Moon size={14} /> : <Sun size={14} />}
       </motion.div>

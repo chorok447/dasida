@@ -101,11 +101,11 @@ export function PostDetailComments({
       ref={sectionRef}
       className="mt-8 scroll-mt-24 rounded-3xl border p-5 sm:p-8"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)",
+        background: "var(--card)",
+        borderColor: "var(--border)",
       }}
     >
-      <h3 className="mb-6" style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: dark ? "#f9f7f2" : "#0f1f22" }}>
+      <h3 className="mb-6" style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: "var(--foreground)" }}>
         댓글 {count}
       </h3>
       <div
@@ -129,7 +129,7 @@ export function PostDetailComments({
               maxLength={MAX_COMMENT_LENGTH}
               disabled={submitting || visibleCommentsLoading || !!listError}
               className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-              style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}
+              style={{ color: "var(--foreground)" }}
             />
             <button
               type="button"
@@ -164,20 +164,20 @@ export function PostDetailComments({
           </p>
         ) : null}
         {visibleCommentsLoading ? (
-          <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>댓글을 불러오는 중…</p>
+          <p className="text-[13px] opacity-50" style={{ color: "var(--foreground)" }}>댓글을 불러오는 중…</p>
         ) : listError ? (
           <div className="flex items-center gap-3">
             <p className="text-[13px]" style={{ color: "#ed5c48" }}>{listError}</p>
             <button
               onClick={comments.reload}
               className="text-[12px] px-3 py-1 rounded-full"
-              style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+              style={{ background: "var(--border)", color: "var(--foreground)" }}
             >
               다시 시도
             </button>
           </div>
         ) : visibleComments.length === 0 ? (
-          <p className="text-[13px] opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>첫 댓글을 남겨보세요.</p>
+          <p className="text-[13px] opacity-50" style={{ color: "var(--foreground)" }}>첫 댓글을 남겨보세요.</p>
         ) : (
           visibleComments.map((c) => (
             <div
@@ -201,8 +201,8 @@ export function PostDetailComments({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-[13px]">
-                  <span className="truncate" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>{c.author.name}</span>
-                  <span className="shrink-0 opacity-50" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                  <span className="truncate" style={{ color: "var(--foreground)" }}>{c.author.name}</span>
+                  <span className="shrink-0 opacity-50" style={{ color: "var(--foreground)" }}>
                     · {c.time}{c.edited ? " · 수정됨" : ""}
                   </span>
                   {c.ownedByMe && (
@@ -257,10 +257,10 @@ export function PostDetailComments({
                       rows={3}
                       disabled={savingCommentId === c.id}
                       className="ui-control resize-none bg-transparent px-3 py-2"
-                      style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                      style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: "var(--foreground)" }}
                     />
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-[11px] opacity-55" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+                      <span className="text-[11px] opacity-55" style={{ color: "var(--foreground)" }}>
                         {editText.length} / {MAX_COMMENT_LENGTH}
                       </span>
                       <div className="flex gap-2">
@@ -269,7 +269,7 @@ export function PostDetailComments({
                           onClick={comments.cancelEditing}
                           disabled={savingCommentId === c.id}
                           className="rounded-full px-3 py-1.5 text-[12px] disabled:opacity-40"
-                          style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.08)", color: dark ? "#f9f7f2" : "#0f1f22" }}
+                          style={{ background: "var(--border)", color: "var(--foreground)" }}
                         >
                           취소
                         </button>
