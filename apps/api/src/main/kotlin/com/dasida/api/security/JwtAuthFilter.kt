@@ -22,6 +22,7 @@ class JwtAuthFilter(
     private val users: UserRepository,
     private val denylist: TokenDenylistStore,
     private val meterRegistry: io.micrometer.core.instrument.MeterRegistry,
+    private val clock: java.time.Clock,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(req: HttpServletRequest, res: HttpServletResponse, chain: FilterChain) {
         val header = req.getHeader("Authorization")
@@ -36,6 +37,10 @@ class JwtAuthFilter(
                 val storedUser = users.findById(user.id).orElse(null)
                 if (storedUser == null || storedUser.deletedAt != null) {
                     throw IllegalArgumentException("inactive token user")
+                }
+                // 정지 계정은 기존 토큰도 즉시 차단(매 요청 DB 검사라 토큰 만료를 기다리지 않는다).
+                if (storedUser.isSuspendedAt(java.time.Instant.now(clock))) {
+                    throw IllegalArgumentException("suspended token user")
                 }
                 // 권한은 JWT 클레임이 아니라 DB role 에서 매 요청 읽는다(어차피 위에서 사용자 조회 필수).
                 // 관리자 권한 회수가 기존 토큰 만료를 기다리지 않고 즉시 반영된다.
