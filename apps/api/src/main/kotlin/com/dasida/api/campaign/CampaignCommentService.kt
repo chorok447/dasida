@@ -34,11 +34,9 @@ class CampaignCommentService(
     @Transactional(readOnly = true)
     fun listComments(campaignId: String, currentUserId: Long?, page: Int, size: Int): CampaignCommentsResponse {
         checkPageParams(page, size, MAX_PAGE_SIZE)
-        if (!campaigns.existsById(campaignId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
-        }
+        requireViewableCampaign(campaignId, currentUserId)
 
-        val result = comments.findByCampaignId(
+        val result = comments.findByCampaignIdAndHiddenAtIsNull(
             campaignId,
             PageRequest.of(
                 page,
@@ -64,6 +62,9 @@ class CampaignCommentService(
         }
         val target = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (target.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
         val commentsBefore = comments.countBeforeInNewestOrder(campaignId, target.createdAt, target.id)
         return CommentPageLocationResponse(
             commentId = target.id,
@@ -78,6 +79,10 @@ class CampaignCommentService(
         // 캠페인 삭제와 같은 row를 첫 DB 조회로 잠가 orphan comment 생성을 막는다.
         val campaign = campaigns.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        // 숨김 캠페인에는 새 댓글을 받지 않는다(개설자 포함).
+        if (campaign.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
 
         val authorSnapshot = users.findActiveOrThrow(user.id).toAuthorSnapshot()
         val saved = comments.save(
@@ -110,6 +115,10 @@ class CampaignCommentService(
         }
         val comment = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        // 숨김 댓글은 작성자에게도 수정 불가(존재를 드러내지 않는 404).
+        if (comment.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
         if (comment.authorUserId == null || comment.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
         }
@@ -129,6 +138,16 @@ class CampaignCommentService(
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
         }
         comments.delete(comment)
+    }
+
+    /** 공개 조회 경로에서 캠페인 존재·노출 여부 확인. 숨김 캠페인은 개설자에게만 보인다. */
+    private fun requireViewableCampaign(campaignId: String, currentUserId: Long?) {
+        val campaign = campaigns.findById(campaignId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        if (campaign.hiddenAt != null && (campaign.authorUserId == null || campaign.authorUserId != currentUserId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
     }
 
     private companion object {

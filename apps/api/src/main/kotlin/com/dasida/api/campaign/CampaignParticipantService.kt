@@ -41,6 +41,10 @@ class CampaignParticipantService(
         val today = LocalDate.now(clock)
         val campaign = repo.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        // 숨김 캠페인은 신규 참여 불가(존재를 드러내지 않는 404). 참여 취소(leave)는 그대로 허용한다.
+        if (campaign.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
         // lock 보유 상태에서 재확인 → 같은 유저 동시 요청도 직렬화되어 idempotent.
         if (participants.existsByCampaignIdAndUserId(campaignId, user.id)) {
             return campaign.toResponse(

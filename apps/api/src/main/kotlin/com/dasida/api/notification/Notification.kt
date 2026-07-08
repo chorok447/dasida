@@ -19,6 +19,8 @@ object NotificationType {
     const val POST_LIKED = "POST_LIKED"
     const val CAMPAIGN_STATUS_CHANGED = "CAMPAIGN_STATUS_CHANGED"
     const val REPORT_RESOLVED = "REPORT_RESOLVED"
+    const val CONTENT_HIDDEN = "CONTENT_HIDDEN"
+    const val CONTENT_RESTORED = "CONTENT_RESTORED"
 }
 
 /**

@@ -13,6 +13,7 @@ export type AdminReportTarget = {
   excerpt: string;
   authorName: string;
   href: string;
+  hidden: boolean;
 };
 
 export type AdminReportItem = {
@@ -61,7 +62,25 @@ export function fetchAdminReports(params: {
 
 export function resolveAdminReport(
   reportId: string,
-  body: { status: Exclude<ReportStatus, "PENDING">; note?: string },
+  body: { status: Exclude<ReportStatus, "PENDING">; note?: string; hideContent?: boolean },
 ): Promise<AdminReportItem> {
   return apiPatch<AdminReportItem>(`/api/admin/reports/${reportId}`, body);
+}
+
+export type ContentVisibilityResponse = {
+  targetType: ReportTargetType;
+  targetId: string;
+  hidden: boolean;
+};
+
+/** 콘텐츠 숨김(soft hide)/복구. 작성자에게 알림이 발송된다. */
+export function setAdminContentVisibility(
+  targetType: ReportTargetType,
+  targetId: string,
+  body: { hidden: boolean; reason?: string },
+): Promise<ContentVisibilityResponse> {
+  return apiPatch<ContentVisibilityResponse>(
+    `/api/admin/content/${targetType}/${encodeURIComponent(targetId)}`,
+    body,
+  );
 }

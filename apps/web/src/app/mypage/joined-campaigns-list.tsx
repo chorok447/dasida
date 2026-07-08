@@ -3,7 +3,7 @@
 import { StaggerItem } from "@/components/scroll-reveal";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { CalendarDays, ExternalLink, Loader2, PenLine, Users, UserMinus } from "lucide-react";
+import { CalendarDays, ExternalLink, Loader2, PenLine, Users, UserMinus, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { FallbackImage } from "@/components/fallback-image";
@@ -136,6 +136,14 @@ function CampaignCard({
         </div>
 
         <div className="space-y-3 p-5">
+          {campaign.hidden ? (
+            <p
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
+              style={{ background: "rgba(237,92,72,0.14)", color: "#ed5c48" }}
+            >
+              <EyeOff size={12} aria-hidden /> 운영 정책에 따라 숨김 처리된 캠페인입니다
+            </p>
+          ) : null}
           <h3
             className="line-clamp-2"
             style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 20, color: dark ? "#f9f7f2" : "#0f1f22", lineHeight: 1.3 }}

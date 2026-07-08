@@ -43,6 +43,9 @@ class Post(
     // 작성자 소유권 판단용. author.name 은 작성 당시 표시 이름 snapshot 이므로 소유권엔 쓰지 않는다.
     // 시드/기존 게시글은 null(소유자 없음). 이름 기반 backfill 하지 않는다.
     @Column(name = "author_user_id") @JsonIgnore val authorUserId: Long? = null,
+    // 관리자 숨김(soft hide). null = 공개. 값이 있으면 공개 목록/검색/상세(작성자 제외)에서 제외된다.
+    @Column(name = "hidden_at") @JsonIgnore var hiddenAt: java.time.Instant? = null,
+    @Column(name = "hidden_reason", length = 500) @JsonIgnore var hiddenReason: String? = null,
 )
 
 /**

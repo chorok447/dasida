@@ -5,7 +5,7 @@ import { FallbackImage } from "@/components/fallback-image";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { PostPreview } from "@/components/post-text";
 import Link from "next/link";
-import { ExternalLink, Heart, MessageCircle, PenLine } from "lucide-react";
+import { ExternalLink, EyeOff, Heart, MessageCircle, PenLine } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { fetchMyPostsPage, type Post } from "@/data/posts";
 import { PaginatedSection } from "./paginated-section";
@@ -51,6 +51,14 @@ function MyPostCard({ post }: { post: Post }) {
         )}
 
         <div className="space-y-3 p-4" style={{ color: dark ? "#f9f7f2" : "#0f1f22" }}>
+          {post.hidden ? (
+            <p
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
+              style={{ background: "rgba(237,92,72,0.14)", color: "#ed5c48" }}
+            >
+              <EyeOff size={12} aria-hidden /> 운영 정책에 따라 숨김 처리된 게시글입니다
+            </p>
+          ) : null}
           <div className="flex items-center justify-between gap-3">
             <span className="truncate text-[13px] font-medium">{post.author.name}</span>
             <span className="shrink-0 text-[11px] opacity-55">{post.time}</span>

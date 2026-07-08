@@ -119,6 +119,8 @@ export function notificationTypeLabel(type: string): string {
   if (type === "POST_LIKED") return "게시글 좋아요";
   if (type === "CAMPAIGN_STATUS_CHANGED") return "캠페인 상태";
   if (type === "REPORT_RESOLVED") return "신고 처리";
+  if (type === "CONTENT_HIDDEN") return "콘텐츠 숨김";
+  if (type === "CONTENT_RESTORED") return "숨김 해제";
   return "알림";
 }
 

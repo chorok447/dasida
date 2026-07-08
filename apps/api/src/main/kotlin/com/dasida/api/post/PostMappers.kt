@@ -11,6 +11,7 @@ fun Post.toResponse(
     likes = likes, comments = comments, campaignId = campaignId, likedByMe = likedByMe,
     bookmarkedByMe = bookmarkedByMe,
     ownedByMe = authorUserId != null && authorUserId == viewerId,
+    hidden = hiddenAt != null,
 )
 
 fun PostComment.toResponse(viewerId: Long?) = PostCommentResponse(

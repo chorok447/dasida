@@ -35,6 +35,7 @@ class AdminReportService(
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
     private val notifications: NotificationService,
+    private val content: AdminContentService,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -85,6 +86,17 @@ class AdminReportService(
         report.resolvedByUserId = adminUserId
         report.resolvedAt = Instant.now(clock)
         report.resolutionNote = note
+        // 제재 확정 시 대상 콘텐츠 숨김까지 한 번에 처리. 대상이 이미 삭제됐으면 조용히 넘어간다.
+        if (newStatus == ReportStatus.RESOLVED && request.hideContent) {
+            val type = runCatching { ReportTargetType.valueOf(report.targetType) }.getOrNull()
+            if (type != null) {
+                try {
+                    content.hide(type, report.targetId, note)
+                } catch (e: ResponseStatusException) {
+                    if (e.statusCode != HttpStatus.NOT_FOUND) throw e
+                }
+            }
+        }
         notifyReporter(report, newStatus, note)
         return report.toAdminResponse()
     }
@@ -146,19 +158,24 @@ class AdminReportService(
         val type = runCatching { ReportTargetType.valueOf(report.targetType) }.getOrNull() ?: return null
         return when (type) {
             ReportTargetType.POST -> posts.findById(report.targetId).orElse(null)?.let {
-                AdminReportTargetResponse(excerpt(it.text), it.author.name, "/posts/${it.id}")
+                AdminReportTargetResponse(excerpt(it.text), it.author.name, "/posts/${it.id}", hidden = it.hiddenAt != null)
             }
 
             ReportTargetType.POST_COMMENT -> postComments.findById(report.targetId).orElse(null)?.let {
-                AdminReportTargetResponse(excerpt(it.text), it.author.name, "/posts/${it.postId}")
+                AdminReportTargetResponse(excerpt(it.text), it.author.name, "/posts/${it.postId}", hidden = it.hiddenAt != null)
             }
 
             ReportTargetType.CAMPAIGN -> campaigns.findById(report.targetId).orElse(null)?.let {
-                AdminReportTargetResponse(excerpt("${it.title} — ${it.summary}"), it.author.name, "/campaigns/${it.id}")
+                AdminReportTargetResponse(
+                    excerpt("${it.title} — ${it.summary}"),
+                    it.author.name,
+                    "/campaigns/${it.id}",
+                    hidden = it.hiddenAt != null,
+                )
             }
 
             ReportTargetType.CAMPAIGN_COMMENT -> campaignComments.findById(report.targetId).orElse(null)?.let {
-                AdminReportTargetResponse(excerpt(it.text), it.author.name, "/campaigns/${it.campaignId}")
+                AdminReportTargetResponse(excerpt(it.text), it.author.name, "/campaigns/${it.campaignId}", hidden = it.hiddenAt != null)
             }
         }
     }

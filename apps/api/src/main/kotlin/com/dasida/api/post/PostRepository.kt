@@ -18,6 +18,13 @@ interface PostRepository : JpaRepository<Post, String> {
 
     fun countByAuthorUserId(authorUserId: Long): Long
 
+    // 공개 노출 경로용(숨김 제외). 작성자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.
+    fun findByHiddenAtIsNull(sort: org.springframework.data.domain.Sort): List<Post>
+
+    fun findByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long, pageable: Pageable): Page<Post>
+
+    fun findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(ids: Collection<String>): List<Post>
+
     /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Post p where p.id = :id")
@@ -35,6 +42,6 @@ interface PostRepository : JpaRepository<Post, String> {
     @Query("update Post p set p.author.name = :name, p.author.profileImageUrl = :imageUrl where p.authorUserId = :userId")
     fun syncAuthorProfile(@Param("userId") userId: Long, @Param("name") name: String, @Param("imageUrl") imageUrl: String?): Int
 
-    @Query("SELECT p.id FROM Post p ORDER BY p.seq DESC, p.id ASC")
+    @Query("SELECT p.id FROM Post p WHERE p.hiddenAt IS NULL ORDER BY p.seq DESC, p.id ASC")
     fun findIds(pageable: Pageable): Page<String>
 }

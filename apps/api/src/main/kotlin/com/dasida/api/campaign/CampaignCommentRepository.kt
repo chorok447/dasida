@@ -13,10 +13,14 @@ interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
     fun findByCampaignId(campaignId: String, pageable: Pageable): Page<CampaignComment>
     fun findByIdAndCampaignId(id: String, campaignId: String): CampaignComment?
 
+    // 공개 노출 경로용(숨김 제외).
+    fun findByCampaignIdAndHiddenAtIsNull(campaignId: String, pageable: Pageable): Page<CampaignComment>
+
     @Query(
         """
         select count(c) from CampaignComment c
         where c.campaignId = :campaignId
+          and c.hiddenAt is null
           and (c.createdAt > :createdAt or (c.createdAt = :createdAt and c.id < :id))
         """,
     )
