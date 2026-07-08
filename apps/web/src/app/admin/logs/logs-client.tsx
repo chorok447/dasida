@@ -2,10 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, ScrollText } from "lucide-react";
+import { toast } from "sonner";
+import { Eye, Loader2, ScrollText } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
-import { fetchAdminLogs, type AdminActionLogItem, type AdminActionLogsPageResponse, type AdminActionType } from "@/data/admin";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ApiError, apiErrorMessage } from "@/lib/api";
+import {
+  fetchAdminLogs,
+  setAdminContentVisibility,
+  type AdminActionLogItem,
+  type AdminActionLogsPageResponse,
+  type AdminActionType,
+} from "@/data/admin";
 import { REPORT_TARGET_LABELS, type ReportTargetType } from "@/data/reports";
 import { ACTION_LABELS, RESTRICTIVE_ACTIONS } from "./action-labels";
 
@@ -127,6 +136,32 @@ export default function LogsClient() {
 
 function LogRow({ log }: { log: AdminActionLogItem }) {
   const restrictive = RESTRICTIVE_ACTIONS.has(log.action);
+  const confirm = useConfirm();
+  const [busy, setBusy] = useState(false);
+  const [restored, setRestored] = useState(false);
+  // 숨김 상세는 웹에서 열리지 않으므로(작성자 포함 404), 신고 큐 밖에서 숨긴 콘텐츠의 복구 수단을 여기 둔다.
+  const restorable = log.action === "CONTENT_HIDDEN" && !restored;
+
+  const restore = async () => {
+    if (busy) return;
+    const ok = await confirm({
+      title: "이 콘텐츠를 다시 공개할까요?",
+      message: "공개 목록·검색에 다시 노출되고 작성자에게 알림이 갑니다. 이미 공개 상태면 변화가 없습니다.",
+      confirmLabel: "복구",
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await setAdminContentVisibility(log.targetType as ReportTargetType, log.targetId, { hidden: false });
+      setRestored(true);
+      toast.success("복구했습니다.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? apiErrorMessage(e, "복구에 실패했습니다.") : "복구에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <li className="rounded-3xl border p-5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
       <div className="flex flex-wrap items-center gap-2">
@@ -149,6 +184,23 @@ function LogRow({ log }: { log: AdminActionLogItem }) {
         <span className="ml-auto text-[12px]" style={{ color: "var(--foreground-muted)" }}>
           {formatCreatedAt(log.createdAt)}
         </span>
+        {restorable && (
+          <button
+            type="button"
+            onClick={restore}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] disabled:opacity-50"
+            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+          >
+            {busy ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <Eye size={12} aria-hidden />}
+            복구
+          </button>
+        )}
+        {restored && (
+          <span className="rounded-full px-2.5 py-1 text-[11px]" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>
+            복구됨
+          </span>
+        )}
       </div>
       <p className="mt-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
         대상: {targetLabel(log)} ·{" "}

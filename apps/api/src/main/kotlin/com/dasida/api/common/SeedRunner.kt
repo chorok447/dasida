@@ -63,6 +63,7 @@ class SeedRunner(
                 name = adminName,
                 verified = true,
                 role = UserRole.ADMIN.name,
+                createdAt = java.time.Instant.now(),
             ),
         )
         log.info("admin account seeded: {}", adminEmail)

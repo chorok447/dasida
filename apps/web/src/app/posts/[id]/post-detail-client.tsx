@@ -9,6 +9,7 @@ import { apiPost, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { ReportButton } from "@/components/report-button";
+import { AdminModerationButton } from "@/components/admin-moderation-button";
 import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Post } from "@/data/posts";
@@ -172,7 +173,10 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
               </button>
             </div>
           ) : (
-            <ReportButton targetType="POST" targetId={p.id} ownedByMe={false} />
+            <div className="flex items-center gap-2">
+              <AdminModerationButton targetType="POST" targetId={p.id} />
+              <ReportButton targetType="POST" targetId={p.id} ownedByMe={false} />
+            </div>
           )}
         </div>
 

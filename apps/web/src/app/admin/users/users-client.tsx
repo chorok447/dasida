@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Search, ShieldBan, ShieldCheck, BadgeCheck } from "lucide-react";
+import { Loader2, Search, ShieldBan, ShieldCheck, BadgeCheck, UserCog } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ApiError, apiErrorMessage } from "@/lib/api";
+import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import {
   fetchAdminUsers,
+  setAdminUserRole,
   setAdminUserSuspension,
   type AdminUserItem,
   type AdminUsersPageResponse,
@@ -203,11 +206,39 @@ export default function UsersClient() {
 }
 
 function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated: AdminUserItem) => void }) {
+  const confirm = useConfirm();
+  // 본인 역할은 변경할 수 없다(마지막 관리자 잠금 방지 — 서버도 400 으로 거부).
+  const { profile } = useCurrentUserProfile();
+  const isSelf = profile?.id === user.id;
   const [days, setDays] = useState<string>("7");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   // 제재 대상이 아닌 계정(관리자/탈퇴)은 조작 UI를 숨긴다.
   const actionable = !user.deleted && user.role !== "ADMIN";
+
+  const changeRole = async () => {
+    if (busy) return;
+    const promote = user.role === "USER";
+    const ok = await confirm({
+      title: promote ? `${user.name}님을 관리자로 지정할까요?` : `${user.name}님의 관리자 권한을 해제할까요?`,
+      message: promote
+        ? "관리자는 신고 처리·콘텐츠 숨김·회원 정지 등 모든 관리 기능을 쓸 수 있습니다. 즉시 적용됩니다."
+        : "관리 기능 접근이 즉시 차단됩니다.",
+      confirmLabel: promote ? "관리자 지정" : "권한 해제",
+      destructive: !promote,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const updated = await setAdminUserRole(user.id, promote ? "ADMIN" : "USER");
+      onUpdated(updated);
+      toast.success(promote ? `${user.name}님을 관리자로 지정했습니다.` : `${user.name}님의 관리자 권한을 해제했습니다.`);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? apiErrorMessage(e, "역할 변경에 실패했습니다.") : "역할 변경에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const suspend = async () => {
     if (busy) return;
@@ -275,6 +306,7 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
           </span>
         )}
         <span className="ml-auto text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+          {user.createdAt && `가입 ${new Date(user.createdAt).toLocaleDateString("ko-KR")} · `}
           게시글 {user.postCount} · 캠페인 {user.campaignCount}
         </span>
       </div>
@@ -285,9 +317,22 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
         </p>
       )}
 
-      {actionable && (
+      {!user.deleted && (!isSelf || actionable) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {user.suspended ? (
+          {!isSelf && (
+            <button
+              type="button"
+              onClick={changeRole}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[13px] disabled:opacity-50"
+              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+            >
+              {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <UserCog size={14} aria-hidden />}
+              {user.role === "USER" ? "관리자 지정" : "관리자 해제"}
+            </button>
+          )}
+          {actionable &&
+          (user.suspended ? (
             <button
               type="button"
               onClick={unsuspend}
@@ -332,7 +377,7 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
                 정지
               </button>
             </>
-          )}
+          ))}
         </div>
       )}
     </li>

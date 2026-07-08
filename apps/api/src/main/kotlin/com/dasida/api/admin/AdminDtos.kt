@@ -86,6 +86,8 @@ data class AdminUserResponse(
     @field:Schema(description = "정지 만료 시각(ISO-8601). 정지 중이 아니면 null.")
     val suspendedUntil: String?,
     val suspendedReason: String?,
+    @field:Schema(description = "가입 시각(ISO-8601). 가입일 기록 도입 이전 회원은 null.")
+    val createdAt: String?,
     val postCount: Long,
     val campaignCount: Long,
 )
@@ -96,6 +98,12 @@ data class AdminUsersPageResponse(
     val size: Int,
     val totalElements: Long,
     val totalPages: Int,
+)
+
+@Schema(description = "회원 역할 변경 요청")
+data class SetUserRoleRequest(
+    @field:Schema(description = "변경할 역할", allowableValues = ["USER", "ADMIN"])
+    val role: String,
 )
 
 @Schema(description = "회원 정지/해제 요청")
