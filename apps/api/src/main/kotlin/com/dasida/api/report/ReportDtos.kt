@@ -22,6 +22,8 @@ data class ReportResponse(
     val reason: String,
     val detail: String?,
     val time: String,
+    @field:Schema(description = "처리 상태", allowableValues = ["PENDING", "RESOLVED", "DISMISSED"])
+    val status: String = "PENDING",
 )
 
 data class ReportsPageResponse(

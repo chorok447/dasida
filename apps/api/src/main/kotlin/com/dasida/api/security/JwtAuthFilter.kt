@@ -37,7 +37,13 @@ class JwtAuthFilter(
                 if (storedUser == null || storedUser.deletedAt != null) {
                     throw IllegalArgumentException("inactive token user")
                 }
-                val auth = UsernamePasswordAuthenticationToken(user, null, listOf(SimpleGrantedAuthority("ROLE_USER")))
+                // 권한은 JWT 클레임이 아니라 DB role 에서 매 요청 읽는다(어차피 위에서 사용자 조회 필수).
+                // 관리자 권한 회수가 기존 토큰 만료를 기다리지 않고 즉시 반영된다.
+                val authorities = buildList {
+                    add(SimpleGrantedAuthority("ROLE_USER"))
+                    if (storedUser.isAdmin) add(SimpleGrantedAuthority("ROLE_ADMIN"))
+                }
+                val auth = UsernamePasswordAuthenticationToken(user, null, authorities)
                 SecurityContextHolder.getContext().authentication = auth
             } catch (_: Exception) {
                 // 명시적으로 Bearer 토큰을 줬는데 유효하지 않음 → 401 로 즉시 거절

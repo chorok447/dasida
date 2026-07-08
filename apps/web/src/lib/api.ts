@@ -114,6 +114,17 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** 백엔드 PATCH 호출(JSON). 실패 시 ApiError. */
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const res = await apiFetch(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
+  return res.json() as Promise<T>;
+}
+
 /** 백엔드 DELETE 호출. 실패 시 ApiError. */
 export async function apiDelete<T>(path: string): Promise<T> {
   const res = await apiFetch(path, { method: "DELETE" });

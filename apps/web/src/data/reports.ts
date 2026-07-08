@@ -20,6 +20,8 @@ export type CreateReportRequest = {
   detail?: string | null;
 };
 
+export type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
+
 export type ReportItem = {
   id: string;
   targetType: ReportTargetType;
@@ -27,6 +29,7 @@ export type ReportItem = {
   reason: ReportReason;
   detail: string | null;
   time: string;
+  status?: ReportStatus;
 };
 
 export type ReportsPageResponse = {
@@ -50,6 +53,12 @@ export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
   POST_COMMENT: "게시글 댓글",
   CAMPAIGN: "캠페인",
   CAMPAIGN_COMMENT: "캠페인 댓글",
+};
+
+export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  PENDING: "대기 중",
+  RESOLVED: "조치 완료",
+  DISMISSED: "기각",
 };
 
 export function createReport(body: CreateReportRequest): Promise<ReportItem> {

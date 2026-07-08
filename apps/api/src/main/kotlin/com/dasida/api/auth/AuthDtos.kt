@@ -37,6 +37,8 @@ data class UserProfileResponse(
     val verified: Boolean,
     val profileImageUrl: String? = null,
     val notifyCampaignUpdates: Boolean = true,
+    @field:Schema(description = "역할", allowableValues = ["USER", "ADMIN"])
+    val role: String = "USER",
 )
 
 @Schema(description = "공개 프로필(타인 조회용)")

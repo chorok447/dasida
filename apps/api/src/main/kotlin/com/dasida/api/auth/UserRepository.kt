@@ -7,6 +7,7 @@ import org.springframework.web.server.ResponseStatusException
 interface UserRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
     fun existsByEmail(email: String): Boolean
+    fun countByDeletedAtIsNull(): Long
 }
 
 /** DB 최신 사용자. 존재하지 않거나 탈퇴(deletedAt != null)한 사용자는 인증 실패로 처리한다. */
