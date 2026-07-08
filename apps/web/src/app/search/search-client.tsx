@@ -22,6 +22,7 @@ import {
   buildSearchHref,
   parseSearchRecruitState,
   parseSearchSort,
+  parseSearchTag,
   parseSearchType,
   type SearchUrlState,
 } from "./search-filters";
@@ -42,6 +43,7 @@ export default function SearchClient() {
       sort: parseSearchSort(searchParams.get("sort"), type),
       recruitState: type === "campaigns" ? parseSearchRecruitState(searchParams.get("recruitState")) : null,
       availableOnly: type === "campaigns" && searchParams.get("availableOnly") === "true",
+      tag: parseSearchTag(searchParams.get("tag"), type),
       ...(type === "campaigns"
         ? readCampaignDateRangeFilters(searchParams)
         : EMPTY_CAMPAIGN_DATE_RANGE_FILTERS),
@@ -82,6 +84,7 @@ export default function SearchClient() {
           sort: merged.type === "users" || merged.sort === "deadline" ? "latest" : merged.sort,
           recruitState: null,
           availableOnly: false,
+          tag: merged.type === "users" ? "" : merged.tag,
           ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
         };
     const href = buildSearchHref(next);
@@ -95,6 +98,7 @@ export default function SearchClient() {
     sort: "latest",
     recruitState: null,
     availableOnly: false,
+    tag: "",
     ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
     page: 0,
   });
@@ -123,6 +127,7 @@ export default function SearchClient() {
     campaignParams.set("size", "6");
     const postParams = new URLSearchParams();
     if (urlState.query) postParams.set("q", urlState.query);
+    if (urlState.tag) postParams.set("tag", urlState.tag);
     postParams.set("sort", urlState.sort === "popular" ? "popular" : "latest");
     postParams.set("page", urlState.page.toString());
     postParams.set("size", "6");
@@ -181,10 +186,15 @@ export default function SearchClient() {
     urlState.runStartFrom,
     urlState.runStartTo,
     urlState.sort,
+    urlState.tag,
     urlState.type,
   ]);
 
-  const title = urlState.query ? `“${urlState.query}” 검색 결과` : "전체 탐색";
+  const title = urlState.query
+    ? `“${urlState.query}” 검색 결과`
+    : urlState.tag
+      ? `${urlState.tag} 태그 게시글`
+      : "전체 탐색";
 
   return (
     <PageShell paddingClassName="relative min-h-screen overflow-hidden px-5 pb-20 pt-28 sm:px-6 sm:pt-32" orb="left">

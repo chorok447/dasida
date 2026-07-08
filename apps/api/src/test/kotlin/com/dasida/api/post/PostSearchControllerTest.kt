@@ -349,4 +349,45 @@ class PostSearchControllerTest(
             param("followingOnly", "true")
         }.andExpect { status { isUnauthorized() } }
     }
+
+    @Test
+    fun `tag 파라미터는 해당 태그가 달린 게시글만 반환한다`() {
+        val tag = "#${marker("tag")}"
+        postRepo.saveAndFlush(
+            Post(
+                id = "tagged-${UUID.randomUUID()}",
+                author = Author("태그작성자", false),
+                time = "방금",
+                text = "본문에는 태그 문자열이 없음",
+                tags = listOf(tag, "#기타"),
+                images = emptyList(),
+                likes = 0,
+                comments = 0,
+                seq = System.nanoTime(),
+            ),
+        )
+        // 태그의 부분 문자열만 겹치는 글은 제외되어야 한다(원소 완전 일치).
+        postRepo.saveAndFlush(
+            Post(
+                id = "tagged-partial-${UUID.randomUUID()}",
+                author = Author("태그작성자", false),
+                time = "방금",
+                text = "부분 일치 글",
+                tags = listOf("$tag-suffix"),
+                images = emptyList(),
+                likes = 0,
+                comments = 0,
+                seq = System.nanoTime(),
+            ),
+        )
+
+        mvc.get("/api/posts/search") { param("tag", tag) }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalElements", Matchers.`is`(1))
+            jsonPath("$.content[0].tags", Matchers.hasItem(tag))
+        }
+
+        mvc.get("/api/posts/search") { param("tag", "a".repeat(101)) }
+            .andExpect { status { isBadRequest() } }
+    }
 }

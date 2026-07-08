@@ -18,6 +18,7 @@ import { FallbackImage } from "@/components/fallback-image";
 import { PostText } from "@/components/post-text";
 import { RichBodyImageGrid } from "@/components/rich-body-image-grid";
 import { ShareButton } from "@/components/share-button";
+import { TagLink } from "@/components/tag-link";
 import { createConversation } from "@/data/messages";
 import { getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -193,9 +194,7 @@ export function PostDetailHero({
 
           <div className="flex flex-wrap gap-1.5">
             {p.tags.map((t) => (
-              <span key={t} className="text-[12px] px-2.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>
-                {t}
-              </span>
+              <TagLink key={t} tag={t} className="text-[12px] px-2.5 py-0.5 rounded-full transition-opacity hover:opacity-75" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }} />
             ))}
           </div>
 
