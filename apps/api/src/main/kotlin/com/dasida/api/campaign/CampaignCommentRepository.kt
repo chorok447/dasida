@@ -14,12 +14,16 @@ interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
     fun findByIdAndCampaignId(id: String, campaignId: String): CampaignComment?
 
     // 공개 노출 경로용(숨김 제외).
-    fun findByCampaignIdAndHiddenAtIsNull(campaignId: String, pageable: Pageable): Page<CampaignComment>
+    fun findByCampaignIdAndParentIdIsNullAndHiddenAtIsNull(campaignId: String, pageable: Pageable): Page<CampaignComment>
+    fun findByParentIdInAndHiddenAtIsNullOrderByCreatedAtAscIdAsc(parentIds: Collection<String>): List<CampaignComment>
+    fun findByParentId(parentId: String): List<CampaignComment>
 
+    // 최상위 댓글(답글 제외) 기준 딥링크 위치 계산.
     @Query(
         """
         select count(c) from CampaignComment c
         where c.campaignId = :campaignId
+          and c.parentId is null
           and c.hiddenAt is null
           and (c.createdAt > :createdAt or (c.createdAt = :createdAt and c.id < :id))
         """,
@@ -31,6 +35,7 @@ interface CampaignCommentRepository : JpaRepository<CampaignComment, String> {
     ): Long
 
     fun countByCampaignId(campaignId: String): Long
+    fun countByCampaignIdAndHiddenAtIsNull(campaignId: String): Long
 
     @Transactional
     fun deleteByCampaignId(campaignId: String)

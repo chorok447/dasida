@@ -37,13 +37,13 @@ class PostCommentService(
         return commentRepo.findByPostIdAndHiddenAtIsNullOrderBySeqAsc(postId).map { it.toResponse(currentUserId) }
     }
 
-    /** 기존 배열 API는 유지하고 상세 화면용 최신순 pagination을 별도 경로로 제공한다. */
+    /** 기존 배열 API는 유지하고 상세 화면용 최신순 pagination을 별도 경로로 제공한다. 최상위 댓글 기준으로 페이징하고 답글은 중첩한다. */
     @Transactional(readOnly = true)
     fun listCommentsPage(postId: String, currentUserId: Long?, page: Int, size: Int): PostCommentsPageResponse {
         checkPageParams(page, size, MAX_COMMENT_PAGE_SIZE)
         requireViewablePost(postId, currentUserId)
 
-        val result = commentRepo.findByPostIdAndHiddenAtIsNull(
+        val result = commentRepo.findByPostIdAndParentIdIsNullAndHiddenAtIsNull(
             postId,
             PageRequest.of(
                 page,
@@ -51,12 +51,24 @@ class PostCommentService(
                 Sort.by(Sort.Order.desc("seq"), Sort.Order.asc("id")),
             ),
         )
+        val parentIds = result.content.map { it.id }
+        val repliesByParent = if (parentIds.isEmpty()) {
+            emptyMap()
+        } else {
+            commentRepo.findByParentIdInAndHiddenAtIsNullOrderBySeqAscIdAsc(parentIds).groupBy { it.parentId }
+        }
         return PostCommentsPageResponse(
-            content = result.content.map { it.toResponse(currentUserId) },
+            content = result.content.map { comment ->
+                comment.toResponse(
+                    currentUserId,
+                    replies = (repliesByParent[comment.id] ?: emptyList()).map { it.toResponse(currentUserId) },
+                )
+            },
             page = result.number,
             size = result.size,
             totalElements = result.totalElements,
             totalPages = result.totalPages,
+            totalComments = commentRepo.countByPostIdAndHiddenAtIsNull(postId),
         )
     }
 
@@ -72,7 +84,15 @@ class PostCommentService(
         if (target.hiddenAt != null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         }
-        val commentsBefore = commentRepo.countBeforeInNewestOrder(postId, target.seq, target.id)
+        // 답글은 최상위 부모의 page 에 함께 표시되므로 부모 기준으로 위치를 계산한다.
+        val anchor = target.parentId?.let { parentId ->
+            val parent = commentRepo.findByIdAndPostId(parentId, postId)
+            if (parent == null || parent.hiddenAt != null) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+            }
+            parent
+        } ?: target
+        val commentsBefore = commentRepo.countBeforeInNewestOrder(postId, anchor.seq, anchor.id)
         return CommentPageLocationResponse(
             commentId = target.id,
             page = (commentsBefore / size).toInt(),
@@ -90,6 +110,17 @@ class PostCommentService(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
         }
         val text = normalizeCommentText(req.text)
+        // 답글이면 부모가 같은 게시글의 노출 중인 최상위 댓글인지 확인한다(1단계 제한).
+        val parent = req.parentId?.let { parentId ->
+            val found = commentRepo.findByIdAndPostId(parentId, postId)
+            if (found == null || found.hiddenAt != null) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $parentId not found")
+            }
+            if (found.parentId != null) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "cannot reply to a reply")
+            }
+            found
+        }
         val authorSnapshot = users.findActiveOrThrow(author.id).toAuthorSnapshot()
         val comment = commentRepo.save(
             PostComment(
@@ -100,18 +131,31 @@ class PostCommentService(
                 time = "방금 전",
                 seq = System.currentTimeMillis(),
                 authorUserId = author.id,
+                parentId = parent?.id,
             ),
         )
         post.comments += 1
-        // 내 게시글에 타인이 댓글 → 게시글 작성자에게 알림(본인 댓글/작성자 미상은 helper 가 생략).
-        notifications.notify(
-            recipientUserId = post.authorUserId,
-            actorUserId = author.id,
-            type = NotificationType.POST_COMMENT_CREATED,
-            title = "${authorSnapshot.name}님이 내 게시글에 댓글을 남겼습니다",
-            body = text,
-            href = "/posts/$postId?commentId=${comment.id}",
-        )
+        if (parent != null) {
+            // 답글은 부모 댓글 작성자에게 알린다(본인 답글/작성자 미상은 helper 가 생략).
+            notifications.notify(
+                recipientUserId = parent.authorUserId,
+                actorUserId = author.id,
+                type = NotificationType.COMMENT_REPLY_CREATED,
+                title = "${authorSnapshot.name}님이 내 댓글에 답글을 남겼습니다",
+                body = text,
+                href = "/posts/$postId?commentId=${comment.id}",
+            )
+        } else {
+            // 내 게시글에 타인이 댓글 → 게시글 작성자에게 알림(본인 댓글/작성자 미상은 helper 가 생략).
+            notifications.notify(
+                recipientUserId = post.authorUserId,
+                actorUserId = author.id,
+                type = NotificationType.POST_COMMENT_CREATED,
+                title = "${authorSnapshot.name}님이 내 게시글에 댓글을 남겼습니다",
+                body = text,
+                href = "/posts/$postId?commentId=${comment.id}",
+            )
+        }
         return comment.toResponse(author.id)
     }
 
@@ -152,11 +196,12 @@ class PostCommentService(
         if (comment.authorUserId == null || comment.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment author")
         }
+        // 최상위 댓글 삭제 시 답글도 함께 삭제한다. 숨김 상태였던 건 카운터가 이미 감소했으므로 제외.
+        val replies = if (comment.parentId == null) commentRepo.findByParentId(comment.id) else emptyList()
+        val visibleRemoved = replies.count { it.hiddenAt == null } + (if (comment.hiddenAt == null) 1 else 0)
+        if (replies.isNotEmpty()) commentRepo.deleteAll(replies)
         commentRepo.delete(comment)
-        // 숨김 댓글은 숨김 시점에 이미 카운터가 감소했으므로 다시 줄이지 않는다.
-        if (comment.hiddenAt == null) {
-            post.comments = maxOf(0, post.comments - 1)
-        }
+        post.comments = maxOf(0, post.comments - visibleRemoved)
     }
 
     /** 공개 조회 경로에서 게시글 존재·노출 여부 확인. 숨김 게시글은 작성자에게만 보인다. */

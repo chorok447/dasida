@@ -34,7 +34,7 @@ fun CampaignProof.toResponse(viewerId: Long?) = CampaignProofResponse(
     ownedByMe = authorUserId == viewerId,
 )
 
-fun CampaignComment.toResponse(viewerId: Long?) = CampaignCommentResponse(
+fun CampaignComment.toResponse(viewerId: Long?, replies: List<CampaignCommentResponse> = emptyList()) = CampaignCommentResponse(
     id = id,
     campaignId = campaignId,
     author = author,
@@ -43,4 +43,6 @@ fun CampaignComment.toResponse(viewerId: Long?) = CampaignCommentResponse(
     ownedByMe = authorUserId != null && authorUserId == viewerId,
     edited = updatedAt != null,
     updatedAt = updatedAt,
+    parentId = parentId,
+    replies = replies,
 )

@@ -33,7 +33,7 @@ const PAGE_SIZE = 20;
 type NotificationFilterId = "all" | "social" | "campaign" | "follow" | "message";
 
 const FILTER_GROUP_TYPES: Partial<Record<NotificationFilterId, string[]>> = {
-  social: ["POST_LIKED", "POST_COMMENT_CREATED", "CAMPAIGN_COMMENT_CREATED"],
+  social: ["POST_LIKED", "POST_COMMENT_CREATED", "CAMPAIGN_COMMENT_CREATED", "COMMENT_REPLY_CREATED"],
   campaign: ["CAMPAIGN_JOINED", "CAMPAIGN_PARTICIPATION_REMOVED", "CAMPAIGN_STATUS_CHANGED", "CAMPAIGN_PROOF_CREATED"],
   follow: ["USER_FOLLOWED"],
   message: ["MESSAGE_RECEIVED"],

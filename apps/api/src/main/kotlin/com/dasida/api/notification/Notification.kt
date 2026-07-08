@@ -11,6 +11,7 @@ import java.time.Instant
 /** 알림 타입. 이번 PR 범위. */
 object NotificationType {
     const val POST_COMMENT_CREATED = "POST_COMMENT_CREATED"
+    const val COMMENT_REPLY_CREATED = "COMMENT_REPLY_CREATED"
     const val CAMPAIGN_COMMENT_CREATED = "CAMPAIGN_COMMENT_CREATED"
     const val CAMPAIGN_JOINED = "CAMPAIGN_JOINED"
     const val CAMPAIGN_PROOF_CREATED = "CAMPAIGN_PROOF_CREATED"

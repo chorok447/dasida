@@ -36,7 +36,7 @@ class CampaignCommentService(
         checkPageParams(page, size, MAX_PAGE_SIZE)
         requireViewableCampaign(campaignId, currentUserId)
 
-        val result = comments.findByCampaignIdAndHiddenAtIsNull(
+        val result = comments.findByCampaignIdAndParentIdIsNullAndHiddenAtIsNull(
             campaignId,
             PageRequest.of(
                 page,
@@ -44,12 +44,24 @@ class CampaignCommentService(
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")),
             ),
         )
+        val parentIds = result.content.map { it.id }
+        val repliesByParent = if (parentIds.isEmpty()) {
+            emptyMap()
+        } else {
+            comments.findByParentIdInAndHiddenAtIsNullOrderByCreatedAtAscIdAsc(parentIds).groupBy { it.parentId }
+        }
         return CampaignCommentsResponse(
-            content = result.content.map { it.toResponse(currentUserId) },
+            content = result.content.map { comment ->
+                comment.toResponse(
+                    currentUserId,
+                    replies = (repliesByParent[comment.id] ?: emptyList()).map { it.toResponse(currentUserId) },
+                )
+            },
             page = result.number,
             size = result.size,
             totalElements = result.totalElements,
             totalPages = result.totalPages,
+            totalComments = comments.countByCampaignIdAndHiddenAtIsNull(campaignId),
         )
     }
 
@@ -65,7 +77,15 @@ class CampaignCommentService(
         if (target.hiddenAt != null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         }
-        val commentsBefore = comments.countBeforeInNewestOrder(campaignId, target.createdAt, target.id)
+        // 답글은 최상위 부모의 page 에 함께 표시되므로 부모 기준으로 위치를 계산한다.
+        val anchor = target.parentId?.let { parentId ->
+            val parent = comments.findByIdAndCampaignId(parentId, campaignId)
+            if (parent == null || parent.hiddenAt != null) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+            }
+            parent
+        } ?: target
+        val commentsBefore = comments.countBeforeInNewestOrder(campaignId, anchor.createdAt, anchor.id)
         return CommentPageLocationResponse(
             commentId = target.id,
             page = (commentsBefore / size).toInt(),
@@ -84,6 +104,17 @@ class CampaignCommentService(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         }
 
+        // 답글이면 부모가 같은 캠페인의 노출 중인 최상위 댓글인지 확인한다(1단계 제한).
+        val parent = request.parentId?.let { parentId ->
+            val found = comments.findByIdAndCampaignId(parentId, campaignId)
+            if (found == null || found.hiddenAt != null) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $parentId not found")
+            }
+            if (found.parentId != null) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "cannot reply to a reply")
+            }
+            found
+        }
         val authorSnapshot = users.findActiveOrThrow(user.id).toAuthorSnapshot()
         val saved = comments.save(
             CampaignComment(
@@ -93,17 +124,30 @@ class CampaignCommentService(
                 text = text,
                 createdAt = Instant.now(clock),
                 authorUserId = user.id,
+                parentId = parent?.id,
             ),
         )
-        // 내가 개설한 캠페인에 타인이 댓글 → 개설자에게 알림(본인 댓글/개설자 미상은 helper 가 생략).
-        notifications.notify(
-            recipientUserId = campaign.authorUserId,
-            actorUserId = user.id,
-            type = NotificationType.CAMPAIGN_COMMENT_CREATED,
-            title = "${authorSnapshot.name}님이 캠페인에 댓글을 남겼습니다",
-            body = campaign.title,
-            href = "/campaigns/$campaignId?commentId=${saved.id}",
-        )
+        if (parent != null) {
+            // 답글은 부모 댓글 작성자에게 알린다(본인 답글/작성자 미상은 helper 가 생략).
+            notifications.notify(
+                recipientUserId = parent.authorUserId,
+                actorUserId = user.id,
+                type = NotificationType.COMMENT_REPLY_CREATED,
+                title = "${authorSnapshot.name}님이 내 댓글에 답글을 남겼습니다",
+                body = text,
+                href = "/campaigns/$campaignId?commentId=${saved.id}",
+            )
+        } else {
+            // 내가 개설한 캠페인에 타인이 댓글 → 개설자에게 알림(본인 댓글/개설자 미상은 helper 가 생략).
+            notifications.notify(
+                recipientUserId = campaign.authorUserId,
+                actorUserId = user.id,
+                type = NotificationType.CAMPAIGN_COMMENT_CREATED,
+                title = "${authorSnapshot.name}님이 캠페인에 댓글을 남겼습니다",
+                body = campaign.title,
+                href = "/campaigns/$campaignId?commentId=${saved.id}",
+            )
+        }
         return saved.toResponse(user.id)
     }
 
@@ -136,6 +180,11 @@ class CampaignCommentService(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         if (comment.authorUserId == null || comment.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
+        }
+        // 최상위 댓글 삭제 시 답글도 함께 삭제한다.
+        if (comment.parentId == null) {
+            val replies = comments.findByParentId(comment.id)
+            if (replies.isNotEmpty()) comments.deleteAll(replies)
         }
         comments.delete(comment)
     }

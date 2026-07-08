@@ -132,14 +132,20 @@ data class CampaignCommentResponse(
     val ownedByMe: Boolean,
     val edited: Boolean,
     val updatedAt: Instant?,
+    val parentId: String? = null,
+    // 최상위 댓글일 때만 채워지는 1단계 답글 목록(오래된 순).
+    val replies: List<CampaignCommentResponse> = emptyList(),
 )
 
 data class CampaignCommentsResponse(
     val content: List<CampaignCommentResponse>,
     val page: Int,
     val size: Int,
+    // pagination 은 최상위 댓글 기준.
     val totalElements: Long,
     val totalPages: Int,
+    // 답글을 포함한 전체 노출 댓글 수(카운트 표시용).
+    val totalComments: Long = 0,
 )
 
 data class CampaignProofResponse(
@@ -174,6 +180,8 @@ data class CreateCampaignProofRequest(
 data class CreateCampaignCommentRequest(
     @field:Schema(description = "댓글 본문(최대 500자)")
     val text: String,
+    @field:Schema(description = "답글 대상 댓글 id(최상위 댓글만 가능). null 이면 일반 댓글.")
+    val parentId: String? = null,
 )
 
 @Schema(description = "캠페인 댓글 수정 요청")

@@ -15,12 +15,16 @@ interface PostCommentRepository : JpaRepository<PostComment, String> {
 
     // 공개 노출 경로용(숨김 제외).
     fun findByPostIdAndHiddenAtIsNullOrderBySeqAsc(postId: String): List<PostComment>
-    fun findByPostIdAndHiddenAtIsNull(postId: String, pageable: Pageable): Page<PostComment>
+    fun findByPostIdAndParentIdIsNullAndHiddenAtIsNull(postId: String, pageable: Pageable): Page<PostComment>
+    fun findByParentIdInAndHiddenAtIsNullOrderBySeqAscIdAsc(parentIds: Collection<String>): List<PostComment>
+    fun findByParentId(parentId: String): List<PostComment>
 
+    // 최상위 댓글(답글 제외) 기준 딥링크 위치 계산.
     @Query(
         """
         select count(c) from PostComment c
         where c.postId = :postId
+          and c.parentId is null
           and c.hiddenAt is null
           and (c.seq > :seq or (c.seq = :seq and c.id < :id))
         """,
@@ -32,6 +36,7 @@ interface PostCommentRepository : JpaRepository<PostComment, String> {
     ): Long
 
     fun countByPostId(postId: String): Long
+    fun countByPostIdAndHiddenAtIsNull(postId: String): Long
 
     @Transactional
     fun deleteByPostId(postId: String)
