@@ -6,6 +6,7 @@ import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
+import com.dasida.api.notification.CommentMentionNotifier
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
@@ -29,6 +30,7 @@ class PostCommentService(
     private val commentRepo: PostCommentRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
+    private val mentions: CommentMentionNotifier,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -156,6 +158,14 @@ class PostCommentService(
                 href = "/posts/$postId?commentId=${comment.id}",
             )
         }
+        // @멘션된 사용자에게 알림. 위에서 이미 댓글/답글 알림을 받은 수신자는 제외해 중복을 막는다.
+        mentions.notifyMentions(
+            text = text,
+            actorUserId = author.id,
+            actorName = authorSnapshot.name,
+            href = "/posts/$postId?commentId=${comment.id}",
+            excludeUserIds = setOfNotNull(parent?.authorUserId ?: post.authorUserId),
+        )
         return comment.toResponse(author.id)
     }
 

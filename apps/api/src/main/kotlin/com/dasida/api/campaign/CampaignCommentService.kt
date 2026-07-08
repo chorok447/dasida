@@ -6,6 +6,7 @@ import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
+import com.dasida.api.notification.CommentMentionNotifier
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
@@ -29,6 +30,7 @@ class CampaignCommentService(
     private val comments: CampaignCommentRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
+    private val mentions: CommentMentionNotifier,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -148,6 +150,14 @@ class CampaignCommentService(
                 href = "/campaigns/$campaignId?commentId=${saved.id}",
             )
         }
+        // @멘션된 사용자에게 알림. 위에서 이미 댓글/답글 알림을 받은 수신자는 제외해 중복을 막는다.
+        mentions.notifyMentions(
+            text = text,
+            actorUserId = user.id,
+            actorName = authorSnapshot.name,
+            href = "/campaigns/$campaignId?commentId=${saved.id}",
+            excludeUserIds = setOfNotNull(parent?.authorUserId ?: campaign.authorUserId),
+        )
         return saved.toResponse(user.id)
     }
 

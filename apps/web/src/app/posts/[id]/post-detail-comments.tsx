@@ -10,6 +10,7 @@ import { getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
 import { Avatar } from "@/components/avatar";
 import { CurrentUserAvatar } from "@/components/current-user-avatar";
+import { MentionText } from "@/components/mention-text";
 import { ReportButton } from "@/components/report-button";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -249,7 +250,7 @@ export function PostDetailComments({
         ) : (
           <>
             <p className="mt-0.5 whitespace-pre-wrap break-words" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
-              {c.text}
+              <MentionText text={c.text} />
             </p>
             {!isReply && token ? (
               <button

@@ -122,6 +122,7 @@ export function notificationTypeLabel(type: string): string {
   if (type === "MESSAGE_RECEIVED") return "새 메시지";
   if (type === "POST_COMMENT_CREATED") return "게시글 댓글";
   if (type === "COMMENT_REPLY_CREATED") return "댓글 답글";
+  if (type === "COMMENT_MENTIONED") return "멘션";
   if (type === "CAMPAIGN_COMMENT_CREATED") return "캠페인 댓글";
   if (type === "CAMPAIGN_PROOF_CREATED") return "캠페인 참여 인증";
   if (type === "POST_LIKED") return "게시글 좋아요";

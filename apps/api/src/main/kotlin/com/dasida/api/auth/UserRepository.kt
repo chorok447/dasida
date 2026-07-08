@@ -10,6 +10,9 @@ interface UserRepository : JpaRepository<User, Long> {
     fun countByDeletedAtIsNull(): Long
     fun countBySuspendedUntilAfter(now: java.time.Instant): Long
 
+    // 댓글 @멘션 해석용. 이름 정확 일치, 탈퇴 사용자는 제외한다.
+    fun findByNameInAndDeletedAtIsNull(names: Collection<String>): List<User>
+
     // 관리자 회원 검색. q(소문자, 이메일/이름 부분 일치)와 정지 중 필터를 한 쿼리로 처리한다.
     @org.springframework.data.jpa.repository.Query(
         """select u from User u

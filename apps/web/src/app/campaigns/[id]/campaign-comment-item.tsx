@@ -2,6 +2,7 @@
 
 import { CornerDownRight, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { MentionText } from "@/components/mention-text";
 import { ReportButton } from "@/components/report-button";
 import type { CampaignComment } from "@/data/campaigns";
 import { useTheme } from "@/lib/theme-context";
@@ -178,7 +179,7 @@ export function CampaignCommentItem({
             className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7"
             style={{ color: "var(--foreground-muted)" }}
           >
-            {comment.text}
+            <MentionText text={comment.text} />
           </p>
           {!isReply && onToggleReply ? (
             <button
