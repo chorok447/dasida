@@ -20,4 +20,14 @@ class User(
     @Column(name = "profile_image_url", length = 500) var profileImageUrl: String? = null,
     @Column(name = "notify_campaign_updates", nullable = false) var notifyCampaignUpdates: Boolean = true,
     @Column(name = "deleted_at") @JsonIgnore var deletedAt: Instant? = null,
-)
+    // Report.targetType 과 같은 패턴: enum name 을 String 컬럼에 저장(UserRole 참조).
+    @Column(nullable = false, length = 20) var role: String = UserRole.USER.name,
+) {
+    val isAdmin: Boolean
+        @JsonIgnore get() = role == UserRole.ADMIN.name
+}
+
+enum class UserRole {
+    USER,
+    ADMIN,
+}

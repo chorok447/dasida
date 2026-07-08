@@ -8,6 +8,7 @@ export type UserProfile = {
   verified: boolean;
   profileImageUrl?: string | null;
   notifyCampaignUpdates?: boolean;
+  role?: "USER" | "ADMIN";
 };
 
 export type PublicUser = {

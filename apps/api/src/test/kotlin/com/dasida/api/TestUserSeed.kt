@@ -12,7 +12,7 @@ class TestUserSeed(private val jdbc: JdbcTemplate) : CommandLineRunner {
             val exists = jdbc.queryForObject("select count(*) from users where id = ?", Long::class.java, id) != 0L
             if (!exists) {
                 jdbc.update(
-                    "insert into users (id, email, password_hash, name, verified, profile_image_url, notify_campaign_updates, deleted_at) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "insert into users (id, email, password_hash, name, verified, profile_image_url, notify_campaign_updates, deleted_at, role) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id,
                     "test-user-$id@dasida.local",
                     "test-only",
@@ -21,6 +21,7 @@ class TestUserSeed(private val jdbc: JdbcTemplate) : CommandLineRunner {
                     null,
                     true,
                     null,
+                    "USER",
                 )
             }
         }

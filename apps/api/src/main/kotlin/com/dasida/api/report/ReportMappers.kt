@@ -7,4 +7,5 @@ fun Report.toResponse() = ReportResponse(
     reason = reason,
     detail = detail,
     time = time,
+    status = status,
 )
