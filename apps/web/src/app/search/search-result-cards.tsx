@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { Bookmark, Heart, MessageCircle, Users } from "lucide-react";
 import { AuthorHeader } from "@/components/author-header";
+import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { PostPreview } from "@/components/post-text";
 import { ReportButton } from "@/components/report-button";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import type { Post } from "@/data/posts";
+import type { PublicUser } from "@/data/users";
 import { progressPercent } from "@/lib/progress";
 
 export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
@@ -72,6 +74,26 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
         </div>
       </Link>
     </div>
+  );
+}
+
+export function UserResultCard({ user }: { user: PublicUser }) {
+  return (
+    <Link
+      href={`/users/${user.id}`}
+      className="flex items-center gap-3 rounded-2xl border p-4 transition-transform hover:-translate-y-0.5"
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
+    >
+      <Avatar name={user.name} verified={user.verified} src={user.profileImageUrl ?? undefined} size={44} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] font-medium" style={{ color: "var(--foreground)" }}>
+          {user.name}
+        </p>
+        <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+          게시글 {user.postCount.toLocaleString("ko-KR")}개 · 팔로워 {user.followerCount.toLocaleString("ko-KR")}명
+        </p>
+      </div>
+    </Link>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   type CampaignSearchResponse,
 } from "@/data/campaigns";
 import type { PostSearchResponse } from "@/data/posts";
+import { searchUsersPage, type PublicUserPageResponse } from "@/data/users";
 import { ApiError, apiGet } from "@/lib/api";
 import { getSessionId } from "@/lib/auth";
 import { beginAuthedRequest, clearSessionIfUnauthorized, staleByIdentity } from "@/lib/authed-request";
@@ -60,6 +61,7 @@ export default function SearchClient() {
     status: "loading",
     campaigns: null,
     posts: null,
+    users: null,
     errorMessage: null,
   });
   const currentState = staleByIdentity(resultState, requestIdentity, {
@@ -67,6 +69,7 @@ export default function SearchClient() {
     status: "loading",
     campaigns: null,
     posts: null,
+    users: null,
     errorMessage: null,
   });
 
@@ -76,7 +79,7 @@ export default function SearchClient() {
       ? merged
       : {
           ...merged,
-          sort: merged.sort === "deadline" ? "latest" : merged.sort,
+          sort: merged.type === "users" || merged.sort === "deadline" ? "latest" : merged.sort,
           recruitState: null,
           availableOnly: false,
           ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS,
@@ -129,18 +132,23 @@ export default function SearchClient() {
     const load = async () => {
       let campaigns: CampaignSearchResponse | null = null;
       let posts: PostSearchResponse | null = null;
+      let users: PublicUserPageResponse | null = null;
       if (urlState.type === "all") {
-        [campaigns, posts] = await Promise.all([
+        [campaigns, posts, users] = await Promise.all([
           apiGet<CampaignSearchResponse>(`/api/campaigns/search?${campaignParams.toString()}`),
           apiGet<PostSearchResponse>(`/api/posts/search?${postParams.toString()}`),
+          // 사용자는 이름 검색만 지원 → 검색어가 있을 때만 함께 조회한다.
+          urlState.query ? searchUsersPage(urlState.query, urlState.page, 6) : Promise.resolve(null),
         ]);
       } else if (urlState.type === "campaigns") {
         campaigns = await apiGet<CampaignSearchResponse>(`/api/campaigns/search?${campaignParams.toString()}`);
+      } else if (urlState.type === "users") {
+        users = await searchUsersPage(urlState.query, urlState.page, 12);
       } else {
         posts = await apiGet<PostSearchResponse>(`/api/posts/search?${postParams.toString()}`);
       }
       if (!guard.isCurrent()) return;
-      setResultState({ identity: requestIdentity, status: "success", campaigns, posts, errorMessage: null });
+      setResultState({ identity: requestIdentity, status: "success", campaigns, posts, users, errorMessage: null });
     };
 
     load().catch((error) => {
@@ -154,6 +162,7 @@ export default function SearchClient() {
         status: "error",
         campaigns: null,
         posts: null,
+        users: null,
         errorMessage,
       });
     });
@@ -189,7 +198,7 @@ export default function SearchClient() {
             {title}
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-[13px] leading-6 opacity-60" style={{ color: "var(--foreground)" }}>
-            캠페인과 게시글을 한 번에 찾고, 원하는 결과만 골라볼 수 있습니다.
+            캠페인, 게시글, 사용자를 한 번에 찾고, 원하는 결과만 골라볼 수 있습니다.
           </p>
         </div>
 

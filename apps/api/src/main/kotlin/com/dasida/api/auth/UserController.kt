@@ -52,6 +52,15 @@ class UserController(
         @AuthenticationPrincipal user: AuthUser,
     ): PublicUserPageResponse = userFollowService.followersPage(user.id, user.id, page, size)
 
+    @Operation(summary = "사용자 검색", description = "공개 API. 이름 부분 일치로 검색하며, JWT 가 있으면 팔로우/차단 상태를 포함한다.")
+    @GetMapping("/search")
+    fun search(
+        @RequestParam(defaultValue = "") q: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): PublicUserPageResponse = userFollowService.searchUsers(q, user?.id, page, size)
+
     @Operation(summary = "공개 프로필 조회", description = "이메일 등 민감 정보는 포함하지 않는다.")
     @GetMapping("/{id}")
     fun profile(

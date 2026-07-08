@@ -102,6 +102,31 @@ class UserFollowService(
     }
 
     @Transactional(readOnly = true)
+    fun searchUsers(q: String, viewerId: Long?, page: Int, size: Int): PublicUserPageResponse {
+        checkPageParams(page, size, MAX_PAGE_SIZE)
+        val query = q.trim()
+        if (query.length > MAX_QUERY_LENGTH) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "q must not exceed $MAX_QUERY_LENGTH characters")
+        }
+        // 빈 검색어로 전체 회원을 나열하지 않는다.
+        if (query.isEmpty()) {
+            return PublicUserPageResponse(content = emptyList(), page = page, size = size, totalElements = 0, totalPages = 0)
+        }
+        val result = users.searchPublic(
+            query.lowercase(),
+            Instant.now(clock),
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")),
+        )
+        return PublicUserPageResponse(
+            content = result.content.map { toPublicUser(it, viewerId) },
+            page = result.number,
+            size = result.size,
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+        )
+    }
+
+    @Transactional(readOnly = true)
     fun followeeIdsFor(viewerId: Long): List<Long> = follows.findFolloweeIdsByFollowerId(viewerId)
 
     @Transactional
@@ -145,5 +170,6 @@ class UserFollowService(
     private companion object {
         const val MAX_PAGE_SIZE = 100
         const val MAX_RECOMMEND_SIZE = 10
+        const val MAX_QUERY_LENGTH = 100
     }
 }

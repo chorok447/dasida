@@ -11,7 +11,7 @@ import {
 } from "@/data/campaigns";
 import { useTheme } from "@/lib/theme-context";
 
-export type SearchType = "all" | "campaigns" | "posts";
+export type SearchType = "all" | "campaigns" | "posts" | "users";
 export type SearchSort = "latest" | "popular" | "deadline";
 
 export type SearchUrlState = CampaignDateRangeFilters & {
@@ -27,6 +27,7 @@ const TYPE_TABS: { id: SearchType; label: string }[] = [
   { id: "all", label: "전체" },
   { id: "campaigns", label: "캠페인" },
   { id: "posts", label: "게시글" },
+  { id: "users", label: "사용자" },
 ];
 
 const RECRUIT_LABELS: Record<CampaignRecruitState, string> = {
@@ -97,7 +98,7 @@ export function SearchFilters({
         value={state.query}
         onCommit={(query) => onUpdate({ query: query.slice(0, 100), page: 0 }, true)}
         label="통합 검색"
-        placeholder="캠페인과 게시글을 검색해보세요."
+        placeholder="캠페인, 게시글, 사용자를 검색해보세요."
         loading={loading}
         className="rounded-full"
       />
@@ -125,19 +126,21 @@ export function SearchFilters({
             );
           })}
         </div>
-        <label className="flex items-center gap-2 self-end text-[13px] sm:self-auto">
-          <span className="sr-only">검색 결과 정렬</span>
-          <select
-            value={state.sort}
-            onChange={(event) => onUpdate({ sort: event.target.value as SearchSort, page: 0 })}
-            className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-            style={{ color: "var(--foreground)", background: "var(--card)", borderColor: "var(--border)" }}
-          >
-            <option value="latest">최신순</option>
-            <option value="popular">인기순</option>
-            {state.type === "campaigns" ? <option value="deadline">마감임박순</option> : null}
-          </select>
-        </label>
+        {state.type !== "users" ? (
+          <label className="flex items-center gap-2 self-end text-[13px] sm:self-auto">
+            <span className="sr-only">검색 결과 정렬</span>
+            <select
+              value={state.sort}
+              onChange={(event) => onUpdate({ sort: event.target.value as SearchSort, page: 0 })}
+              className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              style={{ color: "var(--foreground)", background: "var(--card)", borderColor: "var(--border)" }}
+            >
+              <option value="latest">최신순</option>
+              <option value="popular">인기순</option>
+              {state.type === "campaigns" ? <option value="deadline">마감임박순</option> : null}
+            </select>
+          </label>
+        ) : null}
       </div>
       {state.type === "campaigns" ? (
         <>
@@ -187,10 +190,11 @@ export function SearchFilters({
 }
 
 export function parseSearchType(value: string | null): SearchType {
-  return value === "campaigns" || value === "posts" ? value : "all";
+  return value === "campaigns" || value === "posts" || value === "users" ? value : "all";
 }
 
 export function parseSearchSort(value: string | null, type: SearchType): SearchSort {
+  if (type === "users") return "latest";
   if (value === "popular") return "popular";
   if (value === "deadline" && type === "campaigns") return "deadline";
   return "latest";
