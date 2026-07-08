@@ -71,6 +71,41 @@ data class ContentVisibilityResponse(
     val hidden: Boolean,
 )
 
+@Schema(description = "관리자용 회원 항목")
+data class AdminUserResponse(
+    val id: Long,
+    val email: String,
+    val name: String,
+    val verified: Boolean,
+    @field:Schema(description = "역할", allowableValues = ["USER", "ADMIN"])
+    val role: String,
+    @field:Schema(description = "탈퇴 여부(탈퇴 시 email/name 은 익명화된 값)")
+    val deleted: Boolean,
+    @field:Schema(description = "현재 정지 중 여부")
+    val suspended: Boolean,
+    @field:Schema(description = "정지 만료 시각(ISO-8601). 정지 중이 아니면 null.")
+    val suspendedUntil: String?,
+    val suspendedReason: String?,
+    val postCount: Long,
+    val campaignCount: Long,
+)
+
+data class AdminUsersPageResponse(
+    val content: List<AdminUserResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
+@Schema(description = "회원 정지/해제 요청")
+data class SetUserSuspensionRequest(
+    @field:Schema(description = "정지 만료 시각(ISO-8601 instant). null 이면 정지 해제.", example = "2026-08-01T00:00:00Z")
+    val suspendedUntil: String? = null,
+    @field:Schema(description = "정지 사유(선택, 최대 500자)")
+    val reason: String? = null,
+)
+
 @Schema(description = "관리자 대시보드 요약")
 data class AdminSummaryResponse(
     val users: Long,

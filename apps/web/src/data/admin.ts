@@ -73,6 +73,49 @@ export type ContentVisibilityResponse = {
   hidden: boolean;
 };
 
+export type AdminUserItem = {
+  id: number;
+  email: string;
+  name: string;
+  verified: boolean;
+  role: "USER" | "ADMIN";
+  deleted: boolean;
+  suspended: boolean;
+  suspendedUntil: string | null;
+  suspendedReason: string | null;
+  postCount: number;
+  campaignCount: number;
+};
+
+export type AdminUsersPageResponse = {
+  content: AdminUserItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export function fetchAdminUsers(params: {
+  q?: string;
+  page?: number;
+  size?: number;
+}): Promise<AdminUsersPageResponse> {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 0),
+    size: String(params.size ?? 20),
+  });
+  if (params.q) query.set("q", params.q);
+  return apiGet<AdminUsersPageResponse>(`/api/admin/users?${query.toString()}`);
+}
+
+/** 회원 정지(suspendedUntil 미래 시각) 또는 해제(null). 로그인·기존 토큰이 즉시 차단된다. */
+export function setAdminUserSuspension(
+  userId: number,
+  body: { suspendedUntil: string | null; reason?: string },
+): Promise<AdminUserItem> {
+  return apiPatch<AdminUserItem>(`/api/admin/users/${userId}/suspension`, body);
+}
+
 /** 콘텐츠 숨김(soft hide)/복구. 작성자에게 알림이 발송된다. */
 export function setAdminContentVisibility(
   targetType: ReportTargetType,

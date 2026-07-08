@@ -71,7 +71,23 @@ class AuthService(
         if (!encoder.matches(req.password, user.passwordHash)) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid credentials")
         }
+        // 비밀번호 검증 후에만 정지 여부를 알린다(자격 증명 없이 정지 여부가 새지 않도록).
+        requireNotSuspended(user)
         return issueTokens(user)
+    }
+
+    /** 정지 계정 로그인 차단. 사용자에게 그대로 보여줄 한국어 안내를 담는다(403 body 변환은 AuthController). */
+    private fun requireNotSuspended(user: User) {
+        val until = user.suspendedUntil ?: return
+        val now = Instant.now(clock)
+        if (!until.isAfter(now)) return
+        val message = if (until.isAfter(now.plus(java.time.Duration.ofDays(365L * 50)))) {
+            "이용이 영구 정지된 계정입니다."
+        } else {
+            val untilLabel = java.time.LocalDate.ofInstant(until, java.time.ZoneId.of("Asia/Seoul"))
+            "이용이 정지된 계정입니다. ($untilLabel 까지)"
+        }
+        throw SuspendedAccountException(message)
     }
 
     /**
@@ -97,6 +113,10 @@ class AuthService(
         }
         val user = repo.findById(userId).orElse(null)
         if (user == null || user.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
+        }
+        // 정지 계정은 refresh 로도 세션을 연장할 수 없다.
+        if (user.isSuspendedAt(Instant.now(clock))) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
         }
         denylist.deny(hashToken(refreshToken), jwt.remainingTtlSeconds(refreshToken))
@@ -235,3 +255,10 @@ class AuthService(
         const val DELETE_CONFIRM_TEXT = "탈퇴합니다"
     }
 }
+
+/**
+ * 정지 계정 로그인 안내. 전역 정책상 ResponseStatusException 의 reason 은 에러 body 로 노출되지 않으므로
+ * (ErrorResponseBodyContractTest), 사용자 안내용으로 작성된 이 메시지만 AuthController 의
+ * @ExceptionHandler 가 403 body 의 detail 로 의도적으로 노출한다.
+ */
+class SuspendedAccountException(val detail: String) : RuntimeException(detail)

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { AuthShell, FieldInput } from "@/components/auth-shell";
 import { useTheme } from "@/lib/theme-context";
-import { apiPost, ApiError } from "@/lib/api";
+import { apiPost, ApiError, apiErrorMessage } from "@/lib/api";
 import { setSession } from "@/lib/auth";
 
 type AuthResponse = { token: string; name: string; verified: boolean };
@@ -32,11 +32,14 @@ export default function LoginPage() {
       router.push(next && next.startsWith("/") ? next : "/feed");
     } catch (e) {
       setSubmitting(false);
-      // 보안상 이메일 존재 여부는 드러내지 않음(401은 자격증명 오류로 통일). 그 외는 일시적 오류 안내.
+      // 보안상 이메일 존재 여부는 드러내지 않음(401은 자격증명 오류로 통일).
+      // 403은 정지 계정 — 서버가 내려준 안내(기간 포함)를 그대로 보여준다. 그 외는 일시적 오류 안내.
       setError(
         e instanceof ApiError && e.status === 401
           ? "이메일 또는 비밀번호가 올바르지 않습니다."
-          : "로그인에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          : e instanceof ApiError && e.status === 403
+            ? apiErrorMessage(e, "이용이 정지된 계정입니다.")
+            : "로그인에 실패했습니다. 잠시 후 다시 시도해주세요.",
       );
     }
   };

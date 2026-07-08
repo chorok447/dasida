@@ -12,8 +12,10 @@ import org.springframework.http.HttpHeaders
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -136,6 +138,15 @@ class AuthController(
             // 탈퇴 사용자는 필터·refresh 모두에서 거절되므로 denylist 없이 쿠키만 정리한다.
             res.expireAuthCookies()
         }
+
+    /**
+     * 정지 계정 안내(403). 전역 에러 body 는 내부 reason 을 노출하지 않지만(ErrorResponseBodyContractTest),
+     * 이 메시지는 사용자에게 보여주려고 작성한 문구라 detail 로 의도적으로 내린다(프론트 apiErrorMessage 가 읽는다).
+     */
+    @ExceptionHandler(SuspendedAccountException::class)
+    fun handleSuspendedAccount(e: SuspendedAccountException): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(mapOf("status" to HttpStatus.FORBIDDEN.value(), "detail" to e.detail))
 
     private fun requireUserId(principal: AuthUser?): Long =
         principal?.id ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")

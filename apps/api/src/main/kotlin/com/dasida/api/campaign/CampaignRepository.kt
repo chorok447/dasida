@@ -18,6 +18,7 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
+    fun countByAuthorUserId(authorUserId: Long): Long
 
     // 공개 노출 경로용(숨김 제외). 개설자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.
     fun findByHiddenAtIsNull(sort: org.springframework.data.domain.Sort): List<Campaign>
