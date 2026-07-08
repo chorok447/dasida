@@ -52,7 +52,14 @@ class AuthService(
         val user = try {
             // saveAndFlush 로 트랜잭션 안에서 INSERT 를 강제해, unique 제약 위반을 이 자리에서 catch → 409 로 변환한다.
             // [spike] Spring Security 7 에서 PasswordEncoder.encode 반환이 @Nullable(String?) 로 변경 → non-null 보장.
-            repo.saveAndFlush(User(email = email, passwordHash = encoder.encode(req.password)!!, name = name))
+            repo.saveAndFlush(
+                User(
+                    email = email,
+                    passwordHash = encoder.encode(req.password)!!,
+                    name = name,
+                    createdAt = Instant.now(clock),
+                ),
+            )
         } catch (e: DataIntegrityViolationException) {
             // 동시 요청이 사전 체크를 둘 다 통과한 경우 → unique 제약 위반을 409 로 변환(500 방지)
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")

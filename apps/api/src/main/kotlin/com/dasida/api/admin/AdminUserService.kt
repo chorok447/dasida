@@ -2,6 +2,7 @@ package com.dasida.api.admin
 
 import com.dasida.api.auth.User
 import com.dasida.api.auth.UserRepository
+import com.dasida.api.auth.UserRole
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.post.PostRepository
@@ -94,6 +95,39 @@ class AdminUserService(
         return user.toAdminResponse(now)
     }
 
+    @Transactional
+    fun setRole(adminUserId: Long, userId: Long, request: SetUserRoleRequest): AdminUserResponse {
+        val newRole = try {
+            UserRole.valueOf(request.role.trim())
+        } catch (_: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "role must be USER or ADMIN")
+        }
+        val user = users.findById(userId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
+        }
+        if (user.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
+        }
+        // 본인 역할은 바꿀 수 없다. 마지막 관리자가 스스로 강등해 전원이 잠기는 사고 방지.
+        if (userId == adminUserId) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "cannot change own role")
+        }
+        val now = Instant.now(clock)
+        val previousRole = user.role
+        if (previousRole == newRole.name) return user.toAdminResponse(now)
+
+        user.role = newRole.name
+        // JwtAuthFilter 가 매 요청 DB role 을 읽으므로 승격/강등이 기존 토큰에도 즉시 반영된다.
+        actionLogs.record(
+            adminUserId,
+            AdminActionType.ROLE_CHANGED,
+            TARGET_TYPE_USER,
+            userId.toString(),
+            detail = "$previousRole → ${newRole.name}",
+        )
+        return user.toAdminResponse(now)
+    }
+
     /** 감사 로그용 정지 요약. AuthService 의 로그인 안내와 같은 기준(50년 초과 = 영구)으로 표기한다. */
     private fun suspensionDetail(until: Instant, now: Instant, reason: String?): String {
         val period = if (until.isAfter(now.plus(java.time.Duration.ofDays(365L * 50)))) {
@@ -114,6 +148,7 @@ class AdminUserService(
         suspended = isSuspendedAt(now),
         suspendedUntil = suspendedUntil?.takeIf { it.isAfter(now) }?.toString(),
         suspendedReason = suspendedReason?.takeIf { isSuspendedAt(now) },
+        createdAt = createdAt?.toString(),
         postCount = posts.countByAuthorUserId(requireNotNull(id)),
         campaignCount = campaigns.countByAuthorUserId(requireNotNull(id)),
     )

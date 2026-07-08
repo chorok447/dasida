@@ -84,6 +84,8 @@ export type AdminUserItem = {
   suspended: boolean;
   suspendedUntil: string | null;
   suspendedReason: string | null;
+  /** 가입 시각(ISO-8601). 가입일 기록 도입 이전 회원은 null. */
+  createdAt: string | null;
   postCount: number;
   campaignCount: number;
 };
@@ -111,6 +113,11 @@ export function fetchAdminUsers(params: {
   return apiGet<AdminUsersPageResponse>(`/api/admin/users?${query.toString()}`);
 }
 
+/** 회원 역할 변경(승격/강등). DB role 을 매 요청 읽으므로 기존 토큰에도 즉시 반영된다. 본인 역할은 변경 불가(400). */
+export function setAdminUserRole(userId: number, role: "USER" | "ADMIN"): Promise<AdminUserItem> {
+  return apiPatch<AdminUserItem>(`/api/admin/users/${userId}/role`, { role });
+}
+
 /** 회원 정지(suspendedUntil 미래 시각) 또는 해제(null). 로그인·기존 토큰이 즉시 차단된다. */
 export function setAdminUserSuspension(
   userId: number,
@@ -125,7 +132,8 @@ export type AdminActionType =
   | "CONTENT_HIDDEN"
   | "CONTENT_RESTORED"
   | "USER_SUSPENDED"
-  | "USER_UNSUSPENDED";
+  | "USER_UNSUSPENDED"
+  | "ROLE_CHANGED";
 
 export type AdminActionLogItem = {
   id: number;

@@ -25,6 +25,8 @@ class User(
     // 관리자 제재. null 또는 과거 = 정상, 미래 = 정지 중(로그인·기존 토큰 모두 차단).
     @Column(name = "suspended_until") @JsonIgnore var suspendedUntil: Instant? = null,
     @Column(name = "suspended_reason", length = 500) @JsonIgnore var suspendedReason: String? = null,
+    // 가입 시각. V12 이전 가입자는 null(가입 시점을 알 수 없음).
+    @Column(name = "created_at") val createdAt: Instant? = null,
 ) {
     val isAdmin: Boolean
         @JsonIgnore get() = role == UserRole.ADMIN.name

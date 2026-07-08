@@ -8,6 +8,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   CONTENT_RESTORED: "콘텐츠 복구",
   USER_SUSPENDED: "회원 정지",
   USER_UNSUSPENDED: "정지 해제",
+  ROLE_CHANGED: "역할 변경",
 };
 
 /** 제재 성격의 조치는 경고색, 되돌리는 조치는 보통색으로 구분한다. */

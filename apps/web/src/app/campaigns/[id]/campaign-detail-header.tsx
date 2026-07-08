@@ -9,6 +9,7 @@ import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { ReportButton } from "@/components/report-button";
+import { AdminModerationButton } from "@/components/admin-moderation-button";
 import { ShareButton } from "@/components/share-button";
 
 function StatusBadge({ c }: { c: Campaign }) {
@@ -109,6 +110,7 @@ export function CampaignHeaderCard({
                     <Bookmark size={14} fill={bookmarked ? "#0f1f22" : "transparent"} />
                   </button>
                 ) : null}
+                <AdminModerationButton targetType="CAMPAIGN" targetId={c.id} />
                 <ReportButton targetType="CAMPAIGN" targetId={c.id} ownedByMe={c.ownedByMe} className="!h-9 !px-3" />
                 <ShareButton
                   title={c.title}

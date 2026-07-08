@@ -67,6 +67,14 @@ class AdminController(
         @RequestParam(defaultValue = "20") size: Int,
     ): AdminUsersPageResponse = userService.getUsers(q, suspended, page, size)
 
+    @Operation(summary = "회원 역할 변경 (승격/강등, 기존 토큰에도 즉시 반영. 본인 역할은 변경 불가)")
+    @PatchMapping("/users/{id}/role")
+    fun setUserRole(
+        @PathVariable id: Long,
+        @RequestBody request: SetUserRoleRequest,
+        @AuthenticationPrincipal admin: AuthUser,
+    ): AdminUserResponse = userService.setRole(admin.id, id, request)
+
     @Operation(summary = "회원 정지/해제 (로그인·기존 토큰·refresh 즉시 차단)")
     @PatchMapping("/users/{id}/suspension")
     fun setUserSuspension(

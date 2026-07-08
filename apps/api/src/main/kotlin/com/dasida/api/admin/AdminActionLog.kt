@@ -40,6 +40,7 @@ enum class AdminActionType {
     CONTENT_RESTORED,
     USER_SUSPENDED,
     USER_UNSUSPENDED,
+    ROLE_CHANGED,
 }
 
 interface AdminActionLogRepository : JpaRepository<AdminActionLog, Long> {
