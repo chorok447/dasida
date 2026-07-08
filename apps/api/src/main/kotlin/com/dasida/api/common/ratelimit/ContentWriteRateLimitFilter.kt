@@ -22,6 +22,7 @@ class ContentWriteRateLimitFilter(
         if (segments.size != 4) return false
         return segments[0] == "api" &&
             segments[1] in setOf("posts", "campaigns") &&
-            segments[3] == "comments"
+            // 참여 인증(proofs)도 댓글과 같은 작성 한도를 공유한다.
+            segments[3] in setOf("comments", "proofs")
     }
 }

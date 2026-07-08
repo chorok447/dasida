@@ -26,6 +26,7 @@ class CampaignController(
     private val campaignService: CampaignService,
     private val participantService: CampaignParticipantService,
     private val commentService: CampaignCommentService,
+    private val proofService: CampaignProofService,
 ) {
     @Operation(summary = "캠페인 목록 조회", description = "공개 API. JWT 가 있으면 사용자별 참여/소유 상태를 포함한다.")
     @GetMapping
@@ -183,6 +184,35 @@ class CampaignController(
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreateCampaignRequest, @AuthenticationPrincipal user: AuthUser): CampaignResponse =
         campaignService.createCampaign(user, req)
+
+    @Operation(summary = "캠페인 참여 인증 조회", description = "공개 API. JWT 가 있으면 소유 여부와 내 인증 여부를 포함한다.")
+    @GetMapping("/{campaignId}/proofs")
+    fun proofs(
+        @PathVariable campaignId: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser?,
+    ): CampaignProofsResponse = proofService.listProofs(campaignId, user?.id, page, size)
+
+    @Operation(summary = "캠페인 참여 인증 작성", description = "참여자만, 모집 시작 이후, 1인 1건.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{campaignId}/proofs")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun addProof(
+        @PathVariable campaignId: String,
+        @RequestBody req: CreateCampaignProofRequest,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CampaignProofResponse = proofService.createProof(user, campaignId, req)
+
+    @Operation(summary = "캠페인 참여 인증 삭제")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{campaignId}/proofs/{proofId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteProof(
+        @PathVariable campaignId: String,
+        @PathVariable proofId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ) = proofService.deleteProof(user.id, campaignId, proofId)
 
     @Operation(summary = "캠페인 댓글 조회", description = "공개 API. JWT 가 있으면 댓글 소유 여부를 포함한다.")
     @GetMapping("/{campaignId}/comments")

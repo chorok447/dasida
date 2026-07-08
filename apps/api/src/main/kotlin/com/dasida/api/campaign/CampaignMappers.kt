@@ -24,6 +24,16 @@ fun Campaign.toResponse(
     )
 }
 
+fun CampaignProof.toResponse(viewerId: Long?) = CampaignProofResponse(
+    id = id,
+    campaignId = campaignId,
+    author = author,
+    text = text,
+    images = images,
+    createdAt = createdAt,
+    ownedByMe = authorUserId == viewerId,
+)
+
 fun CampaignComment.toResponse(viewerId: Long?) = CampaignCommentResponse(
     id = id,
     campaignId = campaignId,

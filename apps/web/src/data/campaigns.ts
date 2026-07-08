@@ -1,5 +1,5 @@
 // 캠페인 데이터는 백엔드 API가 source of truth. 타입 + 프레젠테이션 메타만 유지.
-import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
+import { apiDelete, apiDeleteVoid, apiGet, apiPost, apiPut } from "@/lib/api";
 import { mergeCampaignBodyForEditor } from "@/lib/rich-body-html";
 import { richTextPlainLength } from "@/lib/rich-text-length";
 import type { CommentPageLocationResponse } from "@/data/comments";
@@ -225,6 +225,52 @@ export function updateCampaignComment(
   return apiPut<CampaignComment>(
     `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}`,
     body,
+  );
+}
+
+export type CampaignProof = {
+  id: string;
+  campaignId: string;
+  author: { name: string; verified: boolean; profileImageUrl?: string | null };
+  text: string;
+  images: string[];
+  createdAt: string;
+  ownedByMe: boolean;
+};
+
+export type CampaignProofsResponse = {
+  content: CampaignProof[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  proofedByMe: boolean;
+};
+
+export const MAX_PROOF_TEXT_LENGTH = 500;
+export const MAX_PROOF_IMAGES = 4;
+
+export function fetchCampaignProofs(
+  campaignId: string,
+  page: number,
+  size = 6,
+): Promise<CampaignProofsResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return apiGet<CampaignProofsResponse>(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/proofs?${params.toString()}`,
+  );
+}
+
+export function createCampaignProof(
+  campaignId: string,
+  body: { text: string; images: string[] },
+): Promise<CampaignProof> {
+  return apiPost<CampaignProof>(`/api/campaigns/${encodeURIComponent(campaignId)}/proofs`, body);
+}
+
+export function deleteCampaignProof(campaignId: string, proofId: string): Promise<void> {
+  return apiDeleteVoid(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/proofs/${encodeURIComponent(proofId)}`,
   );
 }
 

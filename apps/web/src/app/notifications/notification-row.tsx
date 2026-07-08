@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, MessageCircle, UserPlus, Users, Check, Trash2, Loader2, Heart, Megaphone } from "lucide-react";
+import { BadgeCheck, Bell, MessageCircle, UserPlus, Users, Check, Trash2, Loader2, Heart, Megaphone } from "lucide-react";
 import {
   isNotificationNavigable,
   notificationTypeLabel,
@@ -15,6 +15,7 @@ function iconFor(type: string) {
   if (type === "MESSAGE_RECEIVED") return <MessageCircle size={16} aria-hidden />;
   if (type === "POST_LIKED") return <Heart size={16} aria-hidden />;
   if (type === "CAMPAIGN_STATUS_CHANGED") return <Megaphone size={16} aria-hidden />;
+  if (type === "CAMPAIGN_PROOF_CREATED") return <BadgeCheck size={16} aria-hidden />;
   if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} aria-hidden />;
   return <Bell size={16} aria-hidden />;
 }

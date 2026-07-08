@@ -1,6 +1,7 @@
 package com.dasida.api.auth
 
 import com.dasida.api.campaign.CampaignCommentRepository
+import com.dasida.api.campaign.CampaignProofRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.message.DmDeletionService
 import com.dasida.api.post.PostCommentRepository
@@ -31,6 +32,7 @@ class AuthService(
     private val postComments: PostCommentRepository,
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
+    private val campaignProofs: CampaignProofRepository,
     private val denylist: TokenDenylistStore,
     private val accessLogs: AccessLogService,
     private val userFollows: UserFollowRepository,
@@ -179,6 +181,7 @@ class AuthService(
         postComments.syncAuthorProfile(userId, user.name, user.profileImageUrl)
         campaigns.syncAuthorProfile(userId, user.name, user.profileImageUrl)
         campaignComments.syncAuthorProfile(userId, user.name, user.profileImageUrl)
+        campaignProofs.syncAuthorProfile(userId, user.name, user.profileImageUrl)
         return UpdateProfileResponse(token = jwt.issue(user), profile = user.toProfile())
     }
 
@@ -251,6 +254,7 @@ class AuthService(
         postComments.anonymizeAuthor(id, DELETED_USER_NAME)
         campaigns.anonymizeAuthor(id, DELETED_USER_NAME)
         campaignComments.anonymizeAuthor(id, DELETED_USER_NAME)
+        campaignProofs.anonymizeAuthor(id, DELETED_USER_NAME)
         accessLogs.deleteForUser(id)
         userFollows.deleteAllForUser(id)
         dmDeletion.deleteAllForUser(id)

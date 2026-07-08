@@ -31,6 +31,7 @@ class CampaignService(
     private val bookmarkRepo: CampaignBookmarkRepository,
     private val posts: PostRepository,
     private val comments: CampaignCommentRepository,
+    private val proofs: CampaignProofRepository,
     private val clock: Clock,
     private val notifications: NotificationService,
 ) {
@@ -491,6 +492,7 @@ class CampaignService(
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign has linked posts")
         }
         comments.deleteByCampaignId(campaignId)
+        proofs.deleteByCampaignId(campaignId)
         bookmarkRepo.deleteByCampaignId(campaignId)
         repo.delete(campaign)
     }

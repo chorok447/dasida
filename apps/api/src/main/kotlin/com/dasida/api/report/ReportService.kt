@@ -1,6 +1,7 @@
 package com.dasida.api.report
 
 import com.dasida.api.campaign.CampaignCommentRepository
+import com.dasida.api.campaign.CampaignProofRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.post.PostCommentRepository
@@ -27,6 +28,7 @@ class ReportService(
     private val postComments: PostCommentRepository,
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
+    private val campaignProofs: CampaignProofRepository,
     private val clock: Clock,
 ) {
     @Transactional
@@ -105,6 +107,10 @@ class ReportService(
         }.authorUserId
 
         ReportTargetType.CAMPAIGN_COMMENT -> campaignComments.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "report target not found")
+        }.authorUserId
+
+        ReportTargetType.CAMPAIGN_PROOF -> campaignProofs.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "report target not found")
         }.authorUserId
     }

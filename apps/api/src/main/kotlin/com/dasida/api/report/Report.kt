@@ -46,6 +46,7 @@ enum class ReportTargetType {
     POST_COMMENT,
     CAMPAIGN,
     CAMPAIGN_COMMENT,
+    CAMPAIGN_PROOF,
 }
 
 enum class ReportReason {

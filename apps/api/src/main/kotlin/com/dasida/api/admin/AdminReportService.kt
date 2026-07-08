@@ -2,6 +2,7 @@ package com.dasida.api.admin
 
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignCommentRepository
+import com.dasida.api.campaign.CampaignProofRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.notification.NotificationService
@@ -34,6 +35,7 @@ class AdminReportService(
     private val postComments: PostCommentRepository,
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
+    private val campaignProofs: CampaignProofRepository,
     private val notifications: NotificationService,
     private val content: AdminContentService,
     private val actionLogs: AdminActionLogService,
@@ -183,6 +185,15 @@ class AdminReportService(
 
             ReportTargetType.CAMPAIGN_COMMENT -> campaignComments.findById(report.targetId).orElse(null)?.let {
                 AdminReportTargetResponse(excerpt(it.text), it.author.name, "/campaigns/${it.campaignId}", hidden = it.hiddenAt != null)
+            }
+
+            ReportTargetType.CAMPAIGN_PROOF -> campaignProofs.findById(report.targetId).orElse(null)?.let {
+                AdminReportTargetResponse(
+                    excerpt(it.text),
+                    it.author.name,
+                    "/campaigns/${it.campaignId}?tab=proofs",
+                    hidden = it.hiddenAt != null,
+                )
             }
         }
     }

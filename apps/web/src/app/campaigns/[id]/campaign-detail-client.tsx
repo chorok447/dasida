@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
-import { ArrowLeft, MessageCircle, FileText } from "lucide-react";
+import { ArrowLeft, BadgeCheck, MessageCircle, FileText } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
@@ -14,20 +14,22 @@ import { bookmarkCampaign, unbookmarkCampaign, type Campaign } from "@/data/camp
 import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CampaignComments } from "./campaign-comments";
+import { CampaignProofs } from "./campaign-proofs";
 import { CampaignCTABar } from "./campaign-detail-cta";
 import { CampaignContentTab } from "./campaign-detail-parts";
 import { CampaignHeaderCard, CampaignStatusManagement } from "./campaign-detail-header";
 
-type Tab = "content" | "comments";
+type Tab = "content" | "comments" | "proofs";
 
 export default function CampaignDetailClient({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetCommentId = searchParams.get("commentId")?.trim() || null;
+  const initialProofsTab = searchParams.get("tab") === "proofs";
   const { sessionId: token } = useAuthSession();
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const [tab, setTab] = useState<Tab>(() => targetCommentId ? "comments" : "content");
+  const [tab, setTab] = useState<Tab>(() => (targetCommentId ? "comments" : initialProofsTab ? "proofs" : "content"));
   const activeTab: Tab = targetCommentId ? "comments" : tab;
   const [c, setC] = useState(campaign);
   const [bookmarked, setBookmarked] = useState(campaign.bookmarkedByMe);
@@ -43,7 +45,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
 
   const selectTab = (next: Tab) => {
     setTab(next);
-    if (next !== "content" || !targetCommentId) return;
+    // 댓글 딥링크(commentId)는 댓글 탭을 강제하므로, 다른 탭으로 이동할 때 URL 에서 걷어낸다.
+    if (next === "comments" || !targetCommentId) return;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("commentId");
     const query = params.toString();
@@ -300,6 +303,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
           {([
             { id: "content", label: "캠페인 내용", icon: <FileText size={14} /> },
             { id: "comments", label: "댓글", icon: <MessageCircle size={14} /> },
+            { id: "proofs", label: "참여 인증", icon: <BadgeCheck size={14} /> },
           ] as { id: Tab; label: string; icon: React.ReactNode }[]).map((t) => {
             const active = activeTab === t.id;
             return (
@@ -326,6 +330,8 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
         <div className="mt-8">
           {activeTab === "content" ? (
             <CampaignContentTab c={c} />
+          ) : activeTab === "proofs" ? (
+            <CampaignProofs campaign={c} />
           ) : (
             <CampaignComments campaignId={c.id} targetCommentId={targetCommentId} />
           )}

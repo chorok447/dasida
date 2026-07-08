@@ -4,7 +4,8 @@ export type ReportTargetType =
   | "POST"
   | "POST_COMMENT"
   | "CAMPAIGN"
-  | "CAMPAIGN_COMMENT";
+  | "CAMPAIGN_COMMENT"
+  | "CAMPAIGN_PROOF";
 
 export type ReportReason =
   | "SPAM"
@@ -53,6 +54,7 @@ export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
   POST_COMMENT: "게시글 댓글",
   CAMPAIGN: "캠페인",
   CAMPAIGN_COMMENT: "캠페인 댓글",
+  CAMPAIGN_PROOF: "캠페인 참여 인증",
 };
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
