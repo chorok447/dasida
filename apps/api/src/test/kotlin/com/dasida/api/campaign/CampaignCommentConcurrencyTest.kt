@@ -91,8 +91,9 @@ class CampaignCommentConcurrencyTest(
 
             assertThat(createResult).isIn(201, 404)
             assertThat(deleteResult).isEqualTo(204)
-            assertThat(campaignRepo.existsById(campaignId)).isFalse()
-            assertThat(commentRepo.countByCampaignId(campaignId)).isZero()
+            // soft delete: 캠페인 row 는 남지만 deletedAt 마킹으로 모든 경로가 404 → 댓글이 먼저
+            // 커밋됐더라도(201) orphan 이 노출될 경로가 없다.
+            assertThat(campaignRepo.findById(campaignId).orElseThrow().deletedAt).isNotNull()
         } finally {
             commentRepo.deleteByCampaignId(campaignId)
             participantRepo.deleteByCampaignId(campaignId)

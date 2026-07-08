@@ -22,6 +22,10 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun creationSeqSince(@Param("since") since: Long): List<Long>
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
+
+    // 개설자 본인 목록(mine)용. 숨김은 보이지만 삭제(soft delete)는 제외한다.
+    fun findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(authorUserId: Long): List<Campaign>
+    fun findByAuthorUserIdAndDeletedAtIsNull(authorUserId: Long, pageable: Pageable): Page<Campaign>
     fun countByAuthorUserId(authorUserId: Long): Long
 
     // 공개 노출 경로용(숨김 제외). 개설자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.

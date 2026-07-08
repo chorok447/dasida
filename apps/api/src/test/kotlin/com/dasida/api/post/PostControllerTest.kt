@@ -1132,14 +1132,32 @@ class PostControllerTest(
         }
 
     @Test
-    fun `댓글 작성자는 삭제할 수 있고 row와 카운터가 함께 감소한다`() {
+    fun `댓글 작성자는 삭제할 수 있고 soft delete 마킹과 함께 카운터가 감소한다`() {
         val postId = savePost(comments = 2)
         val commentId = saveComment(postId, authorUserId = 1)
 
         deleteComment(postId, commentId).andExpect { status { isNoContent() } }
 
-        assertThat(commentRepo.existsById(commentId)).isFalse()
+        // soft delete: row 는 남고 deletedAt/hiddenAt 이 마킹돼 목록에서 제외된다.
+        val deleted = commentRepo.findById(commentId).get()
+        assertThat(deleted.deletedAt).isNotNull()
+        assertThat(deleted.hiddenAt).isNotNull()
         assertThat(posts.findById(postId).get().comments).isEqualTo(1)
+
+        mvc.get("/api/posts/$postId/comments").andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$commentId')]") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `삭제된 댓글은 다시 삭제하면 404`() {
+        val postId = savePost(comments = 1)
+        val commentId = saveComment(postId, authorUserId = 1)
+
+        deleteComment(postId, commentId).andExpect { status { isNoContent() } }
+        deleteComment(postId, commentId).andExpect { status { isNotFound() } }
+        assertThat(posts.findById(postId).get().comments).isZero()
     }
 
     @Test
@@ -1410,15 +1428,26 @@ class PostControllerTest(
     }
 
     @Test
-    fun `삭제하면 좋아요 북마크 댓글 row도 함께 삭제된다`() {
+    fun `삭제는 soft delete로 마킹되고 상호작용 row는 보존된다`() {
         val id = savePost(authorUserId = 1)
         likeRepo.saveAndFlush(PostLike("plk-del", id, 2))
         bookmarkRepo.saveAndFlush(PostBookmark("pbk-del", id, 2))
         commentRepo.saveAndFlush(PostComment("pc-del", id, Author("누군가", false), "댓글", "방금", 1))
         deletePost(id).andExpect { status { isNoContent() } }
-        assertThat(likeRepo.countByPostId(id)).isEqualTo(0)
-        assertThat(bookmarkRepo.countByPostId(id)).isEqualTo(0)
-        assertThat(commentRepo.countByPostId(id)).isEqualTo(0)
+
+        // soft delete: 게시글 row 와 상호작용 row 는 남는다(신고 대상 보존·복구 여지).
+        val deleted = posts.findById(id).get()
+        assertThat(deleted.deletedAt).isNotNull()
+        assertThat(deleted.hiddenAt).isNotNull()
+        assertThat(likeRepo.countByPostId(id)).isEqualTo(1)
+        assertThat(bookmarkRepo.countByPostId(id)).isEqualTo(1)
+        assertThat(commentRepo.countByPostId(id)).isEqualTo(1)
+
+        // 외부에서는 존재하지 않는 것으로 취급된다(작성자 포함).
+        mvc.get("/api/posts/$id") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect { status { isNotFound() } }
+        deletePost(id).andExpect { status { isNotFound() } }
     }
 
     @Test

@@ -405,12 +405,16 @@ class CampaignCommentControllerTest(
     }
 
     @Test
-    fun `작성자는 자신의 댓글을 삭제하면 204`() {
+    fun `작성자는 자신의 댓글을 삭제하면 204이고 soft delete 마킹된다`() {
         val campaignId = saveCampaign()
         val commentId = saveComment(campaignId)
 
         deleteComment(campaignId, commentId).andExpect { status { isNoContent() } }
-        assertThat(commentRepo.existsById(commentId)).isFalse()
+        // soft delete: row 는 남고 deletedAt/hiddenAt 마킹으로 목록에서 제외된다.
+        val deleted = commentRepo.findById(commentId).orElseThrow()
+        assertThat(deleted.deletedAt).isNotNull()
+        assertThat(deleted.hiddenAt).isNotNull()
+        deleteComment(campaignId, commentId).andExpect { status { isNotFound() } }
     }
 
     @Test
@@ -453,7 +457,7 @@ class CampaignCommentControllerTest(
     }
 
     @Test
-    fun `캠페인 삭제 성공 시 해당 댓글을 함께 정리한다`() {
+    fun `캠페인 삭제 후에도 댓글 row는 보존되고 목록 조회는 404`() {
         val campaignId = saveCampaign(status = "upcoming", authorUserId = 1)
         val otherCampaignId = saveCampaign(status = "upcoming", authorUserId = 1)
         saveComment(campaignId)
@@ -463,7 +467,9 @@ class CampaignCommentControllerTest(
             headers { add("Authorization", "Bearer $ownerToken") }
         }.andExpect { status { isNoContent() } }
 
-        assertThat(commentRepo.countByCampaignId(campaignId)).isZero()
+        // soft delete: 댓글 row 는 남지만 캠페인이 404 라 노출 경로가 없다.
+        assertThat(commentRepo.countByCampaignId(campaignId)).isEqualTo(1)
+        mvc.get("/api/campaigns/$campaignId/comments").andExpect { status { isNotFound() } }
         assertThat(commentRepo.existsById(otherComment)).isTrue()
     }
 }

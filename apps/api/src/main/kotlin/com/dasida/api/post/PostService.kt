@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -31,6 +33,7 @@ class PostService(
     private val commentRepo: PostCommentRepository,
     private val postSearch: PostSearchRepository,
     private val notifications: NotificationService,
+    private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
     fun listPosts(currentUserId: Long?): List<PostResponse> {
@@ -180,7 +183,7 @@ class PostService(
     /** 현재 사용자가 작성한 게시글. 소유권은 author.name 이 아니라 authorUserId 로 판단한다. */
     @Transactional(readOnly = true)
     fun getMyPosts(userId: Long): List<PostResponse> {
-        val posts = repo.findByAuthorUserIdOrderBySeqDesc(userId)
+        val posts = repo.findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(userId)
         if (posts.isEmpty()) return emptyList()
 
         val postIds = posts.map { it.id }
@@ -196,7 +199,7 @@ class PostService(
     @Transactional(readOnly = true)
     fun getMyPostsPage(userId: Long, page: Int, size: Int): PostPageResponse {
         validatePageParams(page, size)
-        val result = repo.findByAuthorUserId(
+        val result = repo.findByAuthorUserIdAndDeletedAtIsNull(
             userId,
             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
         )
@@ -242,6 +245,10 @@ class PostService(
     fun getPost(id: String, currentUserId: Long?): PostResponse {
         val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        // 삭제(soft delete)된 게시글은 작성자에게도 존재하지 않는 것으로 취급한다.
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
         // 숨김 게시글은 작성자에게만 보인다(hidden 플래그 포함). 그 외에는 존재를 드러내지 않는 404.
         if (post.hiddenAt != null && (post.authorUserId == null || post.authorUserId != currentUserId)) {
@@ -362,6 +369,9 @@ class PostService(
         // 상호작용 API 와 같은 잠금 순서로 게시글 row 를 먼저 잠근다.
         val post = repo.findByIdForUpdate(postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
         if (post.authorUserId == null || post.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the author")
         }
@@ -378,20 +388,24 @@ class PostService(
     }
 
     /**
-     * 게시글 삭제. 작성자만 가능. 좋아요/북마크/댓글을 먼저 정리한 뒤 게시글을 지운다.
-     * soft delete 미도입 → 다시 삭제하면 404. 상호작용 API 와 같은 잠금 순서를 유지한다.
+     * 게시글 삭제(soft delete). 작성자만 가능. row 를 지우지 않고 deletedAt 을 마킹해
+     * 신고 대상 보존·복구 여지를 남긴다. hiddenAt 을 함께 세팅해 공개 노출 제외
+     * (목록/검색/sitemap/상호작용 404)를 그대로 재사용하며, 좋아요/북마크/댓글 row 도 남긴다.
+     * 삭제된 게시글은 존재하지 않는 것으로 취급한다(다시 삭제하면 404).
      */
     @Transactional
     fun deletePost(userId: Long, postId: String) {
         val post = repo.findByIdForUpdate(postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
         if (post.authorUserId == null || post.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the author")
         }
-        likeRepo.deleteByPostId(postId)
-        bookmarkRepo.deleteByPostId(postId)
-        commentRepo.deleteByPostId(postId)
-        repo.delete(post)
+        val now = Instant.now(clock)
+        post.deletedAt = now
+        if (post.hiddenAt == null) post.hiddenAt = now
     }
 
     /** 생성·수정 공통 검증/정규화. 결과가 어긋나지 않도록 한 곳에서 처리. */
@@ -406,7 +420,7 @@ class PostService(
         // 단순 existsById 면 확인과 저장 사이에 캠페인이 삭제돼 orphan campaignId 가 생길 수 있다.
         // write lock 으로 캠페인을 잡아 두면 삭제가 게시글 commit 까지 직렬화돼 orphan 을 막는다.
         // create/update 모두 @Transactional 이라 lock 이 트랜잭션 종료까지 유지된다.
-        if (cid != null && campaigns.findByIdForUpdate(cid) == null) {
+        if (cid != null && campaigns.findByIdForUpdate(cid).let { it == null || it.deletedAt != null }) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campaign not found")
         }
         return NormalizedFields(normalizedText, normalizeTags(tags), mergedImages, cid)

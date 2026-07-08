@@ -38,6 +38,8 @@ class CampaignControllerTest(
     @param:Autowired val notificationRepo: NotificationRepository,
 ) {
     private val token = jwt.issue(User(id = 1, email = "t@t.com", passwordHash = "x", name = "테스터", verified = false))
+    // 다른 사용자(userId=2) 시나리오용 토큰.
+    private val token2 = jwt.issue(User(id = 2, email = "u2@t.com", passwordHash = "x", name = "다른이", verified = false))
     private val otherToken = jwt.issue(User(id = 2, email = "o@t.com", passwordHash = "x", name = "다른유저", verified = false))
 
     // 시드 상태에 의존하지 않도록 테스트용 캠페인을 직접 저장.
@@ -1513,10 +1515,15 @@ class CampaignControllerTest(
     }
 
     @Test
-    fun `개설자는 upcoming 캠페인을 삭제하면 204이고 row가 사라진다`() {
+    fun `개설자는 upcoming 캠페인을 삭제하면 204이고 soft delete 마킹된다`() {
         val id = saveCampaign(status = "upcoming", authorUserId = 1)
         deleteCampaign(id).andExpect { status { isNoContent() } }
-        assertThat(campaignRepo.existsById(id)).isFalse()
+        // soft delete: row 는 남고 deletedAt/hiddenAt 마킹으로 모든 경로에서 404 처리된다.
+        val deleted = campaignRepo.findById(id).get()
+        assertThat(deleted.deletedAt).isNotNull()
+        assertThat(deleted.hiddenAt).isNotNull()
+        mvc.get("/api/campaigns/$id") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect { status { isNotFound() } }
     }
 
     @Test
@@ -1607,7 +1614,7 @@ class CampaignControllerTest(
         val other = saveCampaign(status = "upcoming", authorUserId = 1)
         savePostLinkedTo(other) // 다른 캠페인에만 연결된 게시글
         deleteCampaign(target).andExpect { status { isNoContent() } }
-        assertThat(campaignRepo.existsById(target)).isFalse()
+        assertThat(campaignRepo.findById(target).get().deletedAt).isNotNull()
     }
 
     // ---- 북마크 ----
@@ -1751,10 +1758,15 @@ class CampaignControllerTest(
     }
 
     @Test
-    fun `삭제하면 북마크 row도 함께 삭제된다`() {
+    fun `삭제해도 북마크 row는 보존되고 저장 목록에서는 제외된다`() {
         val id = saveCampaign(status = "upcoming", authorUserId = 1)
         bookmarkRepo.saveAndFlush(CampaignBookmark("cbk-del", id, 2))
         deleteCampaign(id).andExpect { status { isNoContent() } }
-        assertThat(bookmarkRepo.countByCampaignId(id)).isEqualTo(0)
+        // soft delete: 북마크 row 는 남지만 hiddenAt 재사용으로 저장 목록에서 제외된다.
+        assertThat(bookmarkRepo.countByCampaignId(id)).isEqualTo(1)
+        mvc.get("/api/campaigns/bookmarks") { headers { add("Authorization", "Bearer $token2") } }.andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.id == '$id')]") { value(Matchers.empty<Any>()) }
+        }
     }
 }

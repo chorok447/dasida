@@ -20,6 +20,11 @@ interface PostRepository : JpaRepository<Post, String> {
 
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Post>
 
+    // 작성자 본인 목록(mine)용. 숨김은 보이지만 삭제(soft delete)는 제외한다.
+    fun findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(authorUserId: Long): List<Post>
+
+    fun findByAuthorUserIdAndDeletedAtIsNull(authorUserId: Long, pageable: Pageable): Page<Post>
+
     fun countByAuthorUserId(authorUserId: Long): Long
 
     // 공개 노출 경로용(숨김 제외). 작성자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.

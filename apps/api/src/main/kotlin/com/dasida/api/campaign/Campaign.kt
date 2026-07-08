@@ -43,6 +43,9 @@ class Campaign(
     // 관리자 숨김(soft hide). null = 공개. 값이 있으면 공개 목록/검색/상세(개설자 제외)에서 제외된다.
     @Column(name = "hidden_at") @JsonIgnore var hiddenAt: java.time.Instant? = null,
     @Column(name = "hidden_reason", length = 500) @JsonIgnore var hiddenReason: String? = null,
+    // 개설자 삭제(soft delete). 값이 있으면 개설자 본인·관리자 복구 경로에서도 404 로 취급한다.
+    // 삭제 시 hiddenAt 도 함께 세팅해 공개 노출 제외를 재사용한다.
+    @Column(name = "deleted_at") @JsonIgnore var deletedAt: java.time.Instant? = null,
 )
 
 /**
