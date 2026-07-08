@@ -69,6 +69,11 @@ export function fetchMyFollowersPage(page: number, size = 10): Promise<PublicUse
   return apiGet<PublicUserPageResponse>(`/api/users/me/followers?${params.toString()}`);
 }
 
+export function searchUsersPage(q: string, page: number, size = 12): Promise<PublicUserPageResponse> {
+  const params = new URLSearchParams({ q, page: String(page), size: String(size) });
+  return apiGet<PublicUserPageResponse>(`/api/users/search?${params.toString()}`);
+}
+
 export function fetchUserPostsPage(userId: number, page: number, size = 10): Promise<PostPageResponse> {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   return apiGet<PostPageResponse>(`/api/users/${userId}/posts?${params.toString()}`);

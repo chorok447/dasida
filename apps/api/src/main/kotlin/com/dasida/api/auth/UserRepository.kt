@@ -22,6 +22,19 @@ interface UserRepository : JpaRepository<User, Long> {
         now: java.time.Instant,
         pageable: org.springframework.data.domain.Pageable,
     ): org.springframework.data.domain.Page<User>
+
+    // 공개 사용자 검색. 이름 부분 일치(q 는 소문자), 탈퇴·정지 중 사용자는 제외한다.
+    @org.springframework.data.jpa.repository.Query(
+        """select u from User u
+           where u.deletedAt is null
+           and (u.suspendedUntil is null or u.suspendedUntil <= :now)
+           and lower(u.name) like concat('%', :q, '%')""",
+    )
+    fun searchPublic(
+        q: String,
+        now: java.time.Instant,
+        pageable: org.springframework.data.domain.Pageable,
+    ): org.springframework.data.domain.Page<User>
 }
 
 /** DB 최신 사용자. 존재하지 않거나 탈퇴(deletedAt != null)한 사용자는 인증 실패로 처리한다. */

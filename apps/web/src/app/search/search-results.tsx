@@ -7,8 +7,9 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { StaggerItem } from "@/components/scroll-reveal";
 import type { CampaignSearchResponse } from "@/data/campaigns";
 import type { PostSearchResponse } from "@/data/posts";
+import type { PublicUserPageResponse } from "@/data/users";
 import { useTheme } from "@/lib/theme-context";
-import { CampaignResultCard, PostResultCard } from "./search-result-cards";
+import { CampaignResultCard, PostResultCard, UserResultCard } from "./search-result-cards";
 import type { SearchUrlState } from "./search-filters";
 import { searchHasActiveFilters } from "./search-filters";
 
@@ -17,6 +18,7 @@ type ResultState = {
   status: "loading" | "success" | "error";
   campaigns: CampaignSearchResponse | null;
   posts: PostSearchResponse | null;
+  users: PublicUserPageResponse | null;
   errorMessage: string | null;
 };
 
@@ -38,10 +40,14 @@ export function SearchResults({
 
   const campaignResponse = currentState.campaigns;
   const postResponse = currentState.posts;
-  const totalResults = (campaignResponse?.totalElements ?? 0) + (postResponse?.totalElements ?? 0);
+  const userResponse = currentState.users;
+  const totalResults = (campaignResponse?.totalElements ?? 0)
+    + (postResponse?.totalElements ?? 0)
+    + (userResponse?.totalElements ?? 0);
   const allEmpty = urlState.type === "all"
     && campaignResponse?.content.length === 0
-    && postResponse?.content.length === 0;
+    && postResponse?.content.length === 0
+    && (userResponse === null || userResponse.content.length === 0);
 
   return (
     <>
@@ -119,6 +125,21 @@ export function SearchResults({
           }
         />
       ) : null}
+
+      {currentState.status === "success" && urlState.type === "users" && !urlState.query ? (
+        <ListEmptyState
+          title="이름으로 사용자를 찾아보세요."
+          description="검색창에 닉네임을 입력하면 사용자를 검색할 수 있어요."
+        />
+      ) : null}
+
+      {currentState.status === "success" && urlState.type === "users" && urlState.query
+        && userResponse?.content.length === 0 ? (
+          <ListEmptyState
+            title="조건에 맞는 사용자가 없어요."
+            description="다른 이름으로 검색해보세요."
+          />
+        ) : null}
 
       {currentState.status === "success" && urlState.type === "posts" && postResponse?.content.length === 0 ? (
         <ListEmptyState
@@ -203,6 +224,39 @@ export function SearchResults({
         </section>
       ) : null}
 
+      {currentState.status === "success" && userResponse && userResponse.content.length > 0 ? (
+        <section className="mt-12">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[#148a90]">Users</p>
+              <h2 className="mt-1 text-[24px] font-semibold" style={{ color: "var(--foreground)" }}>사용자</h2>
+            </div>
+            <span className="text-[12px] opacity-55" style={{ color: "var(--foreground)" }}>
+              {userResponse.totalElements.toLocaleString()}명
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {userResponse.content.map((user, i) => (
+              <StaggerItem key={user.id} index={i}>
+                <UserResultCard user={user} />
+              </StaggerItem>
+            ))}
+          </div>
+          {urlState.type === "all" ? (
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => onUpdate({ type: "users", page: 0 })}
+                className="rounded-full border px-5 py-2.5 text-[13px]"
+                style={{ borderColor: "var(--border)" }}
+              >
+                사용자 더 보기
+              </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {currentState.status === "success" && urlState.type === "campaigns" && campaignResponse ? (
         <Pagination
           page={campaignResponse.page}
@@ -223,9 +277,19 @@ export function SearchResults({
         />
       ) : null}
 
+      {currentState.status === "success" && urlState.type === "users" && userResponse ? (
+        <Pagination
+          page={userResponse.page}
+          totalPages={userResponse.totalPages}
+          totalElements={userResponse.totalElements}
+          className="mt-10"
+          onPageChange={(page) => onUpdate({ page })}
+        />
+      ) : null}
+
       {currentState.status === "success" && urlState.type === "all" && !allEmpty ? (
         <p className="mt-10 text-center text-[12px] opacity-50" style={{ color: "var(--foreground)" }}>
-          전체 검색은 캠페인과 게시글의 현재 페이지 결과를 각각 표시합니다.
+          전체 검색은 캠페인·게시글·사용자의 현재 페이지 결과를 각각 표시합니다.
         </p>
       ) : null}
     </>
