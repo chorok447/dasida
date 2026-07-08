@@ -13,10 +13,15 @@ interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun findByPostId(postId: String, pageable: Pageable): Page<PostComment>
     fun findByIdAndPostId(id: String, postId: String): PostComment?
 
+    // 공개 노출 경로용(숨김 제외).
+    fun findByPostIdAndHiddenAtIsNullOrderBySeqAsc(postId: String): List<PostComment>
+    fun findByPostIdAndHiddenAtIsNull(postId: String, pageable: Pageable): Page<PostComment>
+
     @Query(
         """
         select count(c) from PostComment c
         where c.postId = :postId
+          and c.hiddenAt is null
           and (c.seq > :seq or (c.seq = :seq and c.id < :id))
         """,
     )

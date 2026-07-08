@@ -40,6 +40,9 @@ class Campaign(
     @Column(name = "author_user_id")
     @JsonIgnore
     val authorUserId: Long? = null,
+    // 관리자 숨김(soft hide). null = 공개. 값이 있으면 공개 목록/검색/상세(개설자 제외)에서 제외된다.
+    @Column(name = "hidden_at") @JsonIgnore var hiddenAt: java.time.Instant? = null,
+    @Column(name = "hidden_reason", length = 500) @JsonIgnore var hiddenReason: String? = null,
 )
 
 /**

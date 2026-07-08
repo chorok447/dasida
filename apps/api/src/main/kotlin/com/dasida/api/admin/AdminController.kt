@@ -21,7 +21,10 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/admin")
 @Tag(name = "Admin", description = "관리자 API (ROLE_ADMIN 전용)")
 @SecurityRequirement(name = "bearerAuth")
-class AdminController(private val service: AdminReportService) {
+class AdminController(
+    private val service: AdminReportService,
+    private val content: AdminContentService,
+) {
 
     @Operation(summary = "대시보드 요약 (사용자/게시글/캠페인/신고 수)")
     @GetMapping("/summary")
@@ -36,11 +39,19 @@ class AdminController(private val service: AdminReportService) {
         @RequestParam(defaultValue = "20") size: Int,
     ): AdminReportsPageResponse = service.getReports(status, targetType, page, size)
 
-    @Operation(summary = "신고 처리 (제재 확정 또는 기각, 신고자에게 결과 알림)")
+    @Operation(summary = "신고 처리 (제재 확정 또는 기각, 신고자에게 결과 알림, 옵션으로 콘텐츠 숨김)")
     @PatchMapping("/reports/{id}")
     fun resolve(
         @PathVariable id: String,
         @RequestBody request: ResolveReportRequest,
         @AuthenticationPrincipal admin: AuthUser,
     ): AdminReportResponse = service.resolveReport(admin.id, id, request)
+
+    @Operation(summary = "콘텐츠 숨김/복구 (soft hide, 작성자에게 알림)")
+    @PatchMapping("/content/{targetType}/{targetId}")
+    fun setContentVisibility(
+        @PathVariable targetType: String,
+        @PathVariable targetId: String,
+        @RequestBody request: SetContentVisibilityRequest,
+    ): ContentVisibilityResponse = content.setVisibility(targetType, targetId, request)
 }

@@ -20,6 +20,7 @@ fun Campaign.toResponse(
         recruitable = recruitment.recruitable, recruitState = recruitment.state.value,
         author = author, body = body, joinedByMe = joinedByMe, bookmarkedByMe = bookmarkedByMe,
         ownedByMe = authorUserId != null && authorUserId == viewerId,
+        hidden = hiddenAt != null,
     )
 }
 

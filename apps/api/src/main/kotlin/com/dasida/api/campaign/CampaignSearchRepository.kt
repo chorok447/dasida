@@ -45,6 +45,8 @@ class QuerydslCampaignSearchRepository(
     override fun search(condition: CampaignSearchCondition): CampaignSearchResult {
         val campaign = QCampaign.campaign
         val predicates = BooleanBuilder()
+        // 숨김 콘텐츠는 공개 검색에서 항상 제외.
+        predicates.and(campaign.hiddenAt.isNull)
 
         condition.query?.let { query ->
             val pattern = literalContainsPattern(query)

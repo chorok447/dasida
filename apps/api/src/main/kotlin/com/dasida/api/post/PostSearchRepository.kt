@@ -38,6 +38,8 @@ class QuerydslPostSearchRepository(
     override fun search(condition: PostSearchCondition): PostSearchResult {
         val post = QPost.post
         val predicates = BooleanBuilder()
+        // 숨김 콘텐츠는 공개 검색에서 항상 제외.
+        predicates.and(post.hiddenAt.isNull)
 
         condition.query?.let { query ->
             val pattern = literalContainsPattern(query)

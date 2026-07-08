@@ -28,4 +28,7 @@ class CampaignComment(
     @Column(name = "created_at") val createdAt: Instant,
     @Column(name = "author_user_id") @JsonIgnore val authorUserId: Long? = null,
     @Column(name = "updated_at") var updatedAt: Instant? = null,
+    // 관리자 숨김(soft hide). null = 공개.
+    @Column(name = "hidden_at") @JsonIgnore var hiddenAt: Instant? = null,
+    @Column(name = "hidden_reason", length = 500) @JsonIgnore var hiddenReason: String? = null,
 )

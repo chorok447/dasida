@@ -3,13 +3,14 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Loader2, ExternalLink, ShieldCheck, ShieldX } from "lucide-react";
+import { Loader2, ExternalLink, ShieldCheck, ShieldX, Eye, EyeOff } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import { ApiError, apiErrorMessage } from "@/lib/api";
 import {
   fetchAdminReports,
   resolveAdminReport,
+  setAdminContentVisibility,
   type AdminReportItem,
   type AdminReportsPageResponse,
 } from "@/data/admin";
@@ -73,18 +74,20 @@ export default function ReportsClient() {
   const list = data?.content ?? [];
 
   const replaceItem = (updated: AdminReportItem) => {
-    setResult((stored) =>
-      stored.data
-        ? {
-            ...stored,
-            data: {
-              ...stored.data,
-              content: stored.data.content.map((item) => (item.id === updated.id ? updated : item)),
-              pendingCount: Math.max(0, stored.data.pendingCount - 1),
-            },
-          }
-        : stored,
-    );
+    setResult((stored) => {
+      if (!stored.data) return stored;
+      const previous = stored.data.content.find((item) => item.id === updated.id);
+      // 대기 → 처리로 넘어간 경우에만 큐 카운트를 줄인다(숨김/복구 토글은 상태 불변).
+      const resolvedNow = previous?.status === "PENDING" && updated.status !== "PENDING";
+      return {
+        ...stored,
+        data: {
+          ...stored.data,
+          content: stored.data.content.map((item) => (item.id === updated.id ? updated : item)),
+          pendingCount: Math.max(0, stored.data.pendingCount - (resolvedNow ? 1 : 0)),
+        },
+      };
+    });
   };
 
   return (
@@ -187,7 +190,9 @@ function ReportRow({
   onResolved: (updated: AdminReportItem) => void;
 }) {
   const [note, setNote] = useState("");
+  const [hideContent, setHideContent] = useState(true);
   const [submitting, setSubmitting] = useState<ReportStatus | null>(null);
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
   const pending = item.status === "PENDING";
 
   const resolve = async (status: "RESOLVED" | "DISMISSED") => {
@@ -197,15 +202,42 @@ function ReportRow({
       const updated = await resolveAdminReport(item.id, {
         status,
         note: note.trim() || undefined,
+        hideContent: status === "RESOLVED" && !!item.target && hideContent,
       });
       onResolved(updated);
-      toast.success(status === "RESOLVED" ? "신고를 조치 완료로 처리했습니다." : "신고를 기각했습니다.");
+      toast.success(
+        status === "RESOLVED"
+          ? updated.target?.hidden
+            ? "신고를 조치 완료 처리하고 콘텐츠를 숨겼습니다."
+            : "신고를 조치 완료로 처리했습니다."
+          : "신고를 기각했습니다.",
+      );
     } catch (e) {
       toast.error(
         e instanceof ApiError ? apiErrorMessage(e, "신고 처리에 실패했습니다.") : "신고 처리에 실패했습니다.",
       );
     } finally {
       setSubmitting(null);
+    }
+  };
+
+  const toggleVisibility = async () => {
+    if (!item.target || togglingVisibility) return;
+    const nextHidden = !item.target.hidden;
+    setTogglingVisibility(true);
+    try {
+      await setAdminContentVisibility(item.targetType, item.targetId, {
+        hidden: nextHidden,
+        reason: nextHidden ? item.resolutionNote ?? undefined : undefined,
+      });
+      onResolved({ ...item, target: { ...item.target, hidden: nextHidden } });
+      toast.success(nextHidden ? "콘텐츠를 숨겼습니다." : "콘텐츠 숨김을 해제했습니다.");
+    } catch (e) {
+      toast.error(
+        e instanceof ApiError ? apiErrorMessage(e, "숨김 상태 변경에 실패했습니다.") : "숨김 상태 변경에 실패했습니다.",
+      );
+    } finally {
+      setTogglingVisibility(false);
     }
   };
 
@@ -225,6 +257,14 @@ function ReportRow({
           {REPORT_REASON_LABELS[item.reason]}
         </span>
         <StatusBadge status={item.status} />
+        {item.target?.hidden && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1"
+            style={{ background: "var(--surface)", color: "var(--foreground-muted)" }}
+          >
+            <EyeOff size={12} aria-hidden /> 콘텐츠 숨김 중
+          </span>
+        )}
         {item.targetReportCount > 1 && (
           <span className="rounded-full px-2.5 py-1" style={{ background: "rgba(237,92,72,0.15)", color: "#ed5c48" }}>
             같은 대상 신고 {item.targetReportCount}건
@@ -263,6 +303,27 @@ function ReportRow({
         )}
       </div>
 
+      {!pending && item.target && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={toggleVisibility}
+            disabled={togglingVisibility}
+            className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[13px] disabled:opacity-50"
+            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+          >
+            {togglingVisibility ? (
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+            ) : item.target.hidden ? (
+              <Eye size={14} aria-hidden />
+            ) : (
+              <EyeOff size={14} aria-hidden />
+            )}
+            {item.target.hidden ? "숨김 해제" : "콘텐츠 숨김"}
+          </button>
+        </div>
+      )}
+
       {pending && (
         <div className="mt-4 space-y-3">
           <label className="block text-[12px]" style={{ color: "var(--foreground-muted)" }}>
@@ -276,6 +337,20 @@ function ReportRow({
               style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--foreground)" }}
             />
           </label>
+          {item.target && !item.target.hidden && (
+            <label
+              className="flex items-center gap-2 text-[13px]"
+              style={{ color: "var(--foreground)" }}
+            >
+              <input
+                type="checkbox"
+                checked={hideContent}
+                onChange={(e) => setHideContent(e.target.checked)}
+                className="h-4 w-4 accent-[#7dd3a3]"
+              />
+              조치 완료 시 대상 콘텐츠 함께 숨김 (작성자에게 알림 발송)
+            </label>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

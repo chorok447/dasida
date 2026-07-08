@@ -33,17 +33,17 @@ class PostCommentService(
 ) {
     @Transactional(readOnly = true)
     fun listComments(postId: String, currentUserId: Long?): List<PostCommentResponse> {
-        if (!repo.existsById(postId)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
-        return commentRepo.findByPostIdOrderBySeqAsc(postId).map { it.toResponse(currentUserId) }
+        requireViewablePost(postId, currentUserId)
+        return commentRepo.findByPostIdAndHiddenAtIsNullOrderBySeqAsc(postId).map { it.toResponse(currentUserId) }
     }
 
     /** 기존 배열 API는 유지하고 상세 화면용 최신순 pagination을 별도 경로로 제공한다. */
     @Transactional(readOnly = true)
     fun listCommentsPage(postId: String, currentUserId: Long?, page: Int, size: Int): PostCommentsPageResponse {
         checkPageParams(page, size, MAX_COMMENT_PAGE_SIZE)
-        if (!repo.existsById(postId)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        requireViewablePost(postId, currentUserId)
 
-        val result = commentRepo.findByPostId(
+        val result = commentRepo.findByPostIdAndHiddenAtIsNull(
             postId,
             PageRequest.of(
                 page,
@@ -69,6 +69,9 @@ class PostCommentService(
         }
         val target = commentRepo.findByIdAndPostId(commentId, postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (target.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
         val commentsBefore = commentRepo.countBeforeInNewestOrder(postId, target.seq, target.id)
         return CommentPageLocationResponse(
             commentId = target.id,
@@ -82,6 +85,10 @@ class PostCommentService(
         // write lock 으로 직렬화 → 서로 다른 유저의 동시 댓글 작성에서도 comments 증가가 유실되지 않음.
         val post = repo.findByIdForUpdate(postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        // 숨김 게시글에는 새 댓글을 받지 않는다(작성자 포함).
+        if (post.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
         val text = normalizeCommentText(req.text)
         val authorSnapshot = users.findActiveOrThrow(author.id).toAuthorSnapshot()
         val comment = commentRepo.save(
@@ -116,6 +123,10 @@ class PostCommentService(
         }
         val comment = commentRepo.findByIdAndPostId(commentId, postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        // 숨김 댓글은 작성자에게도 수정 불가(존재를 드러내지 않는 404).
+        if (comment.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
         if (comment.authorUserId == null || comment.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment author")
         }
@@ -142,7 +153,20 @@ class PostCommentService(
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment author")
         }
         commentRepo.delete(comment)
-        post.comments = maxOf(0, post.comments - 1)
+        // 숨김 댓글은 숨김 시점에 이미 카운터가 감소했으므로 다시 줄이지 않는다.
+        if (comment.hiddenAt == null) {
+            post.comments = maxOf(0, post.comments - 1)
+        }
+    }
+
+    /** 공개 조회 경로에서 게시글 존재·노출 여부 확인. 숨김 게시글은 작성자에게만 보인다. */
+    private fun requireViewablePost(postId: String, currentUserId: Long?) {
+        val post = repo.findById(postId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+        if (post.hiddenAt != null && (post.authorUserId == null || post.authorUserId != currentUserId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
     }
 
     private companion object {

@@ -37,7 +37,7 @@ class CampaignService(
     @Transactional(readOnly = true)
     fun listCampaigns(currentUserId: Long?): List<CampaignResponse> {
         val today = LocalDate.now(clock)
-        val campaigns = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
+        val campaigns = repo.findByHiddenAtIsNull(Sort.by(Sort.Direction.DESC, "seq"))
         // N+1 회피: 내가 참여·북마크한 campaignId 를 각각 한 번에 조회.
         val joinedIds = joinedByPage(currentUserId, campaigns.map { it.id })
         val bookmarkedIds = bookmarkedByPage(currentUserId, campaigns.map { it.id })
@@ -178,7 +178,7 @@ class CampaignService(
         val campaignIds = participants.findByUserId(userId).map { it.campaignId }
         if (campaignIds.isEmpty()) return emptyList()
         val bookmarkedIds = bookmarkRepo.findByUserIdAndCampaignIdIn(userId, campaignIds).map { it.campaignId }.toSet()
-        return repo.findAllByIdInOrderBySeqDesc(campaignIds)
+        return repo.findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(campaignIds)
             .map { it.toResponse(viewerId = userId, joinedByMe = true, bookmarkedByMe = it.id in bookmarkedIds, today = today) }
     }
 
@@ -216,7 +216,8 @@ class CampaignService(
         val participantPage = participants.findByUserId(userId, PageRequest.of(page, size, Sort.by("id").ascending()))
         val campaignIds = participantPage.content.map { it.campaignId }
         val byId = if (campaignIds.isEmpty()) emptyMap() else repo.findAllById(campaignIds).associateBy { it.id }
-        val ordered = campaignIds.mapNotNull { byId[it] } // participant page 순서 보존, orphan 제외
+        // participant page 순서 보존, orphan·숨김 캠페인 제외
+        val ordered = campaignIds.mapNotNull { byId[it] }.filter { it.hiddenAt == null }
         val bookmarkedIds = bookmarkedByPage(userId, ordered.map { it.id })
         return CampaignPageResponse(
             content = ordered.map {
@@ -260,6 +261,10 @@ class CampaignService(
     fun getCampaign(id: String, currentUserId: Long?): CampaignResponse {
         val campaign = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        }
+        // 숨김 캠페인은 개설자에게만 보인다(hidden 플래그 포함). 그 외에는 존재를 드러내지 않는 404.
+        if (campaign.hiddenAt != null && (campaign.authorUserId == null || campaign.authorUserId != currentUserId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         }
         return campaign.toResponse(
             viewerId = currentUserId,
@@ -331,7 +336,7 @@ class CampaignService(
         val campaignIds = bookmarkRepo.findByUserId(userId).map { it.campaignId }.distinct()
         if (campaignIds.isEmpty()) return emptyList()
 
-        val campaigns = repo.findAllByIdInOrderBySeqDesc(campaignIds)
+        val campaigns = repo.findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(campaignIds)
         val joinedIds = participants.findByUserIdAndCampaignIdIn(userId, campaignIds)
             .map { it.campaignId }
             .toSet()
@@ -351,7 +356,8 @@ class CampaignService(
         val bookmarkPage = bookmarkRepo.findByUserId(userId, PageRequest.of(page, size, Sort.by("id").ascending()))
         val campaignIds = bookmarkPage.content.map { it.campaignId }
         val campaignsById = if (campaignIds.isEmpty()) emptyMap() else repo.findAllById(campaignIds).associateBy { it.id }
-        val ordered = campaignIds.mapNotNull { campaignsById[it] }
+        // bookmark page 순서 보존, orphan·숨김 캠페인 제외
+        val ordered = campaignIds.mapNotNull { campaignsById[it] }.filter { it.hiddenAt == null }
         val joinedIds = joinedByPage(userId, ordered.map { it.id })
         return CampaignPageResponse(
             content = ordered.map {
@@ -367,8 +373,7 @@ class CampaignService(
     /** 북마크. 이미 저장된 경우에도 idempotent(200). */
     @Transactional
     fun bookmarkCampaign(userId: Long, campaignId: String): CampaignResponse {
-        val campaign = repo.findByIdForUpdate(campaignId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        val campaign = visibleForUpdateOrNotFound(campaignId)
         if (!bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId)) {
             bookmarkRepo.save(CampaignBookmark("cbk-${UUID.randomUUID()}", campaignId, userId))
         }
@@ -383,8 +388,7 @@ class CampaignService(
     /** 북마크 취소. 저장되지 않은 경우에도 idempotent(200). */
     @Transactional
     fun unbookmarkCampaign(userId: Long, campaignId: String): CampaignResponse {
-        val campaign = repo.findByIdForUpdate(campaignId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        val campaign = visibleForUpdateOrNotFound(campaignId)
         bookmarkRepo.findByCampaignIdAndUserId(campaignId, userId)?.let(bookmarkRepo::delete)
         return campaign.toResponse(
             viewerId = userId,
@@ -489,6 +493,19 @@ class CampaignService(
         comments.deleteByCampaignId(campaignId)
         bookmarkRepo.deleteByCampaignId(campaignId)
         repo.delete(campaign)
+    }
+
+    /**
+     * 상호작용(북마크)용 write lock 조회. 숨김 캠페인은 존재를 드러내지 않는 404 로 차단한다
+     * (개설자 권한 경로인 상태 변경/수정/삭제는 별도 — 숨김 상태에서도 허용).
+     */
+    private fun visibleForUpdateOrNotFound(campaignId: String): Campaign {
+        val campaign = repo.findByIdForUpdate(campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        if (campaign.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        return campaign
     }
 
     private fun validatePageParams(page: Int, size: Int) = checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)

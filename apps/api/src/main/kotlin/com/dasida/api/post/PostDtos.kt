@@ -74,6 +74,8 @@ data class PostResponse(
     val likedByMe: Boolean,
     val bookmarkedByMe: Boolean,
     val ownedByMe: Boolean,
+    // 관리자 숨김 여부. 숨김 콘텐츠는 작성자 본인 경로(mine/상세)에서만 응답에 실린다.
+    val hidden: Boolean = false,
 )
 
 data class PostSearchResponse(

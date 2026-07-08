@@ -19,6 +19,10 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
 
+    // 공개 노출 경로용(숨김 제외). 개설자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.
+    fun findByHiddenAtIsNull(sort: org.springframework.data.domain.Sort): List<Campaign>
+    fun findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(ids: Collection<String>): List<Campaign>
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Campaign c set c.author.name = :name, c.author.verified = false, c.author.profileImageUrl = null where c.authorUserId = :userId")
     fun anonymizeAuthor(@Param("userId") userId: Long, @Param("name") name: String): Int
@@ -28,6 +32,6 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     @Query("update Campaign c set c.author.name = :name, c.author.profileImageUrl = :imageUrl where c.authorUserId = :userId")
     fun syncAuthorProfile(@Param("userId") userId: Long, @Param("name") name: String, @Param("imageUrl") imageUrl: String?): Int
 
-    @Query("SELECT c.id FROM Campaign c ORDER BY c.seq DESC, c.id ASC")
+    @Query("SELECT c.id FROM Campaign c WHERE c.hiddenAt IS NULL ORDER BY c.seq DESC, c.id ASC")
     fun findIds(pageable: Pageable): Page<String>
 }

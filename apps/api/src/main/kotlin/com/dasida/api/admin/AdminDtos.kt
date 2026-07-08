@@ -33,6 +33,8 @@ data class AdminReportTargetResponse(
     val authorName: String,
     @field:Schema(description = "대상으로 이동하는 프론트 경로", example = "/posts/p1")
     val href: String,
+    @field:Schema(description = "현재 숨김 상태 여부")
+    val hidden: Boolean = false,
 )
 
 data class AdminReportsPageResponse(
@@ -51,6 +53,22 @@ data class ResolveReportRequest(
     val status: String,
     @field:Schema(description = "처리 메모(선택, 최대 500자). 신고자 알림에도 포함된다.")
     val note: String? = null,
+    @field:Schema(description = "RESOLVED 처리 시 대상 콘텐츠를 함께 숨길지 여부. 대상이 이미 삭제됐으면 무시된다.")
+    val hideContent: Boolean = false,
+)
+
+@Schema(description = "콘텐츠 숨김/복구 요청")
+data class SetContentVisibilityRequest(
+    @field:Schema(description = "true = 숨김, false = 복구")
+    val hidden: Boolean,
+    @field:Schema(description = "숨김 사유(선택, 최대 500자). 작성자 알림에 포함된다.")
+    val reason: String? = null,
+)
+
+data class ContentVisibilityResponse(
+    val targetType: String,
+    val targetId: String,
+    val hidden: Boolean,
 )
 
 @Schema(description = "관리자 대시보드 요약")

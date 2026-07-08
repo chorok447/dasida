@@ -131,6 +131,8 @@ export type Post = {
   likedByMe: boolean;
   bookmarkedByMe: boolean;
   ownedByMe: boolean;
+  /** 관리자 숨김 여부. 작성자 본인 경로(mine/상세)에서만 true 로 내려온다. */
+  hidden?: boolean;
 };
 
 export type PostSearchResponse = {

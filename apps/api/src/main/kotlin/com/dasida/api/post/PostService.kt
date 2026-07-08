@@ -34,7 +34,7 @@ class PostService(
 ) {
     @Transactional(readOnly = true)
     fun listPosts(currentUserId: Long?): List<PostResponse> {
-        val posts = repo.findAll(Sort.by(Sort.Direction.DESC, "seq"))
+        val posts = repo.findByHiddenAtIsNull(Sort.by(Sort.Direction.DESC, "seq"))
         // N+1 회피: 내가 좋아요/북마크한 postId 를 각각 한 번에 조회.
         val likedIds = likedByPage(currentUserId, posts.map { it.id })
         val bookmarkedIds = bookmarkedByPage(currentUserId, posts.map { it.id })
@@ -133,7 +133,7 @@ class PostService(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "user not found")
         }
         validatePageParams(page, size)
-        val result = repo.findByAuthorUserId(
+        val result = repo.findByAuthorUserIdAndHiddenAtIsNull(
             authorUserId,
             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
         )
@@ -157,7 +157,7 @@ class PostService(
         val postIds = bookmarkRepo.findByUserId(userId).map { it.postId }.distinct()
         if (postIds.isEmpty()) return emptyList()
 
-        val posts = repo.findAllByIdInOrderBySeqDesc(postIds)
+        val posts = repo.findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(postIds)
         if (posts.isEmpty()) return emptyList()
 
         val likedIds = likeRepo.findByUserIdAndPostIdIn(userId, posts.map { it.id })
@@ -215,7 +215,8 @@ class PostService(
         val bookmarkPage = bookmarkRepo.findByUserId(userId, PageRequest.of(page, size, Sort.by("id").ascending()))
         val postIds = bookmarkPage.content.map { it.postId }
         val postsById = if (postIds.isEmpty()) emptyMap() else repo.findAllById(postIds).associateBy { it.id }
-        val orderedPosts = postIds.mapNotNull { postsById[it] } // bookmark page 순서 보존, orphan 제외
+        // bookmark page 순서 보존, orphan·숨김 게시글 제외
+        val orderedPosts = postIds.mapNotNull { postsById[it] }.filter { it.hiddenAt == null }
         val likedIds = likedByPage(userId, orderedPosts.map { it.id })
         return PostPageResponse(
             content = orderedPosts.map {
@@ -233,6 +234,10 @@ class PostService(
         val post = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
         }
+        // 숨김 게시글은 작성자에게만 보인다(hidden 플래그 포함). 그 외에는 존재를 드러내지 않는 404.
+        if (post.hiddenAt != null && (post.authorUserId == null || post.authorUserId != currentUserId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
         return post.toResponse(
             viewerId = currentUserId,
             likedByMe = currentUserId != null && likeRepo.existsByPostIdAndUserId(id, currentUserId),
@@ -249,8 +254,7 @@ class PostService(
      */
     @Transactional
     fun likePost(userId: Long, postId: String): PostResponse {
-        val post = repo.findByIdForUpdate(postId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        val post = visibleForUpdateOrNotFound(postId)
         if (!likeRepo.existsByPostIdAndUserId(postId, userId)) {
             likeRepo.save(PostLike("plk-${UUID.randomUUID()}", postId, userId))
             post.likes += 1
@@ -278,8 +282,7 @@ class PostService(
     @Transactional
     fun unlikePost(userId: Long, postId: String): PostResponse {
         // write lock 으로 직렬화 → 서로 다른 유저의 동시 unlike 에서도 감소가 유실되지 않음.
-        val post = repo.findByIdForUpdate(postId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        val post = visibleForUpdateOrNotFound(postId)
         likeRepo.findByPostIdAndUserId(postId, userId)?.let {
             likeRepo.delete(it)
             post.likes = maxOf(0, post.likes - 1)
@@ -295,8 +298,7 @@ class PostService(
     @Transactional
     fun bookmarkPost(userId: Long, postId: String): PostResponse {
         // post row lock 뒤 존재 여부를 재확인해 같은 사용자의 동시 요청을 직렬화한다.
-        val post = repo.findByIdForUpdate(postId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        val post = visibleForUpdateOrNotFound(postId)
         if (!bookmarkRepo.existsByPostIdAndUserId(postId, userId)) {
             bookmarkRepo.save(PostBookmark("pbk-${UUID.randomUUID()}", postId, userId))
         }
@@ -310,8 +312,7 @@ class PostService(
     /** 북마크 취소. 저장되지 않은 경우에도 idempotent(200). */
     @Transactional
     fun unbookmarkPost(userId: Long, postId: String): PostResponse {
-        val post = repo.findByIdForUpdate(postId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        val post = visibleForUpdateOrNotFound(postId)
         bookmarkRepo.findByPostIdAndUserId(postId, userId)?.let(bookmarkRepo::delete)
         return post.toResponse(
             viewerId = userId,
@@ -408,6 +409,19 @@ class PostService(
         val images: List<String>,
         val campaignId: String?,
     )
+
+    /**
+     * 상호작용(좋아요/북마크)용 write lock 조회. 숨김 게시글은 작성자 여부와 무관하게
+     * 존재를 드러내지 않는 404 로 차단한다(수정/삭제는 작성자 권한 경로라 별도).
+     */
+    private fun visibleForUpdateOrNotFound(postId: String): Post {
+        val post = repo.findByIdForUpdate(postId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        if (post.hiddenAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+        return post
+    }
 
     private fun validatePageParams(page: Int, size: Int) = checkPageParams(page, size, MAX_SEARCH_PAGE_SIZE)
 
