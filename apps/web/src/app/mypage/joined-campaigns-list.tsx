@@ -119,6 +119,7 @@ function CampaignCard({
           <FallbackImage
             src={campaign.thumb}
             alt={`${campaign.title} 캠페인 이미지`}
+            thumbnail
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />

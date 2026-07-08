@@ -35,6 +35,7 @@ export function FeedSideHot({ campaigns }: { campaigns: Campaign[] }) {
               <FallbackImage
                 src={c.thumb}
                 alt={`${c.title} 캠페인 이미지`}
+                thumbnail
                 className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
               />
               <div className="flex-1 min-w-0">

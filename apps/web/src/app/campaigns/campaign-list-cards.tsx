@@ -96,6 +96,7 @@ export function CampaignListCard({ campaign, onOpen }: { campaign: Campaign; onO
             <FallbackImage
               src={campaign.thumb}
               alt={`${campaign.title} 캠페인 이미지`}
+              thumbnail
               className="h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface-dark)]/70 via-transparent to-transparent" />

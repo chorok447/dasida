@@ -37,6 +37,7 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
             <FallbackImage
               src={campaign.thumb}
               alt={`${campaign.title} 캠페인 이미지`}
+              thumbnail
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
@@ -126,6 +127,7 @@ export function PostResultCard({ post }: { post: Post }) {
             <FallbackImage
               src={image}
               alt="게시글 미리보기 이미지"
+              thumbnail
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </div>

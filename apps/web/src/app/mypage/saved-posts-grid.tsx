@@ -45,7 +45,7 @@ function SavedPostCard({
       <Link href={`/posts/${post.id}`} className="block transition-transform hover:-translate-y-0.5">
         {image ? (
           <div className="aspect-[4/3] overflow-hidden">
-            <FallbackImage src={image} alt="게시글 미리보기 이미지" className="h-full w-full object-cover" />
+            <FallbackImage src={image} alt="게시글 미리보기 이미지" thumbnail className="h-full w-full object-cover" />
           </div>
         ) : (
           <div

@@ -73,6 +73,7 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
                     alt=""
                     decorative
                     dark={dark}
+                    thumbnail
                     className="h-full w-full object-cover"
                   />
                 </div>

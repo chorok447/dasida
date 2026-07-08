@@ -111,6 +111,7 @@ function ProofItem({
               <FallbackImage
                 src={image}
                 alt={`${proof.author.name}님의 참여 인증 사진`}
+                thumbnail
                 className="h-full w-full object-cover"
               />
             </div>

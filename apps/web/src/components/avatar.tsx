@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Leaf, User } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { uploadThumbUrl } from "@/lib/upload-thumb";
 
 type AvatarProps = {
   name: string;
@@ -31,7 +32,13 @@ export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [failed, setFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const showDefault = !src || failed;
+
+  // 업로드 프로필 이미지는 작은 썸네일을 먼저 시도하고, 없으면(과거 업로드·webp) 원본으로 fallback.
+  const thumbSrc = src ? uploadThumbUrl(src) : undefined;
+  const useThumb = Boolean(thumbSrc && thumbSrc !== src && !thumbFailed);
+  const currentSrc = useThumb ? thumbSrc : src;
 
   return (
     <div className="relative inline-block flex-shrink-0" style={{ width: size, height: size }}>
@@ -40,9 +47,9 @@ export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          src={currentSrc}
           alt={`${name} 프로필 이미지`}
-          onError={() => setFailed(true)}
+          onError={() => (useThumb ? setThumbFailed(true) : setFailed(true))}
           className="h-full w-full rounded-full object-cover"
           draggable={false}
         />
