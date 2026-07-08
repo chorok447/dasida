@@ -94,7 +94,7 @@ export function AuthShell({
 
         <motion.div
           style={{ transform: "translateZ(120px)" }}
-          className="absolute -right-2 -top-6 flex h-20 w-20 items-center justify-center rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4)] sm:-right-6"
+          className="hidden sm:flex absolute -right-6 -top-6 h-20 w-20 items-center justify-center rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4)]"
         >
           <div className="absolute inset-0 rounded-2xl bg-[#7dd3a3]" />
           <span
