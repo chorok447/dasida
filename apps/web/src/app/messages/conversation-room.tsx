@@ -176,6 +176,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
 
   return (
     <PageShell paddingClassName="relative flex min-h-screen flex-col" orb="none">
+      <h1 className="sr-only">{peer ? `${peer.name}님과의 대화` : "대화"}</h1>
       <header
         className="fixed top-16 left-0 right-0 z-30 border-b backdrop-blur-xl"
         style={{

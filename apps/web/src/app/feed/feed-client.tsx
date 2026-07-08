@@ -175,6 +175,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
     <PageShell paddingClassName="relative min-h-screen pt-28 pb-20 px-6 overflow-hidden" orb="left">
       <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <main>
+          <h1 className="sr-only">피드</h1>
           <button
             type="button"
             onClick={goToNewPost}

@@ -137,6 +137,7 @@ export function PostDetailHero({
               <button
                 type="button"
                 onClick={onPrevImage}
+                aria-label="이전 이미지"
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
                 style={{ background: "rgba(15,31,34,0.6)", color: "#fff" }}
               >
@@ -145,6 +146,7 @@ export function PostDetailHero({
               <button
                 type="button"
                 onClick={onNextImage}
+                aria-label="다음 이미지"
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
                 style={{ background: "rgba(15,31,34,0.6)", color: "#fff" }}
               >
@@ -198,9 +200,10 @@ export function PostDetailHero({
           </div>
 
           {linkedCampaign && (
-            <div
-              className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer"
+            <button
+              type="button"
               onClick={() => onOpenCampaign(linkedCampaign.id)}
+              className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer text-left w-full"
               style={{
                 background: "var(--accent-soft)",
                 border: "1px solid rgba(125,211,163,0.25)",
@@ -215,7 +218,7 @@ export function PostDetailHero({
                 <div className="text-[11px] opacity-70" style={{ color: "var(--foreground)" }}>연결된 캠페인</div>
                 <div className="text-[13px] truncate" style={{ color: "var(--foreground)" }}>{linkedCampaign.title}</div>
               </div>
-            </div>
+            </button>
           )}
 
           <div className="flex items-center gap-2 pt-3 border-t" style={{ borderColor: "var(--border)" }}>

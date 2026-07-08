@@ -336,7 +336,7 @@ export function PostComposeForm({
             placeholder="태그 입력 후 Enter"
             disabled={values.tags.length >= POST_MAX_TAGS}
             aria-invalid={Boolean(fieldErrors.tags)}
-            className="min-w-[120px] flex-1 bg-transparent px-2 text-[13px] outline-none placeholder:opacity-50"
+            className="min-w-[120px] flex-1 bg-transparent px-2 text-[13px] outline-none placeholder:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
             style={{ color: "var(--foreground)" }}
           />
         </div>

@@ -141,6 +141,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   return (
     <PageShell paddingClassName="relative min-h-screen pt-28 pb-20 px-6 overflow-hidden" orb="right">
       <div className="max-w-5xl mx-auto relative">
+        <h1 className="sr-only">게시글 상세</h1>
         <div className="mb-6 flex items-center justify-between gap-3">
           <button
             type="button"
