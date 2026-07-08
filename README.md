@@ -2,11 +2,21 @@
 
 한국형 업사이클링 / 소셜 캠페인 앱. pnpm + Gradle 모노레포.
 
+## 주요 기능
+
+- **피드/게시글**: 작성·수정·삭제, 이미지 업로드, 좋아요·북마크·댓글, 태그
+- **캠페인**: 개설·모집 시작·참여/취소, 캠페인 댓글, 참여자 목록
+- **알림**: 타입별 필터 탭(좋아요·댓글/캠페인/팔로우/메시지) + 안읽음 필터를 AND로 조합 조회
+- **DM**: 1:1 대화, WebSocket 실시간 갱신, 차단
+- **팔로우**: 팔로우/언팔로우, 팔로잉·팔로워 목록, 추천, 팔로잉 피드 필터
+- **마이페이지**: 프로필 수정, 계정 설정(비밀번호/이메일 변경, 알림 설정), 접속 기록, 회원 탈퇴
+- **검색/신고**: 게시글·캠페인 통합 검색, 콘텐츠 신고
+
 ## 기술 스택
 
 ### Frontend
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?style=for-the-badge&logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16.2.10-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.2.7-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
