@@ -194,6 +194,8 @@ export type CampaignComment = {
   ownedByMe: boolean;
   edited: boolean;
   updatedAt: string | null;
+  parentId?: string | null;
+  replies?: CampaignComment[];
 };
 
 export type UpdateCampaignCommentRequest = { text: string };
@@ -202,8 +204,10 @@ export type CampaignCommentsResponse = {
   content: CampaignComment[];
   page: number;
   size: number;
+  // pagination 은 최상위 댓글 기준, totalComments 는 답글 포함 전체 수.
   totalElements: number;
   totalPages: number;
+  totalComments?: number;
 };
 
 export function fetchCampaignCommentPageLocation(

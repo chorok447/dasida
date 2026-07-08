@@ -16,6 +16,8 @@ export type PagedCommentsResponse<C> = {
   size: number;
   totalElements: number;
   totalPages: number;
+  /** 답글 포함 전체 노출 댓글 수(카운트 표시용). 없으면 totalElements 를 쓴다. */
+  totalComments?: number;
 };
 
 type ListState<C> = {
@@ -195,7 +197,7 @@ export function usePagedComments<C extends { id: string; text: string }>(args: U
           argsRef.current.onPageChange(previousPage, { replace: true, preserveTarget: false });
           return;
         }
-        argsRef.current.onTotalElements?.(response.totalElements);
+        argsRef.current.onTotalElements?.(response.totalComments ?? response.totalElements);
         setListState({ identity: requestIdentity, status: "success", response, error: "" });
       })
       .catch((error) => {

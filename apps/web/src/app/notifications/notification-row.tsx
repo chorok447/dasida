@@ -17,6 +17,7 @@ function iconFor(type: string) {
   if (type === "CAMPAIGN_STATUS_CHANGED") return <Megaphone size={16} aria-hidden />;
   if (type === "CAMPAIGN_PROOF_CREATED") return <BadgeCheck size={16} aria-hidden />;
   if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} aria-hidden />;
+  if (type === "COMMENT_REPLY_CREATED") return <MessageCircle size={16} aria-hidden />;
   return <Bell size={16} aria-hidden />;
 }
 

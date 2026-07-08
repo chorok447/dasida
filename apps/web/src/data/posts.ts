@@ -172,6 +172,8 @@ export type PostComment = {
   ownedByMe: boolean;
   edited: boolean;
   updatedAt: string | null;
+  parentId?: string | null;
+  replies?: PostComment[];
 };
 
 export type UpdatePostCommentRequest = { text: string };
@@ -180,8 +182,10 @@ export type PostCommentsPageResponse = {
   content: PostComment[];
   page: number;
   size: number;
+  // pagination 은 최상위 댓글 기준, totalComments 는 답글 포함 전체 수.
   totalElements: number;
   totalPages: number;
+  totalComments?: number;
 };
 
 export function fetchPostCommentsPage(

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, MessageCircle, RefreshCw } from "lucide-react";
+import { CornerDownRight, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
@@ -11,7 +11,8 @@ import {
   type CampaignComment,
   type CampaignCommentsResponse,
 } from "@/data/campaigns";
-import { apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
+import { ApiError, apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
+import { getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
 import { useTheme } from "@/lib/theme-context";
 import { CampaignCommentItem } from "./campaign-comment-item";
@@ -85,6 +86,49 @@ export function CampaignComments({
     void comments.submit();
   };
 
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  const toggleReplying = (comment: CampaignComment) => {
+    setReplyingToId((current) => (current === comment.id ? null : comment.id));
+    setReplyText("");
+  };
+
+  const submitReply = async (parentId: string) => {
+    const text = replyText.trim();
+    if (!text || submittingReply) return;
+    const requestToken = getSessionId();
+    if (!requestToken) {
+      router.push("/login");
+      return;
+    }
+    setSubmittingReply(true);
+    setMutationError("");
+    try {
+      await apiPost<CampaignComment>(`/api/campaigns/${campaignId}/comments`, { text, parentId });
+      if (getSessionId() !== requestToken) return;
+      setReplyText("");
+      setReplyingToId(null);
+      reload();
+    } catch (error) {
+      if (getSessionId() !== requestToken) return;
+      if (error instanceof ApiError && error.status === 401) {
+        router.push("/login");
+      } else if (error instanceof ApiError && error.status === 404) {
+        setMutationError("원본 댓글이 삭제되어 답글을 남길 수 없습니다.");
+        setReplyingToId(null);
+        reload();
+      } else if (error instanceof ApiError && error.status === 400) {
+        setMutationError("답글 내용을 확인해주세요.");
+      } else {
+        setMutationError("답글 등록에 실패했습니다.");
+      }
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
   return (
     <div
       className="rounded-3xl border p-5 sm:p-8"
@@ -93,7 +137,9 @@ export function CampaignComments({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-[18px] font-semibold" style={{ color: "var(--foreground)" }}>
-            댓글 {comments.status === "success" && response ? response.totalElements.toLocaleString() : ""}
+            댓글 {comments.status === "success" && response
+              ? (response.totalComments ?? response.totalElements).toLocaleString()
+              : ""}
           </h2>
           <p className="mt-1 text-[12px] opacity-60" style={{ color: "var(--foreground)" }}>
             캠페인에 대한 의견과 질문을 남겨보세요.
@@ -148,21 +194,81 @@ export function CampaignComments({
         ) : null}
 
         {comments.status === "success" && response ? response.content.map((comment) => (
-          <CampaignCommentItem
-            key={comment.id}
-            comment={comment}
-            deleting={deletingIds.has(comment.id)}
-            editing={editingCommentId === comment.id && comment.ownedByMe}
-            saving={savingCommentId === comment.id}
-            editText={editingCommentId === comment.id ? editText : comment.text}
-            editError={editingCommentId === comment.id ? editError : ""}
-            highlighted={comment.id === targetCommentId}
-            onEdit={comments.startEditing}
-            onEditTextChange={setEditText}
-            onSave={(target) => void comments.saveEditing(target.id)}
-            onCancel={comments.cancelEditing}
-            onDelete={(target) => void comments.remove(target.id)}
-          />
+          <div key={comment.id}>
+            <CampaignCommentItem
+              comment={comment}
+              deleting={deletingIds.has(comment.id)}
+              editing={editingCommentId === comment.id && comment.ownedByMe}
+              saving={savingCommentId === comment.id}
+              editText={editingCommentId === comment.id ? editText : comment.text}
+              editError={editingCommentId === comment.id ? editError : ""}
+              highlighted={comment.id === targetCommentId}
+              onEdit={comments.startEditing}
+              onEditTextChange={setEditText}
+              onSave={(target) => void comments.saveEditing(target.id)}
+              onCancel={comments.cancelEditing}
+              onDelete={(target) => void comments.remove(target.id)}
+              replying={replyingToId === comment.id}
+              onToggleReply={token ? toggleReplying : undefined}
+            />
+            {(comment.replies?.length ?? 0) > 0 || replyingToId === comment.id ? (
+              <div className="ml-6 mt-2 space-y-2 border-l pl-3 sm:ml-10" style={{ borderColor: "var(--border)" }}>
+                {comment.replies?.map((reply) => (
+                  <CampaignCommentItem
+                    key={reply.id}
+                    comment={reply}
+                    isReply
+                    deleting={deletingIds.has(reply.id)}
+                    editing={editingCommentId === reply.id && reply.ownedByMe}
+                    saving={savingCommentId === reply.id}
+                    editText={editingCommentId === reply.id ? editText : reply.text}
+                    editError={editingCommentId === reply.id ? editError : ""}
+                    highlighted={reply.id === targetCommentId}
+                    onEdit={comments.startEditing}
+                    onEditTextChange={setEditText}
+                    onSave={(target) => void comments.saveEditing(target.id)}
+                    onCancel={comments.cancelEditing}
+                    onDelete={(target) => void comments.remove(target.id)}
+                  />
+                ))}
+                {replyingToId === comment.id ? (
+                  <div
+                    className="flex items-center gap-2 rounded-2xl border p-3"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <CornerDownRight size={14} className="shrink-0 opacity-45" aria-hidden />
+                    <input
+                      aria-label="답글 내용"
+                      autoFocus
+                      value={replyText}
+                      onChange={(event) => setReplyText(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                          event.preventDefault();
+                          void submitReply(comment.id);
+                        }
+                      }}
+                      placeholder={`${comment.author.name}님에게 답글 달기...`}
+                      maxLength={500}
+                      disabled={submittingReply}
+                      className="min-w-0 flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+                      style={{ color: "var(--foreground)" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void submitReply(comment.id)}
+                      disabled={submittingReply || !replyText.trim()}
+                      aria-label="답글 등록"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
+                      style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                    >
+                      {submittingReply ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         )) : null}
       </div>
 

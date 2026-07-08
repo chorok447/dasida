@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { CornerDownRight, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { ReportButton } from "@/components/report-button";
 import type { CampaignComment } from "@/data/campaigns";
@@ -29,6 +29,9 @@ export function CampaignCommentItem({
   onSave,
   onCancel,
   onDelete,
+  isReply = false,
+  replying = false,
+  onToggleReply,
 }: {
   comment: CampaignComment;
   deleting: boolean;
@@ -42,6 +45,10 @@ export function CampaignCommentItem({
   onSave: (comment: CampaignComment) => void;
   onCancel: () => void;
   onDelete: (comment: CampaignComment) => void;
+  isReply?: boolean;
+  replying?: boolean;
+  /** 최상위 댓글에서 답글 작성 UI 를 토글한다. 없으면 답글 버튼을 숨긴다. */
+  onToggleReply?: (comment: CampaignComment) => void;
 }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -166,12 +173,25 @@ export function CampaignCommentItem({
           {editError ? <p role="alert" className="text-[12px] text-[#ed5c48]">{editError}</p> : null}
         </form>
       ) : (
-        <p
-          className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7"
-          style={{ color: "var(--foreground-muted)" }}
-        >
-          {comment.text}
-        </p>
+        <>
+          <p
+            className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7"
+            style={{ color: "var(--foreground-muted)" }}
+          >
+            {comment.text}
+          </p>
+          {!isReply && onToggleReply ? (
+            <button
+              type="button"
+              onClick={() => onToggleReply(comment)}
+              className="mt-2 inline-flex items-center gap-1 text-[12px] opacity-55 hover:opacity-100"
+              style={{ color: "var(--foreground)" }}
+            >
+              <CornerDownRight size={12} aria-hidden />
+              {replying ? "답글 취소" : "답글 달기"}
+            </button>
+          ) : null}
+        </>
       )}
     </article>
   );

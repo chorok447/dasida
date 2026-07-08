@@ -14,7 +14,7 @@ fun Post.toResponse(
     hidden = hiddenAt != null,
 )
 
-fun PostComment.toResponse(viewerId: Long?) = PostCommentResponse(
+fun PostComment.toResponse(viewerId: Long?, replies: List<PostCommentResponse> = emptyList()) = PostCommentResponse(
     id = id,
     postId = postId,
     author = author,
@@ -23,4 +23,6 @@ fun PostComment.toResponse(viewerId: Long?) = PostCommentResponse(
     ownedByMe = authorUserId != null && authorUserId == viewerId,
     edited = updatedAt != null,
     updatedAt = updatedAt,
+    parentId = parentId,
+    replies = replies,
 )

@@ -31,6 +31,8 @@ data class UpdatePostRequest(
 data class CreateCommentRequest(
     @field:Schema(description = "댓글 본문(최대 500자)")
     val text: String,
+    @field:Schema(description = "답글 대상 댓글 id(최상위 댓글만 가능). null 이면 일반 댓글.")
+    val parentId: String? = null,
 )
 
 @Schema(description = "게시글 댓글 수정 요청")
@@ -49,14 +51,20 @@ data class PostCommentResponse(
     val ownedByMe: Boolean,
     val edited: Boolean,
     val updatedAt: Instant?,
+    val parentId: String? = null,
+    // 최상위 댓글일 때만 채워지는 1단계 답글 목록(오래된 순).
+    val replies: List<PostCommentResponse> = emptyList(),
 )
 
 data class PostCommentsPageResponse(
     val content: List<PostCommentResponse>,
     val page: Int,
     val size: Int,
+    // pagination 은 최상위 댓글 기준.
     val totalElements: Long,
     val totalPages: Int,
+    // 답글을 포함한 전체 노출 댓글 수(카운트 표시용).
+    val totalComments: Long = 0,
 )
 
 /** 게시글 응답. Post 필드 + 요청 유저 기준 좋아요/북마크/소유 상태. authorUserId 자체는 노출하지 않는다. */

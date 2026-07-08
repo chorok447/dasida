@@ -31,4 +31,6 @@ class CampaignComment(
     // 관리자 숨김(soft hide). null = 공개.
     @Column(name = "hidden_at") @JsonIgnore var hiddenAt: Instant? = null,
     @Column(name = "hidden_reason", length = 500) @JsonIgnore var hiddenReason: String? = null,
+    // 답글(1단계). null = 최상위 댓글. 답글의 답글은 허용하지 않는다.
+    @Column(name = "parent_id") val parentId: String? = null,
 )
