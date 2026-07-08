@@ -36,6 +36,7 @@ class AdminReportService(
     private val campaignComments: CampaignCommentRepository,
     private val notifications: NotificationService,
     private val content: AdminContentService,
+    private val actionLogs: AdminActionLogService,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -86,12 +87,17 @@ class AdminReportService(
         report.resolvedByUserId = adminUserId
         report.resolvedAt = Instant.now(clock)
         report.resolutionNote = note
+        val action = if (newStatus == ReportStatus.RESOLVED) AdminActionType.REPORT_RESOLVED else AdminActionType.REPORT_DISMISSED
+        actionLogs.record(adminUserId, action, TARGET_TYPE_REPORT, reportId, note)
         // 제재 확정 시 대상 콘텐츠 숨김까지 한 번에 처리. 대상이 이미 삭제됐으면 조용히 넘어간다.
         if (newStatus == ReportStatus.RESOLVED && request.hideContent) {
             val type = runCatching { ReportTargetType.valueOf(report.targetType) }.getOrNull()
             if (type != null) {
                 try {
-                    content.hide(type, report.targetId, note)
+                    // 실제로 숨긴 경우에만 기록한다(직접 숨김 경로의 setVisibility 와 같은 기준).
+                    if (content.hide(type, report.targetId, note)) {
+                        actionLogs.record(adminUserId, AdminActionType.CONTENT_HIDDEN, type.name, report.targetId, note)
+                    }
                 } catch (e: ResponseStatusException) {
                     if (e.statusCode != HttpStatus.NOT_FOUND) throw e
                 }
@@ -199,6 +205,7 @@ class AdminReportService(
         }
 
     private companion object {
+        const val TARGET_TYPE_REPORT = "REPORT"
         const val MAX_PAGE_SIZE = 100
         const val MAX_NOTE_LENGTH = 500
         const val MAX_EXCERPT_LENGTH = 200

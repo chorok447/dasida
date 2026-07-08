@@ -28,10 +28,12 @@ class AdminContentService(
     private val campaignComments: CampaignCommentRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
+    private val actionLogs: AdminActionLogService,
     private val clock: Clock,
 ) {
     @Transactional
     fun setVisibility(
+        adminUserId: Long,
         targetTypeRaw: String,
         targetId: String,
         request: SetContentVisibilityRequest,
@@ -45,17 +47,22 @@ class AdminContentService(
         if (reason != null && reason.length > MAX_REASON_LENGTH) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reason must not exceed $MAX_REASON_LENGTH characters")
         }
-        if (request.hidden) hide(targetType, targetId, reason) else unhide(targetType, targetId)
+        val changed = if (request.hidden) hide(targetType, targetId, reason) else unhide(targetType, targetId)
+        // 알림과 같은 기준: 실제로 상태가 바뀐 경우에만 기록한다(멱등 재요청은 무음).
+        if (changed) {
+            val action = if (request.hidden) AdminActionType.CONTENT_HIDDEN else AdminActionType.CONTENT_RESTORED
+            actionLogs.record(adminUserId, action, targetType.name, targetId, reason)
+        }
         return ContentVisibilityResponse(targetType.name, targetId, request.hidden)
     }
 
-    /** 대상을 숨긴다. 이미 숨김이면 no-op(멱등). 대상이 없으면 404. */
-    fun hide(targetType: ReportTargetType, targetId: String, reason: String?) {
+    /** 대상을 숨긴다. 이미 숨김이면 no-op(멱등). 대상이 없으면 404. 실제로 숨겼으면 true. */
+    fun hide(targetType: ReportTargetType, targetId: String, reason: String?): Boolean {
         val now = Instant.now(clock)
         when (targetType) {
             ReportTargetType.POST -> {
                 val post = posts.findByIdForUpdate(targetId) ?: throw notFound()
-                if (post.hiddenAt != null) return
+                if (post.hiddenAt != null) return false
                 post.hiddenAt = now
                 post.hiddenReason = reason
                 // 숨겨진 게시글 상세는 웹에서 열리지 않으므로 알림은 마이페이지로 보낸다.
@@ -64,7 +71,7 @@ class AdminContentService(
 
             ReportTargetType.POST_COMMENT -> {
                 val comment = postComments.findById(targetId).orElseThrow { notFound() }
-                if (comment.hiddenAt != null) return
+                if (comment.hiddenAt != null) return false
                 // 카운터 정합: 댓글 작성/삭제와 같은 순서로 post row 를 잠근 뒤 감소시킨다.
                 val post = posts.findByIdForUpdate(comment.postId)
                 comment.hiddenAt = now
@@ -75,7 +82,7 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN -> {
                 val campaign = campaigns.findByIdForUpdate(targetId) ?: throw notFound()
-                if (campaign.hiddenAt != null) return
+                if (campaign.hiddenAt != null) return false
                 campaign.hiddenAt = now
                 campaign.hiddenReason = reason
                 // 숨겨진 캠페인 상세는 웹에서 열리지 않으므로 알림은 마이페이지로 보낸다.
@@ -84,20 +91,21 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN_COMMENT -> {
                 val comment = campaignComments.findById(targetId).orElseThrow { notFound() }
-                if (comment.hiddenAt != null) return
+                if (comment.hiddenAt != null) return false
                 comment.hiddenAt = now
                 comment.hiddenReason = reason
                 notifyAuthor(comment.authorUserId, hidden = true, label = "댓글", href = "/campaigns/${comment.campaignId}", reason = reason)
             }
         }
+        return true
     }
 
-    /** 숨김을 해제한다. 이미 공개면 no-op(멱등). 대상이 없으면 404. */
-    fun unhide(targetType: ReportTargetType, targetId: String) {
+    /** 숨김을 해제한다. 이미 공개면 no-op(멱등). 대상이 없으면 404. 실제로 복구했으면 true. */
+    fun unhide(targetType: ReportTargetType, targetId: String): Boolean {
         when (targetType) {
             ReportTargetType.POST -> {
                 val post = posts.findByIdForUpdate(targetId) ?: throw notFound()
-                if (post.hiddenAt == null) return
+                if (post.hiddenAt == null) return false
                 post.hiddenAt = null
                 post.hiddenReason = null
                 notifyAuthor(post.authorUserId, hidden = false, label = "게시글", href = "/posts/${post.id}", reason = null)
@@ -105,7 +113,7 @@ class AdminContentService(
 
             ReportTargetType.POST_COMMENT -> {
                 val comment = postComments.findById(targetId).orElseThrow { notFound() }
-                if (comment.hiddenAt == null) return
+                if (comment.hiddenAt == null) return false
                 val post = posts.findByIdForUpdate(comment.postId)
                 comment.hiddenAt = null
                 comment.hiddenReason = null
@@ -115,7 +123,7 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN -> {
                 val campaign = campaigns.findByIdForUpdate(targetId) ?: throw notFound()
-                if (campaign.hiddenAt == null) return
+                if (campaign.hiddenAt == null) return false
                 campaign.hiddenAt = null
                 campaign.hiddenReason = null
                 notifyAuthor(campaign.authorUserId, hidden = false, label = "캠페인", href = "/campaigns/${campaign.id}", reason = null)
@@ -123,12 +131,13 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN_COMMENT -> {
                 val comment = campaignComments.findById(targetId).orElseThrow { notFound() }
-                if (comment.hiddenAt == null) return
+                if (comment.hiddenAt == null) return false
                 comment.hiddenAt = null
                 comment.hiddenReason = null
                 notifyAuthor(comment.authorUserId, hidden = false, label = "댓글", href = "/campaigns/${comment.campaignId}", reason = null)
             }
         }
+        return true
     }
 
     /** 작성자에게 숨김/복구를 알린다. 시드 콘텐츠(작성자 미상)·탈퇴 사용자는 생략. */
