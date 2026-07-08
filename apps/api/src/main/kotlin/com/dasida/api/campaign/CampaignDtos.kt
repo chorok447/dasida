@@ -142,6 +142,34 @@ data class CampaignCommentsResponse(
     val totalPages: Int,
 )
 
+data class CampaignProofResponse(
+    val id: String,
+    val campaignId: String,
+    val author: Author,
+    val text: String,
+    val images: List<String>,
+    val createdAt: Instant,
+    val ownedByMe: Boolean,
+)
+
+data class CampaignProofsResponse(
+    val content: List<CampaignProofResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    // 현재 사용자가 이미 인증을 남겼는지(숨김 포함). 비로그인은 false.
+    val proofedByMe: Boolean,
+)
+
+@Schema(description = "캠페인 참여 인증 작성 요청")
+data class CreateCampaignProofRequest(
+    @field:Schema(description = "인증 소감(최대 500자)")
+    val text: String,
+    @field:Schema(description = "인증 사진 URL 목록(최대 4장)")
+    val images: List<String> = emptyList(),
+)
+
 @Schema(description = "캠페인 댓글 작성 요청")
 data class CreateCampaignCommentRequest(
     @field:Schema(description = "댓글 본문(최대 500자)")

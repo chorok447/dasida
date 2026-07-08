@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "콘텐츠 신고 요청")
 data class CreateReportRequest(
-    @field:Schema(description = "신고 대상 종류", example = "POST", allowableValues = ["POST", "POST_COMMENT", "CAMPAIGN", "CAMPAIGN_COMMENT"])
+    @field:Schema(description = "신고 대상 종류", example = "POST", allowableValues = ["POST", "POST_COMMENT", "CAMPAIGN", "CAMPAIGN_COMMENT", "CAMPAIGN_PROOF"])
     val targetType: String,
     @field:Schema(description = "신고 대상 id")
     val targetId: String,

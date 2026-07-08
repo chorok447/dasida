@@ -2,6 +2,7 @@ package com.dasida.api.admin
 
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignCommentRepository
+import com.dasida.api.campaign.CampaignProofRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
@@ -26,6 +27,7 @@ class AdminContentService(
     private val postComments: PostCommentRepository,
     private val campaigns: CampaignRepository,
     private val campaignComments: CampaignCommentRepository,
+    private val campaignProofs: CampaignProofRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
     private val actionLogs: AdminActionLogService,
@@ -96,6 +98,14 @@ class AdminContentService(
                 comment.hiddenReason = reason
                 notifyAuthor(comment.authorUserId, hidden = true, label = "댓글", href = "/campaigns/${comment.campaignId}", reason = reason)
             }
+
+            ReportTargetType.CAMPAIGN_PROOF -> {
+                val proof = campaignProofs.findById(targetId).orElseThrow { notFound() }
+                if (proof.hiddenAt != null) return false
+                proof.hiddenAt = now
+                proof.hiddenReason = reason
+                notifyAuthor(proof.authorUserId, hidden = true, label = "참여 인증", href = "/campaigns/${proof.campaignId}?tab=proofs", reason = reason)
+            }
         }
         return true
     }
@@ -135,6 +145,14 @@ class AdminContentService(
                 comment.hiddenAt = null
                 comment.hiddenReason = null
                 notifyAuthor(comment.authorUserId, hidden = false, label = "댓글", href = "/campaigns/${comment.campaignId}", reason = null)
+            }
+
+            ReportTargetType.CAMPAIGN_PROOF -> {
+                val proof = campaignProofs.findById(targetId).orElseThrow { notFound() }
+                if (proof.hiddenAt == null) return false
+                proof.hiddenAt = null
+                proof.hiddenReason = null
+                notifyAuthor(proof.authorUserId, hidden = false, label = "참여 인증", href = "/campaigns/${proof.campaignId}?tab=proofs", reason = null)
             }
         }
         return true
