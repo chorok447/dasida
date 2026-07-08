@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Flag, Users } from "lucide-react";
+import { LayoutDashboard, Flag, Users, ScrollText } from "lucide-react";
 
 const items = [
   { href: "/admin", label: "대시보드", icon: LayoutDashboard },
   { href: "/admin/reports", label: "신고 관리", icon: Flag },
   { href: "/admin/users", label: "회원 관리", icon: Users },
+  { href: "/admin/logs", label: "감사 로그", icon: ScrollText },
 ];
 
 export function AdminNav() {

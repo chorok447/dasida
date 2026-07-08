@@ -106,6 +106,32 @@ data class SetUserSuspensionRequest(
     val reason: String? = null,
 )
 
+@Schema(description = "관리자 감사 로그 항목")
+data class AdminActionLogResponse(
+    val id: Long,
+    @field:Schema(
+        description = "조치 종류",
+        allowableValues = ["REPORT_RESOLVED", "REPORT_DISMISSED", "CONTENT_HIDDEN", "CONTENT_RESTORED", "USER_SUSPENDED", "USER_UNSUSPENDED"],
+    )
+    val action: String,
+    @field:Schema(description = "조치 대상 종류(REPORT/USER 또는 콘텐츠 타입)")
+    val targetType: String,
+    val targetId: String,
+    @field:Schema(description = "조치 부가 정보(처리 메모/숨김 사유/정지 기간·사유)")
+    val detail: String?,
+    @field:Schema(description = "조치 시각(ISO-8601)")
+    val createdAt: String,
+    val admin: AdminReportUserResponse,
+)
+
+data class AdminActionLogsPageResponse(
+    val content: List<AdminActionLogResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
 @Schema(description = "관리자 대시보드 요약")
 data class AdminSummaryResponse(
     val users: Long,

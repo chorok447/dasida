@@ -25,6 +25,7 @@ class AdminController(
     private val service: AdminReportService,
     private val content: AdminContentService,
     private val userService: AdminUserService,
+    private val actionLogs: AdminActionLogService,
 ) {
 
     @Operation(summary = "대시보드 요약 (사용자/게시글/캠페인/신고 수)")
@@ -54,7 +55,8 @@ class AdminController(
         @PathVariable targetType: String,
         @PathVariable targetId: String,
         @RequestBody request: SetContentVisibilityRequest,
-    ): ContentVisibilityResponse = content.setVisibility(targetType, targetId, request)
+        @AuthenticationPrincipal admin: AuthUser,
+    ): ContentVisibilityResponse = content.setVisibility(admin.id, targetType, targetId, request)
 
     @Operation(summary = "회원 목록 조회 (이메일/이름 검색, 최신 가입 순)")
     @GetMapping("/users")
@@ -71,4 +73,12 @@ class AdminController(
         @RequestBody request: SetUserSuspensionRequest,
         @AuthenticationPrincipal admin: AuthUser,
     ): AdminUserResponse = userService.setSuspension(admin.id, id, request)
+
+    @Operation(summary = "감사 로그 조회 (관리자 조치 이력, 최신순, 조치 종류 필터)")
+    @GetMapping("/logs")
+    fun adminLogs(
+        @RequestParam(required = false) action: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): AdminActionLogsPageResponse = actionLogs.getLogs(action, page, size)
 }

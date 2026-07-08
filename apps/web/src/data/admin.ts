@@ -116,6 +116,47 @@ export function setAdminUserSuspension(
   return apiPatch<AdminUserItem>(`/api/admin/users/${userId}/suspension`, body);
 }
 
+export type AdminActionType =
+  | "REPORT_RESOLVED"
+  | "REPORT_DISMISSED"
+  | "CONTENT_HIDDEN"
+  | "CONTENT_RESTORED"
+  | "USER_SUSPENDED"
+  | "USER_UNSUSPENDED";
+
+export type AdminActionLogItem = {
+  id: number;
+  action: AdminActionType;
+  /** REPORT/USER 또는 콘텐츠 타입(POST, POST_COMMENT, CAMPAIGN, CAMPAIGN_COMMENT) */
+  targetType: string;
+  targetId: string;
+  /** 처리 메모/숨김 사유/정지 기간·사유 */
+  detail: string | null;
+  createdAt: string;
+  admin: { id: number; name: string; email: string | null };
+};
+
+export type AdminActionLogsPageResponse = {
+  content: AdminActionLogItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export function fetchAdminLogs(params: {
+  action?: AdminActionType | "";
+  page?: number;
+  size?: number;
+}): Promise<AdminActionLogsPageResponse> {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 0),
+    size: String(params.size ?? 20),
+  });
+  if (params.action) query.set("action", params.action);
+  return apiGet<AdminActionLogsPageResponse>(`/api/admin/logs?${query.toString()}`);
+}
+
 /** 콘텐츠 숨김(soft hide)/복구. 작성자에게 알림이 발송된다. */
 export function setAdminContentVisibility(
   targetType: ReportTargetType,

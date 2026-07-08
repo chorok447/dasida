@@ -24,6 +24,7 @@ class AdminUserService(
     private val users: UserRepository,
     private val posts: PostRepository,
     private val campaigns: CampaignRepository,
+    private val actionLogs: AdminActionLogService,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -68,8 +69,13 @@ class AdminUserService(
 
         val now = Instant.now(clock)
         if (request.suspendedUntil == null) {
+            // 실제로 정지 중이었던 경우에만 기록한다(이미 정상인 계정의 해제 재요청은 무음).
+            val wasSuspended = user.isSuspendedAt(now)
             user.suspendedUntil = null
             user.suspendedReason = null
+            if (wasSuspended) {
+                actionLogs.record(adminUserId, AdminActionType.USER_UNSUSPENDED, TARGET_TYPE_USER, userId.toString())
+            }
         } else {
             val until = try {
                 Instant.parse(request.suspendedUntil)
@@ -81,8 +87,25 @@ class AdminUserService(
             }
             user.suspendedUntil = until
             user.suspendedReason = reason
+            actionLogs.record(
+                adminUserId,
+                AdminActionType.USER_SUSPENDED,
+                TARGET_TYPE_USER,
+                userId.toString(),
+                detail = suspensionDetail(until, now, reason),
+            )
         }
         return user.toAdminResponse(now)
+    }
+
+    /** 감사 로그용 정지 요약. AuthService 의 로그인 안내와 같은 기준(50년 초과 = 영구)으로 표기한다. */
+    private fun suspensionDetail(until: Instant, now: Instant, reason: String?): String {
+        val period = if (until.isAfter(now.plus(java.time.Duration.ofDays(365L * 50)))) {
+            "영구 정지"
+        } else {
+            "${java.time.LocalDate.ofInstant(until, java.time.ZoneId.of("Asia/Seoul"))} 까지"
+        }
+        return if (reason != null) "$period · $reason" else period
     }
 
     private fun User.toAdminResponse(now: Instant): AdminUserResponse = AdminUserResponse(
@@ -100,6 +123,7 @@ class AdminUserService(
     )
 
     private companion object {
+        const val TARGET_TYPE_USER = "USER"
         const val MAX_PAGE_SIZE = 100
         const val MAX_QUERY_LENGTH = 100
         const val MAX_REASON_LENGTH = 500
