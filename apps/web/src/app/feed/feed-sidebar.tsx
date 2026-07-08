@@ -9,7 +9,6 @@ import { statusMeta, type Campaign } from "@/data/campaigns";
 import { fetchRecommendedUsers, followUser, unfollowUser, type PublicUser } from "@/data/users";
 import { progressPercent } from "@/lib/progress";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 
 const cardStyle = {
   background: "var(--card)",
@@ -17,8 +16,6 @@ const cardStyle = {
 };
 
 export function FeedSideHot({ campaigns }: { campaigns: Campaign[] }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   return (
     <div className="rounded-2xl border p-5" style={cardStyle}>
       <div className="flex items-center gap-2 mb-4">
@@ -43,7 +40,7 @@ export function FeedSideHot({ campaigns }: { campaigns: Campaign[] }) {
                   {c.title}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1 rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
+                  <div className="flex-1 h-1 rounded-full" style={{ background: "rgba(var(--ink-rgb), 0.09)" }}>
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: statusMeta[c.status].color }} />
                   </div>
                   <span className="text-[11px] opacity-60" style={{ color: "var(--foreground)" }}>{pct}%</span>

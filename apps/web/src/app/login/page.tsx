@@ -5,15 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { AuthShell, FieldInput } from "@/components/auth-shell";
-import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError, apiErrorMessage } from "@/lib/api";
 import { setSession } from "@/lib/auth";
 
 type AuthResponse = { token: string; name: string; verified: boolean };
 
 export default function LoginPage() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +46,7 @@ export default function LoginPage() {
       subtitle="Welcome back"
       title="로그인"
       footer={
-        <p className="text-center text-[14px] mt-6" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+        <p className="text-center text-[14px] mt-6" style={{ color: "rgba(var(--ink-rgb), 0.7)" }}>
           아직 회원이 아니신가요?{" "}
           <Link href="/signup" className="underline" style={{ color: "#7dd3a3" }}>
             회원가입
@@ -77,7 +74,7 @@ export default function LoginPage() {
           error={error}
         />
 
-        <div className="flex items-center justify-between text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+        <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(var(--ink-rgb), 0.7)" }}>
           <label className="flex cursor-pointer items-center gap-2">
             <input type="checkbox" className="h-4 w-4 accent-[#7dd3a3]" />
             이메일 기억하기

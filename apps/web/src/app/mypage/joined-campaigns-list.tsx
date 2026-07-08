@@ -10,7 +10,6 @@ import { FallbackImage } from "@/components/fallback-image";
 import { RecommendedCampaigns } from "@/components/recommended-campaigns";
 import { apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
-import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import {
   campaignRecruitMeta,
@@ -42,13 +41,9 @@ const LIST_META: Record<
   },
 };
 
-function cardActionClass(dark: boolean) {
-  return `inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] transition-colors ${
-    dark
-      ? "border border-white/12 bg-white/5 text-white/85 hover:bg-white/10"
-      : "border border-[rgba(28,64,68,0.12)] bg-white text-[#1c4044] hover:bg-[rgba(28,64,68,0.04)]"
-  }`;
-}
+// 카드 하단 액션 버튼 공통 클래스. 색은 CSS 토큰이 테마를 처리한다.
+const cardActionClass =
+  "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] transition-colors border-[rgba(var(--ink-rgb),0.12)] bg-[color:var(--glass-strong)] text-[color:var(--heading)] hover:bg-[color:var(--chip-bg)]";
 
 function StatusBadge({ campaign }: { campaign: Campaign }) {
   const m = campaignRecruitMeta(campaign);
@@ -60,13 +55,11 @@ function StatusBadge({ campaign }: { campaign: Campaign }) {
 }
 
 function ProgressBar({ campaign }: { campaign: Campaign }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const pct = progressPercent(campaign.joined, campaign.capacity);
   const meta = campaignRecruitMeta(campaign);
   return (
     <div className="w-full">
-      <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
+      <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(var(--ink-rgb), 0.09)" }}>
         <motion.div
           initial={{ width: 0 }}
           whileInView={{ width: `${pct}%` }}
@@ -76,7 +69,7 @@ function ProgressBar({ campaign }: { campaign: Campaign }) {
           style={{ background: meta.color }}
         />
       </div>
-      <div className="mt-1.5 flex justify-between text-[11px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+      <div className="mt-1.5 flex justify-between text-[11px]" style={{ color: "rgba(var(--ink-rgb), 0.6)" }}>
         <span>
           {campaign.capacity > 0 ? (
             <>
@@ -103,8 +96,6 @@ function CampaignCard({
   leaving: boolean;
   onLeave?: (campaignId: string) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
 
   return (
     <article
@@ -155,7 +146,7 @@ function CampaignCard({
             {campaign.summary}
           </p>
           <ProgressBar campaign={campaign} />
-          <div className="flex items-center justify-between pt-1 text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+          <div className="flex items-center justify-between pt-1 text-[12px]" style={{ color: "rgba(var(--ink-rgb), 0.6)" }}>
             <span className="flex items-center gap-1.5">
               <Users size={12} aria-hidden /> 모집 {campaign.capacity}명
             </span>
@@ -165,11 +156,11 @@ function CampaignCard({
       </Link>
 
       <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
-        <Link href={`/campaigns/${campaign.id}`} className={cardActionClass(dark)}>
+        <Link href={`/campaigns/${campaign.id}`} className={cardActionClass}>
           <ExternalLink size={12} aria-hidden /> 상세 보기
         </Link>
         {mode === "created" && campaign.ownedByMe ? (
-          <Link href={`/campaigns/${campaign.id}/edit`} className={cardActionClass(dark)}>
+          <Link href={`/campaigns/${campaign.id}/edit`} className={cardActionClass}>
             <PenLine size={12} aria-hidden /> 편집
           </Link>
         ) : null}
@@ -180,7 +171,7 @@ function CampaignCard({
             disabled={leaving}
             aria-busy={leaving || undefined}
             aria-label={leaving ? "참여 취소 처리 중" : "참여 취소"}
-            className={`${cardActionClass(dark)} disabled:cursor-wait disabled:opacity-50`}
+            className={`${cardActionClass} disabled:cursor-wait disabled:opacity-50`}
           >
             {leaving ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <UserMinus size={12} aria-hidden />}
             {leaving ? "취소 중…" : "참여 취소"}
@@ -200,8 +191,6 @@ export function UserCampaignsList({
   page: number;
   onPageChange: (page: number) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const meta = LIST_META[mode];
   const [leavingId, setLeavingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
@@ -257,7 +246,7 @@ export function UserCampaignsList({
             <div
               className="rounded-xl px-4 py-3 text-[13px]"
               role="alert"
-              style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+              style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}
             >
               {actionError}
             </div>

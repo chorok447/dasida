@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, MessageCircle, Search, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
-import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useDmUnread, useNotificationUnread } from "@/lib/use-unread-badges";
@@ -14,8 +13,6 @@ import { MAIN_NAV_ITEMS } from "@/lib/nav-items";
 const PROTECTED_PREFIXES = ["/posts/new", "/campaigns/new", "/mypage", "/profile/edit", "/messages"];
 
 export function SiteHeader() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const pathname = usePathname();
   const router = useRouter();
   const onNotifications = pathname === "/notifications";
@@ -38,7 +35,7 @@ export function SiteHeader() {
       className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b transition-colors"
       style={{
         // 히어로 그라데이션이 비쳐도 로고/태그라인 대비 4.5:1을 지키는 최소 불투명도
-        background: dark ? "rgba(15,31,34,0.82)" : "rgba(249,247,242,0.88)",
+        background: "rgba(var(--surface-rgb), 0.85)",
         borderColor: "var(--border)",
       }}
     >
@@ -51,7 +48,7 @@ export function SiteHeader() {
           {MAIN_NAV_ITEMS.map((it) => {
             const isActive = pathname === it.href || (it.href !== "/" && pathname.startsWith(it.href));
             const className = "relative rounded-lg px-4 py-2 text-[14px] transition-opacity hover:opacity-100";
-            const style = { color: dark ? "#f9f7f2" : "#1c4044", opacity: isActive ? 1 : 0.7 };
+            const style = { color: "var(--heading)", opacity: isActive ? 1 : 0.7 };
             const dot = isActive && (
               <motion.div
                 layoutId="navdot"
@@ -73,8 +70,8 @@ export function SiteHeader() {
               href="/admin"
               className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
               style={{
-                background: pathname.startsWith("/admin") ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
-                color: pathname.startsWith("/admin") ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+                background: pathname.startsWith("/admin") ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
+                color: pathname.startsWith("/admin") ? "#148a90" : "var(--heading)",
               }}
               aria-label="관리자 페이지로 이동"
               aria-current={pathname.startsWith("/admin") ? "page" : undefined}
@@ -87,8 +84,8 @@ export function SiteHeader() {
             href="/search"
             className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
             style={{
-              background: pathname === "/search" ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
-              color: pathname === "/search" ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+              background: pathname === "/search" ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
+              color: pathname === "/search" ? "#148a90" : "var(--heading)",
             }}
             aria-label="검색 페이지로 이동"
           >
@@ -99,8 +96,8 @@ export function SiteHeader() {
             href="/messages"
             className="relative hidden h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none sm:flex"
             style={{
-              background: onMessages ? "rgba(125,211,163,0.18)" : dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)",
-              color: onMessages ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+              background: onMessages ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
+              color: onMessages ? "#148a90" : "var(--heading)",
             }}
             aria-label={dmUnread > 0 ? `DM, 읽지 않음 ${dmUnread > 99 ? "99+" : dmUnread}개` : "DM"}
             aria-current={onMessages ? "page" : undefined}
@@ -123,10 +120,8 @@ export function SiteHeader() {
             style={{
               background: onNotifications
                 ? "rgba(125,211,163,0.18)"
-                : dark
-                  ? "rgba(255,255,255,0.08)"
-                  : "rgba(28,64,68,0.06)",
-              color: onNotifications ? "#148a90" : dark ? "#f9f7f2" : "#1c4044",
+                : "rgba(var(--ink-rgb), 0.07)",
+              color: onNotifications ? "#148a90" : "var(--heading)",
             }}
             aria-label={unread > 0 ? `알림, 읽지 않음 ${unread > 99 ? "99+" : unread}개` : "알림"}
             aria-current={onNotifications ? "page" : undefined}
@@ -148,13 +143,13 @@ export function SiteHeader() {
           {/* 서버 스냅샷은 항상 로그아웃 상태 → 비로그인 뷰로 hydration, 이후 클라이언트에서 갱신. */}
           {isLoggedIn ? (
             <>
-              <span className="hidden text-[13px] px-1 sm:inline" style={{ color: dark ? "#f9f7f2" : "#1c4044" }}>
+              <span className="hidden text-[13px] px-1 sm:inline" style={{ color: "var(--heading)" }}>
                 {name ?? "사용자"}
               </span>
               <button
                 onClick={onLogout}
                 className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-white/10"
-                style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
+                style={{ color: "rgba(var(--ink-rgb), 0.8)" }}
               >
                 로그아웃
               </button>
@@ -164,7 +159,7 @@ export function SiteHeader() {
               <Link
                 href="/login"
                 className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-white/10"
-                style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
+                style={{ color: "rgba(var(--ink-rgb), 0.8)" }}
               >
                 로그인
               </Link>

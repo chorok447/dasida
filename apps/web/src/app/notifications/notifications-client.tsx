@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Bell, CheckCheck, Trash2, Loader2 } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Pagination } from "@/components/ui/pagination";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -50,8 +49,6 @@ const filters: { id: NotificationFilterId; label: string }[] = [
 type Result = { identity: string; status: "success" | "error"; data: NotificationsResponse | null };
 
 export default function NotificationsClient() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const router = useRouter();
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
   const confirm = useConfirm();
@@ -228,8 +225,6 @@ export default function NotificationsClient() {
     }
   };
 
-  const cardBg = "var(--card)";
-  const cardBorder = "var(--border)";
   const fg = "var(--foreground)";
 
   // hydration 전에는 로그인 여부 미확정 → 아래 본문(로딩 상태)으로 렌더해 깜빡임을 막는다.
@@ -263,7 +258,7 @@ export default function NotificationsClient() {
           <div className="flex items-center gap-2 flex-wrap">
             <div
               className="flex gap-1 p-1 rounded-full"
-              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+              style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
             >
               {filters.map((f) => {
                 const active = filter === f.id;
@@ -290,7 +285,7 @@ export default function NotificationsClient() {
               aria-pressed={unreadOnly}
               className="px-3.5 py-2 text-[13px] rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
               style={{
-                background: unreadOnly ? "var(--accent)" : dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                background: unreadOnly ? "var(--accent)" : "rgba(var(--ink-rgb), 0.06)",
                 color: unreadOnly ? "var(--surface-dark)" : "var(--foreground-muted)",
               }}
             >
@@ -304,7 +299,7 @@ export default function NotificationsClient() {
               disabled={busy || cleaningRead || unreadCount === 0}
               aria-busy={busy}
               className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
+              style={{ background: "rgba(var(--ink-rgb), 0.06)", color: fg }}
             >
               {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <CheckCheck size={15} aria-hidden />}
               {busy ? "처리 중…" : "모두 읽음"}
@@ -315,7 +310,7 @@ export default function NotificationsClient() {
               disabled={cleaningRead || busy || !hasReadNotifications}
               aria-busy={cleaningRead}
               className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
+              style={{ background: "rgba(var(--ink-rgb), 0.06)", color: fg }}
             >
               <Trash2 size={14} aria-hidden /> {cleaningRead ? "정리 중…" : "읽은 알림 정리"}
             </button>
@@ -363,10 +358,6 @@ export default function NotificationsClient() {
               <StaggerItem key={n.id} index={i}>
                 <NotificationRow
                   item={n}
-                  dark={dark}
-                  fg={fg}
-                  cardBg={cardBg}
-                  cardBorder={cardBorder}
                   pending={pendingIds.has(n.id)}
                   deleting={deletingIds.has(n.id)}
                   onOpen={open}

@@ -278,7 +278,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
                 disabled={saving}
                 className="flex-1 rounded-xl py-3 disabled:opacity-40"
                 style={{
-                  background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+                  background: "rgba(var(--ink-rgb), 0.06)",
                   color: "var(--foreground)",
                 }}
               >
@@ -295,7 +295,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
           </div>
 
           <div className="self-start lg:sticky lg:top-24">
-            <p className="mb-3 text-[12px] uppercase tracking-[0.3em]" style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>
+            <p className="mb-3 text-[12px] uppercase tracking-[0.3em]" style={{ color: "rgba(var(--ink-rgb), 0.5)" }}>
               미리보기
             </p>
             <div
@@ -314,7 +314,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
                 ) : (
                   <div
                     className="flex h-full w-full items-center justify-center"
-                    style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
+                    style={{ background: "rgba(var(--ink-rgb), 0.04)" }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/60 via-transparent to-transparent" />
@@ -329,7 +329,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
                 <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>
                   {values.summary || "캠페인 한 줄 소개가 여기에 표시됩니다."}
                 </p>
-                <div className="space-y-1 border-t pt-2 text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)", borderColor: "var(--border)" }}>
+                <div className="space-y-1 border-t pt-2 text-[12px]" style={{ color: "rgba(var(--ink-rgb), 0.7)", borderColor: "var(--border)" }}>
                   <div>모집 {values.recruitStart} ~ {values.recruitEnd}</div>
                   <div>진행 {values.runStart} ~ {values.runEnd}</div>
                   <div>모집 인원 {values.capacity || "—"}명</div>

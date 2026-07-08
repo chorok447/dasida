@@ -7,7 +7,6 @@ import {
   Image as ImageIcon,
   RefreshCw,
 } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { apiGet } from "@/lib/api";
 import { getSessionId, PROFILE_EVENT } from "@/lib/auth";
 import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
@@ -51,9 +50,7 @@ function neutralizeInteractions(response: PostSearchResponse): PostSearchRespons
 export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { theme } = useTheme();
   const { sessionId: token } = useAuthSession();
-  const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
   const generationRef = useRef(0);
 
@@ -205,7 +202,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
               onClick={() => setRetryTick((tick) => tick + 1)}
               disabled={refreshing}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full disabled:opacity-45"
-              style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)" }}
+              style={{ background: "rgba(var(--ink-rgb), 0.07)" }}
             >
               <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
             </button>

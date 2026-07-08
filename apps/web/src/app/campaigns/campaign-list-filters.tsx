@@ -11,7 +11,6 @@ import {
   type CampaignSearchSort,
   type CampaignStatus,
 } from "@/data/campaigns";
-import { useTheme } from "@/lib/theme-context";
 import type { CampaignListUrlState } from "@/lib/use-url-query";
 
 export type CampaignListFilter = "all" | CampaignStatus;
@@ -111,15 +110,13 @@ export function CampaignListFilters({
   onPatch: (changes: Partial<CampaignListUrlState>) => void;
   onResetAll: () => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const chips = buildCampaignFilterChips(state, (changes) => onPatch({ ...changes, page: 0 }));
 
   return (
     <div className="mb-8 space-y-4">
       <div
         className="flex w-full gap-1 overflow-x-auto rounded-full p-1 md:w-fit"
-        style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+        style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
       >
         {FILTER_ITEMS.map((item) => {
           const active = state.filter === item.id;
@@ -171,7 +168,7 @@ export function CampaignListFilters({
           </label>
           <label
             className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
-            style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+            style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
           >
             <input
               type="checkbox"
@@ -198,7 +195,6 @@ export function CampaignListFilters({
       </div>
       <CampaignDateRangeFilterControls
         value={state}
-        dark={dark}
         onChange={onDateChange}
         onClear={onClearDates}
       />

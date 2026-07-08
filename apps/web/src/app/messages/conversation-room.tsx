@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { AuthorHeader } from "@/components/author-header";
 import { PageShell } from "@/components/page-shell";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 import { ApiError } from "@/lib/api";
 import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import {
@@ -37,8 +36,6 @@ function dmDateLabel(iso: string): string {
 
 export function ConversationRoomClient({ conversationId }: { conversationId: string }) {
   const router = useRouter();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
   const { profile } = useCurrentUserProfile();
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -180,7 +177,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
       <header
         className="fixed top-16 left-0 right-0 z-30 border-b backdrop-blur-xl"
         style={{
-          background: dark ? "rgba(15,31,34,0.92)" : "rgba(249,247,242,0.94)",
+          background: "rgba(var(--surface-rgb), 0.93)",
           borderColor: "var(--border)",
         }}
       >
@@ -188,7 +185,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
           <Link
             href="/messages"
             className="flex h-9 w-9 items-center justify-center rounded-full"
-            style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)" }}
+            style={{ background: "rgba(var(--ink-rgb), 0.07)" }}
             aria-label="대화 목록으로"
           >
             <ArrowLeft size={18} />
@@ -243,9 +240,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
                       style={{
                         background: msg.mine
                           ? "rgba(125,211,163,0.35)"
-                          : dark
-                            ? "rgba(255,255,255,0.08)"
-                            : "rgba(28,64,68,0.06)",
+                          : "rgba(var(--ink-rgb), 0.07)",
                         color: "var(--foreground)",
                       }}
                     >
@@ -274,7 +269,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
       <div
         className="fixed bottom-14 left-0 right-0 z-30 border-t backdrop-blur-xl md:bottom-0"
         style={{
-          background: dark ? "rgba(15,31,34,0.95)" : "rgba(249,247,242,0.96)",
+          background: "rgba(var(--surface-rgb), 0.95)",
           borderColor: "var(--border)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}

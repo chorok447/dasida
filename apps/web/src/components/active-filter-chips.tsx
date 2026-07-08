@@ -1,7 +1,6 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 
 export type FilterChip = {
   id: string;
@@ -18,8 +17,6 @@ export function ActiveFilterChips({
   onClearAll?: () => void;
   clearLabel?: string;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
 
   if (chips.length === 0) return null;
 
@@ -35,7 +32,7 @@ export function ActiveFilterChips({
           onClick={chip.onRemove}
           className="inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
           style={{
-            background: dark ? "rgba(125,211,163,0.14)" : "rgba(125,211,163,0.2)",
+            background: "var(--accent-soft)",
             color: "var(--accent-secondary)",
           }}
           aria-label={`${chip.label} 필터 제거`}

@@ -66,7 +66,7 @@ export default function NotFound() {
         <motion.p
           style={{
             transform: "translateZ(60px)",
-            color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)",
+            color: "rgba(var(--ink-rgb), 0.85)",
             fontFamily: "'Black Han Sans', sans-serif",
             fontSize: "clamp(24px, 3vw, 36px)",
           }}

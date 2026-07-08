@@ -6,7 +6,6 @@ import { Calendar, Users } from "lucide-react";
 import { ReportButton } from "@/components/report-button";
 import { FallbackImage } from "@/components/fallback-image";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
-import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 
 function StatusBadge({ campaign }: { campaign: Campaign }) {
@@ -22,15 +21,13 @@ function StatusBadge({ campaign }: { campaign: Campaign }) {
 }
 
 function ProgressBar({ campaign }: { campaign: Campaign }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const pct = progressPercent(campaign.joined, campaign.capacity);
   const meta = campaignRecruitMeta(campaign);
   return (
     <div className="w-full">
       <div
         className="h-1.5 w-full overflow-hidden rounded-full"
-        style={{ background: dark ? "rgba(255,255,255,0.1)" : "var(--border)" }}
+        style={{ background: "var(--border)" }}
       >
         <motion.div
           initial={{ width: 0 }}

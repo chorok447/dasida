@@ -14,7 +14,6 @@ function DateRangeGroup({
   fromField,
   toField,
   disabled,
-  dark,
   onChange,
 }: {
   label: string;
@@ -23,13 +22,12 @@ function DateRangeGroup({
   fromField: CampaignDateRangeField;
   toField: CampaignDateRangeField;
   disabled: boolean;
-  dark: boolean;
   onChange: (field: CampaignDateRangeField, value: string) => void;
 }) {
   const inputStyle = {
     color: "var(--foreground)",
-    background: dark ? "#1c4044" : "#ffffff",
-    borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+    background: "var(--panel)",
+    borderColor: "rgba(var(--ink-rgb), 0.12)",
   };
 
   return (
@@ -66,13 +64,11 @@ function DateRangeGroup({
 export function CampaignDateRangeFilterControls({
   value,
   disabled = false,
-  dark,
   onChange,
   onClear,
 }: {
   value: CampaignDateRangeFilters;
   disabled?: boolean;
-  dark: boolean;
   onChange: (field: CampaignDateRangeField, value: string) => void;
   onClear: () => void;
 }) {
@@ -83,7 +79,7 @@ export function CampaignDateRangeFilterControls({
     <div
       className="space-y-3 rounded-2xl border p-4"
       style={{
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.72)",
+        background: "var(--glass)",
         borderColor: "var(--border)",
       }}
     >
@@ -106,7 +102,6 @@ export function CampaignDateRangeFilterControls({
           fromField="recruitEndFrom"
           toField="recruitEndTo"
           disabled={disabled}
-          dark={dark}
           onChange={onChange}
         />
         <DateRangeGroup
@@ -116,7 +111,6 @@ export function CampaignDateRangeFilterControls({
           fromField="runStartFrom"
           toField="runStartTo"
           disabled={disabled}
-          dark={dark}
           onChange={onChange}
         />
       </div>

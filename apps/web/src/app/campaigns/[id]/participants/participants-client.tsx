@@ -9,7 +9,6 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { apiGet, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   removeCampaignParticipant,
@@ -40,8 +39,6 @@ function StateShell({ children }: { children: React.ReactNode }) {
 export default function ParticipantsClient({ id }: { id: string }) {
   const router = useRouter();
   const { sessionId: token } = useAuthSession();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const requestGenerationRef = useRef(0);
   const requestInFlightRef = useRef(false);
   const [page, setPage] = useState(0);
@@ -209,7 +206,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
         <div
           className="overflow-hidden rounded-3xl border"
           style={{
-            background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.8)",
+            background: "var(--glass)",
             borderColor: "var(--border)",
             color: "var(--foreground)",
           }}
@@ -230,7 +227,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
                 type="button"
                 onClick={refresh}
                 className="inline-flex items-center justify-center gap-2 self-start rounded-xl px-4 py-2 text-[13px] disabled:opacity-45"
-                style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.07)" }}
+                style={{ background: "rgba(var(--ink-rgb), 0.08)" }}
               >
                 <RefreshCw size={14} /> 새로고침
               </button>
@@ -248,14 +245,14 @@ export default function ParticipantsClient({ id }: { id: string }) {
             {actionError ? (
               <div
                 className="mb-3 rounded-xl px-4 py-3 text-[13px]"
-                style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+                style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}
               >
                 {actionError}
               </div>
             ) : null}
 
             {data.participants.length === 0 ? (
-              <div className="rounded-2xl border border-dashed px-5 py-14 text-center text-[14px] opacity-65" style={{ borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.14)" }}>
+              <div className="rounded-2xl border border-dashed px-5 py-14 text-center text-[14px] opacity-65" style={{ borderColor: "rgba(var(--ink-rgb), 0.13)" }}>
                 아직 참여자가 없습니다.
               </div>
             ) : (
@@ -276,7 +273,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
                           onClick={() => removeParticipant(participant.participantId)}
                           disabled={removingId !== null}
                           className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-45"
-                          style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+                          style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}
                         >
                           <UserMinus size={13} /> {removingId === participant.participantId ? "처리 중…" : "퇴장"}
                         </button>

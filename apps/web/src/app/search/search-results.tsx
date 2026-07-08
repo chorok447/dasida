@@ -8,7 +8,6 @@ import { StaggerItem } from "@/components/scroll-reveal";
 import type { CampaignSearchResponse } from "@/data/campaigns";
 import type { PostSearchResponse } from "@/data/posts";
 import type { PublicUserPageResponse } from "@/data/users";
-import { useTheme } from "@/lib/theme-context";
 import { CampaignResultCard, PostResultCard, UserResultCard } from "./search-result-cards";
 import type { SearchUrlState } from "./search-filters";
 import { searchHasActiveFilters } from "./search-filters";
@@ -35,8 +34,6 @@ export function SearchResults({
   onUpdate: (changes: Partial<SearchUrlState>) => void;
   onReset: () => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
 
   const campaignResponse = currentState.campaigns;
   const postResponse = currentState.posts;
@@ -61,7 +58,7 @@ export function SearchResults({
           onClick={onRetry}
           disabled={currentState.status === "loading"}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-45"
-          style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)" }}
+          style={{ background: "rgba(var(--ink-rgb), 0.07)" }}
         >
           <RefreshCw size={16} className={currentState.status === "loading" ? "animate-spin" : ""} />
         </button>

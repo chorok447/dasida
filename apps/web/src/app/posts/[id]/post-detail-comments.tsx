@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useCallback, useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CornerDownRight, Pencil, Send, Trash2 } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { ApiError, apiPost, apiDeleteVoid } from "@/lib/api";
 import { getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
@@ -41,8 +40,6 @@ export function PostDetailComments({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
 
   const commentsPage = parseCommentsPage(searchParams.get("commentsPage"));
   const rawCommentsPage = searchParams.get("commentsPage");
@@ -149,9 +146,7 @@ export function PostDetailComments({
       className="flex scroll-mt-28 gap-3 rounded-2xl p-3 transition-colors"
       style={{
         background: c.id === targetCommentId
-          ? dark
-            ? "rgba(125,211,163,0.16)"
-            : "rgba(125,211,163,0.24)"
+          ? "var(--accent-soft)"
           : "transparent",
         outline: c.id === targetCommentId ? "1px solid rgba(125,211,163,0.55)" : "none",
       }}
@@ -177,7 +172,7 @@ export function PostDetailComments({
                   disabled={savingCommentId !== null || deletingIds.has(c.id)}
                   aria-label={isReply ? "답글 수정" : "댓글 수정"}
                   className="flex h-8 w-8 items-center justify-center rounded-full disabled:cursor-wait disabled:opacity-40"
-                  style={{ background: "rgba(125,211,163,0.14)", color: dark ? "#7dd3a3" : "#148a90" }}
+                  style={{ background: "rgba(125,211,163,0.14)", color: "var(--accent-strong)" }}
                 >
                   <Pencil size={14} />
                 </button>
@@ -220,7 +215,7 @@ export function PostDetailComments({
               rows={3}
               disabled={savingCommentId === c.id}
               className="ui-control resize-none bg-transparent px-3 py-2"
-              style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)", color: "var(--foreground)" }}
+              style={{ borderColor: "rgba(var(--ink-rgb), 0.15)", color: "var(--foreground)" }}
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] opacity-55" style={{ color: "var(--foreground)" }}>
@@ -249,7 +244,7 @@ export function PostDetailComments({
           </form>
         ) : (
           <>
-            <p className="mt-0.5 whitespace-pre-wrap break-words" style={{ color: dark ? "rgba(255,255,255,0.85)" : "rgba(28,64,68,0.85)" }}>
+            <p className="mt-0.5 whitespace-pre-wrap break-words" style={{ color: "rgba(var(--ink-rgb), 0.85)" }}>
               <MentionText text={c.text} />
             </p>
             {!isReply && token ? (
@@ -283,7 +278,7 @@ export function PostDetailComments({
       </h3>
       <div
         className="flex items-center gap-3 p-3 rounded-2xl mb-6"
-        style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
+        style={{ background: "rgba(var(--ink-rgb), 0.04)" }}
       >
         {token ? (
           <>
@@ -317,7 +312,7 @@ export function PostDetailComments({
           </>
         ) : (
           <div className="flex w-full flex-col items-center gap-3 py-2 text-center">
-            <p className="text-[13px]" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+            <p className="text-[13px]" style={{ color: "rgba(var(--ink-rgb), 0.7)" }}>
               로그인해야 댓글을 작성할 수 있어요.
             </p>
             <button
@@ -363,7 +358,7 @@ export function PostDetailComments({
                   {replyingToId === c.id ? (
                     <div
                       className="flex items-center gap-2 rounded-2xl p-2.5"
-                      style={{ background: dark ? "rgba(255,255,255,0.04)" : "rgba(28,64,68,0.04)" }}
+                      style={{ background: "rgba(var(--ink-rgb), 0.04)" }}
                     >
                       <CornerDownRight size={14} className="shrink-0 opacity-45" aria-hidden />
                       <input

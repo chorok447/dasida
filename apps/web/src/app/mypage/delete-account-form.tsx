@@ -6,7 +6,6 @@ import { deleteAccount } from "@/data/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useTheme } from "@/lib/theme-context";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const CONFIRM_TEXT = "탈퇴합니다";
@@ -21,8 +20,6 @@ function deleteAccountError(error: ApiError): string {
 
 export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const submittingRef = useRef(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [confirmText, setConfirmText] = useState("");
@@ -81,8 +78,8 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
   };
 
   const inputStyle = {
-    background: dark ? "rgba(255,255,255,0.05)" : "#ffffff",
-    borderColor: dark ? "rgba(248,113,113,0.28)" : "rgba(185,28,28,0.22)",
+    background: "var(--card)",
+    borderColor: "rgba(237,92,72,0.25)",
     color: "var(--foreground)",
   };
 

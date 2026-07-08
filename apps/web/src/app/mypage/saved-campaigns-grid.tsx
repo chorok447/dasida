@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Bookmark, CalendarDays, ExternalLink, Users } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
-import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import {
   campaignRecruitMeta,
@@ -18,13 +17,9 @@ import { FallbackImage } from "@/components/fallback-image";
 import { ListEmptyState } from "@/components/list-empty-state";
 import { PaginatedSection } from "./paginated-section";
 
-function cardActionClass(dark: boolean) {
-  return `inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] transition-colors ${
-    dark
-      ? "border border-white/12 bg-white/5 text-white/85 hover:bg-white/10"
-      : "border border-[rgba(28,64,68,0.12)] bg-white text-[#1c4044] hover:bg-[rgba(28,64,68,0.04)]"
-  }`;
-}
+// 카드 하단 액션 버튼 공통 클래스. 색은 CSS 토큰이 테마를 처리한다.
+const cardActionClass =
+  "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] transition-colors border-[rgba(var(--ink-rgb),0.12)] bg-[color:var(--glass-strong)] text-[color:var(--heading)] hover:bg-[color:var(--chip-bg)]";
 
 function SavedCampaignCard({
   campaign,
@@ -35,8 +30,6 @@ function SavedCampaignCard({
   removing: boolean;
   onRemove: (campaignId: string) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const meta = campaignRecruitMeta(campaign);
   const pct = progressPercent(campaign.joined, campaign.capacity);
 
@@ -79,10 +72,10 @@ function SavedCampaignCard({
           <p className="line-clamp-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
             {campaign.summary}
           </p>
-          <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}>
+          <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(var(--ink-rgb), 0.09)" }}>
             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: meta.color }} />
           </div>
-          <div className="flex items-center justify-between text-[12px]" style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+          <div className="flex items-center justify-between text-[12px]" style={{ color: "rgba(var(--ink-rgb), 0.6)" }}>
             <span className="flex items-center gap-1.5">
               <Users size={12} aria-hidden /> {campaign.joined} / {campaign.capacity}명
             </span>
@@ -92,7 +85,7 @@ function SavedCampaignCard({
       </Link>
 
       <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
-        <Link href={`/campaigns/${campaign.id}`} className={cardActionClass(dark)}>
+        <Link href={`/campaigns/${campaign.id}`} className={cardActionClass}>
           <ExternalLink size={12} aria-hidden /> 상세 보기
         </Link>
         <button
@@ -101,7 +94,7 @@ function SavedCampaignCard({
           disabled={removing}
           aria-busy={removing || undefined}
           aria-label={removing ? "북마크 해제 중" : "북마크 해제"}
-          className={`${cardActionClass(dark)} disabled:cursor-wait disabled:opacity-50`}
+          className={`${cardActionClass} disabled:cursor-wait disabled:opacity-50`}
         >
           <Bookmark size={12} fill="currentColor" aria-hidden /> 저장 해제
         </button>
@@ -111,8 +104,6 @@ function SavedCampaignCard({
 }
 
 export function SavedCampaignsGrid({ page, onPageChange }: { page: number; onPageChange: (page: number) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
 
@@ -164,7 +155,7 @@ export function SavedCampaignsGrid({ page, onPageChange }: { page: number; onPag
             <div
               className="rounded-xl px-4 py-3 text-[13px]"
               role="alert"
-              style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+              style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}
             >
               {actionError}
             </div>

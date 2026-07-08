@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { Leaf, Recycle, Sprout, Shirt, Coffee, Package } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { useTilt } from "@/lib/use-tilt";
 
 type Card = {
@@ -74,8 +73,6 @@ function TiltCard({ card }: { card: Card }) {
 }
 
 export function TiltCardGrid() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
   const headerY = useTransform(scrollY, [400, 1600], ["80px", "-80px"]);
@@ -85,7 +82,7 @@ export function TiltCardGrid() {
     <section
       ref={ref}
       className="relative py-32 px-8 transition-colors"
-      style={{ position: "relative", background: dark ? "#f9f7f2" : "#ffffff" }}
+      style={{ position: "relative", background: "#ffffff" }}
     >
       <div className="max-w-6xl mx-auto">
         <motion.div className="mb-16 text-center" style={{ y: headerY }}>

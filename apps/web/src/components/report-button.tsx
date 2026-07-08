@@ -12,7 +12,6 @@ import {
 } from "@/data/reports";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
-import { useTheme } from "@/lib/theme-context";
 
 const REASONS = Object.entries(REPORT_REASON_LABELS) as [ReportReason, string][];
 
@@ -27,8 +26,6 @@ export function ReportButton({
   ownedByMe: boolean;
   className?: string;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState<ReportReason | "">("");
@@ -125,7 +122,7 @@ export function ReportButton({
         aria-label="콘텐츠 신고"
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 ${className}`}
         style={{
-          background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+          background: "rgba(var(--ink-rgb), 0.06)",
           color: "#b3402f",
         }}
       >
@@ -144,8 +141,8 @@ export function ReportButton({
         }}
         className="m-auto w-[min(92vw,30rem)] rounded-3xl border p-0 shadow-2xl backdrop:bg-[#0f1f22]/55"
         style={{
-          background: dark ? "#163136" : "#fffdf8",
-          borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+          background: "var(--panel)",
+          borderColor: "rgba(var(--ink-rgb), 0.12)",
           color: "var(--foreground)",
         }}
       >

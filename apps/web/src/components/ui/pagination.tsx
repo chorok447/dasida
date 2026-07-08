@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 
 export function Pagination({
   page,
@@ -20,11 +19,9 @@ export function Pagination({
   className?: string;
   onPageChange: (page: number) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   if (totalPages <= 0) return null;
 
-  const borderColor = dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.15)";
+  const borderColor = "rgba(var(--ink-rgb), 0.15)";
   const foreground = "var(--foreground)";
   const buttonClass = `inline-flex flex-1 items-center justify-center gap-1 border transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 motion-reduce:transform-none sm:flex-none ${compact ? "rounded-full px-4 py-2 text-[12px]" : "rounded-xl px-4 py-2.5 text-[13px]"}`;
 
@@ -44,7 +41,7 @@ export function Pagination({
           onClick={() => onPageChange(Math.max(0, page - 1))}
           disabled={disabled || page <= 0}
           className={buttonClass}
-          style={{ borderColor, background: dark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.55)" }}
+          style={{ borderColor, background: "var(--glass)" }}
           aria-label="이전 페이지"
         >
           <ChevronLeft size={14} aria-hidden="true" /> 이전

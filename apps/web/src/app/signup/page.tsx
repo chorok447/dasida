@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, Check, ArrowRight } from "lucide-react";
 import { AuthShell, FieldInput } from "@/components/auth-shell";
-import { useTheme } from "@/lib/theme-context";
 import { apiPost, ApiError } from "@/lib/api";
 import { setSession } from "@/lib/auth";
 import { getPasswordPolicyState, isValidEmail } from "@/data/auth";
@@ -13,10 +12,8 @@ import { getPasswordPolicyState, isValidEmail } from "@/data/auth";
 type AuthResponse = { token: string; name: string; verified: boolean };
 
 function Rule({ ok, label }: { ok: boolean; label: string }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   return (
-    <div className="flex items-center gap-1.5 text-[12px]" style={{ color: ok ? "#7dd3a3" : dark ? "rgba(255,255,255,0.4)" : "rgba(28,64,68,0.4)" }}>
+    <div className="flex items-center gap-1.5 text-[12px]" style={{ color: ok ? "#7dd3a3" : "rgba(var(--ink-rgb), 0.4)" }}>
       <Check size={14} />
       {label}
     </div>
@@ -24,8 +21,6 @@ function Rule({ ok, label }: { ok: boolean; label: string }) {
 }
 
 export default function SignupPage() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,7 +51,7 @@ export default function SignupPage() {
       subtitle="Join the journey"
       title="회원가입"
       footer={
-        <p className="text-center text-[14px] mt-4" style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(28,64,68,0.7)" }}>
+        <p className="text-center text-[14px] mt-4" style={{ color: "rgba(var(--ink-rgb), 0.7)" }}>
           이미 계정이 있으신가요?{" "}
           <Link href="/login" className="underline" style={{ color: "#7dd3a3" }}>
             로그인
