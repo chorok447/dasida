@@ -182,12 +182,12 @@ export function FeedPostCard({
 
         {p.images.length === 1 ? (
           <button type="button" className="block aspect-[4/3] w-full overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
-            <FallbackImage src={p.images[0]} alt="" decorative className="w-full h-full object-cover" />
+            <FallbackImage src={p.images[0]} alt="" decorative thumbnail className="w-full h-full object-cover" />
           </button>
         ) : (
           <button type="button" className="grid aspect-[4/3] w-full grid-cols-2 gap-0.5 overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             {p.images.map((src, i) => (
-              <FallbackImage key={i} src={src} alt="" decorative className="w-full h-full object-cover" />
+              <FallbackImage key={i} src={src} alt="" decorative thumbnail className="w-full h-full object-cover" />
             ))}
           </button>
         )}

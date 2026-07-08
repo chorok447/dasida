@@ -31,8 +31,20 @@ class MediaUploadControllerTest(
     @param:Autowired val users: UserRepository,
     @param:Autowired val jwt: JwtService,
     @param:Autowired val objectMapper: JsonMapper,
+    @param:org.springframework.beans.factory.annotation.Value("\${app.upload.dir}") val uploadDir: String,
 ) {
     private fun authCookie(user: User) = Cookie(AuthCookies.NAME, jwt.issue(user))
+
+    /** 실제 디코딩 가능한 PNG 생성. */
+    private fun realPngBytes(width: Int, height: Int): ByteArray {
+        val image = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        val out = java.io.ByteArrayOutputStream()
+        javax.imageio.ImageIO.write(image, "png", out)
+        return out.toByteArray()
+    }
+
+    private fun uploadedFile(url: String): java.nio.file.Path =
+        java.nio.file.Paths.get(uploadDir).resolve(java.nio.file.Paths.get(URI(url).path).fileName.toString())
 
     private val pngBytes = byteArrayOf(
         0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
@@ -60,6 +72,64 @@ class MediaUploadControllerTest(
             status { isOk() }
             content { contentType(MediaType.IMAGE_PNG) }
         }
+    }
+
+    @Test
+    fun `큰 이미지는 축소 저장되고 썸네일이 함께 생성된다`() {
+        val user = users.saveAndFlush(User(email = "resize@dasida.com", passwordHash = "h", name = "업로더"))
+
+        val upload = mvc.perform(
+            multipart("/api/media")
+                .file(MockMultipartFile("file", "big.png", "image/png", realPngBytes(2400, 1200)))
+                .cookie(authCookie(user)),
+        ).andExpect(status().isOk).andReturn()
+
+        val url = objectMapper.readValue(upload.response.contentAsString, MediaUploadResponse::class.java).url
+        val original = javax.imageio.ImageIO.read(uploadedFile(url).toFile())
+        assertThat(original.width).isEqualTo(MediaUploadService.MAX_ORIGINAL_DIM)
+        assertThat(original.height).isEqualTo(MediaUploadService.MAX_ORIGINAL_DIM / 2)
+
+        val thumbPath = URI(url).path.removeSuffix(".png") + MediaUploadService.THUMB_SUFFIX
+        mvc.get(thumbPath).andExpect { status { isOk() } }
+        val thumb = javax.imageio.ImageIO.read(uploadedFile(url.removeSuffix(".png") + MediaUploadService.THUMB_SUFFIX).toFile())
+        assertThat(thumb.width).isEqualTo(MediaUploadService.THUMB_MAX_DIM)
+        assertThat(thumb.height).isEqualTo(MediaUploadService.THUMB_MAX_DIM / 2)
+    }
+
+    @Test
+    fun `작은 이미지는 원본 크기를 유지하고 썸네일도 확대하지 않는다`() {
+        val user = users.saveAndFlush(User(email = "small@dasida.com", passwordHash = "h", name = "업로더"))
+
+        val upload = mvc.perform(
+            multipart("/api/media")
+                .file(MockMultipartFile("file", "small.png", "image/png", realPngBytes(320, 200)))
+                .cookie(authCookie(user)),
+        ).andExpect(status().isOk).andReturn()
+
+        val url = objectMapper.readValue(upload.response.contentAsString, MediaUploadResponse::class.java).url
+        val original = javax.imageio.ImageIO.read(uploadedFile(url).toFile())
+        assertThat(original.width).isEqualTo(320)
+
+        val thumb = javax.imageio.ImageIO.read(
+            uploadedFile(url.removeSuffix(".png") + MediaUploadService.THUMB_SUFFIX).toFile(),
+        )
+        assertThat(thumb.width).isEqualTo(320)
+        assertThat(thumb.height).isEqualTo(200)
+    }
+
+    @Test
+    fun `디코딩할 수 없는 업로드는 원본만 저장되고 썸네일은 만들지 않는다`() {
+        val user = users.saveAndFlush(User(email = "no-thumb@dasida.com", passwordHash = "h", name = "업로더"))
+
+        val upload = mvc.perform(
+            multipart("/api/media")
+                .file(MockMultipartFile("file", "truncated.png", "image/png", pngBytes))
+                .cookie(authCookie(user)),
+        ).andExpect(status().isOk).andReturn()
+
+        val url = objectMapper.readValue(upload.response.contentAsString, MediaUploadResponse::class.java).url
+        assertThat(uploadedFile(url)).exists()
+        assertThat(uploadedFile(url.removeSuffix(".png") + MediaUploadService.THUMB_SUFFIX)).doesNotExist()
     }
 
     @Test

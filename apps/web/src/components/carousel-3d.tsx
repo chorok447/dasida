@@ -80,7 +80,7 @@ export function Carousel3D() {
         </h2>
         <p
           className="mt-6 max-w-2xl mx-auto"
-          style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(15,31,34,0.6)" }}
+          style={{ color: "rgba(var(--ink-rgb), 0.6)" }}
         >
           드래그해서 회전시켜 보세요. 마우스를 올리면 자동 회전이 멈춥니다.
         </p>
@@ -168,7 +168,7 @@ export function Carousel3D() {
       <div className="text-center mt-16 px-8">
         <p
           className="max-w-xl mx-auto leading-relaxed"
-          style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(15,31,34,0.55)" }}
+          style={{ color: "rgba(var(--ink-rgb), 0.53)" }}
         >
           폐자원이 자산이라는 인식이 확산됨에 따라, 단순한 재활용과 달리 새로운 가치를 불어넣는 산업이
           주목받고 있습니다.

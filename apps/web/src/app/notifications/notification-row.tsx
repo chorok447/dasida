@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, Bell, MessageCircle, UserPlus, Users, Check, Trash2, Loader2, Heart, Megaphone } from "lucide-react";
+import { AtSign, BadgeCheck, Bell, MessageCircle, UserPlus, Users, Check, Trash2, Loader2, Heart, Megaphone } from "lucide-react";
 import {
   isNotificationNavigable,
   notificationTypeLabel,
@@ -18,15 +18,12 @@ function iconFor(type: string) {
   if (type === "CAMPAIGN_PROOF_CREATED") return <BadgeCheck size={16} aria-hidden />;
   if (type.endsWith("COMMENT_CREATED")) return <MessageCircle size={16} aria-hidden />;
   if (type === "COMMENT_REPLY_CREATED") return <MessageCircle size={16} aria-hidden />;
+  if (type === "COMMENT_MENTIONED") return <AtSign size={16} aria-hidden />;
   return <Bell size={16} aria-hidden />;
 }
 
 export function NotificationRow({
   item,
-  dark,
-  fg,
-  cardBg,
-  cardBorder,
   pending,
   deleting,
   onOpen,
@@ -34,10 +31,6 @@ export function NotificationRow({
   onDelete,
 }: {
   item: NotificationItem;
-  dark: boolean;
-  fg: string;
-  cardBg: string;
-  cardBorder: string;
   pending: boolean;
   deleting: boolean;
   onOpen: (item: NotificationItem) => void;
@@ -48,8 +41,8 @@ export function NotificationRow({
   const timeLabel = relativeTime(item);
   const statusLabel = item.read ? "읽음" : "안 읽음";
   const rowStyle = {
-    background: item.read ? cardBg : dark ? "rgba(125,211,163,0.08)" : "rgba(125,211,163,0.12)",
-    borderColor: cardBorder,
+    background: item.read ? "var(--card)" : "var(--accent-soft)",
+    borderColor: "var(--border)",
   };
   const content = (
     <>
@@ -71,7 +64,7 @@ export function NotificationRow({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span
             className="text-[14px] font-medium line-clamp-1"
-            style={{ color: fg, opacity: item.read ? 0.72 : 1 }}
+            style={{ color: "var(--foreground)", opacity: item.read ? 0.72 : 1 }}
           >
             {item.title}
           </span>
@@ -79,11 +72,9 @@ export function NotificationRow({
             className="rounded-full px-2 py-0.5 text-[10px] font-medium"
             style={{
               background: item.read
-                ? dark
-                  ? "rgba(255,255,255,0.06)"
-                  : "rgba(28,64,68,0.06)"
+                ? "rgba(var(--ink-rgb), 0.06)"
                 : "rgba(125,211,163,0.22)",
-              color: item.read ? (dark ? "rgba(255,255,255,0.55)" : "rgba(28,64,68,0.55)") : "#1c4044",
+              color: item.read ? ("rgba(var(--ink-rgb), 0.55)") : "#1c4044",
             }}
           >
             {statusLabel}
@@ -91,15 +82,15 @@ export function NotificationRow({
         </div>
         <p
           className="mt-0.5 text-[12px] line-clamp-2"
-          style={{ color: fg, opacity: item.read ? 0.55 : 0.75 }}
+          style={{ color: "var(--foreground)", opacity: item.read ? 0.55 : 0.75 }}
         >
           {item.body}
         </p>
-        <p className="mt-1 text-[11px] opacity-60 sm:hidden" style={{ color: fg }}>
+        <p className="mt-1 text-[11px] opacity-60 sm:hidden" style={{ color: "var(--foreground)" }}>
           {timeLabel} · {notificationTypeLabel(item.type)}
         </p>
       </div>
-      <span className="hidden flex-shrink-0 text-[11px] opacity-60 sm:inline" style={{ color: fg }}>
+      <span className="hidden flex-shrink-0 text-[11px] opacity-60 sm:inline" style={{ color: "var(--foreground)" }}>
         {timeLabel}
       </span>
     </>
@@ -136,7 +127,7 @@ export function NotificationRow({
           disabled={pending || deleting}
           aria-busy={pending}
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
-          style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)", color: fg }}
+          style={{ background: "rgba(var(--ink-rgb), 0.06)", color: "var(--foreground)" }}
           aria-label="읽음으로 표시"
         >
           {pending ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Check size={15} aria-hidden />}
@@ -147,7 +138,7 @@ export function NotificationRow({
         onClick={() => onDelete(item.id)}
         disabled={deleting || pending}
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ed5c48]"
-        style={{ background: dark ? "rgba(237,92,72,0.12)" : "rgba(237,92,72,0.08)", color: "#ed5c48" }}
+        style={{ background: "var(--danger-soft)", color: "#ed5c48" }}
         aria-label="알림 삭제"
       >
         {deleting ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Trash2 size={14} aria-hidden />}

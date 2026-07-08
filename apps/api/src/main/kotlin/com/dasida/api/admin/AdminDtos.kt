@@ -140,6 +140,22 @@ data class AdminActionLogsPageResponse(
     val totalPages: Int,
 )
 
+@Schema(description = "관리자 일별 통계 항목")
+data class AdminDailyStat(
+    @field:Schema(description = "날짜(YYYY-MM-DD, KST)")
+    val date: String,
+    val signups: Long,
+    val posts: Long,
+    val campaigns: Long,
+    val reports: Long,
+)
+
+@Schema(description = "관리자 일별 통계 (가입·게시글·캠페인·신고 추이)")
+data class AdminStatsResponse(
+    val days: Int,
+    val daily: List<AdminDailyStat>,
+)
+
 @Schema(description = "관리자 대시보드 요약")
 data class AdminSummaryResponse(
     val users: Long,

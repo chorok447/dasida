@@ -6,6 +6,7 @@ import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
+import com.dasida.api.notification.CommentMentionNotifier
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
@@ -29,6 +30,7 @@ class PostCommentService(
     private val commentRepo: PostCommentRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
+    private val mentions: CommentMentionNotifier,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -76,9 +78,7 @@ class PostCommentService(
     @Transactional(readOnly = true)
     fun getCommentPageLocation(postId: String, commentId: String, size: Int): CommentPageLocationResponse {
         checkPageSize(size, MAX_COMMENT_PAGE_SIZE)
-        if (!repo.existsById(postId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
-        }
+        requireExistingPost(postId)
         val target = commentRepo.findByIdAndPostId(commentId, postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         if (target.hiddenAt != null) {
@@ -156,15 +156,21 @@ class PostCommentService(
                 href = "/posts/$postId?commentId=${comment.id}",
             )
         }
+        // @멘션된 사용자에게 알림. 위에서 이미 댓글/답글 알림을 받은 수신자는 제외해 중복을 막는다.
+        mentions.notifyMentions(
+            text = text,
+            actorUserId = author.id,
+            actorName = authorSnapshot.name,
+            href = "/posts/$postId?commentId=${comment.id}",
+            excludeUserIds = setOfNotNull(parent?.authorUserId ?: post.authorUserId),
+        )
         return comment.toResponse(author.id)
     }
 
     /** 댓글 수정은 생성 순서와 카운터를 유지하고 text와 updatedAt만 갱신한다. */
     @Transactional
     fun updateComment(userId: Long, postId: String, commentId: String, req: UpdatePostCommentRequest): PostCommentResponse {
-        if (!repo.existsById(postId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
-        }
+        requireExistingPost(postId)
         val comment = commentRepo.findByIdAndPostId(commentId, postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         // 숨김 댓글은 작성자에게도 수정 불가(존재를 드러내지 않는 404).
@@ -187,27 +193,52 @@ class PostCommentService(
     fun deleteComment(userId: Long, postId: String, commentId: String) {
         val post = repo.findByIdForUpdate(postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
         val comment = commentRepo.findById(commentId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         }
-        if (comment.postId != postId) {
+        if (comment.postId != postId || comment.deletedAt != null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         }
         if (comment.authorUserId == null || comment.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment author")
         }
-        // 최상위 댓글 삭제 시 답글도 함께 삭제한다. 숨김 상태였던 건 카운터가 이미 감소했으므로 제외.
-        val replies = if (comment.parentId == null) commentRepo.findByParentId(comment.id) else emptyList()
-        val visibleRemoved = replies.count { it.hiddenAt == null } + (if (comment.hiddenAt == null) 1 else 0)
-        if (replies.isNotEmpty()) commentRepo.deleteAll(replies)
-        commentRepo.delete(comment)
+        // soft delete: row 는 남기고 deletedAt/hiddenAt 을 마킹한다(신고 대상 보존).
+        // 최상위 댓글 삭제 시 답글도 함께 삭제 처리한다. 숨김 상태였던 건 카운터가 이미 감소했으므로 제외.
+        val replies = if (comment.parentId == null) {
+            commentRepo.findByParentId(comment.id).filter { it.deletedAt == null }
+        } else {
+            emptyList()
+        }
+        val targets = replies + comment
+        val visibleRemoved = targets.count { it.hiddenAt == null }
+        val now = Instant.now(clock)
+        targets.forEach {
+            it.deletedAt = now
+            if (it.hiddenAt == null) it.hiddenAt = now
+        }
         post.comments = maxOf(0, post.comments - visibleRemoved)
     }
 
-    /** 공개 조회 경로에서 게시글 존재·노출 여부 확인. 숨김 게시글은 작성자에게만 보인다. */
+    /** 게시글 존재 확인. 삭제(soft delete)된 게시글은 존재하지 않는 것으로 취급한다. */
+    private fun requireExistingPost(postId: String) {
+        val post = repo.findById(postId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+    }
+
+    /** 공개 조회 경로에서 게시글 존재·노출 여부 확인. 숨김 게시글은 작성자에게만 보이고, 삭제는 모두에게 404. */
     private fun requireViewablePost(postId: String, currentUserId: Long?) {
         val post = repo.findById(postId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
+        }
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")
         }
         if (post.hiddenAt != null && (post.authorUserId == null || post.authorUserId != currentUserId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $postId not found")

@@ -26,11 +26,18 @@ class AdminController(
     private val content: AdminContentService,
     private val userService: AdminUserService,
     private val actionLogs: AdminActionLogService,
+    private val stats: AdminStatsService,
 ) {
 
     @Operation(summary = "대시보드 요약 (사용자/게시글/캠페인/신고 수)")
     @GetMapping("/summary")
     fun summary(): AdminSummaryResponse = service.getSummary()
+
+    @Operation(summary = "일별 통계 (최근 N일 가입·게시글·캠페인·신고 추이, KST 기준)")
+    @GetMapping("/stats")
+    fun stats(
+        @RequestParam(defaultValue = "30") days: Int,
+    ): AdminStatsResponse = stats.getDailyStats(days)
 
     @Operation(summary = "신고 목록 조회 (상태·대상종류 필터, 대상 미리보기 포함)")
     @GetMapping("/reports")

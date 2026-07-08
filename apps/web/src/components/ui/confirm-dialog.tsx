@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useTheme } from "@/lib/theme-context";
 
 type ConfirmOptions = {
   title?: string;
@@ -51,8 +50,6 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (result: boolean) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -82,8 +79,8 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
       aria-describedby="confirm-dialog-desc"
       className="w-[calc(100%-2rem)] max-w-sm rounded-2xl border p-6 shadow-xl backdrop:bg-black/45"
       style={{
-        background: dark ? "#1c4044" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+        background: "var(--panel)",
+        borderColor: "rgba(var(--ink-rgb), 0.12)",
         color: "var(--foreground)",
       }}
       onClick={(e) => {
@@ -106,7 +103,7 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
           type="button"
           onClick={() => onClose(false)}
           className="rounded-full px-4 py-2 text-[13px] transition-colors hover:bg-white/10"
-          style={{ color: dark ? "rgba(255,255,255,0.8)" : "rgba(28,64,68,0.8)" }}
+          style={{ color: "rgba(var(--ink-rgb), 0.8)" }}
         >
           {state.cancelLabel ?? "취소"}
         </button>

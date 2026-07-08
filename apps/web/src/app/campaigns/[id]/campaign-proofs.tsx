@@ -25,7 +25,6 @@ import { ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { beginAuthedRequest, clearSessionIfUnauthorized, staleByIdentity } from "@/lib/authed-request";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
@@ -46,14 +45,12 @@ function ProofItem({
   deleting: boolean;
   onDelete: (proof: CampaignProof) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
 
   return (
     <article
       className="rounded-2xl border p-5"
       style={{
-        background: dark ? "rgba(255,255,255,0.025)" : "rgba(249,247,242,0.55)",
+        background: "var(--glass)",
         borderColor: "var(--border)",
       }}
     >
@@ -111,6 +108,7 @@ function ProofItem({
               <FallbackImage
                 src={image}
                 alt={`${proof.author.name}님의 참여 인증 사진`}
+                thumbnail
                 className="h-full w-full object-cover"
               />
             </div>
@@ -131,8 +129,6 @@ function ProofItem({
 export function CampaignProofs({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const { sessionId: token } = useAuthSession();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const confirm = useConfirm();
   const generationRef = useRef(0);
 
@@ -266,7 +262,7 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
           onClick={reload}
           disabled={status === "loading"}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-45"
-          style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
+          style={{ background: "rgba(var(--ink-rgb), 0.07)", color: "var(--heading)" }}
         >
           <RefreshCw size={16} className={status === "loading" ? "animate-spin" : ""} />
         </button>
@@ -365,7 +361,7 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
         {status === "success" && response?.content.length === 0 ? (
           <StatePanel compact>
             <BadgeCheck size={26} className="opacity-35" />
-            <p style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>
+            <p style={{ color: "rgba(var(--ink-rgb), 0.6)" }}>
               아직 참여 인증이 없습니다. 첫 인증을 남겨보세요.
             </p>
           </StatePanel>

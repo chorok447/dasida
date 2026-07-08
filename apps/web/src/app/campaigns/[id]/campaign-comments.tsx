@@ -14,7 +14,6 @@ import {
 import { ApiError, apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
 import { getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
-import { useTheme } from "@/lib/theme-context";
 import { CampaignCommentItem } from "./campaign-comment-item";
 import { CampaignCommentCompose } from "./campaign-comment-compose";
 
@@ -27,8 +26,6 @@ export function CampaignComments({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [page, setPage] = useState(0);
   const [mutationError, setMutationError] = useState("");
 
@@ -151,7 +148,7 @@ export function CampaignComments({
           onClick={reload}
           disabled={comments.status === "loading"}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-45"
-          style={{ background: dark ? "rgba(255,255,255,0.08)" : "rgba(28,64,68,0.06)", color: dark ? "#f9f7f2" : "#1c4044" }}
+          style={{ background: "rgba(var(--ink-rgb), 0.07)", color: "var(--heading)" }}
         >
           <RefreshCw size={16} className={comments.status === "loading" ? "animate-spin" : ""} />
         </button>
@@ -189,7 +186,7 @@ export function CampaignComments({
         {comments.status === "success" && response?.content.length === 0 ? (
           <StatePanel compact>
             <MessageCircle size={26} className="opacity-35" />
-            <p style={{ color: dark ? "rgba(255,255,255,0.6)" : "rgba(28,64,68,0.6)" }}>아직 작성된 댓글이 없습니다.</p>
+            <p style={{ color: "rgba(var(--ink-rgb), 0.6)" }}>아직 작성된 댓글이 없습니다.</p>
           </StatePanel>
         ) : null}
 

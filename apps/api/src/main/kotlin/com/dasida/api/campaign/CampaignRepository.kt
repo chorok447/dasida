@@ -16,8 +16,16 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findByIdForUpdate(@Param("id") id: String): Campaign?
 
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
+
+    // 관리자 통계용. seq 는 개설 시각(epoch millis)이므로 기간 내 값만 가져와 일 단위로 집계한다.
+    @Query("select c.seq from Campaign c where c.seq >= :since")
+    fun creationSeqSince(@Param("since") since: Long): List<Long>
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
+
+    // 개설자 본인 목록(mine)용. 숨김은 보이지만 삭제(soft delete)는 제외한다.
+    fun findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(authorUserId: Long): List<Campaign>
+    fun findByAuthorUserIdAndDeletedAtIsNull(authorUserId: Long, pageable: Pageable): Page<Campaign>
     fun countByAuthorUserId(authorUserId: Long): Long
 
     // 공개 노출 경로용(숨김 제외). 개설자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.

@@ -123,10 +123,13 @@ class CampaignProofService(
         proofs.delete(proof)
     }
 
-    /** 공개 조회 경로에서 캠페인 존재·노출 여부 확인. 숨김 캠페인은 개설자에게만 보인다. */
+    /** 공개 조회 경로에서 캠페인 존재·노출 여부 확인. 숨김 캠페인은 개설자에게만 보이고, 삭제는 모두에게 404. */
     private fun requireViewableCampaign(campaignId: String, currentUserId: Long?) {
         val campaign = campaigns.findById(campaignId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         }
         if (campaign.hiddenAt != null && (campaign.authorUserId == null || campaign.authorUserId != currentUserId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")

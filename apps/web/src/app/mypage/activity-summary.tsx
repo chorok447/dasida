@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTheme } from "@/lib/theme-context";
 import { CountUp, StaggerItem } from "@/components/scroll-reveal";
 import { fetchBookmarkedPostsPage, fetchMyPostsPage } from "@/data/posts";
 import {
@@ -25,8 +24,6 @@ const TILES: { tab: SummaryTab; label: string }[] = [
 
 // 프로필 아래 활동 요약 KPI. 각 탭 fetcher의 totalElements만 사용(추가 API 없음).
 export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [counts, setCounts] = useState<Counts | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -73,7 +70,7 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
             aria-label={counts ? `${label} ${counts[tab]}개 보기` : `${label} 보기`}
             className="w-full rounded-2xl border p-5 text-left transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none"
             style={{
-              background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.72)",
+              background: "var(--glass)",
               borderColor: bone,
             }}
           >

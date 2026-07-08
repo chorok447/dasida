@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { Flag, PenLine, Share2 } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { ScrollReveal } from "@/components/scroll-reveal";
 
 const steps = [
@@ -25,14 +24,12 @@ const steps = [
 ];
 
 export function LandingFlow() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const reduce = useReducedMotion();
 
   return (
     <section
       className="relative py-32 px-8 transition-colors"
-      style={{ background: dark ? "#1c4044" : "#f9f7f2" }}
+      style={{ background: "var(--surface-muted)" }}
     >
       <div className="max-w-6xl mx-auto">
         <ScrollReveal className="text-center mb-20">
@@ -60,13 +57,13 @@ export function LandingFlow() {
                 delay={i * 0.15}
                 className="relative rounded-3xl border p-8 h-full"
                 style={{
-                  borderColor: dark ? "rgba(249,247,242,0.12)" : "rgba(28,64,68,0.12)",
-                  background: dark ? "rgba(249,247,242,0.04)" : "#ffffff",
+                  borderColor: "rgba(var(--ink-rgb), 0.12)",
+                  background: "var(--card)",
                 }}
               >
                 <span
                   className="absolute top-6 right-7 text-[12px] tracking-[0.3em]"
-                  style={{ color: dark ? "rgba(249,247,242,0.4)" : "rgba(28,64,68,0.4)" }}
+                  style={{ color: "rgba(var(--ink-rgb), 0.4)" }}
                 >
                   0{i + 1}
                 </span>
@@ -80,14 +77,14 @@ export function LandingFlow() {
                   style={{
                     fontFamily: "'Black Han Sans', sans-serif",
                     fontSize: 26,
-                    color: dark ? "#f9f7f2" : "#1c4044",
+                    color: "var(--heading)",
                   }}
                 >
                   {step.title}
                 </h3>
                 <p
                   className="mt-3 leading-relaxed"
-                  style={{ color: dark ? "rgba(249,247,242,0.7)" : "rgba(15,31,34,0.65)" }}
+                  style={{ color: "rgba(var(--ink-rgb), 0.68)" }}
                 >
                   {step.desc}
                 </p>
@@ -121,8 +118,8 @@ export function LandingFlow() {
                 href="/campaigns"
                 className="inline-flex items-center justify-center rounded-full px-8 py-4 text-[15px] font-medium border"
                 style={{
-                  borderColor: dark ? "rgba(249,247,242,0.4)" : "rgba(28,64,68,0.4)",
-                  color: dark ? "#f9f7f2" : "#1c4044",
+                  borderColor: "rgba(var(--ink-rgb), 0.4)",
+                  color: "var(--heading)",
                 }}
               >
                 캠페인 참여하기

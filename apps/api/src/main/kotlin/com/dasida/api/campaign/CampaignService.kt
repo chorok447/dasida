@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -187,7 +188,7 @@ class CampaignService(
     @Transactional(readOnly = true)
     fun getMyCampaigns(userId: Long): List<CampaignResponse> {
         val today = LocalDate.now(clock)
-        val campaigns = repo.findByAuthorUserIdOrderBySeqDesc(userId)
+        val campaigns = repo.findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(userId)
         if (campaigns.isEmpty()) return emptyList()
 
         val joinedIds = participants.findByUserIdAndCampaignIdIn(userId, campaigns.map { it.id })
@@ -236,7 +237,7 @@ class CampaignService(
     fun getMyCampaignsPage(userId: Long, page: Int, size: Int): CampaignPageResponse {
         validatePageParams(page, size)
         val today = LocalDate.now(clock)
-        val result = repo.findByAuthorUserId(
+        val result = repo.findByAuthorUserIdAndDeletedAtIsNull(
             userId,
             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "seq").and(Sort.by("id"))),
         )
@@ -263,6 +264,10 @@ class CampaignService(
         val campaign = repo.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
         }
+        // 삭제(soft delete)된 캠페인은 개설자에게도 존재하지 않는 것으로 취급한다.
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
+        }
         // 숨김 캠페인은 개설자에게만 보인다(hidden 플래그 포함). 그 외에는 존재를 드러내지 않는 404.
         if (campaign.hiddenAt != null && (campaign.authorUserId == null || campaign.authorUserId != currentUserId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $id not found")
@@ -283,6 +288,9 @@ class CampaignService(
     fun updateStatus(userId: Long, campaignId: String, req: UpdateCampaignStatusRequest): CampaignResponse {
         val campaign = repo.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
         if (campaign.authorUserId == null || campaign.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
         }
@@ -404,6 +412,9 @@ class CampaignService(
     fun updateCampaign(userId: Long, campaignId: String, req: UpdateCampaignRequest): CampaignResponse {
         val campaign = repo.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
         if (campaign.authorUserId == null || campaign.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
         }
@@ -478,6 +489,9 @@ class CampaignService(
     fun deleteCampaign(userId: Long, campaignId: String) {
         val campaign = repo.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
         if (campaign.authorUserId == null || campaign.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")
         }
@@ -491,10 +505,11 @@ class CampaignService(
         if (posts.existsByCampaignId(campaignId)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign has linked posts")
         }
-        comments.deleteByCampaignId(campaignId)
-        proofs.deleteByCampaignId(campaignId)
-        bookmarkRepo.deleteByCampaignId(campaignId)
-        repo.delete(campaign)
+        // soft delete: row 는 남기고 deletedAt/hiddenAt 을 마킹한다(신고 대상 보존·복구 여지).
+        // 댓글/북마크 row 도 남긴다 — 공개 노출은 hiddenAt 재사용으로 이미 차단된다.
+        val now = Instant.now(clock)
+        campaign.deletedAt = now
+        if (campaign.hiddenAt == null) campaign.hiddenAt = now
     }
 
     /**

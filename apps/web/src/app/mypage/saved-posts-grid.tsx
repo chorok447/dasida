@@ -9,17 +9,12 @@ import Link from "next/link";
 import { Bookmark, ExternalLink, Heart, MessageCircle } from "lucide-react";
 import { apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
-import { useTheme } from "@/lib/theme-context";
 import { fetchBookmarkedPostsPage, type Post } from "@/data/posts";
 import { PaginatedSection } from "./paginated-section";
 
-function cardActionClass(dark: boolean) {
-  return `inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] transition-colors ${
-    dark
-      ? "border border-white/12 bg-white/5 text-white/85 hover:bg-white/10"
-      : "border border-[rgba(28,64,68,0.12)] bg-white text-[#1c4044] hover:bg-[rgba(28,64,68,0.04)]"
-  }`;
-}
+// 카드 하단 액션 버튼 공통 클래스. 색은 CSS 토큰이 테마를 처리한다.
+const cardActionClass =
+  "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] transition-colors border-[rgba(var(--ink-rgb),0.12)] bg-[color:var(--glass-strong)] text-[color:var(--heading)] hover:bg-[color:var(--chip-bg)]";
 
 function SavedPostCard({
   post,
@@ -30,8 +25,6 @@ function SavedPostCard({
   removing: boolean;
   onRemove: (postId: string) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const image = post.images[0];
 
   return (
@@ -45,15 +38,13 @@ function SavedPostCard({
       <Link href={`/posts/${post.id}`} className="block transition-transform hover:-translate-y-0.5">
         {image ? (
           <div className="aspect-[4/3] overflow-hidden">
-            <FallbackImage src={image} alt="게시글 미리보기 이미지" className="h-full w-full object-cover" />
+            <FallbackImage src={image} alt="게시글 미리보기 이미지" thumbnail className="h-full w-full object-cover" />
           </div>
         ) : (
           <div
             className="flex aspect-[4/3] items-center p-6"
             style={{
-              background: dark
-                ? "linear-gradient(135deg,rgba(125,211,163,0.16),rgba(255,255,255,0.03))"
-                : "linear-gradient(135deg,rgba(125,211,163,0.3),rgba(231,223,203,0.5))",
+              background: "linear-gradient(135deg, var(--accent-soft), var(--chip-bg))",
               color: "var(--foreground)",
             }}
           >
@@ -79,7 +70,7 @@ function SavedPostCard({
       </Link>
 
       <div className="flex flex-wrap gap-2 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
-        <Link href={`/posts/${post.id}`} className={cardActionClass(dark)}>
+        <Link href={`/posts/${post.id}`} className={cardActionClass}>
           <ExternalLink size={12} aria-hidden /> 상세 보기
         </Link>
         <button
@@ -88,7 +79,7 @@ function SavedPostCard({
           disabled={removing}
           aria-busy={removing || undefined}
           aria-label={removing ? "북마크 해제 중" : "북마크 해제"}
-          className={`${cardActionClass(dark)} disabled:cursor-wait disabled:opacity-50`}
+          className={`${cardActionClass} disabled:cursor-wait disabled:opacity-50`}
         >
           <Bookmark size={12} fill="currentColor" aria-hidden /> 저장 해제
         </button>
@@ -98,8 +89,6 @@ function SavedPostCard({
 }
 
 export function SavedPostsGrid({ page, onPageChange }: { page: number; onPageChange: (page: number) => void }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
 
@@ -154,7 +143,7 @@ export function SavedPostsGrid({ page, onPageChange }: { page: number; onPageCha
             <div
               className="rounded-xl px-4 py-3 text-[13px]"
               role="alert"
-              style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}
+              style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}
             >
               {actionError}
             </div>

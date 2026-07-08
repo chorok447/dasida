@@ -9,7 +9,6 @@ import {
   type CampaignDateRangeFilters,
   type CampaignRecruitState,
 } from "@/data/campaigns";
-import { useTheme } from "@/lib/theme-context";
 
 export type SearchType = "all" | "campaigns" | "posts" | "users";
 export type SearchSort = "latest" | "popular" | "deadline";
@@ -93,8 +92,6 @@ export function SearchFilters({
   onUpdate: (changes: Partial<SearchUrlState>, replace?: boolean) => void;
   onReset: () => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const filterChips = buildSearchFilterChips(state, (changes) => onUpdate({ ...changes, page: 0 }));
 
   return (
@@ -111,7 +108,7 @@ export function SearchFilters({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div
           className="flex gap-1 overflow-x-auto rounded-full p-1"
-          style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+          style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
         >
           {TYPE_TABS.map((tab) => {
             const active = state.type === tab.id;
@@ -171,7 +168,7 @@ export function SearchFilters({
             </label>
             <label
               className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
-              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+              style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
             >
               <input
                 type="checkbox"
@@ -184,7 +181,6 @@ export function SearchFilters({
           </div>
           <CampaignDateRangeFilterControls
             value={state}
-            dark={dark}
             onChange={(field, value) => onUpdate({ [field]: value, page: 0 })}
             onClear={() => onUpdate({ ...EMPTY_CAMPAIGN_DATE_RANGE_FILTERS, page: 0 })}
           />

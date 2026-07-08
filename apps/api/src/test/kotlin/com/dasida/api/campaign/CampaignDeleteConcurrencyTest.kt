@@ -105,7 +105,8 @@ class CampaignDeleteConcurrencyTest(
             // 허용 결과: {204,404}(삭제 우선) 또는 {409,200}(모집 시작 우선)
             if (deleteResult == 204) {
                 assertThat(openResult).isEqualTo(404)
-                assertThat(campaignRepo.existsById(id)).isFalse() // 캠페인 없음
+                // soft delete: row 는 남고 deletedAt 마킹으로 없는 것으로 취급된다.
+                assertThat(campaignRepo.findById(id).get().deletedAt).isNotNull()
             } else {
                 assertThat(deleteResult).isEqualTo(409)
                 assertThat(openResult).isEqualTo(200)
@@ -128,7 +129,8 @@ class CampaignDeleteConcurrencyTest(
                 { createLinkedPostStatus(id, authorToken) },
             )
 
-            val campaignExists = campaignRepo.existsById(id)
+            // soft delete: row 는 남으므로 "존재"는 deletedAt == null 로 판정한다.
+            val campaignExists = campaignRepo.findById(id).map { it.deletedAt == null }.orElse(false)
             val linkedPostExists = postRepo.existsByCampaignId(id)
             // 절대 금지: 게시글은 있는데 캠페인은 없는 orphan 상태.
             assertThat(linkedPostExists && !campaignExists).isFalse()

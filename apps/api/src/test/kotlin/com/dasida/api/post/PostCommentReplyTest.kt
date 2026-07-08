@@ -97,7 +97,7 @@ class PostCommentReplyTest(
     }
 
     @Test
-    fun `부모 댓글 삭제 시 답글도 함께 삭제되고 카운터가 맞는다`() {
+    fun `부모 댓글 삭제 시 답글도 함께 soft delete 되고 카운터가 맞는다`() {
         val postId = savePost()
         val parentId = idOf(createComment(postId, "부모").andReturn().response.contentAsString)
         val replyId = idOf(
@@ -110,7 +110,10 @@ class PostCommentReplyTest(
             headers { add("Authorization", "Bearer $writerToken") }
         }.andExpect { status { isNoContent() } }
 
-        assertThat(comments.findById(replyId)).isEmpty
+        // soft delete: 답글 row 도 남지만 deletedAt/hiddenAt 마킹으로 목록에서 제외된다.
+        val reply = comments.findById(replyId).orElseThrow()
+        assertThat(reply.deletedAt).isNotNull()
+        assertThat(reply.hiddenAt).isNotNull()
         assertThat(posts.findById(postId).orElseThrow().comments).isEqualTo(0)
     }
 

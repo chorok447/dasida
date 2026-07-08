@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useTheme } from "@/lib/theme-context";
 import { MYPAGE_TAB_GROUPS, type MypageTab } from "./mypage-types";
 
 export function MypageTabBar({
@@ -11,13 +10,11 @@ export function MypageTabBar({
   tab: MypageTab;
   onSelect: (tab: MypageTab) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
 
   return (
     <div
       className="mx-auto max-w-5xl border-b px-4 sm:px-8"
-      style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "var(--border)" }}
+      style={{ borderColor: "var(--border)" }}
     >
       <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-end sm:gap-6">
         {MYPAGE_TAB_GROUPS.map((group) => (
@@ -49,7 +46,7 @@ export function MypageTabBar({
                     style={{
                       color: active ? ("var(--foreground)") : "var(--foreground-muted)",
                       fontWeight: active ? 600 : 400,
-                      background: active ? (dark ? "rgba(255,255,255,0.06)" : "var(--accent-soft)") : undefined,
+                      background: active ? ("var(--accent-soft)") : undefined,
                     }}
                   >
                     {item.label}

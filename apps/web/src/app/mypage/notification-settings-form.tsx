@@ -4,14 +4,11 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Bell } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { notifyProfileUpdated } from "@/lib/auth";
 import { updateProfile } from "@/data/users";
 
 export function NotificationSettingsForm({ embedded = false }: { embedded?: boolean }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const { profile } = useCurrentUserProfile();
   const [saving, setSaving] = useState(false);
   const campaignNotify = profile?.notifyCampaignUpdates ?? true;
@@ -70,9 +67,7 @@ export function NotificationSettingsForm({ embedded = false }: { embedded?: bool
             style={{
               background: campaignNotify
                 ? "var(--accent)"
-                : dark
-                  ? "rgba(255,255,255,0.15)"
-                  : "rgba(28,64,68,0.15)",
+                : "rgba(var(--ink-rgb), 0.15)",
             }}
           >
             <motion.div

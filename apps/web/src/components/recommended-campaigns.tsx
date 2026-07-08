@@ -73,6 +73,7 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
                     alt=""
                     decorative
                     dark={dark}
+                    thumbnail
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -86,7 +87,7 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
                   <div className="mt-1 flex items-center gap-2">
                     <div
                       className="h-1 flex-1 rounded-full"
-                      style={{ background: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)" }}
+                      style={{ background: "rgba(var(--ink-rgb), 0.09)" }}
                       aria-hidden
                     >
                       <div

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Leaf, User } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
+import { uploadThumbUrl } from "@/lib/upload-thumb";
 
 type AvatarProps = {
   name: string;
@@ -11,16 +11,16 @@ type AvatarProps = {
   src?: string;
 };
 
-function DefaultAvatar({ size, dark }: { size: number; dark: boolean }) {
+function DefaultAvatar({ size }: { size: number }) {
   return (
     <div
       className="flex h-full w-full items-center justify-center rounded-full"
-      style={{ background: dark ? "#363636" : "#EFEFEF" }}
+      style={{ background: "rgba(var(--ink-rgb), 0.12)" }}
       aria-hidden
     >
       <User
         size={Math.round(size * 0.52)}
-        color={dark ? "#737373" : "#A8A8A8"}
+        color={"rgba(var(--ink-rgb), 0.4)"}
         strokeWidth={1.75}
       />
     </div>
@@ -28,21 +28,25 @@ function DefaultAvatar({ size, dark }: { size: number; dark: boolean }) {
 }
 
 export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [failed, setFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const showDefault = !src || failed;
+
+  // 업로드 프로필 이미지는 작은 썸네일을 먼저 시도하고, 없으면(과거 업로드·webp) 원본으로 fallback.
+  const thumbSrc = src ? uploadThumbUrl(src) : undefined;
+  const useThumb = Boolean(thumbSrc && thumbSrc !== src && !thumbFailed);
+  const currentSrc = useThumb ? thumbSrc : src;
 
   return (
     <div className="relative inline-block flex-shrink-0" style={{ width: size, height: size }}>
       {showDefault ? (
-        <DefaultAvatar size={size} dark={dark} />
+        <DefaultAvatar size={size} />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          src={currentSrc}
           alt={`${name} 프로필 이미지`}
-          onError={() => setFailed(true)}
+          onError={() => (useThumb ? setThumbFailed(true) : setFailed(true))}
           className="h-full w-full rounded-full object-cover"
           draggable={false}
         />

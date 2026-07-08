@@ -268,6 +268,20 @@ class AdminContentVisibilityTest(
     }
 
     @Test
+    fun `작성자가 삭제한 콘텐츠는 관리자도 복구할 수 없다`() {
+        // soft delete 상태 재현: 삭제 시 deletedAt/hiddenAt 이 함께 마킹된다.
+        val post = savePost(authorUserId = 9)
+        post.deletedAt = java.time.Instant.now()
+        post.hiddenAt = java.time.Instant.now()
+        posts.saveAndFlush(post)
+
+        // 복구는 404(삭제된 콘텐츠가 다시 공개되는 것을 막는다), 숨김 요청은 멱등 no-op.
+        setVisibility("POST", post.id, false).andExpect { status { isNotFound() } }
+        setVisibility("POST", post.id, true).andExpect { status { isOk() } }
+        assertThat(posts.findById(post.id).get().deletedAt).isNotNull()
+    }
+
+    @Test
     fun `잘못된 대상 타입은 400 없는 대상은 404`() {
         setVisibility("WRONG", "any", true).andExpect { status { isBadRequest() } }
         setVisibility("POST", "missing-post", true).andExpect { status { isNotFound() } }

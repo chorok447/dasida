@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Image as ImageIcon } from "lucide-react";
+import { uploadThumbUrl } from "@/lib/upload-thumb";
 
 type FallbackImageProps = {
   src: string;
@@ -12,6 +13,8 @@ type FallbackImageProps = {
   /** @deprecated 대체 UI 색상이 CSS 토큰으로 바뀌어 더 이상 사용하지 않는다. 호출부 정리 후 제거 예정. */
   dark?: boolean;
   decorative?: boolean;
+  /** 목록 화면용. 업로드 이미지면 썸네일(`.thumb.jpg`)을 먼저 시도하고 없으면 원본으로 fallback 한다. */
+  thumbnail?: boolean;
 };
 
 export function FallbackImage({
@@ -20,8 +23,14 @@ export function FallbackImage({
   className = "",
   errorText,
   decorative = false,
+  thumbnail = false,
 }: FallbackImageProps) {
   const [failed, setFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+
+  const thumbSrc = thumbnail ? uploadThumbUrl(src) : src;
+  const useThumb = thumbnail && !thumbFailed && thumbSrc !== src;
+  const currentSrc = useThumb ? thumbSrc : src;
 
   if (failed) {
     const label = errorText ?? alt;
@@ -48,10 +57,10 @@ export function FallbackImage({
 
   return (
     <img
-      src={src}
+      src={currentSrc}
       alt={alt}
       className={className}
-      onError={() => setFailed(true)}
+      onError={() => (useThumb ? setThumbFailed(true) : setFailed(true))}
       aria-hidden={decorative || undefined}
     />
   );

@@ -6,6 +6,7 @@ import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
+import com.dasida.api.notification.CommentMentionNotifier
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
 import com.dasida.api.security.AuthUser
@@ -29,6 +30,7 @@ class CampaignCommentService(
     private val comments: CampaignCommentRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
+    private val mentions: CommentMentionNotifier,
     private val clock: Clock,
 ) {
     @Transactional(readOnly = true)
@@ -69,9 +71,7 @@ class CampaignCommentService(
     @Transactional(readOnly = true)
     fun getCommentPageLocation(campaignId: String, commentId: String, size: Int): CommentPageLocationResponse {
         checkPageSize(size, MAX_PAGE_SIZE)
-        if (!campaigns.existsById(campaignId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
-        }
+        requireExistingCampaign(campaignId)
         val target = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         if (target.hiddenAt != null) {
@@ -148,15 +148,21 @@ class CampaignCommentService(
                 href = "/campaigns/$campaignId?commentId=${saved.id}",
             )
         }
+        // @멘션된 사용자에게 알림. 위에서 이미 댓글/답글 알림을 받은 수신자는 제외해 중복을 막는다.
+        mentions.notifyMentions(
+            text = text,
+            actorUserId = user.id,
+            actorName = authorSnapshot.name,
+            href = "/campaigns/$campaignId?commentId=${saved.id}",
+            excludeUserIds = setOfNotNull(parent?.authorUserId ?: campaign.authorUserId),
+        )
         return saved.toResponse(user.id)
     }
 
     /** 댓글 수정은 생성 시각과 정렬을 유지하고 text와 updatedAt만 갱신한다. */
     @Transactional
     fun updateComment(userId: Long, campaignId: String, commentId: String, request: UpdateCampaignCommentRequest): CampaignCommentResponse {
-        if (!campaigns.existsById(campaignId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
-        }
+        requireExistingCampaign(campaignId)
         val comment = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         // 숨김 댓글은 작성자에게도 수정 불가(존재를 드러내지 않는 404).
@@ -174,25 +180,50 @@ class CampaignCommentService(
     @Transactional
     fun deleteComment(userId: Long, campaignId: String, commentId: String) {
         // 작성·캠페인 삭제와 lock 순서를 맞추기 위해 campaign row를 가장 먼저 잠근다.
-        campaigns.findByIdForUpdate(campaignId)
+        val campaign = campaigns.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
         val comment = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (comment.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
         if (comment.authorUserId == null || comment.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the comment owner")
         }
-        // 최상위 댓글 삭제 시 답글도 함께 삭제한다.
-        if (comment.parentId == null) {
-            val replies = comments.findByParentId(comment.id)
-            if (replies.isNotEmpty()) comments.deleteAll(replies)
+        // soft delete: row 는 남기고 deletedAt/hiddenAt 을 마킹한다(신고 대상 보존).
+        // 최상위 댓글 삭제 시 답글도 함께 삭제 처리한다.
+        val replies = if (comment.parentId == null) {
+            comments.findByParentId(comment.id).filter { it.deletedAt == null }
+        } else {
+            emptyList()
         }
-        comments.delete(comment)
+        val now = Instant.now(clock)
+        (replies + comment).forEach {
+            it.deletedAt = now
+            if (it.hiddenAt == null) it.hiddenAt = now
+        }
     }
 
-    /** 공개 조회 경로에서 캠페인 존재·노출 여부 확인. 숨김 캠페인은 개설자에게만 보인다. */
+    /** 캠페인 존재 확인. 삭제(soft delete)된 캠페인은 존재하지 않는 것으로 취급한다. */
+    private fun requireExistingCampaign(campaignId: String) {
+        val campaign = campaigns.findById(campaignId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+    }
+
+    /** 공개 조회 경로에서 캠페인 존재·노출 여부 확인. 숨김 캠페인은 개설자에게만 보이고, 삭제는 모두에게 404. */
     private fun requireViewableCampaign(campaignId: String, currentUserId: Long?) {
         val campaign = campaigns.findById(campaignId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         }
         if (campaign.hiddenAt != null && (campaign.authorUserId == null || campaign.authorUserId != currentUserId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")

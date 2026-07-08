@@ -2,7 +2,6 @@
 
 import { useId, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { useTheme } from "@/lib/theme-context";
 
 export function AuthShell({
   title,
@@ -15,8 +14,6 @@ export function AuthShell({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -43,9 +40,7 @@ export function AuthShell({
       style={{
         position: "relative",
         perspective: 1400,
-        backgroundImage: dark
-          ? "linear-gradient(135deg,#0f1f22,#1c4044 50%,#2a5a4a)"
-          : "linear-gradient(135deg,#f9f7f2,#e7dfcb 50%,#cfe6d3)",
+        backgroundImage: "var(--auth-gradient)",
       }}
     >
       <div className="absolute inset-0 opacity-30 pointer-events-none">
@@ -64,8 +59,8 @@ export function AuthShell({
         >
           <div
             style={{
-              background: dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.75)",
-              borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.08)",
+              background: "var(--glass)",
+              borderColor: "rgba(var(--ink-rgb), 0.09)",
               borderWidth: 1,
               borderStyle: "solid",
             }}
@@ -131,8 +126,6 @@ export function FieldInput({
   value?: string;
   onChange?: (v: string) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const id = useId();
   const errorId = error ? `${id}-error` : undefined;
   return (
@@ -141,11 +134,11 @@ export function FieldInput({
       <div
         className="relative flex items-center gap-3 rounded-xl border px-4 py-3.5 transition-[border-color,box-shadow,background-color] focus-within:border-[#7dd3a3] focus-within:ring-2 focus-within:ring-[#7dd3a3]/20"
         style={{
-          background: dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-          borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
+          background: "var(--glass-strong)",
+          borderColor: "rgba(var(--ink-rgb), 0.1)",
         }}
       >
-        <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}>{icon}</span>
+        <span style={{ color: "rgba(var(--ink-rgb), 0.5)" }}>{icon}</span>
         <input
           id={id}
           name={name}

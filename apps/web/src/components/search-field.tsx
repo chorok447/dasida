@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Search, X } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 
 type SearchFieldProps = {
   value: string;
@@ -23,8 +22,6 @@ export function SearchField({
   loading = false,
   className = "",
 }: SearchFieldProps) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [draft, setDraft] = useState(value);
   const commitRef = useRef(onCommit);
 
@@ -50,8 +47,8 @@ export function SearchField({
     <div
       className={`flex min-w-0 flex-1 items-center gap-2 rounded-2xl border px-3 py-2 sm:px-4 sm:py-2.5 ${className}`}
       style={{
-        background: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
-        borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)",
+        background: "var(--card)",
+        borderColor: "rgba(var(--ink-rgb), 0.1)",
       }}
     >
       <Search size={18} className="shrink-0 opacity-50" aria-hidden />

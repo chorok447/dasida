@@ -236,7 +236,7 @@ export default function PostEditPage() {
             onClick={() => router.push(`/posts/${id}`)}
             className="flex-1 rounded-xl py-3"
             style={{
-              background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)",
+              background: "rgba(var(--ink-rgb), 0.06)",
               color: "var(--foreground)",
             }}
           >

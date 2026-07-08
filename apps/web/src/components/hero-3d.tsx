@@ -45,11 +45,11 @@ export function Hero3D() {
       <motion.div className="absolute inset-0 opacity-40" style={{ y: blobY }}>
         <div
           className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full blur-[120px]"
-          style={{ background: dark ? "#7dd3a3" : "#7dd3a3" }}
+          style={{ background: "var(--accent)" }}
         />
         <div
           className="absolute -bottom-40 -right-20 w-[700px] h-[700px] rounded-full blur-[140px]"
-          style={{ background: dark ? "#e7dfcb" : "#1c4044", opacity: 0.4 }}
+          style={{ background: "var(--accent-secondary)", opacity: 0.4 }}
         />
       </motion.div>
 
@@ -59,11 +59,11 @@ export function Hero3D() {
       >
         <div
           className="absolute top-1/4 left-10 w-40 h-40 rounded-full border"
-          style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.2)" }}
+          style={{ borderColor: "rgba(var(--ink-rgb), 0.17)" }}
         />
         <div
           className="absolute bottom-1/3 right-16 w-24 h-24 rounded-full border"
-          style={{ borderColor: dark ? "rgba(255,255,255,0.15)" : "rgba(28,64,68,0.2)" }}
+          style={{ borderColor: "rgba(var(--ink-rgb), 0.17)" }}
         />
       </motion.div>
 
@@ -77,7 +77,7 @@ export function Hero3D() {
         >
           <span
             style={{
-              color: dark ? "rgba(255,255,255,0.9)" : "rgba(15,31,34,0.85)",
+              color: "rgba(var(--ink-rgb), 0.88)",
             }}
           >
             Re · Cycle · Up
@@ -95,7 +95,7 @@ export function Hero3D() {
               fontSize: "clamp(48px, 7vw, 110px)",
               lineHeight: 1.05,
               color: "var(--foreground)",
-              textShadow: dark ? "0 20px 60px rgba(0,0,0,0.45)" : "0 20px 60px rgba(28,64,68,0.2)",
+              textShadow: "0 20px 60px rgba(0,0,0,0.35)",
             }}
           >
             당 신 은 지 구 를 위해
@@ -130,7 +130,7 @@ export function Hero3D() {
         <motion.div
           style={{
             transform: "translateZ(120px)",
-            borderColor: dark ? "rgba(231,223,203,0.7)" : "rgba(28,64,68,0.5)",
+            borderColor: "rgba(var(--ink-rgb), 0.55)",
           }}
           className="absolute -left-16 -bottom-10 w-24 h-24 rounded-full border-4 backdrop-blur-md"
         />
@@ -138,7 +138,7 @@ export function Hero3D() {
         <motion.p
           style={{
             transform: "translateZ(60px)",
-            color: dark ? "rgba(255,255,255,0.8)" : "rgba(15,31,34,0.7)",
+            color: "rgba(var(--ink-rgb), 0.75)",
           }}
           className="hidden sm:block text-center mt-4 max-w-xl mx-auto"
         >
@@ -149,7 +149,7 @@ export function Hero3D() {
       <motion.div
         animate={{ y: hover ? 6 : 0, opacity: hover ? 0.4 : 1 }}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 tracking-[0.4em] uppercase"
-        style={{ color: dark ? "rgba(255,255,255,0.7)" : "rgba(15,31,34,0.6)" }}
+        style={{ color: "rgba(var(--ink-rgb), 0.65)" }}
       >
         scroll ↓
       </motion.div>

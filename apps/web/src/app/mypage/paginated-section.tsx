@@ -6,7 +6,6 @@ import { ApiError } from "@/lib/api";
 import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import { emptyPageFallback } from "@/lib/paginated-section-utils";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 import { Pagination } from "@/components/ui/pagination";
 import { SkeletonCards } from "@/components/ui/skeleton-cards";
 import { StatePanel } from "@/components/ui/state-panel";
@@ -54,8 +53,6 @@ export function PaginatedSection<T>({
   watchDeps?: readonly unknown[];
 }) {
   const { sessionId: token } = useAuthSession();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [retryTick, setRetryTick] = useState(0);
   const generationRef = useRef(0);
   // 부모가 매 렌더 새 함수를 넘겨도 fetch effect 가 재실행되지 않도록 ref 로 최신값을 보관한다.
@@ -158,7 +155,7 @@ export function PaginatedSection<T>({
   }
 
   const fg = "var(--foreground)";
-  const subtle = dark ? "rgba(255,255,255,0.07)" : "rgba(28,64,68,0.07)";
+  const subtle = "rgba(var(--ink-rgb), 0.07)";
   return (
     <div className="space-y-6" aria-busy={loading || undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3" style={{ color: fg }}>
@@ -177,7 +174,7 @@ export function PaginatedSection<T>({
       </div>
 
       {status === "error" ? (
-        <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: "rgba(237,92,72,0.12)", color: dark ? "#f3b4ab" : "#b3402f" }}>
+        <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}>
           {errorLabel}
         </div>
       ) : null}

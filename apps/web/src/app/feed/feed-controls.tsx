@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "@/lib/theme-context";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { SearchField } from "@/components/search-field";
 import type { PostSearchSort } from "@/data/posts";
@@ -68,8 +67,6 @@ export function FeedControls({
   onPatch: (changes: Partial<FeedUrlState>) => void;
   onResetAll: () => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const chips = buildFeedFilterChips(state, (changes) => onPatch({ ...changes, page: 0 }));
 
   return (
@@ -86,7 +83,7 @@ export function FeedControls({
       <div className="flex flex-wrap items-center gap-3">
         <label
           className="flex min-h-10 items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
-          style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+          style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
         >
           <input
             type="checkbox"
@@ -99,7 +96,7 @@ export function FeedControls({
         {onFollowingOnly ? (
           <label
             className="flex min-h-10 items-center gap-2 rounded-full px-4 py-2.5 text-[13px]"
-            style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(28,64,68,0.06)" }}
+            style={{ background: "rgba(var(--ink-rgb), 0.06)" }}
           >
             <input
               type="checkbox"
@@ -118,8 +115,8 @@ export function FeedControls({
             className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
             style={{
               color: "var(--foreground)",
-              background: dark ? "#1c4044" : "#ffffff",
-              borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(28,64,68,0.12)",
+              background: "var(--panel)",
+              borderColor: "rgba(var(--ink-rgb), 0.12)",
             }}
           >
             <option value="latest">최신순</option>

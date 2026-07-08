@@ -12,9 +12,18 @@ import org.springframework.data.repository.query.Param
 interface PostRepository : JpaRepository<Post, String> {
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Post>
 
+    // 관리자 통계용. seq 는 작성 시각(epoch millis)이므로 기간 내 값만 가져와 일 단위로 집계한다.
+    @Query("select p.seq from Post p where p.seq >= :since")
+    fun creationSeqSince(@Param("since") since: Long): List<Long>
+
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Post>
 
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Post>
+
+    // 작성자 본인 목록(mine)용. 숨김은 보이지만 삭제(soft delete)는 제외한다.
+    fun findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(authorUserId: Long): List<Post>
+
+    fun findByAuthorUserIdAndDeletedAtIsNull(authorUserId: Long, pageable: Pageable): Page<Post>
 
     fun countByAuthorUserId(authorUserId: Long): Long
 

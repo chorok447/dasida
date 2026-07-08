@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { ArrowLeft, BadgeCheck, MessageCircle, FileText } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 import { apiPost, apiPut, apiDelete, apiDeleteVoid, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthedRefresh } from "@/lib/use-authed-refresh";
@@ -27,8 +26,6 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
   const targetCommentId = searchParams.get("commentId")?.trim() || null;
   const initialProofsTab = searchParams.get("tab") === "proofs";
   const { sessionId: token } = useAuthSession();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [tab, setTab] = useState<Tab>(() => (targetCommentId ? "comments" : initialProofsTab ? "proofs" : "content"));
   const activeTab: Tab = targetCommentId ? "comments" : tab;
   const [c, setC] = useState(campaign);
@@ -299,7 +296,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
           />
         </div>
 
-        <div className="mt-10 flex gap-2 border-b" style={{ borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(28,64,68,0.1)" }}>
+        <div className="mt-10 flex gap-2 border-b" style={{ borderColor: "rgba(var(--ink-rgb), 0.1)" }}>
           {([
             { id: "content", label: "캠페인 내용", icon: <FileText size={14} /> },
             { id: "comments", label: "댓글", icon: <MessageCircle size={14} /> },
@@ -311,7 +308,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
                 key={t.id}
                 onClick={() => selectTab(t.id)}
                 className="relative px-5 py-3 inline-flex items-center gap-2 text-[14px]"
-                style={{ color: active ? ("var(--foreground)") : dark ? "rgba(255,255,255,0.5)" : "rgba(28,64,68,0.5)" }}
+                style={{ color: active ? ("var(--foreground)") : "rgba(var(--ink-rgb), 0.5)" }}
               >
                 {t.icon}
                 {t.label}

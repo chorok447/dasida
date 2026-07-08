@@ -2,6 +2,7 @@
 
 import { CornerDownRight, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { MentionText } from "@/components/mention-text";
 import { ReportButton } from "@/components/report-button";
 import type { CampaignComment } from "@/data/campaigns";
 import { useTheme } from "@/lib/theme-context";
@@ -59,9 +60,7 @@ export function CampaignCommentItem({
       className="scroll-mt-28 rounded-2xl border p-5 transition-colors"
       style={{
         background: highlighted
-          ? dark
-            ? "rgba(125,211,163,0.16)"
-            : "rgba(125,211,163,0.24)"
+          ? "var(--accent-soft)"
           : dark
             ? "rgba(255,255,255,0.025)"
             : "rgba(249,247,242,0.55)",
@@ -102,7 +101,7 @@ export function CampaignCommentItem({
                 onClick={() => onEdit(comment)}
                 disabled={deleting || saving}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
-                style={{ background: "rgba(125,211,163,0.14)", color: dark ? "var(--accent)" : "#148a90" }}
+                style={{ background: "rgba(125,211,163,0.14)", color: "var(--accent-strong)" }}
               >
                 <Pencil size={15} />
               </button>
@@ -144,7 +143,7 @@ export function CampaignCommentItem({
             rows={4}
             disabled={saving}
             className="ui-control resize-none bg-transparent px-3 py-3"
-            style={{ borderColor: dark ? "rgba(255,255,255,0.14)" : "rgba(28,64,68,0.14)", color: "var(--foreground)" }}
+            style={{ borderColor: "rgba(var(--ink-rgb), 0.14)", color: "var(--foreground)" }}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] opacity-55" style={{ color: "var(--foreground)" }}>
@@ -178,7 +177,7 @@ export function CampaignCommentItem({
             className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7"
             style={{ color: "var(--foreground-muted)" }}
           >
-            {comment.text}
+            <MentionText text={comment.text} />
           </p>
           {!isReply && onToggleReply ? (
             <button

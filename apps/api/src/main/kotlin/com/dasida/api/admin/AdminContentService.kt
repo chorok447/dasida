@@ -110,11 +110,16 @@ class AdminContentService(
         return true
     }
 
-    /** 숨김을 해제한다. 이미 공개면 no-op(멱등). 대상이 없으면 404. 실제로 복구했으면 true. */
+    /**
+     * 숨김을 해제한다. 이미 공개면 no-op(멱등). 대상이 없으면 404. 실제로 복구했으면 true.
+     * 작성자가 삭제(soft delete)한 콘텐츠는 존재하지 않는 것으로 취급해 복구할 수 없다
+     * (hiddenAt 만 지우면 삭제된 콘텐츠가 다시 공개되기 때문).
+     */
     fun unhide(targetType: ReportTargetType, targetId: String): Boolean {
         when (targetType) {
             ReportTargetType.POST -> {
                 val post = posts.findByIdForUpdate(targetId) ?: throw notFound()
+                if (post.deletedAt != null) throw notFound()
                 if (post.hiddenAt == null) return false
                 post.hiddenAt = null
                 post.hiddenReason = null
@@ -123,6 +128,7 @@ class AdminContentService(
 
             ReportTargetType.POST_COMMENT -> {
                 val comment = postComments.findById(targetId).orElseThrow { notFound() }
+                if (comment.deletedAt != null) throw notFound()
                 if (comment.hiddenAt == null) return false
                 val post = posts.findByIdForUpdate(comment.postId)
                 comment.hiddenAt = null
@@ -133,6 +139,7 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN -> {
                 val campaign = campaigns.findByIdForUpdate(targetId) ?: throw notFound()
+                if (campaign.deletedAt != null) throw notFound()
                 if (campaign.hiddenAt == null) return false
                 campaign.hiddenAt = null
                 campaign.hiddenReason = null
@@ -141,6 +148,7 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN_COMMENT -> {
                 val comment = campaignComments.findById(targetId).orElseThrow { notFound() }
+                if (comment.deletedAt != null) throw notFound()
                 if (comment.hiddenAt == null) return false
                 comment.hiddenAt = null
                 comment.hiddenReason = null
