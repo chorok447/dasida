@@ -35,13 +35,14 @@ class PostController(
     @GetMapping("/search")
     fun search(
         @RequestParam(name = "q", required = false) q: String?,
+        @RequestParam(required = false) tag: String?,
         @RequestParam(defaultValue = "false") campaignOnly: Boolean,
         @RequestParam(defaultValue = "false") followingOnly: Boolean,
         @RequestParam(defaultValue = "latest") sort: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int,
         @AuthenticationPrincipal user: AuthUser?,
-    ): PostSearchResponse = postService.searchPosts(user?.id, q, campaignOnly, followingOnly, sort, page, size)
+    ): PostSearchResponse = postService.searchPosts(user?.id, q, tag, campaignOnly, followingOnly, sort, page, size)
 
     @Operation(summary = "내 북마크 조회")
     @SecurityRequirement(name = "bearerAuth")

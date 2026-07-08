@@ -14,6 +14,7 @@ import { FallbackImage } from "@/components/fallback-image";
 import { PostPreview } from "@/components/post-text";
 import { ReportButton } from "@/components/report-button";
 import { ShareButton } from "@/components/share-button";
+import { TagLink } from "@/components/tag-link";
 import type { Post, PostComment } from "@/data/posts";
 
 const MAX_COMMENT_LENGTH = 500;
@@ -195,9 +196,7 @@ export function FeedPostCard({
           <PostPreview text={p.text} style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }} maxLength={320} />
           <div className="flex flex-wrap gap-1.5">
             {p.tags.map((t) => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }}>
-                {t}
-              </span>
+              <TagLink key={t} tag={t} className="text-[11px] px-2 py-0.5 rounded-full transition-opacity hover:opacity-75" style={{ background: "var(--accent-soft)", color: "var(--accent-secondary)" }} />
             ))}
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--border)" }}>

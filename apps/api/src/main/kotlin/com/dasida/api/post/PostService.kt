@@ -62,6 +62,7 @@ class PostService(
     fun searchPosts(
         currentUserId: Long?,
         q: String?,
+        tag: String?,
         campaignOnly: Boolean,
         followingOnly: Boolean,
         sort: String,
@@ -81,6 +82,13 @@ class PostService(
                 "q must not exceed $MAX_SEARCH_QUERY_LENGTH characters",
             )
         }
+        val tagFilter = tag?.trim()?.takeIf { it.isNotEmpty() }
+        if (tagFilter != null && tagFilter.length > MAX_SEARCH_QUERY_LENGTH) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "tag must not exceed $MAX_SEARCH_QUERY_LENGTH characters",
+            )
+        }
         val searchSort = when (sort) {
             "latest" -> PostSearchSort.LATEST
             "popular" -> PostSearchSort.POPULAR
@@ -97,6 +105,7 @@ class PostService(
         val result = postSearch.search(
             PostSearchCondition(
                 query = query,
+                tag = tagFilter,
                 campaignOnly = campaignOnly,
                 authorUserIds = authorUserIds,
                 sort = searchSort,

@@ -2,8 +2,10 @@ package com.dasida.api.post
 
 import com.dasida.api.common.QUERYDSL_LIKE_ESCAPE
 import com.dasida.api.common.literalContainsPattern
+import com.dasida.api.common.literalJsonElementPattern
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.OrderSpecifier
+import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.stereotype.Repository
 
@@ -15,6 +17,7 @@ enum class PostSearchSort {
 
 data class PostSearchCondition(
     val query: String?,
+    val tag: String?,
     val campaignOnly: Boolean,
     val authorUserIds: List<Long>?,
     val sort: PostSearchSort,
@@ -46,6 +49,14 @@ class QuerydslPostSearchRepository(
             predicates.and(
                 post.text.lower().like(pattern, QUERYDSL_LIKE_ESCAPE)
                     .or(post.author.name.lower().like(pattern, QUERYDSL_LIKE_ESCAPE)),
+            )
+        }
+        condition.tag?.let { tag ->
+            // tags 는 JSON 배열 컬럼. 직렬화 문자열에서 따옴표 감싼 원소 일치로 특정 태그를 찾는다.
+            predicates.and(
+                Expressions.stringTemplate("cast({0} as string)", post.tags)
+                    .lower()
+                    .like(literalJsonElementPattern(tag), QUERYDSL_LIKE_ESCAPE),
             )
         }
         if (condition.campaignOnly) predicates.and(post.campaignId.isNotNull)

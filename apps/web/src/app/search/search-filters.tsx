@@ -20,6 +20,8 @@ export type SearchUrlState = CampaignDateRangeFilters & {
   sort: SearchSort;
   recruitState: CampaignRecruitState | null;
   availableOnly: boolean;
+  // 게시글 태그 필터(예: "#청바지업사이클"). posts/all 타입에서만 유효.
+  tag: string;
   page: number;
 };
 
@@ -44,6 +46,7 @@ export function searchHasActiveFilters(state: SearchUrlState): boolean {
     || state.sort !== "latest"
     || state.recruitState
     || state.availableOnly
+    || state.tag
     || state.recruitEndFrom
     || state.recruitEndTo
     || state.runStartFrom
@@ -64,6 +67,9 @@ export function buildSearchFilterChips(
   if (state.sort !== "latest") {
     const sortLabel = state.sort === "popular" ? "인기순" : "마감임박순";
     chips.push({ id: "sort", label: `정렬: ${sortLabel}`, onRemove: () => onPatch({ sort: "latest" }) });
+  }
+  if (state.tag) {
+    chips.push({ id: "tag", label: `태그: ${state.tag}`, onRemove: () => onPatch({ tag: "" }) });
   }
   if (state.type === "campaigns") {
     if (state.recruitState) {
@@ -206,11 +212,17 @@ export function parseSearchRecruitState(value: string | null): CampaignRecruitSt
     : null;
 }
 
+export function parseSearchTag(value: string | null, type: SearchType): string {
+  if (type !== "all" && type !== "posts") return "";
+  return (value ?? "").trim().slice(0, 100);
+}
+
 export function buildSearchHref(state: SearchUrlState): string {
   const params = new URLSearchParams();
   if (state.query) params.set("q", state.query);
   params.set("type", state.type);
   params.set("sort", state.sort);
+  if ((state.type === "all" || state.type === "posts") && state.tag) params.set("tag", state.tag);
   if (state.type === "campaigns") {
     if (state.recruitState) params.set("recruitState", state.recruitState);
     if (state.availableOnly) params.set("availableOnly", "true");
