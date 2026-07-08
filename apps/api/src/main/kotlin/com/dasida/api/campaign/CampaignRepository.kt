@@ -16,6 +16,10 @@ interface CampaignRepository : JpaRepository<Campaign, String> {
     fun findByIdForUpdate(@Param("id") id: String): Campaign?
 
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Campaign>
+
+    // 관리자 통계용. seq 는 개설 시각(epoch millis)이므로 기간 내 값만 가져와 일 단위로 집계한다.
+    @Query("select c.seq from Campaign c where c.seq >= :since")
+    fun creationSeqSince(@Param("since") since: Long): List<Long>
     fun findByAuthorUserIdOrderBySeqDesc(authorUserId: Long): List<Campaign>
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Campaign>
     fun countByAuthorUserId(authorUserId: Long): Long

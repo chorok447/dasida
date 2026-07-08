@@ -11,6 +11,7 @@ import {
   type AdminSummary,
 } from "@/data/admin";
 import { ACTION_LABELS, RESTRICTIVE_ACTIONS } from "./logs/action-labels";
+import { StatsChartSection } from "./stats-chart";
 
 // 저장된 결과의 tick 이 현재 retryTick 과 다르면 로딩 중으로 간주한다(effect 내 동기 setState 회피).
 type SummaryResult = { tick: number; status: "success" | "error"; data: AdminSummary | null };
@@ -133,6 +134,8 @@ export default function DashboardClient() {
           </div>
         ))}
       </div>
+
+      <StatsChartSection />
 
       {recentLogs && recentLogs.length > 0 && (
         <section

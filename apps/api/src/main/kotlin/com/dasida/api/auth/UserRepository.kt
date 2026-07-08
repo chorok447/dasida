@@ -13,6 +13,10 @@ interface UserRepository : JpaRepository<User, Long> {
     // 댓글 @멘션 해석용. 이름 정확 일치, 탈퇴 사용자는 제외한다.
     fun findByNameInAndDeletedAtIsNull(names: Collection<String>): List<User>
 
+    // 관리자 통계용. 기간 내 가입 시각만 가져와 일 단위로 집계한다(탈퇴자 포함 — 가입 추이 관점).
+    @org.springframework.data.jpa.repository.Query("select u.createdAt from User u where u.createdAt >= :since")
+    fun signupTimesSince(since: java.time.Instant): List<java.time.Instant>
+
     // 관리자 회원 검색. q(소문자, 이메일/이름 부분 일치)와 정지 중 필터를 한 쿼리로 처리한다.
     @org.springframework.data.jpa.repository.Query(
         """select u from User u

@@ -46,6 +46,24 @@ export function fetchAdminSummary(): Promise<AdminSummary> {
   return apiGet<AdminSummary>("/api/admin/summary");
 }
 
+export type AdminDailyStat = {
+  /** YYYY-MM-DD (KST) */
+  date: string;
+  signups: number;
+  posts: number;
+  campaigns: number;
+  reports: number;
+};
+
+export type AdminStatsResponse = {
+  days: number;
+  daily: AdminDailyStat[];
+};
+
+export function fetchAdminStats(days: number): Promise<AdminStatsResponse> {
+  return apiGet<AdminStatsResponse>(`/api/admin/stats?days=${days}`);
+}
+
 export function fetchAdminReports(params: {
   status?: ReportStatus | "";
   targetType?: ReportTargetType | "";
