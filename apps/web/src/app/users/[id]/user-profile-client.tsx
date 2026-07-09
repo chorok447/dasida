@@ -18,6 +18,7 @@ import {
 import { createConversation } from "@/data/messages";
 import { getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { useAuthedRefresh } from "@/lib/use-authed-refresh";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { UserPostsGrid } from "./user-posts-grid";
@@ -33,6 +34,13 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
   const [messagePending, setMessagePending] = useState(false);
   const isSelf = profile?.id === user.id;
   const blockedByMe = user.blockedByMe === true;
+
+  // SSR 은 쿠키 없이 조회해 followedByMe/blockedByMe 가 항상 null — 로그인 사용자 기준으로 재동기화.
+  useAuthedRefresh<PublicUser>(
+    `/api/users/${initialUser.id}`,
+    (u) => setUser(u),
+    () => setUser((prev) => ({ ...prev, followedByMe: null, blockedByMe: null })),
+  );
 
   const toggleFollow = useCallback(async () => {
     if (!getSessionId()) {

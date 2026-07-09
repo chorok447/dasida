@@ -338,15 +338,24 @@ export function isValidCampaignImageUrl(url: string): boolean {
   return trimmed.startsWith("http://") || trimmed.startsWith("https://");
 }
 
+function localIsoDatePlus(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// 기본 일정은 오늘 기준으로 계산한다(고정 날짜는 시간이 지나면 과거가 되어 프리필이 무의미해짐).
+// 모듈 로드 시 1회 고정 — dirty 비교(폼 값 !== 기본값)가 세션 내내 안정적이어야 하므로 함수가 아닌 상수로 둔다.
 export const DEFAULT_CAMPAIGN_COMPOSE_VALUES: CampaignComposeValues = {
   title: "",
   summary: "",
   body: "",
   thumb: "",
-  recruitStart: "2026-07-01",
-  recruitEnd: "2026-07-31",
-  runStart: "2026-08-05",
-  runEnd: "2026-08-30",
+  recruitStart: localIsoDatePlus(1),
+  recruitEnd: localIsoDatePlus(30),
+  runStart: localIsoDatePlus(35),
+  runEnd: localIsoDatePlus(60),
   capacity: "30",
 };
 

@@ -240,7 +240,7 @@ export default function PostEditPage() {
           </button>
           <PostComposeSubmitButton
             submitting={saving}
-            disabled={!values.text.trim()}
+            disabled={!values.text.trim() && values.images.length === 0}
             onClick={save}
             idleLabel="저장하기"
             pendingLabel="저장 중…"

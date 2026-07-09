@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState, type Dispatch, type RefObject, type S
 import { useRouter, useSearchParams } from "next/navigation";
 import { CornerDownRight, Pencil, Send, Trash2 } from "lucide-react";
 import { ApiError, apiPost, apiDeleteVoid } from "@/lib/api";
-import { getSessionId } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
 import { Avatar } from "@/components/avatar";
 import { CurrentUserAvatar } from "@/components/current-user-avatar";
@@ -124,6 +124,7 @@ export function PostDetailComments({
     } catch (error) {
       if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
+        clearSession();
         toast.error("로그인이 필요합니다.");
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 404) {
@@ -183,7 +184,7 @@ export function PostDetailComments({
                 disabled={deletingIds.has(c.id) || savingCommentId === c.id}
                 aria-label={isReply ? "답글 삭제" : "댓글 삭제"}
                 className="flex h-8 w-8 items-center justify-center rounded-full disabled:cursor-wait disabled:opacity-40"
-                style={{ background: "rgba(237,92,72,0.12)", color: "#ed5c48" }}
+                style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
               >
                 <Trash2 size={14} />
               </button>
@@ -240,7 +241,7 @@ export function PostDetailComments({
                 </button>
               </div>
             </div>
-            {editError ? <p role="alert" className="text-[12px] text-[#ed5c48]">{editError}</p> : null}
+            {editError ? <p role="alert" className="text-[12px]" style={{ color: "var(--danger)" }}>{editError}</p> : null}
           </form>
         ) : (
           <>
@@ -327,7 +328,7 @@ export function PostDetailComments({
       </div>
       <div className="space-y-5 min-h-[64px]">
         {targetNotice ? (
-          <p role="alert" className="text-[13px]" style={{ color: "#ed5c48" }}>
+          <p role="alert" className="text-[13px]" style={{ color: "var(--danger)" }}>
             {targetNotice}
           </p>
         ) : null}
@@ -335,7 +336,7 @@ export function PostDetailComments({
           <p className="text-[13px] opacity-50" style={{ color: "var(--foreground)" }}>댓글을 불러오는 중…</p>
         ) : listError ? (
           <div className="flex items-center gap-3">
-            <p className="text-[13px]" style={{ color: "#ed5c48" }}>{listError}</p>
+            <p className="text-[13px]" style={{ color: "var(--danger)" }}>{listError}</p>
             <button
               onClick={comments.reload}
               className="text-[12px] px-3 py-1 rounded-full"
