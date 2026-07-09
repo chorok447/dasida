@@ -2,13 +2,9 @@
 
 import { useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
-import { useTheme } from "@/lib/theme-context";
 import { useTilt } from "@/lib/use-tilt";
 
 export function Hero3D() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-
   const { ref, rotateX, rotateY, onMouseMove, reset } = useTilt({
     stiffness: 120,
     damping: 18,
@@ -37,9 +33,7 @@ export function Hero3D() {
       style={{
         position: "relative",
         perspective: 1400,
-        backgroundImage: dark
-          ? "linear-gradient(135deg,#0f1f22,#1c4044 45%,#2a5a4a)"
-          : "linear-gradient(135deg,#f9f7f2,#e7dfcb 45%,#cfe6d3)",
+        backgroundImage: "var(--hero-gradient)",
       }}
     >
       <motion.div className="absolute inset-0 opacity-40" style={{ y: blobY }}>
@@ -106,9 +100,7 @@ export function Hero3D() {
               fontFamily: "'Black Han Sans', sans-serif",
               fontSize: "clamp(48px, 7vw, 110px)",
               lineHeight: 1.05,
-              backgroundImage: dark
-                ? "linear-gradient(90deg,#d8e8c3,#7dd3a3,#e7dfcb)"
-                : "linear-gradient(90deg,#1c4044,#3a7a5a,#1c4044)",
+              backgroundImage: "var(--hero-title-gradient)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",

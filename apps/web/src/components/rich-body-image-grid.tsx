@@ -17,6 +17,7 @@ export function RichBodyImageGrid({
             src={src}
             alt={`${altPrefix} ${i + 1}`}
             className="h-full w-full object-cover"
+            priority={i === 0}
           />
         </div>
       ))}

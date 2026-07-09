@@ -18,6 +18,10 @@ data class AuthRateLimitRules(
 
 data class ContentWriteRateLimitRules(
     val comment: RateLimitRuleConfig = RateLimitRuleConfig(limit = 20, windowSeconds = 60),
+    /** 게시글은 댓글보다 무겁고(이미지 연결) 스팸 파급이 커서 절반 수준으로 제한한다. */
+    val post: RateLimitRuleConfig = RateLimitRuleConfig(limit = 10, windowSeconds = 60),
+    /** 캠페인 개설은 가장 무거운 콘텐츠라 보수적으로 제한한다. */
+    val campaign: RateLimitRuleConfig = RateLimitRuleConfig(limit = 5, windowSeconds = 60),
     val report: RateLimitRuleConfig = RateLimitRuleConfig(limit = 10, windowSeconds = 60),
     /** 업로드는 파일당 최대 5MB 디스크 쓰기라 댓글보다 보수적으로 제한한다. */
     val media: RateLimitRuleConfig = RateLimitRuleConfig(limit = 10, windowSeconds = 60),

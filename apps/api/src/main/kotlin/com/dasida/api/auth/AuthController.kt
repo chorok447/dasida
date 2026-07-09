@@ -159,11 +159,13 @@ class AuthController(
     private fun HttpServletResponse.setAuthCookies(tokens: IssuedTokens): AuthResponse {
         setAuthCookie(tokens.response.token)
         addHeader(HttpHeaders.SET_COOKIE, authCookies.issueRefresh(tokens.refreshToken).toString())
+        addHeader(HttpHeaders.SET_COOKIE, authCookies.issueSessionHint().toString())
         return tokens.response
     }
 
     private fun HttpServletResponse.expireAuthCookies() {
         addHeader(HttpHeaders.SET_COOKIE, authCookies.expire().toString())
         addHeader(HttpHeaders.SET_COOKIE, authCookies.expireRefresh().toString())
+        addHeader(HttpHeaders.SET_COOKIE, authCookies.expireSessionHint().toString())
     }
 }

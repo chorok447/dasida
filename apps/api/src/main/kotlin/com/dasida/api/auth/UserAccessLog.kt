@@ -19,5 +19,9 @@ class UserAccessLog(
     @Column(name = "user_id", nullable = false) val userId: Long,
     @Column(name = "ip_address", nullable = false, length = 45) val ipAddress: String,
     @Column(nullable = false, length = 32) val os: String,
+    // V16 이전 기록은 null(수집 이전). 브라우저는 User-Agent 파싱, 국가·지역은 IP 기반 비동기 조회.
+    @Column(length = 32) val browser: String? = null,
+    @Column(length = 64) var country: String? = null,
+    @Column(length = 64) var region: String? = null,
     @Column(name = "accessed_at", nullable = false) val accessedAt: Instant,
 )

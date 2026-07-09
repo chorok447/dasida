@@ -13,6 +13,8 @@ class ContentWriteRateLimitFilter(
         val path = request.requestURI.removeSuffix("/")
         if (path == "/api/reports") return RateLimitRule.REPORT_CREATE
         if (path == "/api/media") return RateLimitRule.MEDIA_UPLOAD
+        if (path == "/api/posts") return RateLimitRule.POST_CREATE
+        if (path == "/api/campaigns") return RateLimitRule.CAMPAIGN_CREATE
         if (isCommentCreatePath(path)) return RateLimitRule.COMMENT_CREATE
         return null
     }

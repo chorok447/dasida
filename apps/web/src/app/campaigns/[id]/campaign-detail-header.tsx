@@ -71,7 +71,7 @@ export function CampaignHeaderCard({
       >
         <div className="grid grid-cols-1 md:grid-cols-[400px_1fr]">
           <div className="relative aspect-square md:aspect-auto overflow-hidden">
-            <FallbackImage src={c.thumb} alt={`${c.title} 캠페인 이미지`} className="w-full h-full object-cover" />
+            <FallbackImage src={c.thumb} alt={`${c.title} 캠페인 이미지`} className="w-full h-full object-cover" priority />
             <div className="absolute inset-0 bg-gradient-to-tr from-[#0f1f22]/40 to-transparent" />
             <div className="absolute top-4 left-4 flex items-center gap-2" style={{ transform: "translateZ(50px)" }}>
               <StatusBadge c={c} />

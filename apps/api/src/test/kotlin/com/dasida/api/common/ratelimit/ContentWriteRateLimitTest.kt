@@ -33,9 +33,13 @@ import java.util.UUID
     properties = [
         "app.rate-limit.store=memory",
         "app.rate-limit.content.comment.limit=2",
+        "app.rate-limit.content.post.limit=2",
+        "app.rate-limit.content.campaign.limit=2",
         "app.rate-limit.content.report.limit=2",
         "app.rate-limit.content.media.limit=2",
         "app.rate-limit.content.comment.window-seconds=60",
+        "app.rate-limit.content.post.window-seconds=60",
+        "app.rate-limit.content.campaign.window-seconds=60",
         "app.rate-limit.content.report.window-seconds=60",
         "app.rate-limit.content.media.window-seconds=60",
         "app.rate-limit.auth.login.limit=10000",
@@ -57,10 +61,10 @@ class ContentWriteRateLimitTest(
     fun `캠페인 댓글 작성은 IP당 limit 초과 시 429를 반환한다`() {
         val campaignId = saveCampaign()
         repeat(2) { i ->
-            postComment("/api/campaigns/$campaignId/comments", """{"text":"댓글 $i"}""", "203.0.113.10")
+            postJson("/api/campaigns/$campaignId/comments", """{"text":"댓글 $i"}""", "203.0.113.10")
                 .andExpect { status { isCreated() } }
         }
-        postComment("/api/campaigns/$campaignId/comments", """{"text":"한도 초과"}""", "203.0.113.10")
+        postJson("/api/campaigns/$campaignId/comments", """{"text":"한도 초과"}""", "203.0.113.10")
             .andExpect {
                 status { isTooManyRequests() }
                 header { exists("Retry-After") }
@@ -71,10 +75,39 @@ class ContentWriteRateLimitTest(
     fun `게시글 댓글 작성은 IP당 limit 초과 시 429를 반환한다`() {
         val postId = savePost()
         repeat(2) { i ->
-            postComment("/api/posts/$postId/comments", """{"text":"댓글 $i"}""", "203.0.113.11")
+            postJson("/api/posts/$postId/comments", """{"text":"댓글 $i"}""", "203.0.113.11")
                 .andExpect { status { isCreated() } }
         }
-        postComment("/api/posts/$postId/comments", """{"text":"한도 초과"}""", "203.0.113.11")
+        postJson("/api/posts/$postId/comments", """{"text":"한도 초과"}""", "203.0.113.11")
+            .andExpect {
+                status { isTooManyRequests() }
+                header { exists("Retry-After") }
+            }
+    }
+
+    @Test
+    fun `게시글 작성은 IP당 limit 초과 시 429를 반환한다`() {
+        repeat(2) { i ->
+            postJson("/api/posts", """{"text":"게시글 $i"}""", "203.0.113.15")
+                .andExpect { status { isCreated() } }
+        }
+        postJson("/api/posts", """{"text":"한도 초과"}""", "203.0.113.15")
+            .andExpect {
+                status { isTooManyRequests() }
+                header { exists("Retry-After") }
+            }
+    }
+
+    @Test
+    fun `캠페인 개설은 IP당 limit 초과 시 429를 반환한다`() {
+        val body = """{"title":"레이트리밋 캠페인","summary":"줍깅","capacity":20,
+           "recruitStart":"2026-07-01","recruitEnd":"2026-07-31",
+           "runStart":"2026-08-05","runEnd":"2026-08-30"}"""
+        repeat(2) {
+            postJson("/api/campaigns", body, "203.0.113.16")
+                .andExpect { status { isCreated() } }
+        }
+        postJson("/api/campaigns", body, "203.0.113.16")
             .andExpect {
                 status { isTooManyRequests() }
                 header { exists("Retry-After") }
@@ -158,7 +191,7 @@ class ContentWriteRateLimitTest(
         }
     }
 
-    private fun postComment(path: String, body: String, clientIp: String) =
+    private fun postJson(path: String, body: String, clientIp: String) =
         mvc.post(path) {
             headers {
                 add("Authorization", "Bearer $token")

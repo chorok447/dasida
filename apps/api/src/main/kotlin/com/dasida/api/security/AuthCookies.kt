@@ -30,6 +30,16 @@ class AuthCookies(
 
     fun expireRefresh(): ResponseCookie = builder(REFRESH_NAME, "", REFRESH_PATH).maxAge(Duration.ZERO).build()
 
+    /**
+     * 로그인 상태 힌트 쿠키. 토큰이 아닌 고정값("1")이라 민감정보가 없고,
+     * refresh 쿠키(Path=/api/auth)를 볼 수 없는 Next.js 미들웨어가
+     * "refresh 가능성이 남아 있는가"를 판단하는 용도로만 쓴다. TTL 은 refresh 와 동일.
+     */
+    fun issueSessionHint(): ResponseCookie =
+        builder(SESSION_HINT_NAME, "1", "/").maxAge(Duration.ofMillis(refreshTtlMillis)).build()
+
+    fun expireSessionHint(): ResponseCookie = builder(SESSION_HINT_NAME, "", "/").maxAge(Duration.ZERO).build()
+
     private fun builder(name: String, value: String, path: String): ResponseCookie.ResponseCookieBuilder =
         ResponseCookie.from(name, value)
             .httpOnly(true)
@@ -41,6 +51,7 @@ class AuthCookies(
         const val NAME = "dasida_token"
         const val REFRESH_NAME = "dasida_refresh"
         const val REFRESH_PATH = "/api/auth"
+        const val SESSION_HINT_NAME = "dasida_session"
     }
 }
 

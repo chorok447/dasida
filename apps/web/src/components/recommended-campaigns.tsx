@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowRight, TrendingUp } from "lucide-react";
 import { FallbackImage } from "@/components/fallback-image";
 import { apiGet } from "@/lib/api";
-import { useTheme } from "@/lib/theme-context";
 import { progressPercent } from "@/lib/progress";
 import { statusMeta, type Campaign, type CampaignSearchResponse } from "@/data/campaigns";
 
@@ -17,8 +16,6 @@ const RECOMMEND_QUERY = "/api/campaigns/search?status=open&availableOnly=true&so
  * 부가 정보라서 로딩·실패·결과 없음일 때는 아무것도 렌더링하지 않는다.
  */
 export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인" }: { heading?: string }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   useEffect(() => {
@@ -72,7 +69,6 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
                     src={campaign.thumb}
                     alt=""
                     decorative
-                    dark={dark}
                     thumbnail
                     className="h-full w-full object-cover"
                   />

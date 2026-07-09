@@ -114,6 +114,11 @@ data class AccessLogResponse(
     val id: Long,
     val ipAddress: String,
     val os: String,
+    /** User-Agent 파싱 결과. 수집 이전(V16 이전) 기록은 null. */
+    val browser: String?,
+    /** IP 기반의 대략적 위치. 조회 실패·사설 IP·수집 이전 기록은 null. */
+    val country: String?,
+    val region: String?,
     val accessedAt: String,
 )
 

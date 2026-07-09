@@ -21,11 +21,12 @@ export async function logout(page: Page) {
 
 /** 회원가입 후 피드로 이동한 계정을 반환한다. */
 export async function signup(page: Page, prefix = "e2e"): Promise<Account> {
-  const stamp = Date.now();
+  // 병렬 워커가 같은 밀리초에 signup 하면 Date.now() 만으로는 닉네임이 충돌한다 → 난수 3자리를 섞는다.
+  const stamp = `${Date.now() % 10_000_000}${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
   const account: Account = {
     email: `${prefix}-${stamp}@example.com`,
     password: "Passw0rd!",
-    nickname: `이투이${stamp % 100000}`,
+    nickname: `이투이${stamp.slice(-8)}`,
   };
 
   await page.goto("/signup");

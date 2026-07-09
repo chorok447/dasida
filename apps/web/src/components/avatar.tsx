@@ -46,6 +46,8 @@ export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
         <img
           src={currentSrc}
           alt={`${name} 프로필 이미지`}
+          loading="lazy"
+          decoding="async"
           onError={() => (useThumb ? setThumbFailed(true) : setFailed(true))}
           className="h-full w-full rounded-full object-cover"
           draggable={false}
