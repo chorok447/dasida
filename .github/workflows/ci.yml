@@ -72,7 +72,7 @@ jobs:
       - run: pnpm --filter web e2e
       - name: Upload Playwright traces on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
           path: apps/web/test-results/
