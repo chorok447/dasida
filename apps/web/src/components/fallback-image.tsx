@@ -10,11 +10,11 @@ type FallbackImageProps = {
   alt: string;
   className?: string;
   errorText?: string;
-  /** @deprecated 대체 UI 색상이 CSS 토큰으로 바뀌어 더 이상 사용하지 않는다. 호출부 정리 후 제거 예정. */
-  dark?: boolean;
   decorative?: boolean;
   /** 목록 화면용. 업로드 이미지면 썸네일(`.thumb.jpg`)을 먼저 시도하고 없으면 원본으로 fallback 한다. */
   thumbnail?: boolean;
+  /** 첫 화면(LCP) 이미지용. 기본은 lazy 로딩이므로 히어로·상세 헤더 이미지에만 켠다. */
+  priority?: boolean;
 };
 
 export function FallbackImage({
@@ -24,6 +24,7 @@ export function FallbackImage({
   errorText,
   decorative = false,
   thumbnail = false,
+  priority = false,
 }: FallbackImageProps) {
   const [failed, setFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -60,6 +61,8 @@ export function FallbackImage({
       src={currentSrc}
       alt={alt}
       className={className}
+      loading={priority ? undefined : "lazy"}
+      decoding="async"
       onError={() => (useThumb ? setThumbFailed(true) : setFailed(true))}
       aria-hidden={decorative || undefined}
     />
