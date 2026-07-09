@@ -5,16 +5,19 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 
 private const val MAX_TEXT_LENGTH = 1000
+// raw HTML 상한 — plain 길이만 재면 태그로 무한정 부풀릴 수 있다(content TEXT 64KB 초과 시 500, 목록 응답 비대화).
+private const val MAX_RAW_TEXT_LENGTH = 20_000
 private const val MAX_TAGS = 10
 private const val MAX_TAG_LENGTH = 30
 private const val MAX_IMAGES = 4
+private const val MAX_IMAGE_URL_LENGTH = 500
 private const val MAX_COMMENT_LENGTH = 500
 
 /** 게시글 본문 trim + blank/length 검증. 생성·수정이 공유한다. */
 fun normalizePostText(text: String): String {
     val trimmed = text.trim()
     if (trimmed.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required")
-    if (richTextPlainLength(trimmed) > MAX_TEXT_LENGTH) {
+    if (trimmed.length > MAX_RAW_TEXT_LENGTH || richTextPlainLength(trimmed) > MAX_TEXT_LENGTH) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "text is too long")
     }
     return trimmed
@@ -52,6 +55,10 @@ fun normalizeImages(images: List<String>): List<String> {
     // 서버가 이미지를 fetch 하지 않으므로 SSRF 방어는 범위 밖. http(s) 형식만 최소 검증.
     if (normalized.any { !(it.startsWith("http://") || it.startsWith("https://")) }) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "image must be http(s) url")
+    }
+    // URL 길이 캡 — JSON 컬럼 비대화와 목록 응답 부풀림 방지(profile_image_url varchar(500) 과 동일 기준).
+    if (normalized.any { it.length > MAX_IMAGE_URL_LENGTH }) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "image url is too long")
     }
     return normalized
 }

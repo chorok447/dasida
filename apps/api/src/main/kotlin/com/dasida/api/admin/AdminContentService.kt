@@ -32,6 +32,7 @@ class AdminContentService(
     private val notifications: NotificationService,
     private val actionLogs: AdminActionLogService,
     private val clock: Clock,
+    private val entityManager: jakarta.persistence.EntityManager,
 ) {
     @Transactional
     fun setVisibility(
@@ -73,12 +74,26 @@ class AdminContentService(
 
             ReportTargetType.POST_COMMENT -> {
                 val comment = postComments.findById(targetId).orElseThrow { notFound() }
-                if (comment.hiddenAt != null) return false
-                // 카운터 정합: 댓글 작성/삭제와 같은 순서로 post row 를 잠근 뒤 감소시킨다.
+                // 카운터 정합: 댓글 작성/삭제와 같은 순서로 post row 를 먼저 잠근 뒤 댓글을 다시 읽는다.
+                // (잠금 대기 중 작성자 삭제가 커밋되면 stale 스냅샷으로 이중 감소·deletedAt 덮어쓰기가 나던 경쟁 방지)
                 val post = posts.findByIdForUpdate(comment.postId)
+                entityManager.refresh(comment)
+                if (comment.deletedAt != null) throw notFound()
+                if (comment.hiddenAt != null) return false
+                // 최상위 댓글이면 보이는 답글도 함께 숨긴다 — 부모만 숨기면 flat API 에는 남고
+                // paged API 에서는 사라지는 고아 답글이 생기며 counter 도 어긋난다(deleteComment 와 동일 정책).
+                val replies = if (comment.parentId == null) {
+                    postComments.findByParentId(comment.id).filter { it.deletedAt == null && it.hiddenAt == null }
+                } else {
+                    emptyList()
+                }
                 comment.hiddenAt = now
                 comment.hiddenReason = reason
-                post?.let { it.comments = maxOf(0, it.comments - 1) }
+                replies.forEach {
+                    it.hiddenAt = now
+                    it.hiddenReason = reason
+                }
+                post?.let { it.comments = maxOf(0, it.comments - 1 - replies.size) }
                 notifyAuthor(comment.authorUserId, hidden = true, label = "댓글", href = "/posts/${comment.postId}", reason = reason)
             }
 
@@ -93,9 +108,20 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN_COMMENT -> {
                 val comment = campaignComments.findById(targetId).orElseThrow { notFound() }
+                if (comment.deletedAt != null) throw notFound()
                 if (comment.hiddenAt != null) return false
+                // 게시글 댓글과 동일: 최상위 댓글 숨김 시 보이는 답글도 함께 숨긴다(고아 답글 방지).
+                val replies = if (comment.parentId == null) {
+                    campaignComments.findByParentId(comment.id).filter { it.deletedAt == null && it.hiddenAt == null }
+                } else {
+                    emptyList()
+                }
                 comment.hiddenAt = now
                 comment.hiddenReason = reason
+                replies.forEach {
+                    it.hiddenAt = now
+                    it.hiddenReason = reason
+                }
                 notifyAuthor(comment.authorUserId, hidden = true, label = "댓글", href = "/campaigns/${comment.campaignId}", reason = reason)
             }
 
@@ -128,12 +154,25 @@ class AdminContentService(
 
             ReportTargetType.POST_COMMENT -> {
                 val comment = postComments.findById(targetId).orElseThrow { notFound() }
+                val post = posts.findByIdForUpdate(comment.postId)
+                entityManager.refresh(comment)
                 if (comment.deletedAt != null) throw notFound()
                 if (comment.hiddenAt == null) return false
-                val post = posts.findByIdForUpdate(comment.postId)
+                // 숨김 시 함께 숨겨진 답글(hiddenAt 이 부모와 동일)만 같이 복구한다 —
+                // 개별적으로 먼저 숨겨졌던 답글은 그대로 둔다.
+                val parentHiddenAt = comment.hiddenAt
+                val replies = if (comment.parentId == null) {
+                    postComments.findByParentId(comment.id).filter { it.deletedAt == null && it.hiddenAt == parentHiddenAt }
+                } else {
+                    emptyList()
+                }
                 comment.hiddenAt = null
                 comment.hiddenReason = null
-                post?.let { it.comments += 1 }
+                replies.forEach {
+                    it.hiddenAt = null
+                    it.hiddenReason = null
+                }
+                post?.let { it.comments += 1 + replies.size }
                 notifyAuthor(comment.authorUserId, hidden = false, label = "댓글", href = "/posts/${comment.postId}", reason = null)
             }
 
@@ -150,8 +189,18 @@ class AdminContentService(
                 val comment = campaignComments.findById(targetId).orElseThrow { notFound() }
                 if (comment.deletedAt != null) throw notFound()
                 if (comment.hiddenAt == null) return false
+                val parentHiddenAt = comment.hiddenAt
+                val replies = if (comment.parentId == null) {
+                    campaignComments.findByParentId(comment.id).filter { it.deletedAt == null && it.hiddenAt == parentHiddenAt }
+                } else {
+                    emptyList()
+                }
                 comment.hiddenAt = null
                 comment.hiddenReason = null
+                replies.forEach {
+                    it.hiddenAt = null
+                    it.hiddenReason = null
+                }
                 notifyAuthor(comment.authorUserId, hidden = false, label = "댓글", href = "/campaigns/${comment.campaignId}", reason = null)
             }
 

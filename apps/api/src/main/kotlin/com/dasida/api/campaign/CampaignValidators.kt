@@ -6,6 +6,12 @@ import org.springframework.web.server.ResponseStatusException
 
 private const val MAX_CAPACITY = 10000
 private const val MAX_COMMENT_TEXT_LENGTH = 500
+// varchar 컬럼 한도 안쪽으로 캡 — 초과 시 DataIntegrityViolation 500 대신 400 을 돌려주기 위함.
+private const val MAX_TITLE_LENGTH = 100
+private const val MAX_SUMMARY_LENGTH = 500
+private const val MAX_THUMB_LENGTH = 255
+// 리치 본문 raw HTML 상한. plain 길이만 재면 태그로 무한정 부풀릴 수 있다(TEXT 64KB 초과 시 500).
+private const val MAX_BODY_HTML_LENGTH = 50_000
 
 data class NormalizedCampaignInput(
     val title: String,
@@ -35,6 +41,24 @@ fun normalizeCampaignInput(
     if (normalizedTitle.isBlank()) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required")
     }
+    if (normalizedTitle.length > MAX_TITLE_LENGTH) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title is too long")
+    }
+    if (summary.trim().length > MAX_SUMMARY_LENGTH) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "summary is too long")
+    }
+    val normalizedThumb = thumb.trim()
+    if (normalizedThumb.length > MAX_THUMB_LENGTH) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "thumb is too long")
+    }
+    // 서버가 이미지를 fetch 하지는 않지만 javascript: 등 비 http(s) 스킴이 저장돼
+    // 클라이언트로 서빙되는 것을 막는다(게시글 normalizeImages 와 동일 정책).
+    if (normalizedThumb.isNotBlank() && !(normalizedThumb.startsWith("http://") || normalizedThumb.startsWith("https://"))) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "thumb must be http(s) url")
+    }
+    if (body.length > MAX_BODY_HTML_LENGTH) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "body is too long")
+    }
     if (capacity <= 0) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive")
     }
@@ -63,7 +87,7 @@ fun normalizeCampaignInput(
         title = normalizedTitle,
         summary = summary.trim(),
         body = CampaignBody("캠페인 소개", listOf(paragraphHtml).filter { it.isNotBlank() }, imageUrls),
-        thumb = thumb.trim(),
+        thumb = normalizedThumb,
         recruitStart = recruitStart.toString(),
         recruitEnd = recruitEnd.toString(),
         runStart = runStart.toString(),

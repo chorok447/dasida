@@ -27,6 +27,9 @@ interface PostRepository : JpaRepository<Post, String> {
 
     fun countByAuthorUserId(authorUserId: Long): Long
 
+    /** 공개 프로필 카운트용 — 숨김·삭제(hiddenAt 세팅됨)를 제외해 공개 목록과 수치가 일치하게 한다. */
+    fun countByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long): Long
+
     // 공개 노출 경로용(숨김 제외). 작성자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.
     fun findByHiddenAtIsNull(sort: org.springframework.data.domain.Sort): List<Post>
 

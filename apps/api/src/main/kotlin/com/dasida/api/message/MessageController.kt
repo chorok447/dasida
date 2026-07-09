@@ -2,6 +2,7 @@ package com.dasida.api.message
 
 import com.dasida.api.security.AuthUser
 import io.swagger.v3.oas.annotations.Operation
+import org.springframework.dao.DataIntegrityViolationException
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -23,7 +24,13 @@ class MessageController(private val messages: MessageService) {
     fun createConversation(
         @RequestBody req: CreateConversationRequest,
         @AuthenticationPrincipal user: AuthUser,
-    ): ConversationSummaryResponse = messages.findOrCreateConversation(user.id, req.peerUserId)
+    ): ConversationSummaryResponse = try {
+        messages.findOrCreateConversation(user.id, req.peerUserId)
+    } catch (_: DataIntegrityViolationException) {
+        // 같은 상대와의 첫 DM 이 동시에 들어온 경쟁의 패자 — 트랜잭션이 롤백된 뒤
+        // 승자가 만든 대화를 재조회한다(unique 제약 위반이 500 으로 새지 않게).
+        messages.findOrCreateConversation(user.id, req.peerUserId)
+    }
 
     @Operation(summary = "내 대화 목록")
     @SecurityRequirement(name = "bearerAuth")
