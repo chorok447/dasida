@@ -39,8 +39,9 @@ export default defineConfig({
       // e2e 는 스펙마다 신규 계정·게시글·캠페인을 만들어 한 IP 에 쓰기가 몰린다.
       // 운영 기본값이면 스위트 전체 병렬 실행 시 429 로 깨지므로 테스트 서버만 한도를 올린다.
       // 관리자 e2e 용 부트스트랩 계정(admin@dasida.local)도 테스트 서버 전용 비밀번호로 시드한다.
+      // 공개 비밀번호로 시드되는 서버이므로 루프백에만 바인딩한다(LAN 노출 방지).
       command:
-        `./gradlew bootRun --args='--server.port=${API_PORT} --app.cors.allowed-origins=http://localhost:${WEB_PORT},http://127.0.0.1:${WEB_PORT} --app.upload.public-base-url=http://localhost:${API_PORT} --app.rate-limit.auth.signup.limit=1000 --app.rate-limit.auth.login.limit=1000 --app.rate-limit.content.post.limit=1000 --app.rate-limit.content.campaign.limit=1000 --app.admin.password=E2eAdminPass!'`,
+        `./gradlew bootRun --args='--server.port=${API_PORT} --server.address=127.0.0.1 --app.cors.allowed-origins=http://localhost:${WEB_PORT},http://127.0.0.1:${WEB_PORT} --app.upload.public-base-url=http://localhost:${API_PORT} --app.rate-limit.auth.signup.limit=1000 --app.rate-limit.auth.login.limit=1000 --app.rate-limit.content.post.limit=1000 --app.rate-limit.content.campaign.limit=1000 --app.admin.password=E2eAdminPass!'`,
       cwd: "../api",
       url: `http://localhost:${API_PORT}/actuator/health`,
       reuseExistingServer: true,

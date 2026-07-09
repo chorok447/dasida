@@ -3,7 +3,8 @@ services:
   mysql:
     image: mysql:8.4
     ports:
-      - "3306:3306"
+      # 호스트 디버깅용 — 루프백에만 바인딩.
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_DATABASE: dasida
       MYSQL_USER: dasida
@@ -20,7 +21,8 @@ services:
   redis:
     image: valkey/valkey:8
     ports:
-      - "6379:6379"
+      # AUTH 없는 Valkey — 루프백에만 바인딩(LAN 에서 FLUSHALL 가능해지는 것 방지).
+      - "127.0.0.1:6379:6379"
     command: ["valkey-server", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
@@ -40,7 +42,7 @@ services:
       SPRING_DATASOURCE_USERNAME: dasida
       SPRING_DATASOURCE_PASSWORD: dasida-local-password
       JWT_SECRET: dev-local-change-me-please-change-me-32bytes-minimum
-      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
     depends_on:
