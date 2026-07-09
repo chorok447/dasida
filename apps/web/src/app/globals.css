@@ -20,6 +20,14 @@
   --page-gradient: linear-gradient(180deg, var(--surface), var(--surface-muted));
   /* 로그인·회원가입 배경 그라디언트. */
   --auth-gradient: linear-gradient(135deg, #f9f7f2, #e7dfcb 50%, #cfe6d3);
+  /* 랜딩 히어로 배경·타이틀 텍스트 그라디언트. */
+  --hero-gradient: linear-gradient(135deg, #f9f7f2, #e7dfcb 45%, #cfe6d3);
+  --hero-title-gradient: linear-gradient(90deg, #1c4044, #3a7a5a, #1c4044);
+  /* 랜딩 뉴스 캐러셀 섹션 배경과 카드 면. */
+  --band-gradient: linear-gradient(180deg, #e7dfcb, #f9f7f2);
+  --news-card-gradient: linear-gradient(180deg, #ffffff, #f9f7f2);
+  /* 이미지 없는 게시글 타일의 액센트 틴트 배경. */
+  --text-tile-gradient: linear-gradient(135deg, rgba(125, 211, 163, 0.3), rgba(231, 223, 203, 0.5));
   /* 본문 잉크 RGB 채널. rgba(var(--ink-rgb), a) 로 임의 투명도의 텍스트/틴트를 만든다. */
   --ink-rgb: 28, 64, 68;
   /* 페이지 표면 RGB 채널. 반투명 고정 헤더 등 rgba(var(--surface-rgb), a) 용. */
@@ -56,6 +64,12 @@
   --badge-muted-bg: rgba(255, 255, 255, 0.07);
   --page-gradient: linear-gradient(180deg, var(--surface-dark), var(--surface-muted));
   --auth-gradient: linear-gradient(135deg, #0f1f22, #1c4044 50%, #2a5a4a);
+  --hero-gradient: linear-gradient(135deg, #0f1f22, #1c4044 45%, #2a5a4a);
+  --hero-title-gradient: linear-gradient(90deg, #d8e8c3, #7dd3a3, #e7dfcb);
+  --band-gradient: linear-gradient(180deg, #0f1f22, #1c4044);
+  /* 다크에서도 뉴스 카드는 밝은 지면(인쇄물 느낌)을 유지한다. */
+  --news-card-gradient: linear-gradient(180deg, #f9f7f2, #e7dfcb);
+  --text-tile-gradient: linear-gradient(135deg, rgba(125, 211, 163, 0.16), rgba(255, 255, 255, 0.03));
   --ink-rgb: 255, 255, 255;
   --heading: #f9f7f2;
   --panel: #1c4044;

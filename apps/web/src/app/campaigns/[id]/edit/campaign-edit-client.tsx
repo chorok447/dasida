@@ -7,7 +7,6 @@ import { ArrowLeft } from "lucide-react";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
-import { useTheme } from "@/lib/theme-context";
 import { StatePanel } from "@/components/ui/state-panel";
 import {
   CampaignComposeForm,
@@ -59,8 +58,6 @@ function composeValuesChanged(a: CampaignComposeValues, b: CampaignComposeValues
 export default function CampaignEditClient({ id }: { id: string }) {
   const router = useRouter();
   const { sessionId: token } = useAuthSession();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const savingRef = useRef(false);
   const [retry, setRetry] = useState(0);
   const identity = `${id}:${token ?? "anonymous"}:${retry}`;
@@ -265,7 +262,6 @@ export default function CampaignEditClient({ id }: { id: string }) {
             <CampaignComposeForm
               values={values}
               onChange={setValues}
-              dark={dark}
               fieldErrors={fieldErrors}
               onFieldErrorClear={clearFieldError}
               disabled={saving}
@@ -307,7 +303,6 @@ export default function CampaignEditClient({ id }: { id: string }) {
                   <FallbackImage
                     src={values.thumb}
                     alt="캠페인 썸네일 미리보기"
-                    dark={dark}
                     errorText="이미지를 불러올 수 없어요"
                     className="h-full w-full object-cover"
                   />

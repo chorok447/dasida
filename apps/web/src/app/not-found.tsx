@@ -4,11 +4,8 @@ import { useRef } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Home } from "lucide-react";
-import { useTheme } from "@/lib/theme-context";
 
 export default function NotFound() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -34,9 +31,7 @@ export default function NotFound() {
       style={{
         position: "relative",
         perspective: 1400,
-        backgroundImage: dark
-          ? "linear-gradient(135deg,#0f1f22,#1c4044 50%,#2a5a4a)"
-          : "linear-gradient(135deg,#f9f7f2,#e7dfcb 50%,#cfe6d3)",
+        backgroundImage: "var(--auth-gradient)",
       }}
     >
       <div className="absolute inset-0 opacity-30 pointer-events-none">

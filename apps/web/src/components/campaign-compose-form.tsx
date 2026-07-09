@@ -17,8 +17,6 @@ export { CAMPAIGN_COMPOSE_DRAFT_KEY };
 type CampaignComposeFormProps = {
   values: CampaignComposeValues;
   onChange: (values: CampaignComposeValues) => void;
-  /** @deprecated 색상이 CSS 토큰으로 바뀌어 사용하지 않는다. 호출부 정리 후 제거 예정. */
-  dark?: boolean;
   fieldErrors?: Partial<Record<CampaignComposeField, string>>;
   onFieldErrorClear?: (field: CampaignComposeField) => void;
   showDraftSaved?: boolean;

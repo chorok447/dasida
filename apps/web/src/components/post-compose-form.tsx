@@ -23,8 +23,6 @@ type PostComposeFormProps = {
   values: PostComposeValues;
   onChange: (values: PostComposeValues) => void;
   campaigns: { id: string; title: string }[];
-  /** @deprecated 색상이 CSS 토큰으로 바뀌어 사용하지 않는다. 호출부 정리 후 제거 예정. */
-  dark?: boolean;
   fieldErrors?: Partial<Record<PostComposeField, string>>;
   onFieldErrorClear?: (field: PostComposeField) => void;
   textInputId?: string;

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion, useMotionValue, useReducedMotion, animate } from "motion/react";
-import { useTheme } from "@/lib/theme-context";
 import { fashionPhotos, marketPhotos, naturePhotos, peoplePhotos, objectPhotos, workshopPhotos } from "@/data/photos";
 
 const items = [
@@ -19,8 +18,6 @@ const items = [
 ];
 
 export function Carousel3D() {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const rotation = useMotionValue(0);
   const [paused, setPaused] = useState(false);
   // 640px 미만에서는 반경·카드를 줄여 화면 밖 클리핑을 막는다.
@@ -57,9 +54,7 @@ export function Carousel3D() {
     <section
       className="relative py-32 overflow-hidden transition-colors"
       style={{
-        background: dark
-          ? "linear-gradient(180deg,#0f1f22,#1c4044)"
-          : "linear-gradient(180deg,#e7dfcb,#f9f7f2)",
+        background: "var(--band-gradient)",
       }}
     >
       <div className="text-center mb-20 px-8">
@@ -118,9 +113,7 @@ export function Carousel3D() {
                 <div
                   className="relative w-full h-full rounded-2xl overflow-hidden shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)] border border-white/20"
                   style={{
-                    background: dark
-                      ? "linear-gradient(180deg,#f9f7f2,#e7dfcb)"
-                      : "linear-gradient(180deg,#ffffff,#f9f7f2)",
+                    background: "var(--news-card-gradient)",
                   }}
                 >
                   <Image

@@ -3,7 +3,6 @@
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useTheme } from "@/lib/theme-context";
 import { apiGet, apiPut, ApiError } from "@/lib/api";
 import { getSessionId, clearSession } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -28,8 +27,6 @@ export default function PostEditPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const { sessionId: token } = useAuthSession();
-  const { theme } = useTheme();
-  const dark = theme === "dark";
   const submittingRef = useRef(false);
 
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
@@ -223,7 +220,6 @@ export default function PostEditPage() {
           values={values}
           onChange={setValues}
           campaigns={campaigns}
-          dark={dark}
           fieldErrors={fieldErrors}
           onFieldErrorClear={clearFieldError}
           textInputId="edit-post-text"

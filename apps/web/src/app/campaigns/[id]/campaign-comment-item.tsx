@@ -5,7 +5,6 @@ import { Avatar } from "@/components/avatar";
 import { MentionText } from "@/components/mention-text";
 import { ReportButton } from "@/components/report-button";
 import type { CampaignComment } from "@/data/campaigns";
-import { useTheme } from "@/lib/theme-context";
 
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
@@ -51,19 +50,12 @@ export function CampaignCommentItem({
   /** 최상위 댓글에서 답글 작성 UI 를 토글한다. 없으면 답글 버튼을 숨긴다. */
   onToggleReply?: (comment: CampaignComment) => void;
 }) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-
   return (
     <article
       id={`comment-${comment.id}`}
       className="scroll-mt-28 rounded-2xl border p-5 transition-colors"
       style={{
-        background: highlighted
-          ? "var(--accent-soft)"
-          : dark
-            ? "rgba(255,255,255,0.025)"
-            : "rgba(249,247,242,0.55)",
+        background: highlighted ? "var(--accent-soft)" : "var(--glass)",
         borderColor: highlighted
           ? "rgba(125,211,163,0.65)"
           : "var(--border)",
