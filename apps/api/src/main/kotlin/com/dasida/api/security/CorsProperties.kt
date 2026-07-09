@@ -11,7 +11,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties(prefix = "app.cors")
 data class CorsProperties(
     val allowedOrigins: List<String> = listOf("http://localhost:3000", "http://127.0.0.1:3000"),
-    val allowedMethods: List<String> = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS"),
+    // PATCH: 관리자 신고 처리·콘텐츠 숨김·권한/정지 변경이 PATCH 라 누락 시 크로스오리진에서 전부 막힌다.
+    val allowedMethods: List<String> = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
     val allowedHeaders: List<String> = listOf("Authorization", "Content-Type", "Accept"),
     val exposedHeaders: List<String> = emptyList(),
     val allowCredentials: Boolean = true,
