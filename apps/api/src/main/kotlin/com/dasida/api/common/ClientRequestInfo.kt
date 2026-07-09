@@ -2,10 +2,12 @@ package com.dasida.api.common
 
 import jakarta.servlet.http.HttpServletRequest
 
-data class ClientRequestInfo(val ipAddress: String, val os: String) {
+data class ClientRequestInfo(val ipAddress: String, val os: String, val browser: String) {
     companion object {
-        fun from(request: HttpServletRequest): ClientRequestInfo =
-            ClientRequestInfo(clientIp(request), parseClientOs(request.getHeader("User-Agent")))
+        fun from(request: HttpServletRequest): ClientRequestInfo {
+            val userAgent = request.getHeader("User-Agent")
+            return ClientRequestInfo(clientIp(request), parseClientOs(userAgent), parseClientBrowser(userAgent))
+        }
     }
 }
 
@@ -30,6 +32,24 @@ fun parseClientOs(userAgent: String?): String {
         userAgent.contains("Mac OS X", ignoreCase = true) -> "macOS"
         userAgent.contains("Android", ignoreCase = true) -> "Android"
         userAgent.contains("Linux", ignoreCase = true) -> "Linux"
+        else -> "기타"
+    }
+}
+
+/**
+ * User-Agent 의 대략적인 브라우저 구분. 파생 브라우저가 "Chrome"·"Safari" 토큰을 함께 실어 보내므로
+ * 구체적인 것(Edge/Whale/삼성/Opera)부터 검사한다. 정확한 버전 식별이 아니라 접속 기록 표시용.
+ */
+fun parseClientBrowser(userAgent: String?): String {
+    if (userAgent.isNullOrBlank()) return "알 수 없음"
+    return when {
+        userAgent.contains("Edg/", ignoreCase = true) || userAgent.contains("EdgA/", ignoreCase = true) -> "Edge"
+        userAgent.contains("Whale", ignoreCase = true) -> "Whale"
+        userAgent.contains("SamsungBrowser", ignoreCase = true) -> "Samsung Internet"
+        userAgent.contains("OPR/", ignoreCase = true) || userAgent.contains("Opera", ignoreCase = true) -> "Opera"
+        userAgent.contains("Firefox", ignoreCase = true) || userAgent.contains("FxiOS", ignoreCase = true) -> "Firefox"
+        userAgent.contains("Chrome", ignoreCase = true) || userAgent.contains("CriOS", ignoreCase = true) -> "Chrome"
+        userAgent.contains("Safari", ignoreCase = true) -> "Safari"
         else -> "기타"
     }
 }
