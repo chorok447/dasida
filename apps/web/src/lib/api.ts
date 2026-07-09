@@ -77,16 +77,30 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   return request();
 }
 
+/**
+ * 서버 컴포넌트 전용 GET 캐싱 옵션. revalidate 초 동안 Next 데이터 캐시를 재사용한다.
+ * SSR fetch 는 브라우저 쿠키가 없는 공개 GET 이라 사용자 간 공유해도 안전하고,
+ * 로그인 사용자별 상태는 클라이언트(useAuthedRefresh)가 다시 받아온다.
+ * 브라우저에서는 Next 데이터 캐시가 없으므로 옵션을 무시한다(no-store 유지).
+ */
+type ApiGetOptions = { revalidate?: number };
+
+function cacheInit(options?: ApiGetOptions): RequestInit {
+  if (options?.revalidate === undefined || typeof window !== "undefined") return {};
+  // cache 와 next.revalidate 를 함께 지정하면 Next 가 에러를 내므로 cache 를 비운다.
+  return { cache: undefined, next: { revalidate: options.revalidate } };
+}
+
 /** 백엔드 GET 호출. 로그인 쿠키가 있으면 사용자별 상태가 계산된다. 실패 시 ApiError. */
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await apiFetch(path);
+export async function apiGet<T>(path: string, options?: ApiGetOptions): Promise<T> {
+  const res = await apiFetch(path, cacheInit(options));
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
   return res.json() as Promise<T>;
 }
 
 /** 404 등 not-found는 null, 그 외 오류는 ApiError. */
-export async function apiGetOrNull<T>(path: string): Promise<T | null> {
-  const res = await apiFetch(path);
+export async function apiGetOrNull<T>(path: string, options?: ApiGetOptions): Promise<T | null> {
+  const res = await apiFetch(path, cacheInit(options));
   if (res.status === 404) return null;
   if (!res.ok) throw new ApiError(res.status, path, undefined, await parseBody(res));
   return res.json() as Promise<T>;
