@@ -71,7 +71,7 @@ export function SiteHeader() {
               className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
               style={{
                 background: pathname.startsWith("/admin") ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
-                color: pathname.startsWith("/admin") ? "#148a90" : "var(--heading)",
+                color: pathname.startsWith("/admin") ? "var(--accent-strong)" : "var(--heading)",
               }}
               aria-label="관리자 페이지로 이동"
               aria-current={pathname.startsWith("/admin") ? "page" : undefined}
@@ -85,7 +85,7 @@ export function SiteHeader() {
             className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
             style={{
               background: pathname === "/search" ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
-              color: pathname === "/search" ? "#148a90" : "var(--heading)",
+              color: pathname === "/search" ? "var(--accent-strong)" : "var(--heading)",
             }}
             aria-label="검색 페이지로 이동"
           >
@@ -97,7 +97,7 @@ export function SiteHeader() {
             className="relative hidden h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none sm:flex"
             style={{
               background: onMessages ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
-              color: onMessages ? "#148a90" : "var(--heading)",
+              color: onMessages ? "var(--accent-strong)" : "var(--heading)",
             }}
             aria-label={dmUnread > 0 ? `DM, 읽지 않음 ${dmUnread > 99 ? "99+" : dmUnread}개` : "DM"}
             aria-current={onMessages ? "page" : undefined}
@@ -107,7 +107,7 @@ export function SiteHeader() {
             {isLoggedIn && dmUnread > 0 && (
               <span
                 className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[10px] font-semibold leading-none"
-                style={{ background: "#ed5c48", color: "#ffffff" }}
+                style={{ background: "var(--danger-solid)", color: "#ffffff" }}
                 aria-hidden
               >
                 {dmUnread > 99 ? "99+" : dmUnread}
@@ -121,7 +121,7 @@ export function SiteHeader() {
               background: onNotifications
                 ? "rgba(125,211,163,0.18)"
                 : "rgba(var(--ink-rgb), 0.07)",
-              color: onNotifications ? "#148a90" : "var(--heading)",
+              color: onNotifications ? "var(--accent-strong)" : "var(--heading)",
             }}
             aria-label={unread > 0 ? `알림, 읽지 않음 ${unread > 99 ? "99+" : unread}개` : "알림"}
             aria-current={onNotifications ? "page" : undefined}
@@ -133,7 +133,7 @@ export function SiteHeader() {
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, damping: 22 }}
                 className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[10px] font-semibold leading-none"
-                style={{ background: "#ed5c48", color: "#ffffff" }}
+                style={{ background: "var(--danger-solid)", color: "#ffffff" }}
                 aria-hidden
               >
                 {unread > 99 ? "99+" : unread}
@@ -148,7 +148,7 @@ export function SiteHeader() {
               </span>
               <button
                 onClick={onLogout}
-                className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-white/10"
+                className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)]"
                 style={{ color: "rgba(var(--ink-rgb), 0.8)" }}
               >
                 로그아웃
@@ -158,7 +158,7 @@ export function SiteHeader() {
             <>
               <Link
                 href="/login"
-                className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-white/10"
+                className="rounded-full px-3 py-1.5 text-[13px] transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)]"
                 style={{ color: "rgba(var(--ink-rgb), 0.8)" }}
               >
                 로그인

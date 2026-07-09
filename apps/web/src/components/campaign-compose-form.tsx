@@ -76,7 +76,7 @@ export function CampaignComposeForm({
           style={controlStyle}
         />
         {fieldErrors.title ? (
-          <p id={titleErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+          <p id={titleErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
             {fieldErrors.title}
           </p>
         ) : null}
@@ -102,7 +102,7 @@ export function CampaignComposeForm({
           style={controlStyle}
         />
         {fieldErrors.summary ? (
-          <p id={summaryErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+          <p id={summaryErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
             {fieldErrors.summary}
           </p>
         ) : null}

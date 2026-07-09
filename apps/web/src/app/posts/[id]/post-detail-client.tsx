@@ -167,7 +167,7 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
                 onClick={onDelete}
                 disabled={deleting}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
-                style={{ background: "rgba(237,92,72,0.15)", color: "#ed5c48" }}
+                style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
               >
                 <Trash2 size={13} /> {deleting ? "삭제 중…" : "삭제"}
               </button>

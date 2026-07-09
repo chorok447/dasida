@@ -158,7 +158,7 @@ export default function DashboardClient() {
                   className="rounded-full px-2 py-0.5 text-[11px]"
                   style={
                     RESTRICTIVE_ACTIONS.has(log.action)
-                      ? { background: "rgba(237,92,72,0.14)", color: "#ed5c48" }
+                      ? { background: "var(--danger-soft)", color: "var(--danger)" }
                       : { background: "var(--accent-soft)", color: "var(--accent-secondary)" }
                   }
                 >

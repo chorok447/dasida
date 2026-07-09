@@ -41,7 +41,10 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#1c4044] to-[#148a90] text-[12px] text-white/70">
+            <div
+              className="flex h-full items-center justify-center text-[12px] opacity-70"
+              style={{ background: "var(--text-tile-gradient)", color: "var(--foreground)" }}
+            >
               캠페인 이미지 없음
             </div>
           )}
@@ -132,7 +135,10 @@ export function PostResultCard({ post }: { post: Post }) {
             />
           </div>
         ) : (
-          <div className="flex aspect-[16/9] items-center justify-center bg-gradient-to-br from-[#1c4044] to-[#2d666c] px-6 text-center text-[13px] leading-6 text-white/75">
+          <div
+            className="flex aspect-[16/9] items-center justify-center px-6 text-center text-[13px] leading-6"
+            style={{ background: "var(--text-tile-gradient)", color: "var(--foreground)" }}
+          >
             {post.text.slice(0, 90)}
           </div>
         )}
@@ -145,7 +151,7 @@ export function PostResultCard({ post }: { post: Post }) {
           />
           <div className="flex flex-wrap gap-1.5">
             {post.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="rounded-full bg-[#7dd3a3]/15 px-2 py-0.5 text-[10px] text-[#148a90]">
+              <span key={tag} className="rounded-full bg-[#7dd3a3]/15 px-2 py-0.5 text-[10px] text-[var(--accent-strong)]">
                 {tag}
               </span>
             ))}

@@ -62,7 +62,7 @@ export function AdminModerationButton({
       style={
         hidden
           ? { background: "var(--accent-soft)", color: "var(--accent-secondary)" }
-          : { background: "rgba(237,92,72,0.15)", color: "#ed5c48" }
+          : { background: "var(--danger-soft)", color: "var(--danger)" }
       }
       aria-label={hidden ? "관리자: 콘텐츠 복구" : "관리자: 콘텐츠 숨김"}
     >

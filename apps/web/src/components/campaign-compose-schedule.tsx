@@ -80,7 +80,7 @@ export function CampaignComposeSchedule({
               style={controlStyle}
             />
             {fieldErrors.recruitStart ? (
-              <p id={recruitStartErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+              <p id={recruitStartErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
                 {fieldErrors.recruitStart}
               </p>
             ) : null}
@@ -104,7 +104,7 @@ export function CampaignComposeSchedule({
               style={controlStyle}
             />
             {fieldErrors.recruitEnd ? (
-              <p id={recruitEndErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+              <p id={recruitEndErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
                 {fieldErrors.recruitEnd}
               </p>
             ) : null}
@@ -129,7 +129,7 @@ export function CampaignComposeSchedule({
               style={controlStyle}
             />
             {fieldErrors.runStart ? (
-              <p id={runStartErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+              <p id={runStartErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
                 {fieldErrors.runStart}
               </p>
             ) : null}
@@ -154,7 +154,7 @@ export function CampaignComposeSchedule({
               style={controlStyle}
             />
             {fieldErrors.runEnd ? (
-              <p id={runEndErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+              <p id={runEndErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
                 {fieldErrors.runEnd}
               </p>
             ) : null}
@@ -184,7 +184,7 @@ export function CampaignComposeSchedule({
           style={controlStyle}
         />
         {fieldErrors.capacity ? (
-          <p id={capacityErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+          <p id={capacityErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
             {fieldErrors.capacity}
           </p>
         ) : (

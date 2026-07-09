@@ -131,7 +131,7 @@ function CampaignCard({
           {campaign.hidden ? (
             <p
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
-              style={{ background: "rgba(237,92,72,0.14)", color: "#ed5c48" }}
+              style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
             >
               <EyeOff size={12} aria-hidden /> 운영 정책에 따라 숨김 처리된 캠페인입니다
             </p>

@@ -328,7 +328,7 @@ export function RichTextEditor({
       />
 
       {uploadError ? (
-        <p className="border-b px-4 py-2 text-[12px] text-red-500" style={{ borderColor: "var(--border)" }} role="alert">
+        <p className="border-b px-4 py-2 text-[12px]" style={{ borderColor: "var(--border)", color: "var(--danger)" }} role="alert">
           {uploadError}
         </p>
       ) : null}

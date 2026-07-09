@@ -169,7 +169,7 @@ function LogRow({ log }: { log: AdminActionLogItem }) {
           className="rounded-full px-2.5 py-1 text-[11px]"
           style={
             restrictive
-              ? { background: "rgba(237,92,72,0.14)", color: "#ed5c48" }
+              ? { background: "var(--danger-soft)", color: "var(--danger)" }
               : { background: "var(--accent-soft)", color: "var(--accent-secondary)" }
           }
         >

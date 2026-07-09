@@ -47,7 +47,7 @@ export function CampaignCTABar({
             aria-busy={action === "leave"}
             aria-label={action === "leave" ? "참여 취소 처리 중" : "참여 취소"}
             className="inline-flex items-center justify-center gap-2 py-5 px-6 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: "rgba(237,92,72,0.16)", color: "#ed5c48" }}
+            style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
           >
             {action === "leave" ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}
             {action === "leave" ? "취소 처리 중…" : "참여 취소"}

@@ -58,7 +58,7 @@ export function ImageFileUploadButton({
         {uploading ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <ImageIcon size={14} aria-hidden />}
         {uploading ? "업로드 중…" : label}
       </button>
-      {error ? <p className="mt-1.5 text-[12px] text-red-500" role="alert">{error}</p> : null}
+      {error ? <p className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">{error}</p> : null}
     </div>
   );
 }

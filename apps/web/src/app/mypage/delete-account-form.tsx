@@ -79,7 +79,7 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
 
   const inputStyle = {
     background: "var(--card)",
-    borderColor: "rgba(237,92,72,0.25)",
+    borderColor: "var(--danger-soft)",
     color: "var(--foreground)",
   };
 
@@ -89,11 +89,15 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
       aria-labelledby="delete-account-title"
     >
       <details
-        className="rounded-3xl border border-red-500/25 bg-red-500/5 p-5 sm:p-7"
+        className="rounded-3xl border p-5 sm:p-7"
+        style={{ borderColor: "var(--danger-soft)", background: "var(--danger-soft)" }}
         onToggle={() => setError("")}
       >
-        <summary className="flex cursor-pointer list-none items-center gap-3 text-red-500">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10">
+        <summary className="flex cursor-pointer list-none items-center gap-3" style={{ color: "var(--danger)" }}>
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "var(--danger-soft)" }}
+          >
             <TriangleAlert size={19} aria-hidden="true" />
           </span>
           <span>
@@ -103,7 +107,7 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
         </summary>
 
         <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <p className="text-[13px] leading-6 text-red-500 sm:col-span-2">
+          <p className="text-[13px] leading-6 sm:col-span-2" style={{ color: "var(--danger)" }}>
             계정은 복구할 수 없습니다. 기존 콘텐츠는 탈퇴한 사용자 이름으로 유지됩니다.
             계정을 탈퇴하려면 아래에 &quot;{CONFIRM_TEXT}&quot;를 입력해주세요.
           </p>
@@ -115,7 +119,7 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
               onChange={(event) => setCurrentPassword(event.target.value)}
               autoComplete="current-password"
               disabled={submitting}
-              className="ui-control mt-2 focus-visible:border-red-500 focus-visible:ring-red-500/20"
+              className="ui-control mt-2 focus-visible:border-[var(--danger)] focus-visible:ring-[var(--danger-soft)]"
               style={inputStyle}
             />
           </label>
@@ -128,19 +132,19 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
               autoComplete="off"
               disabled={submitting}
               placeholder={CONFIRM_TEXT}
-              className="ui-control mt-2 focus-visible:border-red-500 focus-visible:ring-red-500/20"
+              className="ui-control mt-2 focus-visible:border-[var(--danger)] focus-visible:ring-[var(--danger-soft)]"
               style={inputStyle}
             />
           </label>
 
           <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
             <div aria-live="polite">
-              {error ? <p role="alert" className="text-[12px] text-red-500">{error}</p> : null}
+              {error ? <p role="alert" className="text-[12px]" style={{ color: "var(--danger)" }}>{error}</p> : null}
             </div>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--danger-solid)] px-6 py-3 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
               {submitting ? "탈퇴 처리 중…" : "계정 탈퇴"}

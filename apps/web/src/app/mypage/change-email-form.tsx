@@ -162,7 +162,7 @@ export function ChangeEmailForm({
 
           <div className="flex flex-col gap-3 lg:col-span-3 sm:flex-row sm:items-center sm:justify-between">
             <div aria-live="polite">
-              {error ? <p role="alert" className="text-[12px] text-[#ed5c48]">{error}</p> : null}
+              {error ? <p role="alert" className="text-[12px]" style={{ color: "var(--danger)" }}>{error}</p> : null}
             </div>
             <button
               type="submit"

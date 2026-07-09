@@ -301,7 +301,7 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
           </span>
         )}
         {user.suspended && user.suspendedUntil && (
-          <span className="rounded-full px-2.5 py-1 text-[11px]" style={{ background: "rgba(237,92,72,0.14)", color: "#ed5c48" }}>
+          <span className="rounded-full px-2.5 py-1 text-[11px]" style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>
             정지 중 · {suspendedUntilLabel(user.suspendedUntil)}까지
           </span>
         )}
@@ -371,7 +371,7 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
                 onClick={suspend}
                 disabled={busy}
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] disabled:opacity-50"
-                style={{ background: "rgba(237,92,72,0.9)", color: "#fff" }}
+                style={{ background: "var(--danger-solid)", color: "#fff" }}
               >
                 {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <ShieldBan size={14} aria-hidden />}
                 정지
