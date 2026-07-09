@@ -68,7 +68,9 @@ class AuthController(
     ): LogoutResponse {
         // principal 이 있으면 필터가 검증한 토큰(Bearer 헤더 또는 인증 쿠키)이 존재한다. 미인증이면 401.
         requireUserId(principal)
-        val token = authHeader?.removePrefix("Bearer ")?.trim()
+        // Bearer 형식 헤더만 취한다 — Basic 등 다른 스킴 헤더가 쿠키 인증과 함께 오면 raw 헤더가
+        // remainingTtlSeconds 에서 예외를 던져 500 이 되던 문제.
+        val token = authHeader?.takeIf { it.startsWith("Bearer ") }?.substring(7)?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: req.authCookieToken()
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "not authenticated")
@@ -112,8 +114,10 @@ class AuthController(
         @RequestBody req: ChangePasswordRequest,
         res: HttpServletResponse,
     ): ChangePasswordResponse =
-        authService.changePassword(requireUserId(principal), req).also { result ->
-            result.token?.let { res.setAuthCookie(it) }
+        authService.changePassword(requireUserId(principal), req).let { outcome ->
+            // 변경 이전 발급 토큰이 전부 무효화되므로 refresh 포함 새 토큰 쌍으로 쿠키를 교체한다.
+            res.setAuthCookies(outcome.tokens)
+            outcome.body
         }
 
     @Operation(summary = "이메일 변경")
@@ -124,7 +128,11 @@ class AuthController(
         @RequestBody req: ChangeEmailRequest,
         res: HttpServletResponse,
     ): ChangeEmailResponse =
-        authService.changeEmail(requireUserId(principal), req).also { res.setAuthCookie(it.token) }
+        authService.changeEmail(requireUserId(principal), req).let { outcome ->
+            // 비밀번호 변경과 동일 — 새 토큰 쌍(access+refresh)으로 쿠키 교체.
+            res.setAuthCookies(outcome.tokens)
+            outcome.body
+        }
 
     @Operation(summary = "계정 탈퇴")
     @SecurityRequirement(name = "bearerAuth")

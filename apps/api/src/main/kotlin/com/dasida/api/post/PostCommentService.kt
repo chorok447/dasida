@@ -76,9 +76,10 @@ class PostCommentService(
 
     /** 최신순 댓글 pagination과 같은 정렬 기준으로 대상 댓글이 속한 page를 계산한다. */
     @Transactional(readOnly = true)
-    fun getCommentPageLocation(postId: String, commentId: String, size: Int): CommentPageLocationResponse {
+    fun getCommentPageLocation(postId: String, currentUserId: Long?, commentId: String, size: Int): CommentPageLocationResponse {
         checkPageSize(size, MAX_COMMENT_PAGE_SIZE)
-        requireExistingPost(postId)
+        // 목록 조회와 같은 노출 규칙 — 숨김 게시글의 댓글 위치가 익명에게 200 으로 새지 않게 한다.
+        requireViewablePost(postId, currentUserId)
         val target = commentRepo.findByIdAndPostId(commentId, postId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         if (target.hiddenAt != null) {

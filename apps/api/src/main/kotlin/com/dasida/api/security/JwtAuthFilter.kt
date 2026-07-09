@@ -42,6 +42,10 @@ class JwtAuthFilter(
                 if (storedUser.isSuspendedAt(java.time.Instant.now(clock))) {
                     throw IllegalArgumentException("suspended token user")
                 }
+                // 비밀번호·이메일 변경 이전에 발급된 access token 도 즉시 차단(탈취 토큰 무효화).
+                if (storedUser.isTokenIssuedBeforeCredentialsChange(jwt.issuedAtInstant(token))) {
+                    throw IllegalArgumentException("token issued before credentials change")
+                }
                 // 권한은 JWT 클레임이 아니라 DB role 에서 매 요청 읽는다(어차피 위에서 사용자 조회 필수).
                 // 관리자 권한 회수가 기존 토큰 만료를 기다리지 않고 즉시 반영된다.
                 val authorities = buildList {
