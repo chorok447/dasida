@@ -47,6 +47,8 @@ class RateLimitService(
             RateLimitRule.AUTH_LOGIN -> properties.auth.login
             RateLimitRule.AUTH_SIGNUP -> properties.auth.signup
             RateLimitRule.COMMENT_CREATE -> properties.content.comment
+            RateLimitRule.POST_CREATE -> properties.content.post
+            RateLimitRule.CAMPAIGN_CREATE -> properties.content.campaign
             RateLimitRule.REPORT_CREATE -> properties.content.report
             RateLimitRule.MEDIA_UPLOAD -> properties.content.media
         }
