@@ -16,6 +16,8 @@ class User(
     @Column(unique = true) var email: String,
     @JsonIgnore var passwordHash: String,
     var name: String,
+    // 인증 계정 배지(프로필·작성자 스냅샷에 노출). 이메일 인증이 아니라 운영자가 부여하는 신뢰 표식으로,
+    // 현재는 시드 계정에만 true. 이메일 인증 플로우 도입 시 의미를 재정의할 것.
     val verified: Boolean = false,
     @Column(name = "profile_image_url", length = 500) var profileImageUrl: String? = null,
     @Column(name = "notify_campaign_updates", nullable = false) var notifyCampaignUpdates: Boolean = true,
