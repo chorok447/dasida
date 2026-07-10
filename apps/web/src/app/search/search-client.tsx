@@ -27,6 +27,8 @@ import {
   type SearchUrlState,
 } from "./search-filters";
 import { SearchResults, type ResultState } from "./search-results";
+import { RecentSearches } from "./recent-searches";
+import { recordRecentSearch } from "@/lib/recent-searches";
 
 export default function SearchClient() {
   const router = useRouter();
@@ -56,6 +58,10 @@ export default function SearchClient() {
   const dateFilterError = campaignDateRangeError(urlState);
 
   useCanonicalUrl(canonicalHref, currentHref);
+
+  useEffect(() => {
+    if (urlState.query) recordRecentSearch(urlState.query);
+  }, [urlState.query]);
 
   const requestIdentity = JSON.stringify([token, urlState, retryTick]);
   const [resultState, setResultState] = useState<ResultState>({
@@ -218,6 +224,8 @@ export default function SearchClient() {
           onUpdate={updateUrl}
           onReset={resetFilters}
         />
+
+        {!urlState.query ? <RecentSearches onSelect={(query) => updateUrl({ query, page: 0 })} /> : null}
 
         <SearchResults
           urlState={urlState}
