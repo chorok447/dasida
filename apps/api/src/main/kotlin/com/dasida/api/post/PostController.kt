@@ -26,7 +26,7 @@ class PostController(
     private val postService: PostService,
     private val postCommentService: PostCommentService,
 ) {
-    @Operation(summary = "게시글 목록 조회", description = "공개 API. JWT 가 있으면 사용자별 좋아요/북마크/소유 상태를 포함한다.")
+    @Operation(summary = "게시글 목록 조회", description = "공개 API. 최신 100건까지 반환한다(전체 탐색은 /api/posts/search 사용). JWT 가 있으면 사용자별 좋아요/북마크/소유 상태를 포함한다.")
     @GetMapping
     fun list(@AuthenticationPrincipal user: AuthUser?): List<PostResponse> =
         postService.listPosts(user?.id)

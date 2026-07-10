@@ -37,7 +37,11 @@ class PostService(
 ) {
     @Transactional(readOnly = true)
     fun listPosts(currentUserId: Long?): List<PostResponse> {
-        val posts = repo.findByHiddenAtIsNull(Sort.by(Sort.Direction.DESC, "seq"))
+        // 무페이지 레거시 엔드포인트 — 테이블이 커져도 전건 직렬화하지 않도록 최신 N건으로 캡.
+        // 웹 피드는 /api/posts/search(페이지네이션)를 쓴다.
+        val posts = repo.findByHiddenAtIsNull(
+            PageRequest.of(0, MAX_LEGACY_LIST_SIZE, Sort.by(Sort.Direction.DESC, "seq")),
+        ).content
         // N+1 회피: 내가 좋아요/북마크한 postId 를 각각 한 번에 조회.
         val likedIds = likedByPage(currentUserId, posts.map { it.id })
         val bookmarkedIds = bookmarkedByPage(currentUserId, posts.map { it.id })
@@ -466,6 +470,8 @@ class PostService(
 
     private companion object {
         const val MAX_SEARCH_PAGE_SIZE = 50
+        // 무페이지 레거시 목록(GET /api/posts·/api/campaigns)의 응답 상한.
+        const val MAX_LEGACY_LIST_SIZE = 100
         const val MAX_SEARCH_QUERY_LENGTH = 100
         const val MAX_SITEMAP_PAGE_SIZE = 500
 

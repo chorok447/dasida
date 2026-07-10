@@ -39,7 +39,10 @@ class CampaignService(
     @Transactional(readOnly = true)
     fun listCampaigns(currentUserId: Long?): List<CampaignResponse> {
         val today = LocalDate.now(clock)
-        val campaigns = repo.findByHiddenAtIsNull(Sort.by(Sort.Direction.DESC, "seq"))
+        // 무페이지 레거시 엔드포인트 — 최신 N건 캡(웹은 /api/campaigns/search 사용).
+        val campaigns = repo.findByHiddenAtIsNull(
+            PageRequest.of(0, MAX_LEGACY_LIST_SIZE, Sort.by(Sort.Direction.DESC, "seq")),
+        ).content
         // N+1 회피: 내가 참여·북마크한 campaignId 를 각각 한 번에 조회.
         val joinedIds = joinedByPage(currentUserId, campaigns.map { it.id })
         val bookmarkedIds = bookmarkedByPage(currentUserId, campaigns.map { it.id })
@@ -546,6 +549,8 @@ class CampaignService(
     private companion object {
         val CAMPAIGN_STATUSES = setOf("open", "upcoming", "closed")
         const val MAX_SEARCH_PAGE_SIZE = 50
+        // 무페이지 레거시 목록(GET /api/posts·/api/campaigns)의 응답 상한.
+        const val MAX_LEGACY_LIST_SIZE = 100
         const val MAX_SEARCH_QUERY_LENGTH = 100
         const val MAX_SITEMAP_PAGE_SIZE = 500
 
