@@ -212,7 +212,7 @@ class MessageService(
 
     /**
      * 본인 메시지 삭제(soft delete). 본문은 보존하고 이후 응답에서 마스킹한다(신고 대상 보존).
-     * 상대 화면의 실시간 반영은 후속(WS delete 이벤트) — 다음 조회부터 반영된다.
+     * 접속 중인 상대에게는 WS message-deleted 이벤트로 즉시 반영된다.
      */
     @Transactional
     fun deleteMessage(userId: Long, conversationId: String, messageId: String) {
@@ -226,6 +226,8 @@ class MessageService(
         }
         message.deletedAt = Instant.now(clock)
         messages.save(message)
+        // 대화방에 접속 중인 상대 화면도 즉시 마스킹되도록 브로드캐스트한다.
+        dmHub.publishMessageDeleted(conversationId, DmMessageDeletedPayload(id = messageId), excludeUserId = userId)
         // 목록 미리보기도 즉시 마스킹되도록 inbox 요약을 갱신한다.
         conversations.findById(conversationId).orElse(null)?.let { notifyInbox(it, conversationId) }
     }

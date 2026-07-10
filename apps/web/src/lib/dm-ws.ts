@@ -14,6 +14,7 @@ export type DmWsHandlers = {
   onMessage?: (conversationId: string, msg: MessageItem) => void;
   onTyping?: (conversationId: string, userId: number, active: boolean) => void;
   onRead?: (conversationId: string, userId: number, lastReadMessageId: string | null) => void;
+  onMessageDeleted?: (conversationId: string, messageId: string) => void;
   onPresence?: (conversationId: string, userId: number, online: boolean) => void;
   onInbox?: (summary: ConversationSummary, totalUnread: number) => void;
 };
@@ -81,6 +82,10 @@ export function openDmSocket(handlers: DmWsHandlers): DmSocket {
           createdAt: p.createdAt,
           mine,
         });
+        return;
+      }
+      if (type === "message-deleted" && typeof payload.id === "string") {
+        handlers.onMessageDeleted?.(conversationId, payload.id);
         return;
       }
       if (type === "typing" && typeof payload.userId === "number") {
