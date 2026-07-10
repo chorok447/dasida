@@ -247,22 +247,37 @@ class PostService(
 
     @Transactional(readOnly = true)
     fun getPost(id: String, currentUserId: Long?): PostResponse {
-        val post = repo.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        }
-        // 삭제(soft delete)된 게시글은 작성자에게도 존재하지 않는 것으로 취급한다.
-        if (post.deletedAt != null) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        }
-        // 숨김 게시글은 작성자에게만 보인다(hidden 플래그 포함). 그 외에는 존재를 드러내지 않는 404.
-        if (post.hiddenAt != null && (post.authorUserId == null || post.authorUserId != currentUserId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
-        }
+        val post = visibleDetailOrNotFound(id, currentUserId)
         return post.toResponse(
             viewerId = currentUserId,
             likedByMe = currentUserId != null && likeRepo.existsByPostIdAndUserId(id, currentUserId),
             bookmarkedByMe = currentUserId != null && bookmarkRepo.existsByPostIdAndUserId(id, currentUserId),
         )
+    }
+
+    /**
+     * 조회수 기록. 상세와 같은 가시성 규칙(삭제·숨김 404)을 따르고, 작성자 본인 조회는 세지 않는다.
+     * SSR·목록 렌더에 섞이지 않도록 GET 이 아니라 클라이언트가 상세 진입 시 1회 호출하는 별도 POST 로 받는다.
+     */
+    @Transactional
+    fun recordView(id: String, currentUserId: Long?) {
+        val post = visibleDetailOrNotFound(id, currentUserId)
+        if (post.authorUserId != null && post.authorUserId == currentUserId) return
+        repo.incrementViewCount(id)
+    }
+
+    /** 상세 가시성 판정: 삭제 글은 모두 404, 숨김 글은 작성자에게만 보인다(그 외 존재를 드러내지 않는 404). */
+    private fun visibleDetailOrNotFound(id: String, currentUserId: Long?): Post {
+        val post = repo.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        if (post.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        if (post.hiddenAt != null && (post.authorUserId == null || post.authorUserId != currentUserId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "post $id not found")
+        }
+        return post
     }
 
     /**

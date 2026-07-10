@@ -86,6 +86,8 @@ data class PostResponse(
     val hidden: Boolean = false,
     // 작성 시각. 시드 게시글은 null(작성 시점 미상).
     val createdAt: Instant? = null,
+    // 조회수. 상세 진입 시 POST /api/posts/{id}/views 로 기록된다(작성자 본인 제외).
+    val views: Long = 0,
 )
 
 data class PostSearchResponse(

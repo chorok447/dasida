@@ -57,4 +57,9 @@ interface PostRepository : JpaRepository<Post, String> {
 
     @Query("SELECT p.id FROM Post p WHERE p.hiddenAt IS NULL ORDER BY p.seq DESC, p.id ASC")
     fun findIds(pageable: Pageable): Page<String>
+
+    /** 조회수 원자 증가. 엔티티 load-modify-save 대신 단일 UPDATE 로 동시 조회 유실을 막는다. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.viewCount = p.viewCount + 1 where p.id = :id")
+    fun incrementViewCount(@Param("id") id: String): Int
 }

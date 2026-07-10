@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
@@ -12,7 +12,7 @@ import { ReportButton } from "@/components/report-button";
 import { AdminModerationButton } from "@/components/admin-moderation-button";
 import { PageShell } from "@/components/page-shell";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import type { Post } from "@/data/posts";
+import { recordPostView, type Post } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
 import { PostDetailComments } from "./post-detail-comments";
 import { PostDetailHero } from "./post-detail-hero";
@@ -32,6 +32,11 @@ export default function PostDetailClient({ post, linkedCampaign }: { post: Post;
   const [commentCount, setCommentCount] = useState(post.comments);
   const commentSectionRef = useRef<HTMLDivElement>(null);
   const confirm = useConfirm();
+
+  // 상세 진입 1회당 조회수 기록. StrictMode 이중 실행은 개발 모드 한정이라 그대로 둔다.
+  useEffect(() => {
+    recordPostView(p.id);
+  }, [p.id]);
 
   const { refreshing, invalidatePending } = useAuthedRefresh<Post>(
     `/api/posts/${p.id}`,

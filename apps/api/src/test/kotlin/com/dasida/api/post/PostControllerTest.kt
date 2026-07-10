@@ -1482,4 +1482,43 @@ class PostControllerTest(
         deletePost(id).andExpect { status { isNoContent() } }
         deletePost(id).andExpect { status { isNotFound() } }
     }
+    @Test
+    fun `조회수 기록은 비로그인도 증가하고 상세 응답에 반영된다`() {
+        val id = savePost(authorUserId = 1)
+
+        mvc.post("/api/posts/$id/views").andExpect { status { isNoContent() } }
+        mvc.post("/api/posts/$id/views") {
+            header("Authorization", "Bearer $token2")
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/posts/$id")
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.views", Matchers.`is`(2)) }
+    }
+
+    @Test
+    fun `작성자 본인 조회는 조회수에 세지 않는다`() {
+        val id = savePost(authorUserId = 1)
+
+        mvc.post("/api/posts/$id/views") {
+            header("Authorization", "Bearer $token")
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/posts/$id")
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.views", Matchers.`is`(0)) }
+    }
+
+    @Test
+    fun `숨김·없는 게시글 조회수 기록은 404`() {
+        mvc.post("/api/posts/nope/views").andExpect { status { isNotFound() } }
+
+        val hidden = savePost(authorUserId = 1)
+        val post = posts.findById(hidden).orElseThrow()
+        post.hiddenAt = Instant.now()
+        posts.save(post)
+        mvc.post("/api/posts/$hidden/views") {
+            header("Authorization", "Bearer $token2")
+        }.andExpect { status { isNotFound() } }
+    }
 }
