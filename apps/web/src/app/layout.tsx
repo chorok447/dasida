@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     type: "website",
   },
+  alternates: {
+    types: { "application/rss+xml": "/rss.xml" },
+  },
 };
 
 export default function RootLayout({
