@@ -9,6 +9,7 @@ const POST_SORT_LABELS: Record<PostSearchSort, string> = {
   latest: "최신순",
   popular: "인기순",
   discussed: "댓글순",
+  views: "조회순",
 };
 
 export function feedHasActiveFilters(state: FeedUrlState): boolean {
@@ -122,6 +123,7 @@ export function FeedControls({
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
             <option value="discussed">댓글순</option>
+            <option value="views">조회순</option>
           </select>
         </label>
       </div>

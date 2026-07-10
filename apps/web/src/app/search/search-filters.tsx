@@ -11,7 +11,7 @@ import {
 } from "@/data/campaigns";
 
 export type SearchType = "all" | "campaigns" | "posts" | "users";
-export type SearchSort = "latest" | "popular" | "deadline";
+export type SearchSort = "latest" | "popular" | "deadline" | "views";
 
 export type SearchUrlState = CampaignDateRangeFilters & {
   query: string;
@@ -64,7 +64,7 @@ export function buildSearchFilterChips(
     chips.push({ id: "type", label: `유형: ${label}`, onRemove: () => onPatch({ type: "all" }) });
   }
   if (state.sort !== "latest") {
-    const sortLabel = state.sort === "popular" ? "인기순" : "마감임박순";
+    const sortLabel = state.sort === "popular" ? "인기순" : state.sort === "views" ? "조회순" : "마감임박순";
     chips.push({ id: "sort", label: `정렬: ${sortLabel}`, onRemove: () => onPatch({ sort: "latest" }) });
   }
   if (state.tag) {
@@ -140,6 +140,7 @@ export function SearchFilters({
             >
               <option value="latest">최신순</option>
               <option value="popular">인기순</option>
+              {state.type === "posts" ? <option value="views">조회순</option> : null}
               {state.type === "campaigns" ? <option value="deadline">마감임박순</option> : null}
             </select>
           </label>
@@ -199,6 +200,7 @@ export function parseSearchSort(value: string | null, type: SearchType): SearchS
   if (type === "users") return "latest";
   if (value === "popular") return "popular";
   if (value === "deadline" && type === "campaigns") return "deadline";
+  if (value === "views" && type === "posts") return "views";
   return "latest";
 }
 

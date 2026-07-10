@@ -87,7 +87,7 @@ export default function SearchClient() {
       ? merged
       : {
           ...merged,
-          sort: merged.type === "users" || merged.sort === "deadline" ? "latest" : merged.sort,
+          sort: merged.type === "users" || merged.sort === "deadline" || (merged.sort === "views" && merged.type !== "posts") ? "latest" : merged.sort,
           recruitState: null,
           availableOnly: false,
           tag: merged.type === "users" ? "" : merged.tag,
@@ -134,7 +134,7 @@ export default function SearchClient() {
     const postParams = new URLSearchParams();
     if (urlState.query) postParams.set("q", urlState.query);
     if (urlState.tag) postParams.set("tag", urlState.tag);
-    postParams.set("sort", urlState.sort === "popular" ? "popular" : "latest");
+    postParams.set("sort", urlState.sort === "popular" || urlState.sort === "views" ? urlState.sort : "latest");
     postParams.set("page", urlState.page.toString());
     postParams.set("size", "6");
 

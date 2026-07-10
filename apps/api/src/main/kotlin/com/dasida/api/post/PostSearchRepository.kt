@@ -13,6 +13,7 @@ enum class PostSearchSort {
     LATEST,
     POPULAR,
     DISCUSSED,
+    VIEWS,
 }
 
 data class PostSearchCondition(
@@ -89,5 +90,6 @@ class QuerydslPostSearchRepository(
             PostSearchSort.LATEST -> arrayOf(post.seq.desc(), post.id.asc())
             PostSearchSort.POPULAR -> arrayOf(post.likes.desc(), post.seq.desc(), post.id.asc())
             PostSearchSort.DISCUSSED -> arrayOf(post.comments.desc(), post.seq.desc(), post.id.asc())
+            PostSearchSort.VIEWS -> arrayOf(post.viewCount.desc(), post.seq.desc(), post.id.asc())
         }
 }

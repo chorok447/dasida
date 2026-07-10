@@ -50,3 +50,10 @@ test("캠페인 목록 정렬이 URL에 반영된다", async ({ page }) => {
   await page.locator("select").filter({ has: page.locator('option[value="popular"]') }).selectOption("popular");
   await page.waitForURL(/sort=popular/);
 });
+
+test("피드 조회순 정렬이 URL에 반영된다", async ({ page }) => {
+  await page.goto("/feed");
+
+  await page.locator("select").filter({ has: page.locator('option[value="views"]') }).selectOption("views");
+  await page.waitForURL(/sort=views/);
+});
