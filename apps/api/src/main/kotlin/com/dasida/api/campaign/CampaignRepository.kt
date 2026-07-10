@@ -10,6 +10,12 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface CampaignRepository : JpaRepository<Campaign, String> {
+    /** 모집 마감 임박(D-1) 알림 대상 — recruitEnd 는 ISO(yyyy-MM-dd) 문자열이라 동등 비교로 충분. */
+    fun findByStatusAndRecruitEndAndHiddenAtIsNullAndDeletedAtIsNullAndRecruitEndReminderSentAtIsNull(
+        status: String,
+        recruitEnd: String,
+    ): List<Campaign>
+
     /** 정원 동시성 방어용 write lock 조회. join 트랜잭션에서 가장 먼저 호출해 캠페인별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Campaign c where c.id = :id")
