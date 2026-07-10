@@ -51,6 +51,8 @@ class Post(
     // 작성자 삭제(soft delete). 값이 있으면 작성자 본인·관리자 복구 경로에서도 404 로 취급한다.
     // 삭제 시 hiddenAt 도 함께 세팅해 공개 노출 제외를 재사용한다.
     @Column(name = "deleted_at") @JsonIgnore var deletedAt: java.time.Instant? = null,
+    // 조회수. 엔티티 저장이 아니라 incrementViewCount 원자 UPDATE 로만 증가시킨다(동시 조회 유실 방지).
+    @Column(name = "view_count") var viewCount: Long = 0,
 )
 
 /**

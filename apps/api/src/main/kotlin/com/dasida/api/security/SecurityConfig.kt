@@ -45,6 +45,8 @@ class SecurityConfig(
                 // OpenAPI JSON / Swagger UI 는 문서 확인용으로 공개한다. /api/** 인증 정책과 무관한 별도 경로다.
                 it.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+                // 조회수 기록은 비로그인 조회도 세야 하므로 공개(가시성 검증·작성자 제외는 서비스 계층 담당).
+                it.requestMatchers(HttpMethod.POST, "/api/posts/*/views").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/mine").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/mine/page").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/bookmarks").authenticated()

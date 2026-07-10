@@ -86,6 +86,13 @@ class PostController(
     fun get(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?): PostResponse =
         postService.getPost(id, user?.id)
 
+    @Operation(summary = "조회수 기록", description = "공개 API. 상세 진입 시 클라이언트가 1회 호출한다. 작성자 본인 조회는 세지 않는다.")
+    @PostMapping("/{id}/views")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun recordView(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?) {
+        postService.recordView(id, user?.id)
+    }
+
     @Operation(summary = "좋아요")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{id}/like")

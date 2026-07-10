@@ -10,6 +10,7 @@ import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
+  Eye,
   Image as ImageIcon,
   Send,
 } from "lucide-react";
@@ -251,6 +252,14 @@ export function PostDetailHero({
             >
               <MessageCircle size={14} /> {commentCount}
             </button>
+            <span
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px]"
+              style={{ background: "var(--border)", color: "var(--foreground)" }}
+            >
+              <Eye size={14} aria-hidden />
+              <span className="sr-only">조회수</span>
+              {p.views ?? 0}
+            </span>
             <ShareButton
               title={p.text.slice(0, 80)}
               className="flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px]"

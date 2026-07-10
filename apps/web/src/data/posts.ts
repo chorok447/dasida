@@ -1,6 +1,6 @@
 import { richTextPlainLength } from "@/lib/rich-text-length";
 import { mergeRichBodyForEditor, splitRichBodyHtml } from "@/lib/rich-body-html";
-import { apiGet, apiPut } from "@/lib/api";
+import { apiFetch, apiGet, apiPut } from "@/lib/api";
 import type { CommentPageLocationResponse } from "@/data/comments";
 
 /** 백엔드 PostValidators 와 동일한 제한. */
@@ -135,7 +135,17 @@ export type Post = {
   hidden?: boolean;
   /** 작성 시각(ISO). 시드 게시글은 null. */
   createdAt?: string | null;
+  /** 조회수. 상세 진입 시 recordPostView 로 기록된다(작성자 본인 제외). */
+  views?: number;
 };
+
+/**
+ * 조회수 기록(fire-and-forget). 상세 진입 시 1회 호출하며, 실패해도 화면 흐름에 영향을 주지 않는다.
+ * GET 에 섞지 않고 별도 POST 로 보내 SSR·목록 렌더가 조회수를 부풀리지 않게 한다.
+ */
+export function recordPostView(postId: string): void {
+  void apiFetch(`/api/posts/${encodeURIComponent(postId)}/views`, { method: "POST" }).catch(() => {});
+}
 
 export type PostSearchResponse = {
   content: Post[];

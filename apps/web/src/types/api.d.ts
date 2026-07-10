@@ -229,6 +229,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/posts/{id}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 조회수 기록
+         * @description 공개 API. 상세 진입 시 클라이언트가 1회 호출한다. 작성자 본인 조회는 세지 않는다.
+         */
+        post: operations["recordView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/posts/{id}/like": {
         parameters: {
             query?: never;
@@ -1391,6 +1411,8 @@ export interface components {
             hidden?: boolean;
             /** Format: date-time */
             createdAt?: string | null;
+            /** Format: int64 */
+            views?: number;
         };
         /** @description 캠페인 수정 요청. status 가 upcoming 일 때만 허용된다. */
         UpdateCampaignRequest: {
@@ -2768,6 +2790,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["PostResponse"];
                 };
+            };
+        };
+    };
+    recordView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
