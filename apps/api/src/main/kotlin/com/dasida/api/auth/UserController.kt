@@ -52,6 +52,15 @@ class UserController(
         @AuthenticationPrincipal user: AuthUser,
     ): PublicUserPageResponse = userFollowService.followersPage(user.id, user.id, page, size)
 
+    @Operation(summary = "내가 차단한 사용자 목록", description = "최근 차단 순. 차단 관리 화면용.")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/me/blocked")
+    fun myBlocked(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PublicUserPageResponse = userFollowService.blockedPage(user.id, page, size)
+
     @Operation(summary = "사용자 검색", description = "공개 API. 이름 부분 일치로 검색하며, JWT 가 있으면 팔로우/차단 상태를 포함한다.")
     @GetMapping("/search")
     fun search(

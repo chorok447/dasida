@@ -70,6 +70,12 @@ export function fetchMyFollowersPage(page: number, size = 10): Promise<PublicUse
   return apiGet<PublicUserPageResponse>(`/api/users/me/followers?${params.toString()}`);
 }
 
+/** 내가 차단한 사용자 목록(최근 차단 순). 차단 관리 화면용. */
+export function fetchMyBlockedPage(page: number, size = 10): Promise<PublicUserPageResponse> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return apiGet<PublicUserPageResponse>(`/api/users/me/blocked?${params.toString()}`);
+}
+
 export function searchUsersPage(q: string, page: number, size = 12): Promise<PublicUserPageResponse> {
   const params = new URLSearchParams({ q, page: String(page), size: String(size) });
   return apiGet<PublicUserPageResponse>(`/api/users/search?${params.toString()}`);

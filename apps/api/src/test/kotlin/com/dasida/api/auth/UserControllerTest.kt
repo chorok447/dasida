@@ -226,4 +226,42 @@ class UserControllerTest(
         mvc.get("/api/users/search") { param("q", "a".repeat(101)) }
             .andExpect { status { isBadRequest() } }
     }
+
+    @Test
+    fun `차단 목록은 최근 차단 순으로 반환하고 해제하면 빠진다`() {
+        val me = users.save(User(email = "b-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "차단러"))
+        val first = users.save(User(email = "t1-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "첫차단"))
+        val second = users.save(User(email = "t2-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "둘째차단"))
+        val token = jwt.issue(me)
+
+        mvc.post("/api/users/${requireNotNull(first.id)}/block") {
+            header("Authorization", "Bearer $token")
+        }.andExpect { status { isNoContent() } }
+        mvc.post("/api/users/${requireNotNull(second.id)}/block") {
+            header("Authorization", "Bearer $token")
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/users/me/blocked") {
+            header("Authorization", "Bearer $token")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.totalElements", Matchers.`is`(2)) }
+            .andExpect { jsonPath("$.content[0].name", Matchers.`is`("둘째차단")) }
+            .andExpect { jsonPath("$.content[1].name", Matchers.`is`("첫차단")) }
+            .andExpect { jsonPath("$.content[0].blockedByMe", Matchers.`is`(true)) }
+
+        mvc.delete("/api/users/${requireNotNull(second.id)}/block") {
+            header("Authorization", "Bearer $token")
+        }.andExpect { status { isNoContent() } }
+
+        mvc.get("/api/users/me/blocked") {
+            header("Authorization", "Bearer $token")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.totalElements", Matchers.`is`(1)) }
+            .andExpect { jsonPath("$.content[0].name", Matchers.`is`("첫차단")) }
+
+        // 비로그인은 401
+        mvc.get("/api/users/me/blocked").andExpect { status { isUnauthorized() } }
+    }
 }

@@ -813,6 +813,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/blocked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내가 차단한 사용자 목록
+         * @description 최근 차단 순. 차단 관리 화면용.
+         */
+        get: operations["myBlocked"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports/mine": {
         parameters: {
             query?: never;
@@ -3842,6 +3862,29 @@ export interface operations {
         };
     };
     myFollowers: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicUserPageResponse"];
+                };
+            };
+        };
+    };
+    myBlocked: {
         parameters: {
             query?: {
                 page?: number;
