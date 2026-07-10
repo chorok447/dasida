@@ -10,6 +10,13 @@
     "typecheck:web": "pnpm --filter web typecheck",
     "e2e:web": "pnpm --filter web e2e",
     "dev:api": "cd apps/api && ./gradlew bootRun",
-    "build:api": "cd apps/api && ./gradlew build"
+    "build:api": "cd apps/api && ./gradlew build",
+    "test:api": "cd apps/api && ./gradlew test",
+    "docker:up": "docker compose up -d --wait",
+    "docker:down": "docker compose down",
+    "docker:local": "docker compose -f compose.local.yml up -d --build --wait",
+    "docker:local:down": "docker compose -f compose.local.yml down",
+    "docker:logs": "docker compose logs -f",
+    "docker:reset": "docker compose down -v && docker compose up -d --wait"
   }
 }

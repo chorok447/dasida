@@ -28,6 +28,12 @@ Dasida-boot35/
 deploy/.env.prod
 deploy/.env.prod.local
 
+# Env files anywhere (docker compose auto-reads root .env; API secrets ride env vars)
+.env
+.env.*
+!.env*.example
+!*.env.example
+
 # Ad-hoc Gradle/API tooling logs
 apps/api/build-*.log
 

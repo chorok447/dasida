@@ -4,7 +4,8 @@ services:
     image: mysql:8.4
     container_name: dasida-mysql
     ports:
-      - "3306:3306"
+      # 루프백 바인딩 — LAN 노출 금지(개발용 약한 크리덴셜이므로).
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_DATABASE: dasida
       MYSQL_USER: dasida
@@ -12,6 +13,11 @@ services:
       MYSQL_ROOT_PASSWORD: root
     volumes:
       - dasida-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   dasida-mysql:
