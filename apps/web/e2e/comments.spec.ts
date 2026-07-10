@@ -96,6 +96,12 @@ test("캠페인 댓글을 작성·수정·삭제할 수 있다", async ({ page }
   await page.getByRole("button", { name: "댓글 등록" }).click();
   await expect(page.getByText(commentText)).toBeVisible();
 
+  // 좋아요 → 취소 (idempotent 토글)
+  await page.getByRole("button", { name: "이 댓글 좋아요", exact: true }).click();
+  await expect(page.getByRole("button", { name: "이 댓글 좋아요 취소", exact: true })).toHaveText(/1/);
+  await page.getByRole("button", { name: "이 댓글 좋아요 취소", exact: true }).click();
+  await expect(page.getByRole("button", { name: "이 댓글 좋아요", exact: true })).toHaveText(/0/);
+
   // 수정
   const updatedText = `E2E 캠페인 댓글 수정 ${stamp}`;
   await page.getByRole("button", { name: /댓글 수정/ }).click();

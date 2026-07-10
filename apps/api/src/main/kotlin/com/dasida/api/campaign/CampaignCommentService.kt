@@ -9,6 +9,7 @@ import com.dasida.api.common.checkPageSize
 import com.dasida.api.notification.CommentMentionNotifier
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
+import com.dasida.api.post.CommentLikeStatusResponse
 import com.dasida.api.security.AuthUser
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -28,6 +29,7 @@ import java.util.UUID
 class CampaignCommentService(
     private val campaigns: CampaignRepository,
     private val comments: CampaignCommentRepository,
+    private val commentLikes: CampaignCommentLikeRepository,
     private val users: UserRepository,
     private val notifications: NotificationService,
     private val mentions: CommentMentionNotifier,
@@ -52,11 +54,17 @@ class CampaignCommentService(
         } else {
             comments.findByParentIdInAndHiddenAtIsNullOrderByCreatedAtAscIdAsc(parentIds).groupBy { it.parentId }
         }
+        // 좋아요 수·내 좋아요 여부는 page 의 최상위+답글 전체를 한 번에 집계한다(댓글별 N+1 방지).
+        val likeData = commentLikeData(parentIds + repliesByParent.values.flatten().map { it.id }, currentUserId)
         return CampaignCommentsResponse(
             content = result.content.map { comment ->
                 comment.toResponse(
                     currentUserId,
-                    replies = (repliesByParent[comment.id] ?: emptyList()).map { it.toResponse(currentUserId) },
+                    replies = (repliesByParent[comment.id] ?: emptyList()).map {
+                        it.toResponse(currentUserId, likes = likeData.count(it.id), likedByMe = likeData.likedByMe(it.id))
+                    },
+                    likes = likeData.count(comment.id),
+                    likedByMe = likeData.likedByMe(comment.id),
                 )
             },
             page = result.number,
@@ -206,6 +214,60 @@ class CampaignCommentService(
             it.deletedAt = now
             if (it.hiddenAt == null) it.hiddenAt = now
         }
+    }
+
+    /**
+     * 댓글 좋아요. 이미 누른 경우 idempotent(200). 게시글 댓글 좋아요와 동일 규율 —
+     * 댓글 row write lock 으로 좋아요/취소를 직렬화하고, unique 제약은 최종 방어선으로 유지한다.
+     */
+    @Transactional
+    fun likeComment(userId: Long, campaignId: String, commentId: String): CommentLikeStatusResponse {
+        val comment = visibleCommentForUpdate(campaignId, commentId, userId)
+        if (!commentLikes.existsByCommentIdAndUserId(commentId, userId)) {
+            commentLikes.save(CampaignCommentLike("ccl-${UUID.randomUUID()}", commentId, userId))
+            val liker = users.findActiveOrThrow(userId)
+            notifications.notify(
+                recipientUserId = comment.authorUserId,
+                actorUserId = userId,
+                type = NotificationType.COMMENT_LIKED,
+                title = "${liker.name}님이 내 댓글을 좋아합니다",
+                body = comment.text,
+                href = "/campaigns/$campaignId?commentId=$commentId",
+            )
+        }
+        return CommentLikeStatusResponse(likes = commentLikes.countByCommentId(commentId), likedByMe = true)
+    }
+
+    /** 댓글 좋아요 취소. 좋아요하지 않은 상태에서도 idempotent(200). */
+    @Transactional
+    fun unlikeComment(userId: Long, campaignId: String, commentId: String): CommentLikeStatusResponse {
+        visibleCommentForUpdate(campaignId, commentId, userId)
+        commentLikes.deleteByCommentIdAndUserId(commentId, userId)
+        return CommentLikeStatusResponse(likes = commentLikes.countByCommentId(commentId), likedByMe = false)
+    }
+
+    /** 상호작용 대상 댓글 조회(write lock). 숨김·삭제된 캠페인/댓글은 존재를 드러내지 않는 404. */
+    private fun visibleCommentForUpdate(campaignId: String, commentId: String, currentUserId: Long): CampaignComment {
+        requireViewableCampaign(campaignId, currentUserId)
+        val comment = comments.findByIdAndCampaignIdForUpdate(commentId, campaignId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        if (comment.hiddenAt != null || comment.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
+        }
+        return comment
+    }
+
+    /** 댓글 id 집합에 대한 좋아요 수·내 좋아요 여부 bulk 조회 결과. */
+    private class CommentLikeData(private val counts: Map<String, Long>, private val liked: Set<String>) {
+        fun count(commentId: String): Long = counts[commentId] ?: 0
+        fun likedByMe(commentId: String): Boolean = commentId in liked
+    }
+
+    private fun commentLikeData(commentIds: List<String>, currentUserId: Long?): CommentLikeData {
+        if (commentIds.isEmpty()) return CommentLikeData(emptyMap(), emptySet())
+        val counts = commentLikes.countByCommentIds(commentIds).associate { it.commentId to it.likes }
+        val liked = currentUserId?.let { commentLikes.findLikedCommentIds(it, commentIds).toSet() } ?: emptySet()
+        return CommentLikeData(counts, liked)
     }
 
     /** 캠페인 존재 확인. 삭제(soft delete)된 캠페인은 존재하지 않는 것으로 취급한다. */

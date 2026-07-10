@@ -1,6 +1,7 @@
 package com.dasida.api.campaign
 
 import com.dasida.api.common.CommentPageLocationResponse
+import com.dasida.api.post.CommentLikeStatusResponse
 import com.dasida.api.security.AuthUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -261,4 +262,22 @@ class CampaignController(
         @PathVariable commentId: String,
         @AuthenticationPrincipal user: AuthUser,
     ) = commentService.deleteComment(user.id, campaignId, commentId)
+
+    @Operation(summary = "캠페인 댓글 좋아요", description = "이미 좋아요한 경우에도 200(idempotent).")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{campaignId}/comments/{commentId}/like")
+    fun likeComment(
+        @PathVariable campaignId: String,
+        @PathVariable commentId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CommentLikeStatusResponse = commentService.likeComment(user.id, campaignId, commentId)
+
+    @Operation(summary = "캠페인 댓글 좋아요 취소", description = "좋아요하지 않은 상태에서도 200(idempotent).")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{campaignId}/comments/{commentId}/like")
+    fun unlikeComment(
+        @PathVariable campaignId: String,
+        @PathVariable commentId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CommentLikeStatusResponse = commentService.unlikeComment(user.id, campaignId, commentId)
 }
