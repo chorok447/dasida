@@ -1624,9 +1624,16 @@ export interface components {
             /** Format: int64 */
             peerUserId?: number;
         };
+        ConversationPeerResponse: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            verified?: boolean;
+            profileImageUrl?: string | null;
+        };
         ConversationSummaryResponse: {
             id?: string;
-            peer?: components["schemas"]["PublicUserResponse"];
+            peer?: components["schemas"]["ConversationPeerResponse"];
             lastMessage?: components["schemas"]["MessagePreview"] | null;
             /** Format: int32 */
             unreadCount?: number;
@@ -1638,22 +1645,6 @@ export interface components {
             /** Format: int64 */
             senderId?: number;
             createdAt?: string;
-        };
-        /** @description 공개 프로필(타인 조회용) */
-        PublicUserResponse: {
-            /** Format: int64 */
-            id?: number;
-            name?: string;
-            verified?: boolean;
-            profileImageUrl?: string | null;
-            /** Format: int64 */
-            postCount?: number;
-            /** Format: int64 */
-            followerCount?: number;
-            /** Format: int64 */
-            followingCount?: number;
-            followedByMe?: boolean | null;
-            blockedByMe?: boolean | null;
         };
         MarkReadResponse: {
             read?: boolean;
@@ -1881,6 +1872,22 @@ export interface components {
             targetType?: string;
             targetId?: string;
             hidden?: boolean;
+        };
+        /** @description 공개 프로필(타인 조회용) */
+        PublicUserResponse: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            verified?: boolean;
+            profileImageUrl?: string | null;
+            /** Format: int64 */
+            postCount?: number;
+            /** Format: int64 */
+            followerCount?: number;
+            /** Format: int64 */
+            followingCount?: number;
+            followedByMe?: boolean | null;
+            blockedByMe?: boolean | null;
         };
         PostPageResponse: {
             content?: components["schemas"]["PostResponse"][];

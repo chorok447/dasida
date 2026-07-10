@@ -2,8 +2,8 @@ package com.dasida.api.message
 
 import com.dasida.api.common.SeqGenerator
 import com.dasida.api.auth.AuthService
+import com.dasida.api.auth.User
 import com.dasida.api.auth.UserBlockService
-import com.dasida.api.auth.UserFollowService
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.notification.NotificationService
@@ -25,7 +25,6 @@ class MessageService(
     private val messages: MessageRepository,
     private val users: UserRepository,
     private val authService: AuthService,
-    private val userFollowService: UserFollowService,
     private val userBlocks: UserBlockService,
     private val notifications: NotificationService,
     private val dmHub: DmSessionHub,
@@ -86,6 +85,10 @@ class MessageService(
         return toSummary(conversation, userId)
     }
 
+    /**
+     * 대화방 목록. 대화방별 개별 조회(대화·peer·마지막 메시지·미읽음 = 행당 4+ 쿼리) 대신
+     * 페이지 단위 bulk 4쿼리(대화 IN, peer IN, 마지막 메시지 IN, 미읽음 group by)로 구성한다.
+     */
     @Transactional(readOnly = true)
     fun listConversations(userId: Long, page: Int, size: Int): ConversationPageResponse {
         checkPageParams(page, size, MAX_PAGE_SIZE)
@@ -93,9 +96,30 @@ class MessageService(
             userId,
             PageRequest.of(page, size),
         )
+        val conversationById = conversations.findAllById(result.content.map { it.conversationId })
+            .associateBy { it.id }
+        val pageConversations = result.content.mapNotNull { conversationById[it.conversationId] }
+        val peerById = users.findAllById(pageConversations.map { peerUserId(it, userId) }.distinct())
+            .filter { it.deletedAt == null }
+            .associateBy { requireNotNull(it.id) }
+        val lastMessageIds = pageConversations.mapNotNull { it.lastMessageId }
+        val lastMessageById =
+            if (lastMessageIds.isEmpty()) emptyMap()
+            else messages.findAllById(lastMessageIds).associateBy { it.id }
+        val unreadByConversation =
+            if (pageConversations.isEmpty()) emptyMap()
+            else messages.countUnreadByConversation(userId, pageConversations.map { it.id })
+                .associate { it.conversationId to it.unread }
         return ConversationPageResponse(
-            content = result.content.mapNotNull { member ->
-                conversations.findById(member.conversationId).orElse(null)?.let { toSummary(it, userId, member) }
+            // 삭제된 대화방·탈퇴한 상대의 orphan 멤버십은 기존과 같이 결과에서 제외한다.
+            content = pageConversations.mapNotNull { conversation ->
+                val peer = peerById[peerUserId(conversation, userId)] ?: return@mapNotNull null
+                buildSummary(
+                    conversation,
+                    peer = toPeer(peer),
+                    lastMessage = conversation.lastMessageId?.let(lastMessageById::get),
+                    unread = (unreadByConversation[conversation.id] ?: 0L).toInt(),
+                )
             },
             page = result.number,
             size = result.size,
@@ -223,32 +247,44 @@ class MessageService(
         }
     }
 
+    /** 단일 대화방 요약(생성/단건 조회/WS inbox 용). 목록은 listConversations 의 bulk 경로를 쓴다. */
     private fun toSummary(
         conversation: Conversation,
         userId: Long,
         member: ConversationMember? = members.findByConversationIdAndUserId(conversation.id, userId),
     ): ConversationSummaryResponse {
-        val peerId = peerUserId(conversation, userId)
-        val peer = userFollowService.getPublicProfile(peerId, userId)
-        val lastMessage = conversation.lastMessageId?.let { id ->
-            messages.findById(id).orElse(null)?.let {
-                MessagePreview(
-                    id = it.id,
-                    content = it.content,
-                    senderId = it.senderId,
-                    createdAt = it.createdAt.toString(),
-                )
-            }
-        }
+        val peer = toPeer(authService.publicUser(peerUserId(conversation, userId)))
+        val lastMessage = conversation.lastMessageId?.let { messages.findById(it).orElse(null) }
         val unread = member?.let { unreadForMember(it, userId).toInt() } ?: 0
-        return ConversationSummaryResponse(
-            id = conversation.id,
-            peer = peer,
-            lastMessage = lastMessage,
-            unreadCount = unread,
-            updatedAt = conversation.updatedAt.toString(),
-        )
+        return buildSummary(conversation, peer, lastMessage, unread)
     }
+
+    private fun buildSummary(
+        conversation: Conversation,
+        peer: ConversationPeerResponse,
+        lastMessage: Message?,
+        unread: Int,
+    ) = ConversationSummaryResponse(
+        id = conversation.id,
+        peer = peer,
+        lastMessage = lastMessage?.let {
+            MessagePreview(
+                id = it.id,
+                content = it.content,
+                senderId = it.senderId,
+                createdAt = it.createdAt.toString(),
+            )
+        },
+        unreadCount = unread,
+        updatedAt = conversation.updatedAt.toString(),
+    )
+
+    private fun toPeer(user: User) = ConversationPeerResponse(
+        id = requireNotNull(user.id),
+        name = user.name,
+        verified = user.verified,
+        profileImageUrl = user.profileImageUrl,
+    )
 
     private fun unreadForMember(member: ConversationMember, userId: Long): Long {
         val afterSeq = member.lastReadMessageId?.let { messages.findById(it).orElse(null)?.seq } ?: -1L

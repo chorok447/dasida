@@ -168,6 +168,19 @@ class MessageControllerTest(
         }
             .andExpect { status { isOk() } }
             .andExpect { jsonPath("$.unreadCount", Matchers.`is`(2)) }
+
+        // 대화방 목록(bulk 경로): 최근 갱신 순서, peer 이름, 마지막 메시지, 대화방별 미읽음이 맞아야 한다.
+        mvc.get("/api/messages/conversations?page=0&size=10") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.content.length()", Matchers.`is`(2)) }
+            .andExpect { jsonPath("$.content[0].peer.name", Matchers.`is`("앨리스")) }
+            .andExpect { jsonPath("$.content[0].lastMessage.content", Matchers.`is`("내 답장은 안 센다")) }
+            .andExpect { jsonPath("$.content[0].unreadCount", Matchers.`is`(2)) }
+            .andExpect { jsonPath("$.content[1].peer.name", Matchers.`is`("캐럴")) }
+            .andExpect { jsonPath("$.content[1].lastMessage.content", Matchers.`is`("다섯")) }
+            .andExpect { jsonPath("$.content[1].unreadCount", Matchers.`is`(0)) }
     }
 
     @Test

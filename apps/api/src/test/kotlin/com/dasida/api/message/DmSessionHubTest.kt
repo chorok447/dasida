@@ -1,6 +1,5 @@
 package com.dasida.api.message
 
-import com.dasida.api.auth.PublicUserResponse
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
@@ -13,7 +12,7 @@ class DmSessionHubTest {
 
     private val sampleSummary = ConversationSummaryResponse(
         id = "conv-1",
-        peer = PublicUserResponse(id = 2L, name = "Bob", verified = false, postCount = 0),
+        peer = ConversationPeerResponse(id = 2L, name = "Bob", verified = false, profileImageUrl = null),
         lastMessage = MessagePreview("msg-1", "hi", 1L, "2026-01-01T00:00:00Z"),
         unreadCount = 1,
         updatedAt = "2026-01-01T00:00:00Z",

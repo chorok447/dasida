@@ -15,9 +15,9 @@ import {
   fetchMessages,
   markConversationRead,
   sendMessage,
+  type ConversationPeer,
   type MessageItem,
 } from "@/data/messages";
-import type { PublicUser } from "@/data/users";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { openDmSocket, type DmSocket } from "@/lib/dm-ws";
 
@@ -39,7 +39,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
   const { profile } = useCurrentUserProfile();
   const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [peer, setPeer] = useState<PublicUser | null>(null);
+  const [peer, setPeer] = useState<ConversationPeer | null>(null);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
