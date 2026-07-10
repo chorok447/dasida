@@ -31,7 +31,8 @@ interface PostRepository : JpaRepository<Post, String> {
     fun countByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long): Long
 
     // 공개 노출 경로용(숨김 제외). 작성자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.
-    fun findByHiddenAtIsNull(sort: org.springframework.data.domain.Sort): List<Post>
+    /** 무페이지 레거시 목록(GET /api/posts)용 상한 조회 — 전건 스캔·덤프 방지. */
+    fun findByHiddenAtIsNull(pageable: Pageable): org.springframework.data.domain.Page<Post>
 
     fun findByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long, pageable: Pageable): Page<Post>
 
