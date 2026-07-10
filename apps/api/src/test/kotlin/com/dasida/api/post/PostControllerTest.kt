@@ -144,6 +144,7 @@ class PostControllerTest(
             jsonPath("$.author.name") { value("테스터") }
             jsonPath("$.likedByMe") { value(false) }
             jsonPath("$.bookmarkedByMe") { value(false) }
+            jsonPath("$.createdAt") { exists() }
         }
     }
 

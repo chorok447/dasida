@@ -16,6 +16,8 @@ export default function robots(): MetadataRoute.Robots {
         "/posts/new",
         "/campaigns/new",
         "/*/edit",
+        "/messages",
+        "/admin",
       ],
     },
     sitemap: `${getSiteUrl()}/sitemap.xml`,

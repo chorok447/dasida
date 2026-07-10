@@ -1389,6 +1389,8 @@ export interface components {
             bookmarkedByMe?: boolean;
             ownedByMe?: boolean;
             hidden?: boolean;
+            /** Format: date-time */
+            createdAt?: string | null;
         };
         /** @description 캠페인 수정 요청. status 가 upcoming 일 때만 허용된다. */
         UpdateCampaignRequest: {

@@ -12,6 +12,7 @@ fun Post.toResponse(
     bookmarkedByMe = bookmarkedByMe,
     ownedByMe = authorUserId != null && authorUserId == viewerId,
     hidden = hiddenAt != null,
+    createdAt = createdAt,
 )
 
 fun PostComment.toResponse(viewerId: Long?, replies: List<PostCommentResponse> = emptyList()) = PostCommentResponse(

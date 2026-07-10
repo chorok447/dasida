@@ -4,6 +4,8 @@ export type RssItem = {
   title: string;
   link: string;
   description: string;
+  /** 작성 시각 — 없으면 pubDate 를 생략한다(RSS 2.0 선택 항목). */
+  pubDate?: Date;
 };
 
 export function escapeXml(value: string): string {
@@ -31,7 +33,9 @@ export function buildRssXml(options: {
       <title>${escapeXml(item.title)}</title>
       <link>${escapeXml(item.link)}</link>
       <guid isPermaLink="true">${escapeXml(item.link)}</guid>
-      <description>${escapeXml(item.description)}</description>
+      <description>${escapeXml(item.description)}</description>${
+        item.pubDate ? `\n      <pubDate>${item.pubDate.toUTCString()}</pubDate>` : ""
+      }
     </item>`,
     )
     .join("\n");

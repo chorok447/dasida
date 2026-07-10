@@ -27,6 +27,7 @@ export async function GET(): Promise<Response> {
       title: richTextPlainPreview(post.text, 80) || "새 업사이클 이야기",
       link: `${site}/posts/${encodeURIComponent(post.id)}`,
       description: richTextPlainPreview(post.text, 300),
+      pubDate: post.createdAt ? new Date(post.createdAt) : undefined,
     })),
   });
   return new Response(xml, {

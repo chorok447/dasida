@@ -360,6 +360,7 @@ class PostService(
                 campaignId = fields.campaignId,
                 seq = System.currentTimeMillis(),
                 authorUserId = author.id,
+                createdAt = Instant.now(clock),
             ),
         ).toResponse(viewerId = author.id, likedByMe = false, bookmarkedByMe = false)
     }
