@@ -3,6 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useSwipeX } from "@/lib/use-swipe";
 
 export function ImageLightbox({
   images,
@@ -43,6 +44,7 @@ export function ImageLightbox({
   const many = images.length > 1;
   const prev = () => onIndexChange((index - 1 + images.length) % images.length);
   const next = () => onIndexChange((index + 1) % images.length);
+  const swipeHandlers = useSwipeX({ onSwipeLeft: next, onSwipeRight: prev });
 
   return (
     <dialog
@@ -58,6 +60,7 @@ export function ImageLightbox({
         // 이미지·버튼 밖(어두운 영역) 클릭 시 닫는다.
         if (e.target === e.currentTarget) onClose();
       }}
+      {...(many ? swipeHandlers : {})}
     >
       <div className="pointer-events-none flex h-full w-full items-center justify-center p-4 sm:p-10">
         <img

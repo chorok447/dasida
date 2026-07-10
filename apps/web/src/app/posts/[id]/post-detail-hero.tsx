@@ -24,6 +24,7 @@ import { TagLink } from "@/components/tag-link";
 import { createConversation } from "@/data/messages";
 import { getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { useSwipeX } from "@/lib/use-swipe";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import type { Post } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
@@ -80,6 +81,8 @@ export function PostDetailHero({
   const rY = useTransform(sx, [-0.5, 0.5], [-5, 5]);
   const rX = useTransform(sy, [-0.5, 0.5], [4, -4]);
   const showMessage = Boolean(sessionId && p.authorId && profile?.id !== p.authorId);
+  // 모바일 스와이프로 캐러셀 이동. 단일 이미지는 onPrev/onNext 가 no-op 이라 그대로 둔다.
+  const swipeHandlers = useSwipeX({ onSwipeLeft: onNextImage, onSwipeRight: onPrevImage });
 
   const startMessage = async () => {
     if (!getSessionId() || !p.authorId) {
@@ -120,7 +123,7 @@ export function PostDetailHero({
         }}
         className="rounded-3xl border overflow-hidden shadow-[0_40px_80px_-30px_rgba(0,0,0,0.4)] grid grid-cols-1 md:grid-cols-[1.2fr_1fr]"
       >
-        <div className="relative aspect-square md:aspect-auto bg-black overflow-hidden">
+        <div className="relative aspect-square md:aspect-auto bg-black overflow-hidden" {...(p.images.length > 1 ? swipeHandlers : {})}>
           {imageFailed ? (
             <div className="flex h-full w-full items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
               <ImageIcon size={32} color="rgba(255,255,255,0.35)" aria-hidden />
