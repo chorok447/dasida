@@ -111,7 +111,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
     setError("");
     try {
       const response = await updateProfile(
-        { name: validation.name, profileImageUrl: validation.profileImageUrl, notifyCampaignUpdates: profile?.notifyCampaignUpdates ?? true },
+        { name: validation.name, profileImageUrl: validation.profileImageUrl, notifyCampaignUpdates: profile?.notifyCampaignUpdates ?? true, notifyMessages: profile?.notifyMessages ?? true },
       );
       if (getSessionId() !== requestToken) return;
       setSession(response.profile.name);

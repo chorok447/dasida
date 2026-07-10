@@ -1509,6 +1509,8 @@ export interface components {
             profileImageUrl?: string | null;
             /** @description 캠페인 상태 변경 알림 수신 여부 */
             notifyCampaignUpdates?: boolean;
+            /** @description DM(새 메시지) 알림 수신 여부 */
+            notifyMessages?: boolean;
         };
         UpdateProfileResponse: {
             token?: string;
@@ -1523,6 +1525,7 @@ export interface components {
             verified?: boolean;
             profileImageUrl?: string | null;
             notifyCampaignUpdates?: boolean;
+            notifyMessages?: boolean;
             /**
              * @description 역할
              * @enum {string}

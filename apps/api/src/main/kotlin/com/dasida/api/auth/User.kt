@@ -21,6 +21,8 @@ class User(
     val verified: Boolean = false,
     @Column(name = "profile_image_url", length = 500) var profileImageUrl: String? = null,
     @Column(name = "notify_campaign_updates", nullable = false) var notifyCampaignUpdates: Boolean = true,
+    // DM(새 메시지) 알림 수신 여부. false 면 MESSAGE_RECEIVED 알림을 만들지 않는다(실시간 WS 배지는 유지).
+    @Column(name = "notify_messages", nullable = false) var notifyMessages: Boolean = true,
     @Column(name = "deleted_at") @JsonIgnore var deletedAt: Instant? = null,
     // Report.targetType 과 같은 패턴: enum name 을 String 컬럼에 저장(UserRole 참조).
     @Column(nullable = false, length = 20) var role: String = UserRole.USER.name,
