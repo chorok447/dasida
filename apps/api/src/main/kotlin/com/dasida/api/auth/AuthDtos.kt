@@ -37,6 +37,7 @@ data class UserProfileResponse(
     val verified: Boolean,
     val profileImageUrl: String? = null,
     val notifyCampaignUpdates: Boolean = true,
+    val notifyMessages: Boolean = true,
     @field:Schema(description = "역할", allowableValues = ["USER", "ADMIN"])
     val role: String = "USER",
 )
@@ -74,6 +75,8 @@ data class UpdateProfileRequest(
     val profileImageUrl: String? = null,
     @field:Schema(description = "캠페인 상태 변경 알림 수신 여부")
     val notifyCampaignUpdates: Boolean = true,
+    @field:Schema(description = "DM(새 메시지) 알림 수신 여부")
+    val notifyMessages: Boolean = true,
 )
 
 data class UpdateProfileResponse(val token: String, val profile: UserProfileResponse)

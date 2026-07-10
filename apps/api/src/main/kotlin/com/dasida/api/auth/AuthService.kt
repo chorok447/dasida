@@ -193,6 +193,7 @@ class AuthService(
         user.name = normalizeName(req.name)
         user.profileImageUrl = normalizeProfileImageUrl(req.profileImageUrl)
         user.notifyCampaignUpdates = req.notifyCampaignUpdates
+        user.notifyMessages = req.notifyMessages
         // 기존 작성물의 author snapshot 도 최신 이름·이미지로 맞춘다. (탈퇴 시 anonymizeAuthor 와 같은 전파 패턴)
         posts.syncAuthorProfile(userId, user.name, user.profileImageUrl)
         postComments.syncAuthorProfile(userId, user.name, user.profileImageUrl)

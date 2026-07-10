@@ -111,4 +111,33 @@ class MessageControllerTest(
         assert(blocks.existsByBlockerIdAndBlockedId(aliceId, bobId))
         assert(conversations.findById(conversationId).isPresent)
     }
+
+    @Test
+    fun `DM 알림을 꺼둔 수신자에게는 MESSAGE_RECEIVED 알림을 만들지 않는다`() {
+        val alice = users.save(
+            com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),
+        )
+        val bob = users.save(
+            com.dasida.api.auth.User(email = "b-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "밥", notifyMessages = false),
+        )
+        val bobId = requireNotNull(bob.id)
+        val aliceToken = jwt.issue(alice)
+
+        val createdJson = mvc.post("/api/messages/conversations") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("peerUserId" to bobId))
+        }.andReturn().response.contentAsString
+        val conversationId = mapper.readTree(createdJson).get("id").asString()
+
+        mvc.post("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("content" to "알림 없이 도착"))
+        }.andExpect { status { isOk() } }
+
+        // 알림 row 는 없지만 메시지 자체(미읽음)는 정상 적재된다.
+        val notis = notifications.findByUserId(bobId, org.springframework.data.domain.PageRequest.of(0, 10))
+        assert(notis.content.none { it.type == NotificationType.MESSAGE_RECEIVED })
+    }
 }

@@ -169,14 +169,18 @@ class MessageService(
 
         val sender = users.findById(userId).orElse(null)
         val preview = trimmed.take(NOTIFICATION_PREVIEW)
-        notifications.notify(
-            recipientUserId = peerId,
-            actorUserId = userId,
-            type = NotificationType.MESSAGE_RECEIVED,
-            title = "새 메시지",
-            body = "${sender?.name ?: "사용자"}: $preview",
-            href = "/messages/$conversationId",
-        )
+        // 수신자가 DM 알림을 꺼뒀으면 알림 row 를 만들지 않는다(대화방 실시간 수신·배지는 WS 가 담당).
+        val recipient = users.findById(peerId).orElse(null)
+        if (recipient != null && recipient.notifyMessages) {
+            notifications.notify(
+                recipientUserId = peerId,
+                actorUserId = userId,
+                type = NotificationType.MESSAGE_RECEIVED,
+                title = "새 메시지",
+                body = "${sender?.name ?: "사용자"}: $preview",
+                href = "/messages/$conversationId",
+            )
+        }
         dmHub.publishMessage(
             conversationId,
             DmMessagePayload(

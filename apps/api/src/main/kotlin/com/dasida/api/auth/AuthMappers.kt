@@ -9,6 +9,7 @@ fun User.toProfile() = UserProfileResponse(
     verified = verified,
     profileImageUrl = profileImageUrl,
     notifyCampaignUpdates = notifyCampaignUpdates,
+    notifyMessages = notifyMessages,
     role = role,
 )
 

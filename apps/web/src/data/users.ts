@@ -8,6 +8,7 @@ export type UserProfile = {
   verified: boolean;
   profileImageUrl?: string | null;
   notifyCampaignUpdates?: boolean;
+  notifyMessages?: boolean;
   role?: "USER" | "ADMIN";
 };
 
@@ -83,6 +84,7 @@ export type UpdateProfileRequest = {
   name: string;
   profileImageUrl: string | null;
   notifyCampaignUpdates?: boolean;
+  notifyMessages?: boolean;
 };
 
 export type UpdateProfileResponse = {
