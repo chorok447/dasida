@@ -51,6 +51,8 @@ class RateLimitService(
             RateLimitRule.CAMPAIGN_CREATE -> properties.content.campaign
             RateLimitRule.REPORT_CREATE -> properties.content.report
             RateLimitRule.MEDIA_UPLOAD -> properties.content.media
+            RateLimitRule.INTERACTION_TOGGLE -> properties.content.interaction
+            RateLimitRule.VIEW_RECORD -> properties.content.view
         }
 
     companion object {

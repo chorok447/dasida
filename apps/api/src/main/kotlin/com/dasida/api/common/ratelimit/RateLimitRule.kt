@@ -8,6 +8,8 @@ enum class RateLimitRule(val keySegment: String) {
     CAMPAIGN_CREATE("campaign:create:ip"),
     REPORT_CREATE("report:create:ip"),
     MEDIA_UPLOAD("media:upload:ip"),
+    INTERACTION_TOGGLE("interaction:toggle:ip"),
+    VIEW_RECORD("view:record:ip"),
     ;
 
     fun bucketKey(clientIp: String): String = "rate-limit:$keySegment:$clientIp"

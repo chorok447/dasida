@@ -42,6 +42,10 @@ import java.util.UUID
         "app.rate-limit.content.campaign.window-seconds=60",
         "app.rate-limit.content.report.window-seconds=60",
         "app.rate-limit.content.media.window-seconds=60",
+        "app.rate-limit.content.interaction.limit=2",
+        "app.rate-limit.content.interaction.window-seconds=60",
+        "app.rate-limit.content.view.limit=2",
+        "app.rate-limit.content.view.window-seconds=60",
         "app.rate-limit.auth.login.limit=10000",
         "app.rate-limit.auth.signup.limit=10000",
     ],
@@ -188,6 +192,36 @@ class ContentWriteRateLimitTest(
                     add("X-Forwarded-For", "203.0.113.13")
                 }
             }.andExpect { status { isOk() } }
+        }
+    }
+
+    @Test
+    fun `좋아요 토글은 IP당 limit 초과 시 429를 반환한다`() {
+        val a = savePost()
+        val b = savePost()
+        val c = savePost()
+        postJson("/api/posts/$a/like", "{}", "203.0.113.21").andExpect { status { isOk() } }
+        postJson("/api/posts/$b/like", "{}", "203.0.113.21").andExpect { status { isOk() } }
+        postJson("/api/posts/$c/like", "{}", "203.0.113.21")
+            .andExpect {
+                status { isTooManyRequests() }
+                header { exists("Retry-After") }
+            }
+    }
+
+    @Test
+    fun `조회수 기록은 비로그인 포함 IP당 limit 초과 시 429를 반환한다`() {
+        val postId = savePost()
+        repeat(2) {
+            mvc.post("/api/posts/$postId/views") {
+                headers { add("X-Forwarded-For", "203.0.113.22") }
+            }.andExpect { status { isNoContent() } }
+        }
+        mvc.post("/api/posts/$postId/views") {
+            headers { add("X-Forwarded-For", "203.0.113.22") }
+        }.andExpect {
+            status { isTooManyRequests() }
+            header { exists("Retry-After") }
         }
     }
 
