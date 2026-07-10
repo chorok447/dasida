@@ -217,7 +217,7 @@ export interface paths {
         };
         /**
          * 게시글 목록 조회
-         * @description 공개 API. JWT 가 있으면 사용자별 좋아요/북마크/소유 상태를 포함한다.
+         * @description 공개 API. 최신 100건까지 반환한다(전체 탐색은 /api/posts/search 사용). JWT 가 있으면 사용자별 좋아요/북마크/소유 상태를 포함한다.
          */
         get: operations["list"];
         put?: never;
@@ -402,7 +402,7 @@ export interface paths {
         };
         /**
          * 캠페인 목록 조회
-         * @description 공개 API. JWT 가 있으면 사용자별 참여/소유 상태를 포함한다.
+         * @description 공개 API. 최신 100건까지 반환한다(전체 탐색은 /api/campaigns/search 사용). JWT 가 있으면 사용자별 참여/소유 상태를 포함한다.
          */
         get: operations["list_1"];
         put?: never;
