@@ -40,6 +40,8 @@ pnpm docker:reset   # wipe DB volume and restart MySQL
 
 Backend directly (from `apps/api/`): `./gradlew bootRun`, `./gradlew test`, `./gradlew build`.
 
+API 타입 동기화: `pnpm --filter web openapi:types` 가 실행 중인 API 의 `/v3/api-docs` 로부터 `apps/web/src/types/api.d.ts` 를 재생성한다(springdoc). 백엔드 DTO/엔드포인트를 바꾸면 재생성해서 diff 로 프론트 수동 타입(`apps/web/src/data/*.ts`)과의 드리프트를 리뷰하라. 이 파일은 커밋 대상이며 직접 수정하지 않는다.
+
 ## Gotchas
 
 - **JDK toolchain**: backend targets **JDK 21** via a Gradle toolchain. If the dev machine has a different JDK, the `foojay-resolver-convention` plugin in `apps/api/settings.gradle.kts` auto-downloads JDK 21 — don't change the target to match a local JDK.
