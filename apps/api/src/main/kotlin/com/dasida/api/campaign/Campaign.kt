@@ -46,6 +46,8 @@ class Campaign(
     // 개설자 삭제(soft delete). 값이 있으면 개설자 본인·관리자 복구 경로에서도 404 로 취급한다.
     // 삭제 시 hiddenAt 도 함께 세팅해 공개 노출 제외를 재사용한다.
     @Column(name = "deleted_at") @JsonIgnore var deletedAt: java.time.Instant? = null,
+    // 모집 마감 임박(D-1) 알림 발송 시각 — CampaignReminderJob 의 멱등성 마커. null = 미발송.
+    @Column(name = "recruit_end_reminder_sent_at") @JsonIgnore var recruitEndReminderSentAt: java.time.Instant? = null,
 )
 
 /**
