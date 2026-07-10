@@ -40,6 +40,8 @@ class MessageService(
         val high = maxOf(userId, peerUserId)
         val existing = conversations.findByUserLowIdAndUserHighId(low, high)
         if (existing != null) {
+            // 나갔던 대화를 다시 시작하면 멤버십을 복원한다(목록·미읽음 집계 재편입).
+            ensureMembership(existing.id, userId)
             return toSummary(existing, userId)
         }
         if (userBlocks.isBlockedEitherWay(userId, peerUserId)) {
@@ -166,6 +168,8 @@ class MessageService(
         if (trimmed.length > MAX_CONTENT) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "content too long")
         }
+        // 상대가 나간 방이면 멤버십을 복원해 새 메시지가 상대 목록에 다시 나타나게 한다.
+        ensureMembership(conversationId, peerId)
         val now = Instant.now(clock)
         val message = messages.save(
             Message(
@@ -230,6 +234,31 @@ class MessageService(
         dmHub.publishMessageDeleted(conversationId, DmMessageDeletedPayload(id = messageId), excludeUserId = userId)
         // 목록 미리보기도 즉시 마스킹되도록 inbox 요약을 갱신한다.
         conversations.findById(conversationId).orElse(null)?.let { notifyInbox(it, conversationId) }
+    }
+
+    /**
+     * 대화방 나가기 — 본인 멤버십만 제거한다. 목록·미읽음 집계는 멤버십 조인 기반이라 자동 제외되고,
+     * 방 접근은 memberOrForbidden 에 걸려 403 이 된다. 상대가 새 메시지를 보내거나 내가 다시
+     * DM 을 시작하면 멤버십이 복원된다(카카오톡식 복원 시맨틱).
+     */
+    @Transactional
+    fun leaveConversation(userId: Long, conversationId: String) {
+        memberOrForbidden(userId, conversationId)
+        members.deleteByConversationIdAndUserId(conversationId, userId)
+    }
+
+    /** 멤버십이 없으면 재생성한다. lastRead 는 초기화 상태(전체 미읽음)로 시작한다. */
+    private fun ensureMembership(conversationId: String, userId: Long) {
+        if (members.findByConversationIdAndUserId(conversationId, userId) != null) return
+        members.save(
+            ConversationMember(
+                id = "cm-${UUID.randomUUID()}",
+                conversationId = conversationId,
+                userId = userId,
+                lastReadMessageId = null,
+                joinedAt = Instant.now(clock),
+            ),
+        )
     }
 
     @Transactional

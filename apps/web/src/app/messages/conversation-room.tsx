@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, LogOut, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { AuthorHeader } from "@/components/author-header";
@@ -13,6 +13,7 @@ import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-req
 import {
   deleteMessage,
   fetchConversation,
+  leaveConversation,
   fetchMessages,
   markConversationRead,
   sendMessage,
@@ -20,6 +21,7 @@ import {
   type MessageItem,
 } from "@/data/messages";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { openDmSocket, type DmSocket } from "@/lib/dm-ws";
 
 function dmDateLabel(iso: string): string {
@@ -41,6 +43,8 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const { profile } = useCurrentUserProfile();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [leaving, setLeaving] = useState(false);
+  const confirm = useConfirm();
   const [peer, setPeer] = useState<ConversationPeer | null>(null);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -196,6 +200,25 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     }
   };
 
+  const onLeave = async () => {
+    if (leaving) return;
+    const ok = await confirm({
+      title: "대화방을 나갈까요?",
+      message: "내 목록에서 대화가 사라져요. 상대가 새 메시지를 보내면 다시 표시됩니다.",
+      confirmLabel: "나가기",
+      destructive: true,
+    });
+    if (!ok) return;
+    setLeaving(true);
+    try {
+      await leaveConversation(conversationId);
+      router.push("/messages");
+    } catch {
+      toast.error("대화방 나가기에 실패했습니다.");
+      setLeaving(false);
+    }
+  };
+
   const lastMineIndex = messages.reduce<number | null>((acc, msg, idx) => (isMine(msg) ? idx : acc), null);
   const readThroughIndex = peerReadMessageId
     ? messages.findIndex((m) => m.id === peerReadMessageId)
@@ -238,6 +261,16 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
           ) : (
             <span className="text-[14px] opacity-70">대화</span>
           )}
+          <button
+            type="button"
+            onClick={() => void onLeave()}
+            disabled={leaving}
+            aria-label="대화방 나가기"
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
+            style={{ background: "rgba(var(--ink-rgb), 0.07)", color: "var(--foreground-muted)" }}
+          >
+            <LogOut size={16} aria-hidden />
+          </button>
         </div>
       </header>
 

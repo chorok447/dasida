@@ -46,6 +46,12 @@ test("프로필에서 메시지를 보내고 알림·답장·목록이 동작한
   await page.getByRole("button", { name: "메시지 삭제" }).first().click();
   await expect(page.getByText("삭제된 메시지입니다")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(replyText)).not.toBeVisible();
+
+  // 대화방 나가기 → 목록에서 사라짐
+  await page.getByRole("button", { name: "대화방 나가기" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "나가기" }).click();
+  await page.waitForURL("**/messages");
+  await expect(page.getByText(messageText)).not.toBeVisible();
 });
 
 test("메시지 삭제가 상대 화면에 실시간 반영된다", async ({ browser }) => {
