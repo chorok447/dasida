@@ -1063,7 +1063,11 @@ export interface paths {
         get: operations["getConversation"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 대화방 나가기
+         * @description 본인 멤버십만 제거한다. 상대가 새 메시지를 보내면 방이 복원된다.
+         */
+        delete: operations["leaveConversation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4246,6 +4250,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ConversationSummaryResponse"];
                 };
+            };
+        };
+    };
+    leaveConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

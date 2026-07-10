@@ -242,6 +242,81 @@ class MessageControllerTest(
     }
 
     @Test
+    fun `대화방을 나가면 목록·미읽음에서 제외되고 상대가 메시지를 보내면 복원된다`() {
+        val alice = users.save(
+            com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),
+        )
+        val bob = users.save(
+            com.dasida.api.auth.User(email = "b-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "밥"),
+        )
+        val aliceToken = jwt.issue(alice)
+        val bobToken = jwt.issue(bob)
+
+        val createdJson = mvc.post("/api/messages/conversations") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("peerUserId" to requireNotNull(bob.id)))
+        }.andReturn().response.contentAsString
+        val conversationId = mapper.readTree(createdJson).get("id").asString()
+
+        mvc.post("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("content" to "나가기 전 메시지"))
+        }.andExpect { status { isOk() } }
+
+        // 밥이 나감 → 목록 제외·미읽음 0·방 접근 403
+        mvc.delete("/api/messages/conversations/$conversationId") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isNoContent() } }
+        mvc.get("/api/messages/conversations?page=0&size=10") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.content.length()", Matchers.`is`(0)) }
+        mvc.get("/api/messages/conversations/unread-count") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.unreadCount", Matchers.`is`(0)) }
+        mvc.get("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isForbidden() } }
+        // 나간 방 재나가기도 403 (멤버십 없음)
+        mvc.delete("/api/messages/conversations/$conversationId") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isForbidden() } }
+
+        // 앨리스가 새 메시지 → 밥 멤버십 복원(목록 재등장, 미읽음은 전체 2건)
+        mvc.post("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("content" to "복원 메시지"))
+        }.andExpect { status { isOk() } }
+        mvc.get("/api/messages/conversations?page=0&size=10") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.content.length()", Matchers.`is`(1)) }
+            .andExpect { jsonPath("$.content[0].unreadCount", Matchers.`is`(2)) }
+
+        // 내가 다시 DM 을 시작해도 복원된다 (밥이 다시 나간 뒤 재시작)
+        mvc.delete("/api/messages/conversations/$conversationId") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isNoContent() } }
+        mvc.post("/api/messages/conversations") {
+            header("Authorization", "Bearer $bobToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("peerUserId" to requireNotNull(alice.id)))
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.id", Matchers.`is`(conversationId)) }
+        mvc.get("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
     fun `DM 알림을 꺼둔 수신자에게는 MESSAGE_RECEIVED 알림을 만들지 않는다`() {
         val alice = users.save(
             com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),

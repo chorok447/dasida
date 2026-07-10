@@ -77,6 +77,15 @@ class MessageController(private val messages: MessageService) {
         @AuthenticationPrincipal user: AuthUser,
     ): MessageResponse = messages.sendMessage(user.id, id, req.content)
 
+    @Operation(summary = "대화방 나가기", description = "본인 멤버십만 제거한다. 상대가 새 메시지를 보내면 방이 복원된다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/conversations/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun leaveConversation(
+        @PathVariable id: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ) = messages.leaveConversation(user.id, id)
+
     @Operation(summary = "메시지 삭제", description = "본인이 보낸 메시지만. soft delete 후 응답에서 마스킹된다.")
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/conversations/{id}/messages/{messageId}")

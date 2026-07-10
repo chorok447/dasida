@@ -64,6 +64,11 @@ export function emitDmChanged(detail?: DmChangedDetail) {
   window.dispatchEvent(new CustomEvent<DmChangedDetail>(DM_EVENT, { detail }));
 }
 
+/** 대화방 나가기 — 본인 멤버십만 제거. 상대가 새 메시지를 보내면 방이 복원된다. */
+export function leaveConversation(conversationId: string): Promise<void> {
+  return apiDeleteVoid(`/api/messages/conversations/${encodeURIComponent(conversationId)}`);
+}
+
 /** 본인 메시지 삭제(soft delete). 삭제 후 본문은 서버가 마스킹한다. */
 export function deleteMessage(conversationId: string, messageId: string): Promise<void> {
   return apiDeleteVoid(
