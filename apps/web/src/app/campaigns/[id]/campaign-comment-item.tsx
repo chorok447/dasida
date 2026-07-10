@@ -1,10 +1,20 @@
 "use client";
 
-import { CornerDownRight, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { CornerDownRight, Heart, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ApiError } from "@/lib/api";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { Avatar } from "@/components/avatar";
 import { MentionText } from "@/components/mention-text";
 import { ReportButton } from "@/components/report-button";
-import type { CampaignComment } from "@/data/campaigns";
+import {
+  likeCampaignComment,
+  unlikeCampaignComment,
+  type CampaignComment,
+  type CampaignCommentLikeStatus,
+} from "@/data/campaigns";
 
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
@@ -50,6 +60,49 @@ export function CampaignCommentItem({
   /** 최상위 댓글에서 답글 작성 UI 를 토글한다. 없으면 답글 버튼을 숨긴다. */
   onToggleReply?: (comment: CampaignComment) => void;
 }) {
+  const router = useRouter();
+  // 좋아요 토글 응답을 다음 목록 fetch 전까지 덮어쓴다(comment prop 이 갱신되면 초기화 — 렌더 중 이전 값 비교 패턴).
+  const [likeOverride, setLikeOverride] = useState<CampaignCommentLikeStatus | null>(null);
+  const [likeSyncedFor, setLikeSyncedFor] = useState(comment);
+  if (likeSyncedFor !== comment) {
+    setLikeSyncedFor(comment);
+    setLikeOverride(null);
+  }
+  const [likeBusy, setLikeBusy] = useState(false);
+  const likes = likeOverride?.likes ?? comment.likes ?? 0;
+  const likedByMe = likeOverride?.likedByMe ?? comment.likedByMe ?? false;
+
+  const toggleLike = async () => {
+    const requestToken = getSessionId();
+    if (!requestToken) {
+      toast.error("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (likeBusy) return;
+    setLikeBusy(true);
+    try {
+      const status = likedByMe
+        ? await unlikeCampaignComment(comment.campaignId, comment.id)
+        : await likeCampaignComment(comment.campaignId, comment.id);
+      if (getSessionId() !== requestToken) return;
+      setLikeOverride(status);
+    } catch (error) {
+      if (getSessionId() !== requestToken) return;
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        toast.error("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (error instanceof ApiError && error.status === 404) {
+        toast.error("댓글을 찾을 수 없습니다.");
+      } else {
+        toast.error("좋아요 처리에 실패했습니다.");
+      }
+    } finally {
+      setLikeBusy(false);
+    }
+  };
+
   return (
     <article
       id={`comment-${comment.id}`}
@@ -171,17 +224,34 @@ export function CampaignCommentItem({
           >
             <MentionText text={comment.text} />
           </p>
-          {!isReply && onToggleReply ? (
+          <div className="mt-2 flex items-center gap-3">
             <button
               type="button"
-              onClick={() => onToggleReply(comment)}
-              className="mt-2 inline-flex items-center gap-1 text-[12px] opacity-55 hover:opacity-100"
-              style={{ color: "var(--foreground)" }}
+              onClick={() => void toggleLike()}
+              disabled={likeBusy}
+              aria-label={likedByMe ? "이 댓글 좋아요 취소" : "이 댓글 좋아요"}
+              aria-pressed={likedByMe}
+              className="inline-flex items-center gap-1 text-[12px] hover:opacity-100 disabled:opacity-40"
+              style={{
+                color: likedByMe ? "#ed5c48" : "var(--foreground)",
+                opacity: likedByMe ? 1 : 0.55,
+              }}
             >
-              <CornerDownRight size={12} aria-hidden />
-              {replying ? "답글 취소" : "답글 달기"}
+              <Heart size={12} fill={likedByMe ? "#ed5c48" : "transparent"} aria-hidden />
+              {likes}
             </button>
-          ) : null}
+            {!isReply && onToggleReply ? (
+              <button
+                type="button"
+                onClick={() => onToggleReply(comment)}
+                className="inline-flex items-center gap-1 text-[12px] opacity-55 hover:opacity-100"
+                style={{ color: "var(--foreground)" }}
+              >
+                <CornerDownRight size={12} aria-hidden />
+                {replying ? "답글 취소" : "답글 달기"}
+              </button>
+            ) : null}
+          </div>
         </>
       )}
     </article>

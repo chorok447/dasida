@@ -196,7 +196,25 @@ export type CampaignComment = {
   updatedAt: string | null;
   parentId?: string | null;
   replies?: CampaignComment[];
+  likes?: number;
+  likedByMe?: boolean;
 };
+
+/** 댓글 좋아요/취소 응답. 백엔드 CommentLikeStatusResponse 와 1:1. */
+export type CampaignCommentLikeStatus = { likes: number; likedByMe: boolean };
+
+export function likeCampaignComment(campaignId: string, commentId: string): Promise<CampaignCommentLikeStatus> {
+  return apiPost<CampaignCommentLikeStatus>(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}/like`,
+    {},
+  );
+}
+
+export function unlikeCampaignComment(campaignId: string, commentId: string): Promise<CampaignCommentLikeStatus> {
+  return apiDelete<CampaignCommentLikeStatus>(
+    `/api/campaigns/${encodeURIComponent(campaignId)}/comments/${encodeURIComponent(commentId)}/like`,
+  );
+}
 
 export type UpdateCampaignCommentRequest = { text: string };
 

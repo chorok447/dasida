@@ -539,6 +539,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/comments/{commentId}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 캠페인 댓글 좋아요
+         * @description 이미 좋아요한 경우에도 200(idempotent).
+         */
+        post: operations["likeComment_1"];
+        /**
+         * 캠페인 댓글 좋아요 취소
+         * @description 좋아요하지 않은 상태에서도 200(idempotent).
+         */
+        delete: operations["unlikeComment_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/signup": {
         parameters: {
             query?: never;
@@ -1534,6 +1558,9 @@ export interface components {
             updatedAt?: string | null;
             parentId?: string | null;
             replies?: components["schemas"]["CampaignCommentResponse"][];
+            /** Format: int64 */
+            likes?: number;
+            likedByMe?: boolean;
         };
         /** @description 비밀번호 변경 요청 */
         ChangePasswordRequest: {
@@ -3453,6 +3480,52 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CampaignCommentResponse"];
+                };
+            };
+        };
+    };
+    likeComment_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CommentLikeStatusResponse"];
+                };
+            };
+        };
+    };
+    unlikeComment_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CommentLikeStatusResponse"];
                 };
             };
         };
