@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { apiGetOrNull } from "@/lib/api";
+import { campaignJsonLd, serializeJsonLd } from "@/lib/json-ld";
 import type { Campaign } from "@/data/campaigns";
 import CampaignDetailClient from "./campaign-detail-client";
 
@@ -28,5 +29,11 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
-  return <CampaignDetailClient campaign={campaign} />;
+  return (
+    <>
+      {/* 검색엔진 리치 스니펫용 구조화 데이터. serializeJsonLd 가 사용자 입력의 태그 주입을 막는다. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(campaignJsonLd(campaign)) }} />
+      <CampaignDetailClient campaign={campaign} />
+    </>
+  );
 }
