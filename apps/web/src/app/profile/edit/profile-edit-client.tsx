@@ -11,6 +11,7 @@ import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import {
   MAX_NAME_LENGTH,
   MAX_PROFILE_IMAGE_URL_LENGTH,
+  isValidProfileImageUrl,
   updateProfile,
   validateProfileUpdate,
   type UserProfile,
@@ -87,6 +88,12 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
   const [profileImageUrl, setProfileImageUrl] = useState(profile.profileImageUrl ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // 제출 전에 바로 보이는 필드 단위 검증 — 형식 오류로 인한 재제출을 줄인다.
+  const nameError = name.trim() ? "" : "표시 이름을 입력해주세요.";
+  const imageUrlError =
+    profileImageUrl.trim() && !isValidProfileImageUrl(profileImageUrl)
+      ? "프로필 이미지 URL은 http:// 또는 https:// 로 시작해야 합니다."
+      : "";
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -187,16 +194,22 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               maxLength={MAX_NAME_LENGTH}
               autoComplete="name"
               disabled={submitting}
+              aria-invalid={!!nameError}
               className="ui-control"
               style={{
                 background: "var(--card)",
-                borderColor: "var(--border)",
+                borderColor: nameError ? "rgba(237,92,72,0.55)" : "var(--border)",
                 color: "var(--foreground)",
               }}
             />
-            <p className="mt-1 text-right text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>
-              {name.length}/{MAX_NAME_LENGTH}
-            </p>
+            <div className="mt-1 flex items-start justify-between gap-2">
+              {nameError ? (
+                <p role="alert" className="text-[12px] text-[#ed5c48]">{nameError}</p>
+              ) : <span />}
+              <p className="text-right text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>
+                {name.length}/{MAX_NAME_LENGTH}
+              </p>
+            </div>
           </div>
 
           <div>
@@ -211,10 +224,11 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
                 maxLength={MAX_PROFILE_IMAGE_URL_LENGTH}
                 placeholder="https://example.com/avatar.png"
                 disabled={submitting}
+                aria-invalid={!!imageUrlError}
                 className="ui-control min-w-0 flex-1"
                 style={{
                   background: "var(--card)",
-                  borderColor: "var(--border)",
+                  borderColor: imageUrlError ? "rgba(237,92,72,0.55)" : "var(--border)",
                   color: "var(--foreground)",
                 }}
               />
@@ -223,6 +237,9 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
                 onUploaded={setProfileImageUrl}
               />
             </div>
+            {imageUrlError ? (
+              <p role="alert" className="mt-1 text-[12px] text-[#ed5c48]">{imageUrlError}</p>
+            ) : null}
             <p className="mt-1 text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>
               URL 입력 또는 파일 업로드(jpeg/png/webp, 5MB 이하). 비우면 기본 아바타가 표시됩니다.
             </p>
@@ -262,7 +279,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
             </Link>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !!nameError || !!imageUrlError}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7dd3a3] px-8 py-3 text-[13px] font-medium text-[#0f1f22] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-50"
             >
               {submitting ? (
