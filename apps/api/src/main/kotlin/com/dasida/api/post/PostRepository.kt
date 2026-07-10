@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
+/** countByAuthorUserIdsAndHiddenAtIsNull JPQL constructor projection 용. */
+data class AuthorPostCount(val authorUserId: Long?, val count: Long)
+
 interface PostRepository : JpaRepository<Post, String> {
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Post>
 
@@ -29,6 +32,16 @@ interface PostRepository : JpaRepository<Post, String> {
 
     /** 공개 프로필 카운트용 — 숨김·삭제(hiddenAt 세팅됨)를 제외해 공개 목록과 수치가 일치하게 한다. */
     fun countByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long): Long
+
+    /** 사용자 목록 매핑용 bulk 집계 — 작성자별 공개 게시글 수. */
+    @Query(
+        """
+        select new com.dasida.api.post.AuthorPostCount(p.authorUserId, count(p))
+        from Post p where p.authorUserId in :authorUserIds and p.hiddenAt is null
+        group by p.authorUserId
+        """,
+    )
+    fun countByAuthorUserIdsAndHiddenAtIsNull(@Param("authorUserIds") authorUserIds: Collection<Long>): List<AuthorPostCount>
 
     // 공개 노출 경로용(숨김 제외). 작성자 본인 목록(mine)은 위의 무필터 메서드를 그대로 쓴다.
     /** 무페이지 레거시 목록(GET /api/posts)용 상한 조회 — 전건 스캔·덤프 방지. */
