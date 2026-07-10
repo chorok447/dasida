@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Bookmark, Heart, MessageCircle, Send } from "lucide-react";
+import { Bookmark, Eye, Heart, MessageCircle, Send } from "lucide-react";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -222,6 +222,11 @@ export function FeedPostCard({
               >
                 <MessageCircle size={14} aria-hidden /> {commentCount}
               </button>
+              <span className="flex items-center gap-1">
+                <Eye size={14} aria-hidden />
+                <span className="sr-only">조회수</span>
+                {p.views ?? 0}
+              </span>
               <ShareButton
                 title={p.text.slice(0, 80)}
                 className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors"
