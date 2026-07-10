@@ -282,10 +282,13 @@ export function usePagedComments<C extends { id: string; text: string }>(args: U
     }
   };
 
-  const refreshAfterRemove = () => {
+  const refreshAfterRemove = (commentId: string) => {
     argsRef.current.onAfterMutation?.();
     const response = currentState.response;
-    if (response && response.content.length === 1 && page > 0) {
+    // 답글 삭제(commentId 가 최상위 목록에 없음)로는 페이지를 옮기지 않는다 — 최상위 댓글이 사라져
+    // 페이지가 비게 될 때만 이전 페이지로 복귀.
+    const removedTopLevel = response?.content.some((comment) => comment.id === commentId) === true;
+    if (response && removedTopLevel && response.content.length === 1 && page > 0) {
       argsRef.current.onPageChange(page - 1, { replace: false, preserveTarget: false });
     } else {
       reload();
@@ -308,7 +311,7 @@ export function usePagedComments<C extends { id: string; text: string }>(args: U
       await argsRef.current.removeComment(commentId);
       if (getSessionId() !== requestToken) return;
       argsRef.current.onCountDelta?.(-1);
-      refreshAfterRemove();
+      refreshAfterRemove(commentId);
     } catch (error) {
       if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
@@ -318,7 +321,7 @@ export function usePagedComments<C extends { id: string; text: string }>(args: U
         argsRef.current.onMutationError("댓글 삭제 권한이 없습니다.");
       } else if (error instanceof ApiError && error.status === 404) {
         argsRef.current.onMutationError("이미 삭제되었거나 존재하지 않는 댓글입니다.");
-        refreshAfterRemove();
+        refreshAfterRemove(commentId);
       } else {
         argsRef.current.onMutationError("댓글 삭제에 실패했습니다.");
       }

@@ -250,8 +250,8 @@ export function CampaignStatusManagement({
           aria-label={label}
           className="rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
           style={{
-            background: target === "closed" ? "rgba(237,92,72,0.16)" : "#7dd3a3",
-            color: target === "closed" ? "#ed5c48" : "#0f1f22",
+            background: target === "closed" ? "var(--danger-soft)" : "#7dd3a3",
+            color: target === "closed" ? "var(--danger)" : "#0f1f22",
           }}
         >
           {updating ? "처리 중…" : label}
@@ -263,7 +263,7 @@ export function CampaignStatusManagement({
             disabled={disabled}
             aria-label="캠페인 삭제"
             className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
-            style={{ background: "rgba(237,92,72,0.16)", color: "#ed5c48" }}
+            style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
           >
             <Trash2 size={14} /> {deleting ? "삭제 중…" : "캠페인 삭제"}
           </button>

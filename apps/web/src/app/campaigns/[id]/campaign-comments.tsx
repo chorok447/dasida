@@ -12,7 +12,7 @@ import {
   type CampaignCommentsResponse,
 } from "@/data/campaigns";
 import { ApiError, apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
-import { getSessionId } from "@/lib/auth";
+import { clearSession, getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
 import { CampaignCommentItem } from "./campaign-comment-item";
 import { CampaignCommentCompose } from "./campaign-comment-compose";
@@ -111,6 +111,7 @@ export function CampaignComments({
     } catch (error) {
       if (getSessionId() !== requestToken) return;
       if (error instanceof ApiError && error.status === 401) {
+        clearSession();
         router.push("/login");
       } else if (error instanceof ApiError && error.status === 404) {
         setMutationError("원본 댓글이 삭제되어 답글을 남길 수 없습니다.");

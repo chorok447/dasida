@@ -159,7 +159,7 @@ export function ReportButton({
               onClick={close}
               disabled={submitting}
               aria-label="신고 창 닫기"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3] disabled:opacity-40 dark:hover:bg-white/10"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3] disabled:opacity-40"
             >
               <X size={17} />
             </button>
@@ -202,7 +202,7 @@ export function ReportButton({
               type="button"
               onClick={close}
               disabled={submitting}
-              className="rounded-full px-4 py-2.5 text-[13px] transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3] disabled:opacity-40 dark:hover:bg-white/10"
+              className="rounded-full px-4 py-2.5 text-[13px] transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3] disabled:opacity-40"
             >
               취소
             </button>
@@ -211,7 +211,7 @@ export function ReportButton({
               disabled={submitting || !reason}
               aria-busy={submitting}
               aria-label={submitting ? "신고 접수 중" : "신고하기"}
-              className="inline-flex items-center gap-2 rounded-full bg-[#ed5c48] px-5 py-2.5 text-[13px] text-white transition-colors hover:bg-[#d94e3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--danger-solid)] px-5 py-2.5 text-[13px] text-white transition-colors hover:bg-[var(--danger-solid-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />}
               {submitting ? "접수 중…" : "신고하기"}

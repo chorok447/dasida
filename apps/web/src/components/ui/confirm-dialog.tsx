@@ -102,7 +102,7 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
           ref={cancelRef}
           type="button"
           onClick={() => onClose(false)}
-          className="rounded-full px-4 py-2 text-[13px] transition-colors hover:bg-white/10"
+          className="rounded-full px-4 py-2 text-[13px] transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)]"
           style={{ color: "rgba(var(--ink-rgb), 0.8)" }}
         >
           {state.cancelLabel ?? "취소"}
@@ -112,7 +112,7 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
           onClick={() => onClose(true)}
           className="rounded-full px-4 py-2 text-[13px] font-medium"
           style={{
-            background: state.destructive ? "#ed5c48" : "#7dd3a3",
+            background: state.destructive ? "var(--danger-solid)" : "#7dd3a3",
             color: state.destructive ? "#ffffff" : "#0f1f22",
           }}
         >

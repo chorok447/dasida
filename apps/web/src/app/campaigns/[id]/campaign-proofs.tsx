@@ -86,8 +86,8 @@ function ProofItem({
             aria-label="내 참여 인증 삭제"
             onClick={() => onDelete(proof)}
             disabled={deleting}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#ed5c48] disabled:cursor-not-allowed disabled:opacity-45"
-            style={{ background: "rgba(237,92,72,0.12)" }}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-45"
+            style={{ background: "var(--danger-soft)" }}
           >
             {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
           </button>
@@ -163,6 +163,11 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
     fetchCampaignProofs(campaign.id, page)
       .then((next) => {
         if (!guard.isCurrent()) return;
+        // 마지막 항목 삭제 등으로 현재 페이지가 비면 마지막 유효 페이지로 복귀.
+        if (next.content.length === 0 && page > 0) {
+          setPage(Math.max(0, Math.min(page - 1, next.totalPages - 1)));
+          return;
+        }
         setListState({ identity: requestIdentity, status: "success", response: next });
       })
       .catch((error) => {

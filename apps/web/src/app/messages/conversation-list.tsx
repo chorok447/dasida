@@ -159,7 +159,7 @@ function ConversationRow({ item }: { item: ConversationSummary }) {
         {item.unreadCount > 0 ? (
           <span
             className="flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold"
-            style={{ background: "#ed5c48", color: "#fff" }}
+            style={{ background: "var(--danger-solid)", color: "#fff" }}
           >
             {item.unreadCount > 99 ? "99+" : item.unreadCount}
           </span>

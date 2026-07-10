@@ -159,7 +159,7 @@ export function SearchResults({
         <section className="mb-12">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] text-[#148a90]">Campaigns</p>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--accent-strong)]">Campaigns</p>
               <h2 className="mt-1 text-[24px] font-semibold" style={{ color: "var(--foreground)" }}>캠페인</h2>
             </div>
             <span className="text-[12px] opacity-55" style={{ color: "var(--foreground)" }}>
@@ -192,7 +192,7 @@ export function SearchResults({
         <section>
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] text-[#148a90]">Posts</p>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--accent-strong)]">Posts</p>
               <h2 className="mt-1 text-[24px] font-semibold" style={{ color: "var(--foreground)" }}>게시글</h2>
             </div>
             <span className="text-[12px] opacity-55" style={{ color: "var(--foreground)" }}>
@@ -225,7 +225,7 @@ export function SearchResults({
         <section className="mt-12">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] text-[#148a90]">Users</p>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--accent-strong)]">Users</p>
               <h2 className="mt-1 text-[24px] font-semibold" style={{ color: "var(--foreground)" }}>사용자</h2>
             </div>
             <span className="text-[12px] opacity-55" style={{ color: "var(--foreground)" }}>

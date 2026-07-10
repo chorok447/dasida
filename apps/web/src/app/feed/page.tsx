@@ -21,7 +21,10 @@ export default async function FeedPage() {
 
 function FeedFallback() {
   return (
-    <section className="min-h-screen bg-[#f9f7f2] px-6 pb-20 pt-32 text-center text-[#1c4044]/60 dark:bg-[#0f1f22] dark:text-white/60">
+    <section
+      className="min-h-screen px-6 pb-20 pt-32 text-center"
+      style={{ background: "var(--surface)", color: "rgba(var(--ink-rgb), 0.6)" }}
+    >
       피드 검색 조건을 불러오는 중입니다.
     </section>
   );

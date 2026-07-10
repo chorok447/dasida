@@ -266,7 +266,7 @@ function ReportRow({
           </span>
         )}
         {item.targetReportCount > 1 && (
-          <span className="rounded-full px-2.5 py-1" style={{ background: "rgba(237,92,72,0.15)", color: "#ed5c48" }}>
+          <span className="rounded-full px-2.5 py-1" style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>
             같은 대상 신고 {item.targetReportCount}건
           </span>
         )}
@@ -390,7 +390,7 @@ function ReportRow({
 function StatusBadge({ status }: { status: ReportStatus }) {
   const style =
     status === "PENDING"
-      ? { background: "rgba(237,178,72,0.18)", color: "#b07b1e" }
+      ? { background: "var(--warning-soft)", color: "var(--warning)" }
       : status === "RESOLVED"
         ? { background: "var(--accent-soft)", color: "var(--accent-secondary)" }
         : { background: "var(--surface)", color: "var(--foreground-muted)" };

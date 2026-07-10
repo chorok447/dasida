@@ -252,7 +252,7 @@ export default function PostCreateClient() {
               </button>
               <PostComposeSubmitButton
                 submitting={submitting}
-                disabled={!values.text.trim()}
+                disabled={!values.text.trim() && values.images.length === 0}
                 onClick={submit}
                 idleLabel="게시하기"
                 pendingLabel="게시 중…"

@@ -72,7 +72,7 @@ function ProfileImagePreview({
         type="button"
         onClick={onClear}
         disabled={disabled}
-        className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#ed5c48] text-white shadow-md transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+        className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--danger-solid)] text-white shadow-md transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="프로필 이미지 URL 삭제"
       >
         <Trash2 size={14} aria-hidden />

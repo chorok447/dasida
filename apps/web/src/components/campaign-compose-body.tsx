@@ -41,7 +41,7 @@ export function CampaignComposeBody({
         maxLength={CAMPAIGN_MAX_BODY_LENGTH}
       />
       {fieldError ? (
-        <p id={bodyErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+        <p id={bodyErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
           {fieldError}
         </p>
       ) : null}

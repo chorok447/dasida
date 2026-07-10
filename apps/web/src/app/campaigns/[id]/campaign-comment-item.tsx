@@ -103,8 +103,8 @@ export function CampaignCommentItem({
               aria-label={`${comment.author.name} 댓글 삭제`}
               onClick={() => onDelete(comment)}
               disabled={deleting || saving}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#ed5c48] disabled:cursor-not-allowed disabled:opacity-45"
-              style={{ background: "rgba(237,92,72,0.12)" }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-45"
+              style={{ background: "var(--danger-soft)" }}
             >
               {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
             </button>

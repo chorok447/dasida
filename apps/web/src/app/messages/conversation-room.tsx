@@ -68,7 +68,8 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
         const chronological = [...res.content].reverse();
         setMessages(chronological);
         setPeer(conv.peer);
-        return markConversationRead(conversationId);
+        // 읽음 처리 실패가 "불러오기 실패" 토스트로 이어지지 않게 로드 에러 처리와 분리한다.
+        markConversationRead(conversationId).catch(() => {});
       })
       .catch((error) => {
         if (!guard.isCurrent()) return;
@@ -95,6 +96,10 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
       onMessage: (convId, msg) => {
         if (convId !== conversationId) return;
         setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+        // 방을 보고 있는 동안 도착한 상대 메시지는 즉시 읽음 처리(배지·읽음영수증 동기화).
+        if (viewerId != null && msg.senderId !== viewerId && document.visibilityState === "visible") {
+          markConversationRead(conversationId).catch(() => {});
+        }
       },
       onTyping: (convId, userId, active) => {
         if (convId !== conversationId || userId === viewerId) return;
@@ -164,7 +169,10 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     }
   };
 
-  const lastMineIndex = messages.reduce<number | null>((acc, msg, idx) => (msg.mine ? idx : acc), null);
+  // WS 에코가 profile 로드 전에 도착하면 mine=false 로 저장될 수 있어, 렌더 시점의 profile 로 재판정한다.
+  const isMine = (msg: MessageItem) => (profile?.id != null ? msg.senderId === profile.id : msg.mine);
+
+  const lastMineIndex = messages.reduce<number | null>((acc, msg, idx) => (isMine(msg) ? idx : acc), null);
   const readThroughIndex = peerReadMessageId
     ? messages.findIndex((m) => m.id === peerReadMessageId)
     : -1;
@@ -233,12 +241,13 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
                     </li>,
                   );
                 }
+                const mine = isMine(msg);
                 items.push(
-                  <li key={msg.id} className={`flex ${msg.mine ? "justify-end" : "justify-start"}`}>
+                  <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div
                       className="max-w-[80%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap break-words"
                       style={{
-                        background: msg.mine
+                        background: mine
                           ? "rgba(125,211,163,0.35)"
                           : "rgba(var(--ink-rgb), 0.07)",
                         color: "var(--foreground)",

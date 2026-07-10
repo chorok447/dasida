@@ -7,6 +7,7 @@ import { Mail, Lock, User, Check, ArrowRight } from "lucide-react";
 import { AuthShell, FieldInput } from "@/components/auth-shell";
 import { apiPost, ApiError } from "@/lib/api";
 import { setSession } from "@/lib/auth";
+import { safeInternalPath } from "@/lib/safe-path";
 import { getPasswordPolicyState, isValidEmail } from "@/data/auth";
 
 type AuthResponse = { token: string; name: string; verified: boolean };
@@ -37,9 +38,11 @@ export default function SignupPage() {
     setSubmitting(true);
     setError("");
     try {
-      const res = await apiPost<AuthResponse>("/api/auth/signup", { email, password, name: nickname });
+      const res = await apiPost<AuthResponse>("/api/auth/signup", { email, password, name: nickname.trim() });
       setSession(res.name);
-      router.push("/feed");
+      // 보호 페이지 → 로그인 → 회원가입으로 넘어온 경우에도 원래 목적지로 복귀(내부 경로만).
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(safeInternalPath(next) ?? "/feed");
     } catch (e) {
       setSubmitting(false);
       setError(e instanceof ApiError && e.status === 409 ? "이미 사용 중인 이메일입니다." : "회원가입에 실패했습니다.");

@@ -47,10 +47,8 @@ export function openDmSocket(handlers: DmWsHandlers): DmSocket {
 
   const connect = () => {
     if (closed) return;
-    let opened = false;
     ws = new WebSocket(wsUrl());
     ws.onopen = () => {
-      opened = true;
       retryMs = 1500;
       flushSubs();
     };
@@ -107,7 +105,9 @@ export function openDmSocket(handlers: DmWsHandlers): DmSocket {
       }
     };
     ws.onclose = () => {
-      if (closed || !opened) return;
+      // 열리기 전에 실패한 시도도 재시도를 이어간다(서버 재기동 중 끊기면 체인이 영구 중단되던 버그).
+      // 성공 연결 후 끊긴 경우의 백오프 초기화는 onopen 의 retryMs 리셋이 담당한다.
+      if (closed) return;
       reconnectTimer = window.setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 15_000);
     };

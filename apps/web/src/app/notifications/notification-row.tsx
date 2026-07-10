@@ -49,7 +49,7 @@ export function NotificationRow({
       <div className="relative flex-shrink-0">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-xl"
-          style={{ background: "rgba(20,138,144,0.14)", color: "#148a90" }}
+          style={{ background: "var(--accent-soft)", color: "var(--accent-strong)" }}
         >
           {iconFor(item.type)}
         </div>
@@ -74,7 +74,7 @@ export function NotificationRow({
               background: item.read
                 ? "rgba(var(--ink-rgb), 0.06)"
                 : "rgba(125,211,163,0.22)",
-              color: item.read ? ("rgba(var(--ink-rgb), 0.55)") : "#1c4044",
+              color: item.read ? ("rgba(var(--ink-rgb), 0.55)") : "var(--accent-secondary)",
             }}
           >
             {statusLabel}
@@ -138,7 +138,7 @@ export function NotificationRow({
         onClick={() => onDelete(item.id)}
         disabled={deleting || pending}
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ed5c48]"
-        style={{ background: "var(--danger-soft)", color: "#ed5c48" }}
+        style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
         aria-label="알림 삭제"
       >
         {deleting ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Trash2 size={14} aria-hidden />}

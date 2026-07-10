@@ -177,7 +177,7 @@ export function PostComposeForm({
           maxLength={POST_MAX_TEXT_LENGTH}
         />
         {fieldErrors.text ? (
-          <p id={textErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+          <p id={textErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
             {fieldErrors.text}
           </p>
         ) : null}
@@ -234,7 +234,7 @@ export function PostComposeForm({
           />
         </div>
         {(fieldErrors.images || imageInputError) ? (
-          <p id={imageErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+          <p id={imageErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
             {fieldErrors.images ?? imageInputError}
           </p>
         ) : null}
@@ -339,7 +339,7 @@ export function PostComposeForm({
           />
         </div>
         {fieldErrors.tags ? (
-          <p id={tagErrorId} className="mt-1.5 text-[12px] text-red-500" role="alert">
+          <p id={tagErrorId} className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }} role="alert">
             {fieldErrors.tags}
           </p>
         ) : null}
