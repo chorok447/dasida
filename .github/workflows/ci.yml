@@ -77,6 +77,22 @@ jobs:
           name: playwright-traces
           path: apps/web/test-results/
           retention-days: 7
+      # OpenAPI 타입 스냅샷 드리프트 게이트: 백엔드 DTO/엔드포인트가 바뀌면
+      # `pnpm --filter web openapi:types` 재생성 커밋을 요구한다(CLAUDE.md 참고).
+      # e2e 가 쓰던 MySQL service 를 재사용해 API 를 잠깐 다시 띄운다(gradle 캐시가 따뜻해 빠름).
+      - name: OpenAPI 타입 드리프트 검사
+        run: |
+          (cd apps/api && ./gradlew bootRun --args='--server.port=8081 --server.address=127.0.0.1' > /tmp/openapi-boot.log 2>&1 &)
+          for i in $(seq 1 60); do
+            sleep 2
+            curl -sf http://127.0.0.1:8081/actuator/health > /dev/null && break
+            if [ "$i" = "60" ]; then echo "::error::API 부팅 시간 초과"; tail -50 /tmp/openapi-boot.log; exit 1; fi
+          done
+          pnpm --filter web exec openapi-typescript http://127.0.0.1:8081/v3/api-docs -o src/types/api.d.ts
+          if ! git diff --exit-code apps/web/src/types/api.d.ts; then
+            echo "::error::OpenAPI 타입 스냅샷이 오래됐습니다 — 'pnpm --filter web openapi:types' 재생성 후 커밋하세요."
+            exit 1
+          fi
 
   api:
     name: api (Spring Boot)
