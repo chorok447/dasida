@@ -105,17 +105,8 @@ class MessageService(
     }
 
     @Transactional(readOnly = true)
-    fun unreadCount(userId: Long): ConversationUnreadCountResponse {
-        var total = 0
-        var page = 0
-        while (true) {
-            val batch = members.findByUserIdOrderByConversationUpdatedAt(userId, PageRequest.of(page, MAX_PAGE_SIZE))
-            total += batch.content.sumOf { unreadForMember(it, userId).toInt() }
-            if (!batch.hasNext()) break
-            page++
-        }
-        return ConversationUnreadCountResponse(unreadCount = total)
-    }
+    fun unreadCount(userId: Long): ConversationUnreadCountResponse =
+        ConversationUnreadCountResponse(unreadCount = messages.countTotalUnreadForUser(userId).toInt())
 
     @Transactional(readOnly = true)
     fun listMessages(userId: Long, conversationId: String, page: Int, size: Int): MessagePageResponse {

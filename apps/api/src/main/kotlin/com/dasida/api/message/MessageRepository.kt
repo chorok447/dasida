@@ -26,6 +26,17 @@ interface MessageRepository : JpaRepository<Message, String> {
         @Param("afterSeq") afterSeq: Long,
     ): Long
 
+    @Query(
+        """
+        select count(m) from Message m
+        join ConversationMember cm on cm.conversationId = m.conversationId and cm.userId = :userId
+        left join Message lr on lr.id = cm.lastReadMessageId
+        where m.senderId <> :userId
+          and m.seq > coalesce(lr.seq, -1)
+        """,
+    )
+    fun countTotalUnreadForUser(@Param("userId") userId: Long): Long
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from Message m where m.senderId = :userId")
     fun deleteAllBySenderId(@Param("userId") userId: Long)
