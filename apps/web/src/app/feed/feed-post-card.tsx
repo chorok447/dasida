@@ -201,11 +201,26 @@ export function FeedPostCard({
           </div>
           <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--border)" }}>
             <div className="flex flex-wrap gap-3 text-[13px]" style={{ color: "var(--foreground-muted)" }}>
-              <motion.button whileTap={{ scale: 0.85 }} onClick={onLike} disabled={liking || refreshing} className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50" style={liked ? { color: "#ed5c48" } : undefined}>
-                <Heart size={14} fill={liked ? "#ed5c48" : "none"} /> {likes}
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.85 }}
+                onClick={onLike}
+                disabled={liking || refreshing}
+                aria-label={liked ? "게시글 좋아요 취소" : "게시글 좋아요"}
+                aria-pressed={liked}
+                className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50"
+                style={liked ? { color: "#ed5c48" } : undefined}
+              >
+                <Heart size={14} fill={liked ? "#ed5c48" : "none"} aria-hidden /> {likes}
               </motion.button>
-              <button onClick={toggleComments} className="flex items-center gap-1">
-                <MessageCircle size={14} /> {commentCount}
+              <button
+                type="button"
+                onClick={toggleComments}
+                aria-label={showComments ? "댓글 접기" : "댓글 펼치기"}
+                aria-expanded={showComments}
+                className="flex items-center gap-1"
+              >
+                <MessageCircle size={14} aria-hidden /> {commentCount}
               </button>
               <ShareButton
                 title={p.text.slice(0, 80)}
@@ -246,7 +261,7 @@ export function FeedPostCard({
                       <div className="text-[12px]" style={{ color: "var(--foreground)" }}>
                         {c.author.name} <span className="opacity-50">· {c.time}</span>
                       </div>
-                      <p className="text-[13px]" style={{ color: "var(--border)" }}>{c.text}</p>
+                      <p className="text-[13px]" style={{ color: "rgba(var(--ink-rgb), 0.85)" }}>{c.text}</p>
                     </div>
                   </div>
                 ))

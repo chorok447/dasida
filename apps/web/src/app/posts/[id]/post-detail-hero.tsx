@@ -235,16 +235,19 @@ export function PostDetailHero({
 
           <div className="flex items-center gap-2 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
             <motion.button
+              type="button"
               whileTap={{ scale: 0.85 }}
               onClick={onLike}
               disabled={liking || refreshing}
+              aria-label={liked ? "게시글 좋아요 취소" : "게시글 좋아요"}
+              aria-pressed={liked}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
               style={{
                 background: liked ? "rgba(237,92,72,0.15)" : "var(--border)",
                 color: liked ? "#ed5c48" : "var(--foreground)",
               }}
             >
-              <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} /> {likes}
+              <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} aria-hidden /> {likes}
             </motion.button>
             <button
               type="button"
