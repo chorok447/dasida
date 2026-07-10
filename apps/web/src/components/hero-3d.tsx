@@ -66,12 +66,14 @@ export function Hero3D() {
         style={{ rotateX, rotateY, y: titleY, opacity: titleOpacity, transformStyle: "preserve-3d" }}
       >
         <motion.div
-          style={{ transform: "translateZ(40px)" }}
+          // 배지 뒤에 민트 blur 오브가 지나가 텍스트 대비가 무너질 수 있어(다크에서 1.67:1)
+          // 표면색 배경을 깔아 어떤 배경 위에서도 4.5:1 을 보장한다.
+          style={{ transform: "translateZ(40px)", background: "rgba(var(--surface-rgb), 0.8)" }}
           className="absolute -top-16 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full border backdrop-blur-md whitespace-nowrap tracking-[0.3em] uppercase"
         >
           <span
             style={{
-              color: "rgba(var(--ink-rgb), 0.88)",
+              color: "var(--heading)",
             }}
           >
             Re · Cycle · Up
