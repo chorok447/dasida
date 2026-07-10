@@ -20,7 +20,7 @@ export function AdminNav() {
       </p>
       <h1
         className="mb-6 text-[32px]"
-        style={{ fontFamily: "'Black Han Sans', sans-serif", color: "var(--foreground)" }}
+        style={{ fontFamily: "var(--font-black-han), sans-serif", color: "var(--foreground)" }}
       >
         관리자
       </h1>

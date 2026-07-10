@@ -164,7 +164,7 @@ export default function PostCreateClient() {
           <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
             New Post
           </p>
-          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
+          <h1 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
             새 글 쓰기
           </h1>
         </div>

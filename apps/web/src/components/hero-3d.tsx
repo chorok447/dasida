@@ -85,7 +85,7 @@ export function Hero3D() {
           <span
             className="block"
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(48px, 7vw, 110px)",
               lineHeight: 1.05,
               color: "var(--foreground)",
@@ -97,7 +97,7 @@ export function Hero3D() {
           <span
             className="block mt-3"
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(48px, 7vw, 110px)",
               lineHeight: 1.05,
               backgroundImage: "var(--hero-title-gradient)",
@@ -114,7 +114,7 @@ export function Hero3D() {
           style={{ transform: "translateZ(140px)" }}
           className="hidden sm:flex absolute -right-10 -top-8 w-28 h-28 rounded-2xl bg-[#7dd3a3] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] items-center justify-center"
         >
-          <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 28, color: "#0f1f22" }}>
+          <span style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 28, color: "#0f1f22" }}>
             다시,<br />다
           </span>
         </motion.div>

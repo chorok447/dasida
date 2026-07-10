@@ -53,7 +53,7 @@ export function UserConnectionsClient({ mode }: { mode: "following" | "followers
         </Link>
         <h1
           className="mb-6"
-          style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 28, color: "var(--foreground)" }}
+          style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 28, color: "var(--foreground)" }}
         >
           {title}
         </h1>

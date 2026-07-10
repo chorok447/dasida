@@ -125,7 +125,7 @@ export default function DashboardClient() {
             style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
           >
             <Icon size={18} aria-hidden style={{ color: "var(--accent-secondary)" }} />
-            <p className="mt-3 text-[24px]" style={{ fontFamily: "'Black Han Sans', sans-serif" }}>
+            <p className="mt-3 text-[24px]" style={{ fontFamily: "var(--font-black-han), sans-serif" }}>
               {value.toLocaleString()}
             </p>
             <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
@@ -218,7 +218,7 @@ function QueueCard({
           </p>
         </div>
       </div>
-      <span className="text-[32px]" style={{ fontFamily: "'Black Han Sans', sans-serif" }} aria-label={countLabel}>
+      <span className="text-[32px]" style={{ fontFamily: "var(--font-black-han), sans-serif" }} aria-label={countLabel}>
         {count.toLocaleString()}
       </span>
     </Link>

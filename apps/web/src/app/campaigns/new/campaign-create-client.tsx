@@ -155,7 +155,7 @@ export default function CampaignCreateClient() {
           <p className="mb-3 uppercase tracking-[0.4em]" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
             Create Campaign
           </p>
-          <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
+          <h1 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: "clamp(36px, 4.5vw, 60px)", color: "var(--foreground)" }}>
             새 캠페인 개설
           </h1>
         </div>
@@ -257,7 +257,7 @@ export default function CampaignCreateClient() {
                 </span>
               </div>
               <div className="space-y-3 p-5">
-                <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: "var(--foreground)", lineHeight: 1.25 }}>
+                <h3 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 22, color: "var(--foreground)", lineHeight: 1.25 }}>
                   {values.title || "캠페인 제목"}
                 </h3>
                 <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>

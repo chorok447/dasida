@@ -37,7 +37,7 @@ export function LandingStats() {
           </p>
           <h2
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(40px, 5vw, 72px)",
               color: INK,
             }}
@@ -59,7 +59,7 @@ export function LandingStats() {
               >
                 <p
                   style={{
-                    fontFamily: "'Black Han Sans', sans-serif",
+                    fontFamily: "var(--font-black-han), sans-serif",
                     fontSize: "clamp(36px, 4vw, 52px)",
                     color: ACCENT,
                     lineHeight: 1.1,
@@ -113,7 +113,7 @@ export function LandingStats() {
               <div>
                 <p
                   style={{
-                    fontFamily: "'Black Han Sans', sans-serif",
+                    fontFamily: "var(--font-black-han), sans-serif",
                     fontSize: "clamp(48px, 5vw, 64px)",
                     color: INK,
                     lineHeight: 1,

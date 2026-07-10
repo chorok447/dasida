@@ -76,7 +76,7 @@ export function AuthShell({
             </p>
             <h1
               style={{
-                fontFamily: "'Black Han Sans', sans-serif",
+                fontFamily: "var(--font-black-han), sans-serif",
                 fontSize: 44,
                 color: "var(--foreground)",
               }}
@@ -95,7 +95,7 @@ export function AuthShell({
           <div className="absolute inset-0 rounded-2xl bg-[#7dd3a3]" />
           <span
             className="relative"
-            style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: "#0f1f22" }}
+            style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 22, color: "#0f1f22" }}
           >
             다시,
             <br />다

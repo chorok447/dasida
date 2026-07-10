@@ -40,7 +40,7 @@ export function ConversationListClient() {
         <h1
           className="mb-6"
           style={{
-            fontFamily: "'Black Han Sans', sans-serif",
+            fontFamily: "var(--font-black-han), sans-serif",
             fontSize: "clamp(28px, 5vw, 36px)",
             color: "var(--foreground)",
           }}

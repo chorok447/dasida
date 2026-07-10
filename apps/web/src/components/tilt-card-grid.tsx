@@ -57,7 +57,7 @@ function TiltCard({ card }: { card: Card }) {
             {card.icon}
           </div>
           <div>
-            <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 28 }}>{card.title}</h3>
+            <h3 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 28 }}>{card.title}</h3>
             <p className="mt-2 text-white/80">{card.desc}</p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function TiltCardGrid() {
         <motion.div className="mb-16 text-center" style={{ y: headerY }}>
           <p className="text-[#6a6558] tracking-[0.4em] uppercase mb-4">Upcycling Stories</p>
           <h2
-            style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(40px, 5vw, 72px)", color: "#1c4044" }}
+            style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: "clamp(40px, 5vw, 72px)", color: "#1c4044" }}
           >
             다시, 다 — 새 가치를 더하다
           </h2>

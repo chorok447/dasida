@@ -86,7 +86,7 @@ export function CampaignHeaderCard({
             <div className="flex items-start justify-between gap-4">
               <h1
                 style={{
-                  fontFamily: "'Black Han Sans', sans-serif",
+                  fontFamily: "var(--font-black-han), sans-serif",
                   fontSize: "clamp(28px, 3vw, 40px)",
                   color: "var(--foreground)",
                   lineHeight: 1.2,

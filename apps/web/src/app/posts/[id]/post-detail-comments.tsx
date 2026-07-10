@@ -274,7 +274,7 @@ export function PostDetailComments({
         borderColor: "var(--border)",
       }}
     >
-      <h3 className="mb-6" style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22, color: "var(--foreground)" }}>
+      <h3 className="mb-6" style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 22, color: "var(--foreground)" }}>
         댓글 {count}
       </h3>
       <div

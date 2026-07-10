@@ -203,7 +203,7 @@ export default function SearchClient() {
           <p className="mb-3 text-[11px] uppercase tracking-[0.4em]" style={{ color: "var(--accent)" }}>Search</p>
           <h1
             className="text-[36px] sm:text-[52px]"
-            style={{ fontFamily: "'Black Han Sans', sans-serif", color: "var(--foreground)" }}
+            style={{ fontFamily: "var(--font-black-han), sans-serif", color: "var(--foreground)" }}
           >
             {title}
           </h1>

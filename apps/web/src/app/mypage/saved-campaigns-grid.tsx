@@ -66,7 +66,7 @@ function SavedCampaignCard({
         </div>
 
         <div className="space-y-3 p-5" style={{ color: "var(--foreground)" }}>
-          <h3 className="line-clamp-2" style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 20, lineHeight: 1.3 }}>
+          <h3 className="line-clamp-2" style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 20, lineHeight: 1.3 }}>
             {campaign.title}
           </h3>
           <p className="line-clamp-2 text-[13px]" style={{ color: "var(--foreground-muted)" }}>

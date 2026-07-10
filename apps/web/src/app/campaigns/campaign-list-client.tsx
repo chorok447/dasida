@@ -163,7 +163,7 @@ export default function CampaignListClient() {
           </p>
           <h1
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(48px, 6vw, 96px)",
               color: "var(--foreground)",
             }}

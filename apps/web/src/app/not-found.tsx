@@ -45,7 +45,7 @@ export default function NotFound() {
         <motion.div style={{ transform: "translateZ(120px)" }}>
           <span
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(160px, 22vw, 280px)",
               lineHeight: 1,
               backgroundImage: "linear-gradient(180deg,#7dd3a3,#3a7a5a)",
@@ -62,7 +62,7 @@ export default function NotFound() {
           style={{
             transform: "translateZ(60px)",
             color: "rgba(var(--ink-rgb), 0.85)",
-            fontFamily: "'Black Han Sans', sans-serif",
+            fontFamily: "var(--font-black-han), sans-serif",
             fontSize: "clamp(24px, 3vw, 36px)",
           }}
           className="mt-4"

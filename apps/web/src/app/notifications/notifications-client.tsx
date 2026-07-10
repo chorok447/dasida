@@ -245,7 +245,7 @@ export default function NotificationsClient() {
           </p>
           <h1
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(32px, 4.5vw, 54px)",
               color: fg,
             }}
