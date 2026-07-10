@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { apiGetOrNull } from "@/lib/api";
 import { richTextPlainPreview } from "@/lib/rich-text-length";
+import { postJsonLd, serializeJsonLd } from "@/lib/json-ld";
 import type { Post } from "@/data/posts";
 import type { Campaign } from "@/data/campaigns";
 import PostDetailClient from "./post-detail-client";
@@ -41,5 +42,11 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const linkedCampaign = post.campaignId
     ? await apiGetOrNull<Campaign>(`/api/campaigns/${post.campaignId}`)
     : null;
-  return <PostDetailClient post={post} linkedCampaign={linkedCampaign} />;
+  return (
+    <>
+      {/* 검색엔진 리치 스니펫용 구조화 데이터. serializeJsonLd 가 사용자 입력의 태그 주입을 막는다. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(postJsonLd(post)) }} />
+      <PostDetailClient post={post} linkedCampaign={linkedCampaign} />
+    </>
+  );
 }

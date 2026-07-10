@@ -19,6 +19,8 @@ test("시드 게시글 상세를 열 수 있다", async ({ page }) => {
   await expect(page.getByText("낡은 청바지 두 벌로 토트백 한 개").first()).toBeVisible();
   // 좋아요 버튼 접근성 이름 회귀 가드 — 아이콘+숫자만으로 이름이 비지 않게 한다.
   await expect(page.getByRole("button", { name: "게시글 좋아요", exact: true })).toBeVisible();
+  // 구조화 데이터(JSON-LD) 회귀 가드
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
 });
 
 test("게시글 상세 이미지 클릭 시 라이트박스가 열리고 Escape로 닫힌다", async ({ page }) => {
