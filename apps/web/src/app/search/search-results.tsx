@@ -169,7 +169,7 @@ export function SearchResults({
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {campaignResponse.content.map((campaign, i) => (
               <StaggerItem key={campaign.id} index={i}>
-                <CampaignResultCard campaign={campaign} />
+                <CampaignResultCard campaign={campaign} query={urlState.query} />
               </StaggerItem>
             ))}
           </div>
@@ -202,7 +202,7 @@ export function SearchResults({
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {postResponse.content.map((post, i) => (
               <StaggerItem key={post.id} index={i}>
-                <PostResultCard post={post} />
+                <PostResultCard post={post} query={urlState.query} />
               </StaggerItem>
             ))}
           </div>
@@ -235,7 +235,7 @@ export function SearchResults({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {userResponse.content.map((user, i) => (
               <StaggerItem key={user.id} index={i}>
-                <UserResultCard user={user} />
+                <UserResultCard user={user} query={urlState.query} />
               </StaggerItem>
             ))}
           </div>

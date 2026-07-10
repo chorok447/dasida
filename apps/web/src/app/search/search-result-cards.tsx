@@ -6,13 +6,14 @@ import { AuthorHeader } from "@/components/author-header";
 import { Avatar } from "@/components/avatar";
 import { FallbackImage } from "@/components/fallback-image";
 import { PostPreview } from "@/components/post-text";
+import { HighlightedText } from "@/lib/highlight";
 import { ReportButton } from "@/components/report-button";
 import { campaignRecruitMeta, type Campaign } from "@/data/campaigns";
 import type { Post } from "@/data/posts";
 import type { PublicUser } from "@/data/users";
 import { progressPercent } from "@/lib/progress";
 
-export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
+export function CampaignResultCard({ campaign, query = "" }: { campaign: Campaign; query?: string }) {
   const progress = progressPercent(campaign.joined, campaign.capacity);
   const meta = campaignRecruitMeta(campaign);
 
@@ -58,10 +59,10 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
         <div className="space-y-3 p-5">
           <div>
             <h3 className="line-clamp-1 text-[17px] font-semibold" style={{ color: "var(--foreground)" }}>
-              {campaign.title}
+              <HighlightedText text={campaign.title} query={query} />
             </h3>
             <p className="mt-1.5 line-clamp-2 text-[13px] leading-6 opacity-65" style={{ color: "var(--foreground)" }}>
-              {campaign.summary}
+              <HighlightedText text={campaign.summary} query={query} />
             </p>
           </div>
           <div>
@@ -81,7 +82,7 @@ export function CampaignResultCard({ campaign }: { campaign: Campaign }) {
   );
 }
 
-export function UserResultCard({ user }: { user: PublicUser }) {
+export function UserResultCard({ user, query = "" }: { user: PublicUser; query?: string }) {
   return (
     <Link
       href={`/users/${user.id}`}
@@ -91,7 +92,7 @@ export function UserResultCard({ user }: { user: PublicUser }) {
       <Avatar name={user.name} verified={user.verified} src={user.profileImageUrl ?? undefined} size={44} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-medium" style={{ color: "var(--foreground)" }}>
-          {user.name}
+          <HighlightedText text={user.name} query={query} />
         </p>
         <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
           게시글 {user.postCount.toLocaleString("ko-KR")}개 · 팔로워 {user.followerCount.toLocaleString("ko-KR")}명
@@ -101,7 +102,7 @@ export function UserResultCard({ user }: { user: PublicUser }) {
   );
 }
 
-export function PostResultCard({ post }: { post: Post }) {
+export function PostResultCard({ post, query = "" }: { post: Post; query?: string }) {
   const image = post.images[0];
 
   return (
@@ -148,6 +149,7 @@ export function PostResultCard({ post }: { post: Post }) {
             className="line-clamp-3 text-[14px] leading-6"
             style={{ color: "var(--foreground)" }}
             maxLength={200}
+            highlightQuery={query}
           />
           <div className="flex flex-wrap gap-1.5">
             {post.tags.slice(0, 3).map((tag) => (

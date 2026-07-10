@@ -3,24 +3,28 @@
 import type { CSSProperties, ReactNode } from "react";
 import { isRichHtml, sanitizeRichHtml } from "@/lib/sanitize-rich-html";
 import { richTextPlainPreview } from "@/lib/rich-text-length";
+import { HighlightedText } from "@/lib/highlight";
 
 const BOLD_RE = /\*\*([^*]+)\*\*/g;
 
-/** 목록·카드용 plain 미리보기. */
+/** 목록·카드용 plain 미리보기. highlightQuery 가 있으면 일치 구간을 <mark> 강조(검색 결과용). */
 export function PostPreview({
   text,
   className = "",
   style,
   maxLength = 160,
+  highlightQuery = "",
 }: {
   text: string;
   className?: string;
   style?: CSSProperties;
   maxLength?: number;
+  highlightQuery?: string;
 }) {
+  const preview = richTextPlainPreview(text, maxLength);
   return (
     <p className={`break-words ${className}`.trim()} style={style}>
-      {richTextPlainPreview(text, maxLength)}
+      {highlightQuery ? <HighlightedText text={preview} query={highlightQuery} /> : preview}
     </p>
   );
 }
