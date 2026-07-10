@@ -8,6 +8,11 @@ data class DmMessagePayload(
     val createdAt: String,
 )
 
+/** 메시지 삭제 브로드캐스트 — 수신자는 해당 메시지를 마스킹 표시로 바꾼다. */
+data class DmMessageDeletedPayload(
+    val id: String,
+)
+
 data class DmReadPayload(
     val userId: Long,
     val lastReadMessageId: String?,

@@ -101,6 +101,21 @@ class DmSessionHubTest {
         assertEquals(1, hub.subscriberCount("conv-1"))
     }
 
+    @Test
+    fun `message-deleted 이벤트는 발신자를 제외한 구독자에게 전달된다`() {
+        val sender = mockSession("s-del-sender")
+        val recipient = mockSession("s-del-recipient")
+        hub.register(sender, 1L)
+        hub.register(recipient, 2L)
+        // sender 는 구독하지 않아 presence 부수 이벤트 없이 delete 브로드캐스트만 검증한다.
+        hub.subscribe(recipient, "conv-1")
+
+        hub.publishMessageDeleted("conv-1", DmMessageDeletedPayload(id = "msg-1"), excludeUserId = 1L)
+
+        Mockito.verify(recipient).sendMessage(Mockito.any(TextMessage::class.java))
+        Mockito.verify(sender, Mockito.never()).sendMessage(Mockito.any(TextMessage::class.java))
+    }
+
     private fun mockSession(id: String): WebSocketSession {
         val session = Mockito.mock(WebSocketSession::class.java)
         Mockito.`when`(session.id).thenReturn(id)

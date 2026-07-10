@@ -54,6 +54,11 @@ class DmSessionHub(
         relayRoom(conversationId, "message", payload, excludeUserId)
     }
 
+    fun publishMessageDeleted(conversationId: String, payload: DmMessageDeletedPayload, excludeUserId: Long? = null) {
+        deliverRoom(conversationId, "message-deleted", payload, excludeUserId)
+        relayRoom(conversationId, "message-deleted", payload, excludeUserId)
+    }
+
     fun publishRead(conversationId: String, payload: DmReadPayload, excludeUserId: Long? = null) {
         deliverRoom(conversationId, "read", payload, excludeUserId)
         relayRoom(conversationId, "read", payload, excludeUserId)

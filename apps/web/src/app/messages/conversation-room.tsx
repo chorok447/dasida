@@ -107,6 +107,10 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
         if (convId !== conversationId || userId === viewerId) return;
         setPeerTyping(active);
       },
+      onMessageDeleted: (convId, messageId) => {
+        if (convId !== conversationId) return;
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, deleted: true, content: "" } : m)));
+      },
       onRead: (convId, userId, lastReadMessageId) => {
         if (convId !== conversationId || userId === viewerId) return;
         setPeerReadMessageId(lastReadMessageId);
