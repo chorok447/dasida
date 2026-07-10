@@ -113,6 +113,64 @@ class MessageControllerTest(
     }
 
     @Test
+    fun `미읽음 총계는 여러 대화방을 합산하고 내 메시지와 읽은 대화방은 제외한다`() {
+        val bob = users.save(
+            com.dasida.api.auth.User(email = "b-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "밥"),
+        )
+        val alice = users.save(
+            com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),
+        )
+        val carol = users.save(
+            com.dasida.api.auth.User(email = "c-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "캐럴"),
+        )
+        val bobToken = jwt.issue(bob)
+        val aliceToken = jwt.issue(alice)
+        val carolToken = jwt.issue(carol)
+
+        fun openConversation(token: String, peerId: Long): String {
+            val json = mvc.post("/api/messages/conversations") {
+                header("Authorization", "Bearer $token")
+                contentType = MediaType.APPLICATION_JSON
+                content = mapper.writeValueAsString(mapOf("peerUserId" to peerId))
+            }.andReturn().response.contentAsString
+            return mapper.readTree(json).get("id").asString()
+        }
+
+        fun send(token: String, conversationId: String, text: String) {
+            mvc.post("/api/messages/conversations/$conversationId/messages") {
+                header("Authorization", "Bearer $token")
+                contentType = MediaType.APPLICATION_JSON
+                content = mapper.writeValueAsString(mapOf("content" to text))
+            }.andExpect { status { isOk() } }
+        }
+
+        val convWithAlice = openConversation(aliceToken, requireNotNull(bob.id))
+        val convWithCarol = openConversation(carolToken, requireNotNull(bob.id))
+        send(aliceToken, convWithAlice, "하나")
+        send(aliceToken, convWithAlice, "둘")
+        send(carolToken, convWithCarol, "셋")
+        send(carolToken, convWithCarol, "넷")
+        send(carolToken, convWithCarol, "다섯")
+        send(bobToken, convWithAlice, "내 답장은 안 센다")
+
+        mvc.get("/api/messages/conversations/unread-count") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.unreadCount", Matchers.`is`(5)) }
+
+        mvc.post("/api/messages/conversations/$convWithCarol/read") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isOk() } }
+
+        mvc.get("/api/messages/conversations/unread-count") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.unreadCount", Matchers.`is`(2)) }
+    }
+
+    @Test
     fun `DM 알림을 꺼둔 수신자에게는 MESSAGE_RECEIVED 알림을 만들지 않는다`() {
         val alice = users.save(
             com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),
