@@ -42,6 +42,7 @@ class PostSearchControllerTest(
         comments: Int = 0,
         seq: Long = System.nanoTime(),
         authorUserId: Long? = null,
+        viewCount: Long = 0,
     ): String {
         postRepo.saveAndFlush(
             Post(
@@ -54,6 +55,7 @@ class PostSearchControllerTest(
                 likes = likes,
                 comments = comments,
                 campaignId = campaignId,
+                viewCount = viewCount,
                 seq = seq,
                 authorUserId = authorUserId,
             ),
@@ -188,6 +190,23 @@ class PostSearchControllerTest(
         }.andExpect {
             status { isOk() }
             jsonPath("$.content[*].id") { value(Matchers.contains(discussed, tieA, tieB, popular, latest)) }
+        }
+    }
+
+    @Test
+    fun `views 정렬은 조회수 내림차순에 latest tie breaker를 쓴다`() {
+        val keyword = marker("views-sort")
+        val most = savePost(id = "$keyword-m", text = keyword, viewCount = 9, seq = 50)
+        val least = savePost(id = "$keyword-l", text = keyword, viewCount = 1, seq = 300)
+        val tieNewer = savePost(id = "$keyword-a", text = keyword, viewCount = 5, seq = 200)
+        val tieOlder = savePost(id = "$keyword-b", text = keyword, viewCount = 5, seq = 100)
+
+        mvc.get("/api/posts/search") {
+            param("q", keyword)
+            param("sort", "views")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content[*].id") { value(Matchers.contains(most, tieNewer, tieOlder, least)) }
         }
     }
 

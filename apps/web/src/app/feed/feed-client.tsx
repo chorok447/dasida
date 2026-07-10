@@ -66,7 +66,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
       query: searchParams.get("q") ?? "",
       campaignOnly: searchParams.get("campaignOnly") === "true",
       followingOnly: searchParams.get("followingOnly") === "true",
-      sort: sort === "popular" || sort === "discussed" ? sort : "latest",
+      sort: sort === "popular" || sort === "discussed" || sort === "views" ? sort : "latest",
       page: parsePageParam(searchParams.get("page")),
     };
   }, [searchParams]);
