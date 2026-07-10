@@ -127,6 +127,7 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN_PROOF -> {
                 val proof = campaignProofs.findById(targetId).orElseThrow { notFound() }
+                if (proof.deletedAt != null) throw notFound()
                 if (proof.hiddenAt != null) return false
                 proof.hiddenAt = now
                 proof.hiddenReason = reason
@@ -206,6 +207,8 @@ class AdminContentService(
 
             ReportTargetType.CAMPAIGN_PROOF -> {
                 val proof = campaignProofs.findById(targetId).orElseThrow { notFound() }
+                // 작성자가 삭제한 인증은 복구 불가(다른 콘텐츠 타입과 동일).
+                if (proof.deletedAt != null) throw notFound()
                 if (proof.hiddenAt == null) return false
                 proof.hiddenAt = null
                 proof.hiddenReason = null
