@@ -1,6 +1,6 @@
 import { richTextPlainLength } from "@/lib/rich-text-length";
 import { mergeRichBodyForEditor, splitRichBodyHtml } from "@/lib/rich-body-html";
-import { apiFetch, apiGet, apiPut } from "@/lib/api";
+import { apiDelete, apiFetch, apiGet, apiPost, apiPut } from "@/lib/api";
 import type { CommentPageLocationResponse } from "@/data/comments";
 
 /** 백엔드 PostValidators 와 동일한 제한. */
@@ -186,7 +186,25 @@ export type PostComment = {
   updatedAt: string | null;
   parentId?: string | null;
   replies?: PostComment[];
+  likes?: number;
+  likedByMe?: boolean;
 };
+
+/** 댓글 좋아요/취소 응답. 백엔드 CommentLikeStatusResponse 와 1:1. */
+export type CommentLikeStatus = { likes: number; likedByMe: boolean };
+
+export function likePostComment(postId: string, commentId: string): Promise<CommentLikeStatus> {
+  return apiPost<CommentLikeStatus>(
+    `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}/like`,
+    {},
+  );
+}
+
+export function unlikePostComment(postId: string, commentId: string): Promise<CommentLikeStatus> {
+  return apiDelete<CommentLikeStatus>(
+    `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}/like`,
+  );
+}
 
 export type UpdatePostCommentRequest = { text: string };
 

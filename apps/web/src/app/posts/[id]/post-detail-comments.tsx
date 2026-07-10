@@ -3,7 +3,7 @@
 import { toast } from "sonner";
 import { useCallback, useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CornerDownRight, Pencil, Send, Trash2 } from "lucide-react";
+import { CornerDownRight, Heart, Pencil, Send, Trash2 } from "lucide-react";
 import { ApiError, apiPost, apiDeleteVoid } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { usePagedComments } from "@/lib/use-paged-comments";
@@ -15,7 +15,10 @@ import { Pagination } from "@/components/ui/pagination";
 import {
   fetchPostCommentPageLocation,
   fetchPostCommentsPage,
+  likePostComment,
+  unlikePostComment,
   updatePostComment,
+  type CommentLikeStatus,
   type PostComment,
 } from "@/data/posts";
 
@@ -98,6 +101,56 @@ export function PostDetailComments({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
+
+  // 좋아요 토글 응답을 다음 목록 fetch 전까지 덮어쓴다(페이지 데이터는 서버가 진실).
+  const [likeOverrides, setLikeOverrides] = useState<Record<string, CommentLikeStatus>>({});
+  const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
+
+  // 새 페이지 응답이 오면 덮어쓰기를 비운다 — effect 대신 렌더 중 이전 값 비교(공식 권장 패턴).
+  const [overridesResponse, setOverridesResponse] = useState(comments.response);
+  if (overridesResponse !== comments.response) {
+    setOverridesResponse(comments.response);
+    setLikeOverrides({});
+  }
+
+  const likeStateOf = (c: PostComment): CommentLikeStatus =>
+    likeOverrides[c.id] ?? { likes: c.likes ?? 0, likedByMe: c.likedByMe ?? false };
+
+  const toggleLike = async (c: PostComment) => {
+    const requestToken = getSessionId();
+    if (!requestToken) {
+      toast.error("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (likingIds.has(c.id)) return;
+    setLikingIds((prev) => new Set(prev).add(c.id));
+    try {
+      const status = likeStateOf(c).likedByMe
+        ? await unlikePostComment(postId, c.id)
+        : await likePostComment(postId, c.id);
+      if (getSessionId() !== requestToken) return;
+      setLikeOverrides((prev) => ({ ...prev, [c.id]: status }));
+    } catch (error) {
+      if (getSessionId() !== requestToken) return;
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        toast.error("로그인이 필요합니다.");
+        router.push("/login");
+      } else if (error instanceof ApiError && error.status === 404) {
+        toast.error("댓글을 찾을 수 없습니다.");
+        comments.reload();
+      } else {
+        toast.error("좋아요 처리에 실패했습니다.");
+      }
+    } finally {
+      setLikingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(c.id);
+        return next;
+      });
+    }
+  };
 
   const toggleReplying = (commentId: string) => {
     setReplyingToId((current) => (current === commentId ? null : commentId));
@@ -248,17 +301,39 @@ export function PostDetailComments({
             <p className="mt-0.5 whitespace-pre-wrap break-words" style={{ color: "rgba(var(--ink-rgb), 0.85)" }}>
               <MentionText text={c.text} />
             </p>
-            {!isReply && token ? (
-              <button
-                type="button"
-                onClick={() => toggleReplying(c.id)}
-                className="mt-1 inline-flex items-center gap-1 text-[12px] opacity-55 hover:opacity-100"
-                style={{ color: "var(--foreground)" }}
-              >
-                <CornerDownRight size={12} aria-hidden />
-                {replyingToId === c.id ? "답글 취소" : "답글 달기"}
-              </button>
-            ) : null}
+            <div className="mt-1 flex items-center gap-3">
+              {(() => {
+                const { likes, likedByMe } = likeStateOf(c);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => void toggleLike(c)}
+                    disabled={likingIds.has(c.id)}
+                    aria-label={likedByMe ? "이 댓글 좋아요 취소" : "이 댓글 좋아요"}
+                    aria-pressed={likedByMe}
+                    className="inline-flex items-center gap-1 text-[12px] hover:opacity-100 disabled:opacity-40"
+                    style={{
+                      color: likedByMe ? "#ed5c48" : "var(--foreground)",
+                      opacity: likedByMe ? 1 : 0.55,
+                    }}
+                  >
+                    <Heart size={12} fill={likedByMe ? "#ed5c48" : "transparent"} aria-hidden />
+                    {likes}
+                  </button>
+                );
+              })()}
+              {!isReply && token ? (
+                <button
+                  type="button"
+                  onClick={() => toggleReplying(c.id)}
+                  className="inline-flex items-center gap-1 text-[12px] opacity-55 hover:opacity-100"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  <CornerDownRight size={12} aria-hidden />
+                  {replyingToId === c.id ? "답글 취소" : "답글 달기"}
+                </button>
+              ) : null}
+            </div>
           </>
         )}
       </div>

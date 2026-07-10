@@ -194,4 +194,22 @@ class PostController(
         @PathVariable commentId: String,
         @AuthenticationPrincipal user: AuthUser,
     ) = postCommentService.deleteComment(user.id, postId, commentId)
+
+    @Operation(summary = "댓글 좋아요", description = "이미 좋아요한 경우에도 200(idempotent).")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{postId}/comments/{commentId}/like")
+    fun likeComment(
+        @PathVariable postId: String,
+        @PathVariable commentId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CommentLikeStatusResponse = postCommentService.likeComment(user.id, postId, commentId)
+
+    @Operation(summary = "댓글 좋아요 취소", description = "좋아요하지 않은 상태에서도 200(idempotent).")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{postId}/comments/{commentId}/like")
+    fun unlikeComment(
+        @PathVariable postId: String,
+        @PathVariable commentId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ): CommentLikeStatusResponse = postCommentService.unlikeComment(user.id, postId, commentId)
 }

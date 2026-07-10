@@ -13,7 +13,7 @@ function iconFor(type: string) {
   if (type === "CAMPAIGN_JOINED") return <Users size={16} aria-hidden />;
   if (type === "USER_FOLLOWED") return <UserPlus size={16} aria-hidden />;
   if (type === "MESSAGE_RECEIVED") return <MessageCircle size={16} aria-hidden />;
-  if (type === "POST_LIKED") return <Heart size={16} aria-hidden />;
+  if (type === "POST_LIKED" || type === "COMMENT_LIKED") return <Heart size={16} aria-hidden />;
   if (type === "CAMPAIGN_STATUS_CHANGED") return <Megaphone size={16} aria-hidden />;
   if (type === "CAMPAIGN_RECRUIT_ENDING") return <CalendarClock size={16} aria-hidden />;
   if (type === "CAMPAIGN_PROOF_CREATED") return <BadgeCheck size={16} aria-hidden />;
