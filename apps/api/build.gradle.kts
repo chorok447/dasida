@@ -57,6 +57,14 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("com.h2database:h2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	// 실제 MySQL 8 에서 Flyway 마이그레이션 + ddl validate 를 검증하는 스모크 테스트용
+	// (일반 테스트는 H2 — 마이그레이션 SQL 은 MySQL 전용이라 배포 전 커버리지가 0이었다).
+	// Docker 미가동 환경에서는 @Testcontainers(disabledWithoutDocker) 로 자동 스킵된다.
+	// Boot 4.1 BOM 이 testcontainers 버전을 관리하지 않아 BOM 을 직접 고정한다.
+	testImplementation(platform("org.testcontainers:testcontainers-bom:1.21.3"))
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:junit-jupiter")
+	testImplementation("org.testcontainers:mysql")
 }
 
 kotlin {
