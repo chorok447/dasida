@@ -73,11 +73,7 @@ class UserFollowService(
             viewerId,
             PageRequest.of(0, limit),
         )
-        return RecommendedUsersResponse(
-            items = authorIds.mapNotNull { id ->
-                users.findById(id).orElse(null)?.takeIf { it.deletedAt == null }?.let { toPublicUser(it, viewerId) }
-            },
-        )
+        return RecommendedUsersResponse(items = toPublicUsersOrdered(authorIds, viewerId))
     }
 
     @Transactional(readOnly = true)
@@ -110,9 +106,7 @@ class UserFollowService(
             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")),
         )
         return PublicUserPageResponse(
-            content = result.content.mapNotNull { row ->
-                users.findById(row.blockedId).orElse(null)?.takeIf { it.deletedAt == null }?.let { toPublicUser(it, viewerId) }
-            },
+            content = toPublicUsersOrdered(result.content.map { it.blockedId }, viewerId),
             page = result.number,
             size = result.size,
             totalElements = result.totalElements,
@@ -137,7 +131,7 @@ class UserFollowService(
             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")),
         )
         return PublicUserPageResponse(
-            content = result.content.map { toPublicUser(it, viewerId) },
+            content = toPublicUsers(result.content, viewerId),
             page = result.number,
             size = result.size,
             totalElements = result.totalElements,
@@ -158,12 +152,9 @@ class UserFollowService(
         viewerId: Long,
         followeeSide: Boolean = true,
     ): PublicUserPageResponse {
-        val content = result.content.mapNotNull { row ->
-            val targetId = if (followeeSide) row.followeeId else row.followerId
-            users.findById(targetId).orElse(null)?.takeIf { it.deletedAt == null }?.let { toPublicUser(it, viewerId) }
-        }
+        val targetIds = result.content.map { if (followeeSide) it.followeeId else it.followerId }
         return PublicUserPageResponse(
-            content = content,
+            content = toPublicUsersOrdered(targetIds, viewerId),
             page = result.number,
             size = result.size,
             totalElements = result.totalElements,
@@ -171,20 +162,45 @@ class UserFollowService(
         )
     }
 
-    private fun toPublicUser(user: User, viewerId: Long?): PublicUserResponse {
-        val id = requireNotNull(user.id)
-        return PublicUserResponse(
-            id = id,
-            name = user.name,
-            verified = user.verified,
-            profileImageUrl = user.profileImageUrl,
-            postCount = posts.countByAuthorUserIdAndHiddenAtIsNull(id),
-            followerCount = follows.countByFolloweeId(id),
-            followingCount = follows.countByFollowerId(id),
-            followedByMe = viewerId?.let { follows.existsByFollowerIdAndFolloweeId(it, id) },
-            blockedByMe = viewerId?.let { userBlocks.isBlockedBy(it, id) },
-        )
+    /** id 목록 순서를 보존해 bulk 매핑한다. 탈퇴 사용자는 결과에서 제외(기존 목록 규칙 유지). */
+    private fun toPublicUsersOrdered(targetIds: List<Long>, viewerId: Long?): List<PublicUserResponse> {
+        if (targetIds.isEmpty()) return emptyList()
+        val usersById = users.findAllById(targetIds.distinct())
+            .filter { it.deletedAt == null }
+            .associateBy { requireNotNull(it.id) }
+        return toPublicUsers(targetIds.mapNotNull { usersById[it] }, viewerId)
     }
+
+    /**
+     * 사용자 목록을 bulk 5쿼리(게시글 수·팔로워 수·팔로잉 수 group by + 팔로우/차단 상태 IN)로 매핑한다.
+     * 기존에는 사용자마다 카운트 3 + 상태 2 쿼리가 나가 page 10 기준 요청당 50+ 쿼리였다.
+     */
+    private fun toPublicUsers(targets: List<User>, viewerId: Long?): List<PublicUserResponse> {
+        if (targets.isEmpty()) return emptyList()
+        val ids = targets.map { requireNotNull(it.id) }
+        val postCounts = posts.countByAuthorUserIdsAndHiddenAtIsNull(ids).associate { it.authorUserId to it.count }
+        val followerCounts = follows.countByFolloweeIds(ids).associate { it.userId to it.count }
+        val followingCounts = follows.countByFollowerIds(ids).associate { it.userId to it.count }
+        val followedIds = viewerId?.let { follows.findFollowedIdsAmong(it, ids).toSet() }
+        val blockedIds = viewerId?.let { userBlocks.blockedIdsAmong(it, ids).toSet() }
+        return targets.map { user ->
+            val id = requireNotNull(user.id)
+            PublicUserResponse(
+                id = id,
+                name = user.name,
+                verified = user.verified,
+                profileImageUrl = user.profileImageUrl,
+                postCount = postCounts[id] ?: 0,
+                followerCount = followerCounts[id] ?: 0,
+                followingCount = followingCounts[id] ?: 0,
+                followedByMe = followedIds?.contains(id),
+                blockedByMe = blockedIds?.contains(id),
+            )
+        }
+    }
+
+    private fun toPublicUser(user: User, viewerId: Long?): PublicUserResponse =
+        toPublicUsers(listOf(user), viewerId).first()
 
     private companion object {
         const val MAX_PAGE_SIZE = 100

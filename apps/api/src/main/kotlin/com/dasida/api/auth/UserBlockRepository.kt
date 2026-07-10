@@ -13,6 +13,10 @@ interface UserBlockRepository : JpaRepository<UserBlock, String> {
 
     fun deleteByBlockerIdAndBlockedId(blockerId: Long, blockedId: Long): Long
 
+    /** viewer 가 차단한 대상 bulk 조회 — 사용자별 exists N+1 방지. */
+    @Query("select b.blockedId from UserBlock b where b.blockerId = :blockerId and b.blockedId in :userIds")
+    fun findBlockedIdsAmong(@Param("blockerId") blockerId: Long, @Param("userIds") userIds: Collection<Long>): List<Long>
+
     @Query(
         """
         select case when count(b) > 0 then true else false end
