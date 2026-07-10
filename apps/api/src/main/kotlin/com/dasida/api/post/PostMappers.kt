@@ -16,7 +16,12 @@ fun Post.toResponse(
     views = viewCount,
 )
 
-fun PostComment.toResponse(viewerId: Long?, replies: List<PostCommentResponse> = emptyList()) = PostCommentResponse(
+fun PostComment.toResponse(
+    viewerId: Long?,
+    replies: List<PostCommentResponse> = emptyList(),
+    likes: Long = 0,
+    likedByMe: Boolean = false,
+) = PostCommentResponse(
     id = id,
     postId = postId,
     author = author,
@@ -27,4 +32,6 @@ fun PostComment.toResponse(viewerId: Long?, replies: List<PostCommentResponse> =
     updatedAt = updatedAt,
     parentId = parentId,
     replies = replies,
+    likes = likes,
+    likedByMe = likedByMe,
 )

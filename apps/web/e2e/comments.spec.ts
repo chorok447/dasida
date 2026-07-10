@@ -41,6 +41,32 @@ test("게시글 댓글을 작성·수정·삭제할 수 있다", async ({ page }
   await expect(page.getByText(updatedText)).not.toBeVisible();
 });
 
+test("댓글 좋아요를 누르고 취소할 수 있다", async ({ page }) => {
+  const stamp = Date.now();
+  await signup(page, "e2e-comment-like");
+  await createPostAndOpenDetail(page, `E2E 댓글 좋아요 글 ${stamp}`);
+
+  const commentText = `E2E 좋아요 대상 댓글 ${stamp}`;
+  await page.getByLabel("댓글 내용").fill(commentText);
+  await page.getByRole("button", { name: "댓글 등록" }).click();
+  await expect(page.getByText(commentText)).toBeVisible();
+
+  const likeButton = page.getByRole("button", { name: "이 댓글 좋아요", exact: true });
+  await expect(likeButton).toHaveText(/0/);
+  await likeButton.click();
+
+  const unlikeButton = page.getByRole("button", { name: "이 댓글 좋아요 취소", exact: true });
+  await expect(unlikeButton).toBeVisible();
+  await expect(unlikeButton).toHaveText(/1/);
+
+  // 새로고침 후에도 서버 상태가 유지된다
+  await page.reload();
+  await expect(page.getByRole("button", { name: "이 댓글 좋아요 취소", exact: true })).toHaveText(/1/);
+
+  await page.getByRole("button", { name: "이 댓글 좋아요 취소", exact: true }).click();
+  await expect(page.getByRole("button", { name: "이 댓글 좋아요", exact: true })).toHaveText(/0/);
+});
+
 test("캠페인 댓글을 작성·수정·삭제할 수 있다", async ({ page }) => {
   const stamp = Date.now();
   await signup(page, "e2e-camp-comment");

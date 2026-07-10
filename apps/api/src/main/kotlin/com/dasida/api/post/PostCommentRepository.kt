@@ -1,8 +1,10 @@
 package com.dasida.api.post
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -12,6 +14,11 @@ interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun findByPostIdOrderBySeqAsc(postId: String): List<PostComment>
     fun findByPostId(postId: String, pageable: Pageable): Page<PostComment>
     fun findByIdAndPostId(id: String, postId: String): PostComment?
+
+    /** 댓글 좋아요/취소 동시성 방어용 write lock 조회 — 같은 댓글에 대한 요청을 직렬화한다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from PostComment c where c.id = :id and c.postId = :postId")
+    fun findByIdAndPostIdForUpdate(@Param("id") id: String, @Param("postId") postId: String): PostComment?
 
     // 공개 노출 경로용(숨김 제외).
     fun findByPostIdAndHiddenAtIsNullOrderBySeqAsc(postId: String): List<PostComment>

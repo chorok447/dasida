@@ -54,6 +54,15 @@ data class PostCommentResponse(
     val parentId: String? = null,
     // 최상위 댓글일 때만 채워지는 1단계 답글 목록(오래된 순).
     val replies: List<PostCommentResponse> = emptyList(),
+    // 댓글 좋아요 수와 현재 사용자의 좋아요 여부.
+    val likes: Long = 0,
+    val likedByMe: Boolean = false,
+)
+
+/** 댓글 좋아요/취소 응답. replies 를 다시 싣지 않도록 상태만 반환한다. */
+data class CommentLikeStatusResponse(
+    val likes: Long,
+    val likedByMe: Boolean,
 )
 
 data class PostCommentsPageResponse(
