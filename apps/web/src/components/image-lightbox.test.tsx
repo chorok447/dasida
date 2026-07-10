@@ -70,6 +70,21 @@ describe("ImageLightbox", () => {
     expect(screen.queryByText("1 / 1")).toBeNull();
   });
 
+  it("터치 스와이프로 이전·다음으로 이동한다", () => {
+    const onIndexChange = vi.fn();
+    render(
+      <ImageLightbox images={IMAGES} index={1} altPrefix="게시글 이미지" onClose={() => {}} onIndexChange={onIndexChange} />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "이미지 크게 보기" });
+    fireEvent.touchStart(dialog, { touches: [{ clientX: 250, clientY: 100 }] });
+    fireEvent.touchEnd(dialog, { changedTouches: [{ clientX: 120, clientY: 105 }] });
+    expect(onIndexChange).toHaveBeenLastCalledWith(2);
+
+    fireEvent.touchStart(dialog, { touches: [{ clientX: 120, clientY: 100 }] });
+    fireEvent.touchEnd(dialog, { changedTouches: [{ clientX: 260, clientY: 95 }] });
+    expect(onIndexChange).toHaveBeenLastCalledWith(0);
+  });
+
   it("열리는 동안 body 스크롤을 잠그고 닫히면 복원한다", () => {
     const { unmount } = render(
       <ImageLightbox images={IMAGES} index={0} altPrefix="게시글 이미지" onClose={() => {}} onIndexChange={() => {}} />,
