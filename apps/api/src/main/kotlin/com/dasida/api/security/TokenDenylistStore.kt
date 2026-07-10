@@ -19,6 +19,14 @@ interface TokenDenylistStore {
     fun deny(tokenHash: String, ttlSeconds: Long)
 
     fun isDenied(tokenHash: String): Boolean
+
+    /**
+     * 원자적 set-if-absent. 새로 등록했으면 true, 이미 등록돼 있었으면 false.
+     * refresh rotation 의 재사용 감지가 check-then-deny 두 단계로 갈라지면 같은 토큰의
+     * 동시 요청이 둘 다 통과하는 창이 생긴다 — 그 창을 없애는 용도.
+     * ttlSeconds <= 0(이미 만료된 토큰)은 등록할 것이 없으므로 true.
+     */
+    fun denyIfAbsent(tokenHash: String, ttlSeconds: Long): Boolean
 }
 
 /** raw JWT → SHA-256 hex. 원본 토큰을 저장/로그하지 않기 위한 단방향 해시. */
@@ -38,6 +46,11 @@ class RedisTokenDenylistStore(
     }
 
     override fun isDenied(tokenHash: String): Boolean = redis.hasKey(redisKey(tokenHash)) == true
+
+    override fun denyIfAbsent(tokenHash: String, ttlSeconds: Long): Boolean {
+        if (ttlSeconds <= 0) return true
+        return redis.opsForValue().setIfAbsent(redisKey(tokenHash), "1", Duration.ofSeconds(ttlSeconds)) == true
+    }
 }
 
 @Component
@@ -58,5 +71,20 @@ class InMemoryTokenDenylistStore : TokenDenylistStore {
             return false
         }
         return true
+    }
+
+    override fun denyIfAbsent(tokenHash: String, ttlSeconds: Long): Boolean {
+        if (ttlSeconds <= 0) return true
+        val now = Instant.now()
+        var inserted = false
+        denied.compute(tokenHash) { _, existing ->
+            if (existing != null && now.isBefore(existing)) {
+                existing
+            } else {
+                inserted = true
+                now.plusSeconds(ttlSeconds)
+            }
+        }
+        return inserted
     }
 }

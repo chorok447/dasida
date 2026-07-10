@@ -43,6 +43,12 @@ class SeedRunner(
      * 이미 존재하는 계정이면 role 승격만 보장하고 비밀번호는 건드리지 않는다.
      */
     private fun seedAdmin() {
+        // ADMIN_PASSWORD 미설정이면 승격도 하지 않는다 — 기본 이메일(admin@dasida.local)로
+        // 공개 가입한 계정이 재기동 시 조용히 ADMIN 이 되는 권한 상승 경로를 막는다.
+        if (adminPassword.isBlank()) {
+            log.info("admin seed skipped: ADMIN_PASSWORD not set")
+            return
+        }
         val existing = users.findByEmail(adminEmail.trim().lowercase())
         if (existing != null) {
             if (!existing.isAdmin) {
@@ -50,10 +56,6 @@ class SeedRunner(
                 users.save(existing)
                 log.info("promoted existing user to ADMIN: {}", adminEmail)
             }
-            return
-        }
-        if (adminPassword.isBlank()) {
-            log.info("admin seed skipped: ADMIN_PASSWORD not set")
             return
         }
         users.save(

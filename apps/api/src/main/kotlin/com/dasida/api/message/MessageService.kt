@@ -1,5 +1,6 @@
 package com.dasida.api.message
 
+import com.dasida.api.common.SeqGenerator
 import com.dasida.api.auth.AuthService
 import com.dasida.api.auth.UserBlockService
 import com.dasida.api.auth.UserFollowService
@@ -159,7 +160,7 @@ class MessageService(
                 content = trimmed,
                 type = MessageType.TEXT,
                 createdAt = now,
-                seq = System.nanoTime(),
+                seq = SeqGenerator.next(),
             ),
         )
         conversation.lastMessageId = message.id

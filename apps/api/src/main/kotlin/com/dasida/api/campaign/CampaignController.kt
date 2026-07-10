@@ -229,7 +229,8 @@ class CampaignController(
         @PathVariable campaignId: String,
         @PathVariable commentId: String,
         @RequestParam(defaultValue = "20") size: Int,
-    ): CommentPageLocationResponse = commentService.getCommentPageLocation(campaignId, commentId, size)
+        @AuthenticationPrincipal user: AuthUser?,
+    ): CommentPageLocationResponse = commentService.getCommentPageLocation(campaignId, user?.id, commentId, size)
 
     @Operation(summary = "캠페인 댓글 작성")
     @SecurityRequirement(name = "bearerAuth")

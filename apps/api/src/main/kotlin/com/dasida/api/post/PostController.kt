@@ -155,7 +155,8 @@ class PostController(
         @PathVariable postId: String,
         @PathVariable commentId: String,
         @RequestParam(defaultValue = "20") size: Int,
-    ): CommentPageLocationResponse = postCommentService.getCommentPageLocation(postId, commentId, size)
+        @AuthenticationPrincipal user: AuthUser?,
+    ): CommentPageLocationResponse = postCommentService.getCommentPageLocation(postId, user?.id, commentId, size)
 
     @Operation(summary = "게시글 댓글 작성")
     @SecurityRequirement(name = "bearerAuth")

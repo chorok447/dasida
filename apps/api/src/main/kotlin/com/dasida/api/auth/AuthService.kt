@@ -106,7 +106,7 @@ class AuthService(
      */
     @Transactional(readOnly = true)
     fun refresh(refreshToken: String): IssuedTokens {
-        val userId = try {
+        val claims = try {
             jwt.parseRefresh(refreshToken)
         } catch (_: Exception) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
@@ -120,7 +120,7 @@ class AuthService(
         if (denied) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
         }
-        val user = repo.findById(userId).orElse(null)
+        val user = repo.findById(claims.userId).orElse(null)
         if (user == null || user.deletedAt != null) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
         }
@@ -128,7 +128,20 @@ class AuthService(
         if (user.isSuspendedAt(Instant.now(clock))) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
         }
-        denylist.deny(hashToken(refreshToken), jwt.remainingTtlSeconds(refreshToken))
+        // 비밀번호·이메일 변경 이전에 발급된 refresh 는 거절 — 탈취 토큰이 rotation 으로 영구 연장되는 것을 차단.
+        if (user.isTokenIssuedBeforeCredentialsChange(claims.issuedAt)) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
+        }
+        // rotation 소비를 원자적 set-if-absent 로 직렬화 — 같은(탈취된) refresh 의 동시 요청이
+        // isDenied 체크를 둘 다 통과해 둘 다 성공하는 창을 없앤다. 이미 등록돼 있었다면 재사용이다.
+        val consumed = try {
+            denylist.denyIfAbsent(hashToken(refreshToken), jwt.remainingTtlSeconds(refreshToken))
+        } catch (_: Exception) {
+            false // store 장애는 fail-closed
+        }
+        if (!consumed) {
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid refresh token")
+        }
         return issueTokens(user)
     }
 
@@ -138,7 +151,11 @@ class AuthService(
      * 유효할 때만 등록한다(invalid 면 어차피 refresh 불가라 무시).
      */
     fun logout(token: String, refreshToken: String?): LogoutResponse {
-        denylist.deny(hashToken(token), jwt.remainingTtlSeconds(token))
+        try {
+            denylist.deny(hashToken(token), jwt.remainingTtlSeconds(token))
+        } catch (_: Exception) {
+            // 필터 통과 후 이 사이에 만료된 access — 어차피 재사용 불가라 무시(500 방지)
+        }
         refreshToken?.let {
             try {
                 denylist.deny(hashToken(it), jwt.remainingTtlSeconds(it))
@@ -186,7 +203,7 @@ class AuthService(
     }
 
     @Transactional
-    fun changePassword(userId: Long, req: ChangePasswordRequest): ChangePasswordResponse {
+    fun changePassword(userId: Long, req: ChangePasswordRequest): ChangePasswordOutcome {
         val user = repo.findActiveOrThrow(userId)
         if (req.currentPassword.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
@@ -199,11 +216,14 @@ class AuthService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "new password must be different")
         }
         user.passwordHash = encoder.encode(req.newPassword)!!
-        return ChangePasswordResponse(changed = true, token = jwt.issue(user))
+        // 변경 이전 발급 토큰(다른 기기·탈취분)을 전부 무효화하고, 현재 세션은 새 토큰 쌍으로 이어간다.
+        user.credentialsChangedAt = Instant.now(clock)
+        val tokens = issueTokens(user)
+        return ChangePasswordOutcome(ChangePasswordResponse(changed = true, token = tokens.response.token), tokens)
     }
 
     @Transactional
-    fun changeEmail(userId: Long, req: ChangeEmailRequest): ChangeEmailResponse {
+    fun changeEmail(userId: Long, req: ChangeEmailRequest): ChangeEmailOutcome {
         val user = repo.findActiveOrThrow(userId)
         if (req.currentPassword.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is required")
@@ -221,13 +241,19 @@ class AuthService(
         }
 
         user.email = email
+        // 비밀번호 변경과 같은 정책: 변경 이전 발급 토큰을 무효화하고 현재 세션은 새 토큰 쌍으로 이어간다.
+        user.credentialsChangedAt = Instant.now(clock)
         try {
             repo.saveAndFlush(user)
         } catch (_: DataIntegrityViolationException) {
             // 사전 중복 체크 뒤 발생한 동시 변경 경쟁도 DB unique 제약 기준으로 409 처리한다.
             throw ResponseStatusException(HttpStatus.CONFLICT, "email already registered")
         }
-        return ChangeEmailResponse(email = user.email, name = user.name, token = jwt.issue(user))
+        val tokens = issueTokens(user)
+        return ChangeEmailOutcome(
+            ChangeEmailResponse(email = user.email, name = user.name, token = tokens.response.token),
+            tokens,
+        )
     }
 
     @Transactional
@@ -266,6 +292,12 @@ class AuthService(
         const val DELETE_CONFIRM_TEXT = "탈퇴합니다"
     }
 }
+
+/** 비밀번호 변경 결과. body 는 응답으로, tokens 는 쿠키 재발급(access+refresh rotation)에 쓴다. */
+data class ChangePasswordOutcome(val body: ChangePasswordResponse, val tokens: IssuedTokens)
+
+/** 이메일 변경 결과. body 는 응답으로, tokens 는 쿠키 재발급(access+refresh rotation)에 쓴다. */
+data class ChangeEmailOutcome(val body: ChangeEmailResponse, val tokens: IssuedTokens)
 
 /**
  * 정지 계정 로그인 안내. 전역 정책상 ResponseStatusException 의 reason 은 에러 body 로 노출되지 않으므로

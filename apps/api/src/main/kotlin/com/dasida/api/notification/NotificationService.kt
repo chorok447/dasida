@@ -1,5 +1,6 @@
 package com.dasida.api.notification
 
+import com.dasida.api.common.SeqGenerator
 import com.dasida.api.common.checkPageParams
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
@@ -130,7 +131,7 @@ class NotificationService(
                 readAt = null,
                 createdAt = Instant.now(),
                 time = "방금 전",
-                seq = System.nanoTime(),
+                seq = SeqGenerator.next(),
             ),
         )
         events.publishEvent(NotificationCreatedEvent(recipientUserId))

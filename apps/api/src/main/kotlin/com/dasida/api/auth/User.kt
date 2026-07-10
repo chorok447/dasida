@@ -29,11 +29,24 @@ class User(
     @Column(name = "suspended_reason", length = 500) @JsonIgnore var suspendedReason: String? = null,
     // 가입 시각. V12 이전 가입자는 null(가입 시점을 알 수 없음).
     @Column(name = "created_at") val createdAt: Instant? = null,
+    // 자격증명(비밀번호·이메일) 마지막 변경 시각. 이전에 발급된 토큰은 refresh·인증 필터에서 거절된다.
+    @Column(name = "credentials_changed_at") @JsonIgnore var credentialsChangedAt: Instant? = null,
 ) {
     val isAdmin: Boolean
         @JsonIgnore get() = role == UserRole.ADMIN.name
 
     fun isSuspendedAt(now: Instant): Boolean = suspendedUntil?.isAfter(now) == true
+
+    /**
+     * 자격증명(비밀번호·이메일) 변경 이전에 발급된 토큰인지. 변경 이후 발급 토큰만 유효 —
+     * 탈취된 refresh 가 rotation 으로 영구 연장되는 것을 비밀번호 변경으로 끊는다.
+     * JWT iat 은 초 단위 절삭이므로 변경 시각도 초로 절삭해 같은 초에 재발급된 토큰은 통과시킨다.
+     */
+    fun isTokenIssuedBeforeCredentialsChange(issuedAt: Instant?): Boolean {
+        val changed = credentialsChangedAt ?: return false
+        if (issuedAt == null) return true
+        return issuedAt.isBefore(changed.truncatedTo(java.time.temporal.ChronoUnit.SECONDS))
+    }
 }
 
 enum class UserRole {

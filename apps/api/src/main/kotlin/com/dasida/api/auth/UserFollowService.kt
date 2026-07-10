@@ -159,7 +159,7 @@ class UserFollowService(
             name = user.name,
             verified = user.verified,
             profileImageUrl = user.profileImageUrl,
-            postCount = posts.countByAuthorUserId(id),
+            postCount = posts.countByAuthorUserIdAndHiddenAtIsNull(id),
             followerCount = follows.countByFolloweeId(id),
             followingCount = follows.countByFollowerId(id),
             followedByMe = viewerId?.let { follows.existsByFollowerIdAndFolloweeId(it, id) },

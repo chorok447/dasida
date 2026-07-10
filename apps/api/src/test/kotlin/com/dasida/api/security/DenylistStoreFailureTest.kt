@@ -36,6 +36,7 @@ class DenylistStoreFailureTest(
         fun throwingDenylistStore(): TokenDenylistStore = object : TokenDenylistStore {
             override fun deny(tokenHash: String, ttlSeconds: Long) = throw RuntimeException("store down")
             override fun isDenied(tokenHash: String): Boolean = throw RuntimeException("store down")
+            override fun denyIfAbsent(tokenHash: String, ttlSeconds: Long): Boolean = throw RuntimeException("store down")
         }
     }
 

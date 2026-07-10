@@ -56,12 +56,16 @@ class JwtService(
         return AuthUser(c.subject.toLong(), c["name"] as String, c["verified"] as Boolean)
     }
 
-    /** refresh token 검증 → userId. typ=refresh 가 아니면(access 토큰이면) 예외. */
-    fun parseRefresh(token: String): Long {
+    /** refresh token 검증 → 클레임. typ=refresh 가 아니면(access 토큰이면) 예외. */
+    fun parseRefresh(token: String): RefreshClaims {
         val c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
         require(c["typ"] == "refresh") { "not a refresh token" }
-        return c.subject.toLong()
+        return RefreshClaims(c.subject.toLong(), c.issuedAt?.toInstant())
     }
+
+    /** 토큰 발급 시각(iat). 서명 검증 포함, invalid 면 예외. 자격증명 변경 이전 발급분 차단에 쓴다. */
+    fun issuedAtInstant(token: String): java.time.Instant? =
+        Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload.issuedAt?.toInstant()
 
     /** 토큰의 남은 만료 시간(초). 이미 만료면 0. denylist TTL 산정에 쓴다. 유효하지 않으면 예외. */
     fun remainingTtlSeconds(token: String): Long {
@@ -69,3 +73,6 @@ class JwtService(
         return ((exp.time - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
     }
 }
+
+/** refresh token 클레임. issuedAt 은 자격증명 변경 시각과 비교해 변경 이전 발급분을 거절하는 데 쓴다. */
+data class RefreshClaims(val userId: Long, val issuedAt: java.time.Instant?)

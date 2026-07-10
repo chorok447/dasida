@@ -104,12 +104,19 @@ class CampaignParticipantService(
         val campaign = repo.findByIdForUpdate(campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         val participant = participants.findByCampaignIdAndUserId(campaignId, userId)
-            ?: return campaign.toResponse(
+        // 삭제된 캠페인은 다른 read 경로처럼 404. 숨김 캠페인의 취소는 기존 참여자에게만 허용 —
+        // 비참여자에게 본문 담긴 응답을 돌려주면 soft hide 를 우회하는 열람 경로가 된다.
+        if (campaign.deletedAt != null || (campaign.hiddenAt != null && participant == null)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        if (participant == null) {
+            return campaign.toResponse(
                 viewerId = userId,
                 joinedByMe = false,
                 bookmarkedByMe = bookmarkRepo.existsByCampaignIdAndUserId(campaignId, userId),
                 today = today,
             )
+        }
         if (campaign.status != "open") {
             throw ResponseStatusException(HttpStatus.CONFLICT, "campaign is not open")
         }
@@ -131,6 +138,10 @@ class CampaignParticipantService(
 
         val campaign = repo.findById(campaignId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
+        }
+        // 삭제된 캠페인은 개설자에게도 404(다른 read 경로와 일관).
+        if (campaign.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         }
         if (campaign.authorUserId == null || campaign.authorUserId != ownerUserId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the campaign owner")

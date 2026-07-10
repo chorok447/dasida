@@ -69,9 +69,10 @@ class CampaignCommentService(
 
     /** 최신순 댓글 pagination과 같은 정렬 기준으로 대상 댓글이 속한 page를 계산한다. */
     @Transactional(readOnly = true)
-    fun getCommentPageLocation(campaignId: String, commentId: String, size: Int): CommentPageLocationResponse {
+    fun getCommentPageLocation(campaignId: String, currentUserId: Long?, commentId: String, size: Int): CommentPageLocationResponse {
         checkPageSize(size, MAX_PAGE_SIZE)
-        requireExistingCampaign(campaignId)
+        // 목록 조회와 같은 노출 규칙 — 숨김 캠페인의 댓글 위치가 익명에게 200 으로 새지 않게 한다.
+        requireViewableCampaign(campaignId, currentUserId)
         val target = comments.findByIdAndCampaignId(commentId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "comment $commentId not found")
         if (target.hiddenAt != null) {
