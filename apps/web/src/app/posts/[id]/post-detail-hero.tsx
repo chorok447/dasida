@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AuthorHeader } from "@/components/author-header";
 import { FallbackImage } from "@/components/fallback-image";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { PostText } from "@/components/post-text";
 import { RichBodyImageGrid } from "@/components/rich-body-image-grid";
 import { ShareButton } from "@/components/share-button";
@@ -69,6 +70,7 @@ export function PostDetailHero({
   const { sessionId } = useAuthSession();
   const { profile } = useCurrentUserProfile();
   const [messagePending, setMessagePending] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -123,15 +125,22 @@ export function PostDetailHero({
               <ImageIcon size={32} color="rgba(255,255,255,0.35)" aria-hidden />
             </div>
           ) : (
-            <motion.img
-              key={idx}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              src={p.images[idx]}
-              alt={`게시글 이미지 ${idx + 1}`}
-              className="w-full h-full object-cover"
-              onError={onImageError}
-            />
+            <button
+              type="button"
+              onClick={() => setLightboxIdx(idx)}
+              aria-label="이미지 크게 보기 열기"
+              className="block h-full w-full cursor-zoom-in"
+            >
+              <motion.img
+                key={idx}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                src={p.images[idx]}
+                alt={`게시글 이미지 ${idx + 1}`}
+                className="w-full h-full object-cover"
+                onError={onImageError}
+              />
+            </button>
           )}
           {p.images.length > 1 && (
             <>
@@ -190,7 +199,7 @@ export function PostDetailHero({
 
           <PostText text={p.text} style={{ color: "var(--foreground)", lineHeight: 1.7 }} />
 
-          <RichBodyImageGrid images={p.images} altPrefix="게시글 이미지" />
+          <RichBodyImageGrid images={p.images} altPrefix="게시글 이미지" onImageClick={setLightboxIdx} />
 
           <div className="flex flex-wrap gap-1.5">
             {p.tags.map((t) => (
@@ -263,6 +272,15 @@ export function PostDetailHero({
           </div>
         </div>
       </motion.div>
+      {lightboxIdx !== null && (
+        <ImageLightbox
+          images={p.images}
+          index={lightboxIdx}
+          altPrefix="게시글 이미지"
+          onClose={() => setLightboxIdx(null)}
+          onIndexChange={setLightboxIdx}
+        />
+      )}
     </div>
   );
 }

@@ -19,6 +19,17 @@ test("시드 게시글 상세를 열 수 있다", async ({ page }) => {
   await expect(page.getByText("낡은 청바지 두 벌로 토트백 한 개").first()).toBeVisible();
 });
 
+test("게시글 상세 이미지 클릭 시 라이트박스가 열리고 Escape로 닫힌다", async ({ page }) => {
+  await page.goto("/posts/p1");
+
+  await page.getByRole("button", { name: "게시글 이미지 1 크게 보기", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "이미지 크게 보기" });
+  await expect(dialog).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+});
+
 test("시드 캠페인 상세를 열 수 있다", async ({ page }) => {
   await page.goto("/campaigns/c1");
 
