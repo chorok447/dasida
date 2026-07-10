@@ -84,6 +84,8 @@ data class PostResponse(
     val ownedByMe: Boolean,
     // 관리자 숨김 여부. 숨김 콘텐츠는 작성자 본인 경로(mine/상세)에서만 응답에 실린다.
     val hidden: Boolean = false,
+    // 작성 시각. 시드 게시글은 null(작성 시점 미상).
+    val createdAt: Instant? = null,
 )
 
 data class PostSearchResponse(

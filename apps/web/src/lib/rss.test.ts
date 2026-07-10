@@ -30,6 +30,26 @@ describe("buildRssXml", () => {
     expect(xml).toContain("페트병 &lt;화분&gt; 만들기 &amp; 나눔");
     expect(xml).toContain(`<guid isPermaLink="true">https://dasida.example/posts/p1</guid>`);
     expect(xml).not.toContain("<화분>");
+    // pubDate 미지정 아이템은 태그 자체를 생략한다.
+    expect(xml).not.toContain("<pubDate>");
+  });
+
+  it("pubDate 가 있으면 UTC 문자열로 실린다", () => {
+    const xml = buildRssXml({
+      siteUrl: "https://dasida.example",
+      title: "t",
+      description: "d",
+      now: new Date("2026-07-10T00:00:00Z"),
+      items: [
+        {
+          title: "제목",
+          link: "https://dasida.example/posts/p2",
+          description: "설명",
+          pubDate: new Date("2026-07-09T12:34:56Z"),
+        },
+      ],
+    });
+    expect(xml).toContain("<pubDate>Thu, 09 Jul 2026 12:34:56 GMT</pubDate>");
   });
 
   it("아이템이 없어도 채널은 유효하다", () => {
