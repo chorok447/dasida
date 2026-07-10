@@ -11,6 +11,7 @@ import {
 import { ApiError, apiErrorMessage } from "@/lib/api";
 import { clearSession, getSessionId, setSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { PasswordControl } from "@/components/ui/password-control";
 
 function changePasswordError(error: ApiError): string {
   const detail = apiErrorMessage(error, "");
@@ -125,41 +126,35 @@ export function ChangePasswordForm({ profileName, embedded = false }: { profileN
         <form onSubmit={submit} className="grid gap-4 lg:grid-cols-3">
           <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             현재 비밀번호
-            <input
-              type="password"
+            <PasswordControl
               value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
+              onChange={setCurrentPassword}
               autoComplete="current-password"
               disabled={submitting}
-              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>
           <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             새 비밀번호
-            <input
-              type="password"
+            <PasswordControl
               value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
+              onChange={setNewPassword}
               autoComplete="new-password"
               minLength={8}
               maxLength={15}
               disabled={submitting}
-              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>
           <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             새 비밀번호 확인
-            <input
-              type="password"
+            <PasswordControl
               value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
+              onChange={setConfirmPassword}
               autoComplete="new-password"
               minLength={8}
               maxLength={15}
               disabled={submitting}
-              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>
