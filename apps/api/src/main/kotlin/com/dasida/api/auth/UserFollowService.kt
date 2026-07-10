@@ -101,6 +101,25 @@ class UserFollowService(
         return userFollowPage(result, viewerId, followeeSide = false)
     }
 
+    /** 내가 차단한 사용자 목록(최근 차단 순). 차단 관리 화면용. */
+    @Transactional(readOnly = true)
+    fun blockedPage(viewerId: Long, page: Int, size: Int): PublicUserPageResponse {
+        checkPageParams(page, size, MAX_PAGE_SIZE)
+        val result = userBlocks.blockedRowsPage(
+            viewerId,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")),
+        )
+        return PublicUserPageResponse(
+            content = result.content.mapNotNull { row ->
+                users.findById(row.blockedId).orElse(null)?.takeIf { it.deletedAt == null }?.let { toPublicUser(it, viewerId) }
+            },
+            page = result.number,
+            size = result.size,
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+        )
+    }
+
     @Transactional(readOnly = true)
     fun searchUsers(q: String, viewerId: Long?, page: Int, size: Int): PublicUserPageResponse {
         checkPageParams(page, size, MAX_PAGE_SIZE)

@@ -8,6 +8,9 @@ import org.springframework.data.repository.query.Param
 interface UserBlockRepository : JpaRepository<UserBlock, String> {
     fun existsByBlockerIdAndBlockedId(blockerId: Long, blockedId: Long): Boolean
 
+    /** 내가 차단한 목록(최근 차단 순). */
+    fun findByBlockerId(blockerId: Long, pageable: org.springframework.data.domain.Pageable): org.springframework.data.domain.Page<UserBlock>
+
     fun deleteByBlockerIdAndBlockedId(blockerId: Long, blockedId: Long): Long
 
     @Query(

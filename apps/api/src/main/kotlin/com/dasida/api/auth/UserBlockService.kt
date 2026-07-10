@@ -21,6 +21,11 @@ class UserBlockService(
     fun isBlockedBy(blockerId: Long, blockedId: Long): Boolean =
         blocks.existsByBlockerIdAndBlockedId(blockerId, blockedId)
 
+    /** 내가 차단한 row 페이지(최근 차단 순). 사용자 매핑은 UserFollowService.blockedPage 가 담당한다. */
+    @Transactional(readOnly = true)
+    fun blockedRowsPage(blockerId: Long, pageable: org.springframework.data.domain.Pageable): org.springframework.data.domain.Page<UserBlock> =
+        blocks.findByBlockerId(blockerId, pageable)
+
     @Transactional
     fun block(blockerId: Long, blockedId: Long) {
         if (blockerId == blockedId) {
