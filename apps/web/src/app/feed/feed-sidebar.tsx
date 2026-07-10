@@ -20,7 +20,7 @@ export function FeedSideHot({ campaigns }: { campaigns: Campaign[] }) {
     <div className="rounded-2xl border p-5" style={cardStyle}>
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp size={14} style={{ color: "var(--accent)" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: "var(--foreground)" }}>
+        <h3 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 18, color: "var(--foreground)" }}>
           진행 중인 캠페인
         </h3>
       </div>
@@ -119,7 +119,7 @@ export function FeedSideRecommend() {
     <div className="rounded-2xl border p-5" style={cardStyle}>
       <div className="mb-4 flex items-center gap-2">
         <Sparkles size={14} style={{ color: "var(--accent)" }} />
-        <h3 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 18, color: "var(--foreground)" }}>
+        <h3 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 18, color: "var(--foreground)" }}>
           이런 분 어때요
         </h3>
       </div>

@@ -22,7 +22,7 @@ export default function RootError({
       style={{ backgroundImage: "var(--page-gradient)", color: "var(--foreground)" }}
     >
       <h1
-        style={{ fontFamily: "'Black Han Sans', sans-serif" }}
+        style={{ fontFamily: "var(--font-black-han), sans-serif" }}
         className="text-[clamp(28px,4vw,40px)]"
       >
         문제가 발생했어요

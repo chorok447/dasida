@@ -41,7 +41,7 @@ export function LandingFlow() {
           </p>
           <h2
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(40px, 5vw, 72px)",
               color: "var(--foreground)",
             }}
@@ -75,7 +75,7 @@ export function LandingFlow() {
                 </div>
                 <h3
                   style={{
-                    fontFamily: "'Black Han Sans', sans-serif",
+                    fontFamily: "var(--font-black-han), sans-serif",
                     fontSize: 26,
                     color: "var(--heading)",
                   }}
@@ -96,7 +96,7 @@ export function LandingFlow() {
         <ScrollReveal className="text-center">
           <h3
             style={{
-              fontFamily: "'Black Han Sans', sans-serif",
+              fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(28px, 3.5vw, 44px)",
               color: "var(--foreground)",
             }}

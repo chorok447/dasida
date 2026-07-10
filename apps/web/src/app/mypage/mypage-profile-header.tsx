@@ -57,7 +57,7 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
               <h1
                 className="break-words"
                 style={{
-                  fontFamily: "'Black Han Sans', sans-serif",
+                  fontFamily: "var(--font-black-han), sans-serif",
                   fontSize: "clamp(30px, 5vw, 40px)",
                   color: "var(--foreground)",
                 }}

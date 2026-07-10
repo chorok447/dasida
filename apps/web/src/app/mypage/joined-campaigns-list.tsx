@@ -138,7 +138,7 @@ function CampaignCard({
           ) : null}
           <h3
             className="line-clamp-2"
-            style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 20, color: "var(--foreground)", lineHeight: 1.3 }}
+            style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 20, color: "var(--foreground)", lineHeight: 1.3 }}
           >
             {campaign.title}
           </h3>

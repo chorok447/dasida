@@ -41,7 +41,7 @@ export function SiteHeader() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" style={{ color: "var(--accent-secondary)" }}>
-          <span style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: 22 }}>다시,다</span>
+          <span style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 22 }}>다시,다</span>
           <span className="hidden text-[10px] tracking-[0.3em] opacity-90 sm:inline">UPCYCLE</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1" aria-label="주요 메뉴">

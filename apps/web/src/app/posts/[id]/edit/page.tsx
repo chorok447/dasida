@@ -204,7 +204,7 @@ export default function PostEditPage() {
         <p className="mb-3 tracking-[0.4em] uppercase" style={{ color: "var(--accent-secondary)", fontSize: 11 }}>
           Edit Post
         </p>
-        <h1 style={{ fontFamily: "'Black Han Sans', sans-serif", fontSize: "clamp(32px, 4vw, 52px)", color: "var(--foreground)" }}>
+        <h1 style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: "clamp(32px, 4vw, 52px)", color: "var(--foreground)" }}>
           글 수정
         </h1>
       </div>

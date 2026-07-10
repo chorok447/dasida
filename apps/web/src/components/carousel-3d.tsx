@@ -66,7 +66,7 @@ export function Carousel3D() {
         </p>
         <h2
           style={{
-            fontFamily: "'Black Han Sans', sans-serif",
+            fontFamily: "var(--font-black-han), sans-serif",
             fontSize: "clamp(40px, 5vw, 72px)",
             color: "var(--foreground)",
           }}
@@ -138,7 +138,7 @@ export function Carousel3D() {
                       </div>
                       <h3
                         style={{
-                          fontFamily: "'Black Han Sans', sans-serif",
+                          fontFamily: "var(--font-black-han), sans-serif",
                           fontSize: small ? 15 : 20,
                           lineHeight: 1.3,
                         }}

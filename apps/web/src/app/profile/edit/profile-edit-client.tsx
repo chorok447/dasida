@@ -162,7 +162,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
           <div>
             <h1
               style={{
-                fontFamily: "'Black Han Sans', sans-serif",
+                fontFamily: "var(--font-black-han), sans-serif",
                 fontSize: "clamp(30px, 6vw, 42px)",
                 color: "var(--foreground)",
               }}
