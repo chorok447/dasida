@@ -7,6 +7,7 @@ import { ApiError, apiErrorMessage } from "@/lib/api";
 import { clearSession, getSessionId } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PasswordControl } from "@/components/ui/password-control";
 
 const CONFIRM_TEXT = "탈퇴합니다";
 
@@ -113,13 +114,12 @@ export function DeleteAccountForm({ embedded = false }: { embedded?: boolean }) 
           </p>
           <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             현재 비밀번호
-            <input
-              type="password"
+            <PasswordControl
               value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
+              onChange={setCurrentPassword}
               autoComplete="current-password"
               disabled={submitting}
-              className="ui-control mt-2 focus-visible:border-[var(--danger)] focus-visible:ring-[var(--danger-soft)]"
+              className="focus-visible:border-[var(--danger)] focus-visible:ring-[var(--danger-soft)]"
               style={inputStyle}
             />
           </label>

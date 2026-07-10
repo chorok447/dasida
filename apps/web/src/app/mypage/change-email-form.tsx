@@ -7,6 +7,7 @@ import { changeEmail, isValidEmail, normalizeEmail } from "@/data/auth";
 import { ApiError, apiErrorMessage } from "@/lib/api";
 import { clearSession, getSessionId, setSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { PasswordControl } from "@/components/ui/password-control";
 
 function changeEmailError(error: ApiError): string {
   if (error.status === 409) return "이미 사용 중인 이메일입니다.";
@@ -149,13 +150,11 @@ export function ChangeEmailForm({
           </label>
           <label className="text-[12px]" style={{ color: "var(--foreground)" }}>
             현재 비밀번호
-            <input
-              type="password"
+            <PasswordControl
               value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
+              onChange={setCurrentPassword}
               autoComplete="current-password"
               disabled={submitting}
-              className="ui-control mt-2"
               style={inputStyle}
             />
           </label>
