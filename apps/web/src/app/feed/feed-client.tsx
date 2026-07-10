@@ -176,7 +176,6 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           <button
             type="button"
             onClick={goToNewPost}
-            aria-label="새 글 작성"
             className="w-full flex items-center gap-3 p-4 rounded-2xl border mb-6 hover:-translate-y-0.5 transition-transform text-left"
             style={{
               background: "var(--card)",
