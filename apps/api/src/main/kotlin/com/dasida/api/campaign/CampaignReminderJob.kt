@@ -48,23 +48,26 @@ class CampaignReminderJob(
         val now = Instant.now(clock)
         targets.forEach { campaign ->
             val joinedUserIds = participants.findByCampaignId(campaign.id).map { it.userId }.toSet()
-            bookmarks.findByCampaignId(campaign.id)
-                .asSequence()
-                .filter { it.userId !in joinedUserIds }
-                .forEach { bookmark ->
-                    val recipient = users.findById(bookmark.userId).orElse(null) ?: return@forEach
-                    if (recipient.deletedAt != null || !recipient.notifyCampaignUpdates) return@forEach
-                    notifications.notify(
-                        recipientUserId = bookmark.userId,
-                        // 시드 캠페인은 개설자 미상(null) — self-skip 대상이 없다는 뜻이므로 sentinel 사용.
-                        actorUserId = campaign.authorUserId ?: -1L,
-                        type = NotificationType.CAMPAIGN_RECRUIT_ENDING,
-                        title = "저장한 캠페인 모집이 내일 마감돼요",
-                        body = campaign.title,
-                        href = "/campaigns/${campaign.id}",
-                    )
-                    sent++
-                }
+            val candidateIds = bookmarks.findByCampaignId(campaign.id)
+                .map { it.userId }
+                .filter { it !in joinedUserIds }
+                .distinct()
+            if (candidateIds.isNotEmpty()) {
+                users.findAllById(candidateIds)
+                    .filter { it.deletedAt == null && it.notifyCampaignUpdates }
+                    .forEach { recipient ->
+                        notifications.notify(
+                            recipientUserId = requireNotNull(recipient.id),
+                            // 시드 캠페인은 개설자 미상(null) — self-skip 대상이 없다는 뜻이므로 sentinel 사용.
+                            actorUserId = campaign.authorUserId ?: -1L,
+                            type = NotificationType.CAMPAIGN_RECRUIT_ENDING,
+                            title = "저장한 캠페인 모집이 내일 마감돼요",
+                            body = campaign.title,
+                            href = "/campaigns/${campaign.id}",
+                        )
+                        sent++
+                    }
+            }
             campaign.recruitEndReminderSentAt = now
         }
         return sent
