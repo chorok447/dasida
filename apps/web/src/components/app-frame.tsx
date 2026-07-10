@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/footer";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { OfflineBanner } from "@/components/offline-banner";
 import { RealtimeUpdates } from "@/components/realtime-updates";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
@@ -22,6 +23,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         >
           본문 바로가기
         </a>
+        <OfflineBanner />
         <SiteHeader />
         <ThemeToggle />
         <div id="main-content" tabIndex={-1} className="outline-none">
