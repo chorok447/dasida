@@ -68,6 +68,32 @@ describe("PostComposeForm", () => {
     });
   });
 
+  it("화살표 버튼으로 이미지 순서를 바꾼다", () => {
+    const onChange = vi.fn();
+    const values = { ...baseValues, images: ["https://example.com/a.jpg", "https://example.com/b.jpg"] };
+    render(<PostComposeForm values={values} onChange={onChange} campaigns={[]} />);
+
+    // 첫 항목은 위로 이동 불가, 마지막 항목은 아래로 이동 불가
+    expect(
+      (screen.getByRole("button", { name: "이미지 순서 위로: https://example.com/a.jpg" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "이미지 순서 아래로: https://example.com/b.jpg" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "이미지 순서 아래로: https://example.com/a.jpg" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...values,
+      images: ["https://example.com/b.jpg", "https://example.com/a.jpg"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "이미지 순서 위로: https://example.com/b.jpg" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...values,
+      images: ["https://example.com/b.jpg", "https://example.com/a.jpg"],
+    });
+  });
+
   it("http(s)가 아닌 이미지 URL은 추가하지 않는다", () => {
     const onChange = vi.fn();
     render(<PostComposeForm values={baseValues} onChange={onChange} campaigns={[]} />);
