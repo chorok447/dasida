@@ -51,7 +51,7 @@ class CampaignProofService(
             totalElements = result.totalElements,
             totalPages = result.totalPages,
             proofedByMe = currentUserId != null &&
-                proofs.existsByCampaignIdAndAuthorUserId(campaignId, currentUserId),
+                proofs.existsByCampaignIdAndAuthorUserIdAndDeletedAtIsNull(campaignId, currentUserId),
         )
     }
 
@@ -78,7 +78,9 @@ class CampaignProofService(
         if (!participants.existsByCampaignIdAndUserId(campaignId, user.id)) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not a campaign participant")
         }
-        if (proofs.existsByCampaignIdAndAuthorUserId(campaignId, user.id)) {
+        // 1인 1'활성' 인증. unique 제약은 soft delete 행과 충돌해 제거(V19)했고,
+        // 위의 campaign row lock 이 같은 캠페인의 작성 요청을 직렬화하므로 이 검사만으로 경쟁이 없다.
+        if (proofs.existsByCampaignIdAndAuthorUserIdAndDeletedAtIsNull(campaignId, user.id)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "proof already exists")
         }
 
@@ -113,14 +115,17 @@ class CampaignProofService(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "campaign $campaignId not found")
         val proof = proofs.findByIdAndCampaignId(proofId, campaignId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "proof $proofId not found")
-        // 숨김 인증은 작성자에게도 존재를 드러내지 않는다.
-        if (proof.hiddenAt != null) {
+        // 숨김·삭제된 인증은 작성자에게도 존재를 드러내지 않는다(삭제 시 hiddenAt 도 함께 마킹됨).
+        if (proof.deletedAt != null || proof.hiddenAt != null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "proof $proofId not found")
         }
         if (proof.authorUserId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the proof owner")
         }
-        proofs.delete(proof)
+        // soft delete: 신고 대상 보존(게시글·댓글과 동일 정책). 공개 목록 제외를 위해 hiddenAt 도 마킹.
+        val now = Instant.now(clock)
+        proof.deletedAt = now
+        proof.hiddenAt = now
     }
 
     /** 공개 조회 경로에서 캠페인 존재·노출 여부 확인. 숨김 캠페인은 개설자에게만 보이고, 삭제는 모두에게 404. */

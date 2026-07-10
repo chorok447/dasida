@@ -13,7 +13,8 @@ interface CampaignProofRepository : JpaRepository<CampaignProof, String> {
     fun findByIdAndCampaignId(id: String, campaignId: String): CampaignProof?
 
     // 숨김 여부와 무관하게 판단한다(unique 제약과 동일 기준). 숨김된 인증도 재작성을 막는다.
-    fun existsByCampaignIdAndAuthorUserId(campaignId: String, authorUserId: Long): Boolean
+    /** 활성(미삭제) 인증 존재 여부 — 1인 1'활성' 인증 검증·proofedByMe 용. */
+    fun existsByCampaignIdAndAuthorUserIdAndDeletedAtIsNull(campaignId: String, authorUserId: Long): Boolean
 
     @Transactional
     fun deleteByCampaignId(campaignId: String)
