@@ -1,28 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "motion/react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { CountUp, ScrollReveal } from "@/components/scroll-reveal";
 
-// 랜딩 스토리텔링용 수치. 시장 규모는 업계 추정 기반 근사치(억원), 재활용률은 환경부 통계 기반.
-const marketGrowth = [
-  { year: "2018", value: 34 },
-  { year: "2019", value: 42 },
-  { year: "2020", value: 56 },
-  { year: "2021", value: 75 },
-  { year: "2022", value: 98 },
-  { year: "2023", value: 130 },
-  { year: "2024", value: 168 },
-  { year: "2025", value: 210 },
-];
+// recharts(+d3)는 랜딩 첫 JS 에서 제외하고 뷰포트 진입 시점에 로드한다(번들 최적화).
+// 자리표시자는 컨테이너(h-[260px])가 잡고 있어 CLS 없음.
+const LandingMarketChart = dynamic(() => import("@/components/landing-market-chart"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const kpis = [
   { value: 12400, suffix: "+", label: "함께한 업사이클러" },
@@ -34,27 +21,6 @@ const ACCENT = "#7dd3a3";
 const INK = "#f9f7f2";
 const MUTED = "rgba(249,247,242,0.6)";
 const HAIRLINE = "rgba(249,247,242,0.08)";
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: { value: number }[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      className="rounded-lg border px-3 py-2 text-[12px]"
-      style={{ background: "#0f1f22", borderColor: "rgba(249,247,242,0.15)", color: INK }}
-    >
-      <span style={{ color: MUTED }}>{label}년 </span>
-      <span className="font-medium">{payload[0].value.toLocaleString()}억원</span>
-    </div>
-  );
-}
 
 export function LandingStats() {
   const reduce = useReducedMotion();
@@ -126,39 +92,7 @@ export function LandingStats() {
                 role="img"
                 aria-label="국내 업사이클링 시장 규모 추이 차트. 2018년 34억원에서 2025년 210억원으로 꾸준히 성장했습니다."
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={marketGrowth} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="landing-market-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={ACCENT} stopOpacity={0.35} />
-                        <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke={HAIRLINE} vertical={false} />
-                    <XAxis
-                      dataKey="year"
-                      tick={{ fill: MUTED, fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: MUTED, fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={48}
-                    />
-                    <Tooltip content={<ChartTooltip />} cursor={{ stroke: HAIRLINE }} />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke={ACCENT}
-                      strokeWidth={2}
-                      fill="url(#landing-market-fill)"
-                      activeDot={{ r: 5, fill: ACCENT, stroke: "#0f1f22", strokeWidth: 2 }}
-                      isAnimationActive={!reduce}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <LandingMarketChart />
               </div>
             </div>
           </ScrollReveal>
