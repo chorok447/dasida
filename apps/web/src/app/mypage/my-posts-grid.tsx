@@ -6,7 +6,7 @@ import { ListEmptyState } from "@/components/list-empty-state";
 import { PostPreview } from "@/components/post-text";
 import Link from "next/link";
 import { ExternalLink, EyeOff, Heart, MessageCircle, PenLine } from "lucide-react";
-import { fetchMyPostsPage, type Post } from "@/data/posts";
+import { fetchCommentedPostsPage, fetchMyPostsPage, type Post } from "@/data/posts";
 import { PaginatedSection } from "./paginated-section";
 
 // 카드 하단 액션 버튼 공통 클래스. 색은 CSS 토큰이 테마를 처리한다.
@@ -118,6 +118,30 @@ export function MyPostsGrid({ page, onPageChange }: { page: number; onPageChange
           }
         />
       }
+      renderItems={(posts) => (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {posts.map((post, i) => (
+            <StaggerItem key={post.id} index={i}>
+              <MyPostCard post={post} />
+            </StaggerItem>
+          ))}
+        </div>
+      )}
+    />
+  );
+}
+
+/** 내가 댓글 단 게시글 그리드. 카드·레이아웃은 내 게시글과 동일하고 fetcher 만 다르다. */
+export function CommentedPostsGrid({ page, onPageChange }: { page: number; onPageChange: (page: number) => void }) {
+  return (
+    <PaginatedSection<Post>
+      identityKey="commented"
+      page={page}
+      onPageChange={onPageChange}
+      fetcher={fetchCommentedPostsPage}
+      loadingLabel="댓글 단 글을 불러오는 중입니다."
+      errorLabel="댓글 단 글을 불러오지 못했습니다."
+      empty={<ListEmptyState title="아직 댓글을 남긴 글이 없어요." description="관심 있는 글에 첫 댓글을 남겨보세요." />}
       renderItems={(posts) => (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post, i) => (

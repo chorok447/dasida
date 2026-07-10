@@ -173,6 +173,8 @@ function postsPage(path: string, page: number): Promise<PostPageResponse> {
 
 export const fetchMyPostsPage = (page: number) => postsPage("/api/posts/mine/page", page);
 export const fetchBookmarkedPostsPage = (page: number) => postsPage("/api/posts/bookmarks/page", page);
+/** 내가 댓글 단 게시글(최근 댓글 순). 마이페이지 활동 탭용. */
+export const fetchCommentedPostsPage = (page: number) => postsPage("/api/posts/commented/page", page);
 
 // 게시글 댓글. 백엔드 GET/POST /api/posts/{id}/comments 응답과 1:1.
 export type PostComment = {

@@ -81,6 +81,15 @@ class PostController(
         @RequestParam(defaultValue = "500") size: Int,
     ) = postService.listSitemapIds(page, size)
 
+    @Operation(summary = "내가 댓글 단 게시글 조회(pagination)", description = "최근 댓글 순. 마이페이지 활동 탭용.")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/commented/page")
+    fun commentedPage(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @AuthenticationPrincipal user: AuthUser,
+    ): PostPageResponse = postService.getMyCommentedPostsPage(user.id, page, size)
+
     @Operation(summary = "게시글 상세 조회", description = "공개 API. JWT 가 있으면 사용자별 상태를 포함한다.")
     @GetMapping("/{id}")
     fun get(@PathVariable id: String, @AuthenticationPrincipal user: AuthUser?): PostResponse =
