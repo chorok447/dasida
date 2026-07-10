@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "openapi:types": "openapi-typescript http://localhost:8080/v3/api-docs -o src/types/api.d.ts"
   },
   "dependencies": {
     "@tiptap/extension-image": "^3.27.1",
@@ -37,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^6",
     "vitest": "^4.1.9"

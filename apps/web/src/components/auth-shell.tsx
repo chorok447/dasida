@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useId, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 
 export function AuthShell({
@@ -128,6 +129,8 @@ export function FieldInput({
 }) {
   const id = useId();
   const errorId = error ? `${id}-error` : undefined;
+  const isPassword = type === "password";
+  const [revealed, setRevealed] = useState(false);
   return (
     <div>
       <label htmlFor={id} className="sr-only">{label}</label>
@@ -142,7 +145,7 @@ export function FieldInput({
         <input
           id={id}
           name={name}
-          type={type}
+          type={isPassword && revealed ? "text" : type}
           autoComplete={autoComplete}
           placeholder={placeholder}
           value={value}
@@ -152,8 +155,20 @@ export function FieldInput({
           className="flex-1 bg-transparent outline-none placeholder:opacity-50"
           style={{ color: "var(--foreground)" }}
         />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            aria-label={revealed ? `${label} 숨기기` : `${label} 표시`}
+            aria-pressed={revealed}
+            className="shrink-0 rounded-md p-0.5 transition-opacity hover:opacity-100"
+            style={{ color: "rgba(var(--ink-rgb), 0.5)" }}
+          >
+            {revealed ? <EyeOff size={18} aria-hidden /> : <Eye size={18} aria-hidden />}
+          </button>
+        )}
       </div>
-      {error && <p id={errorId} role="alert" className="mt-1.5 pl-1 text-[12px] text-[#ed5c48]">{error}</p>}
+      {error && <p id={errorId} role="alert" className="mt-1.5 pl-1 text-[12px]" style={{ color: "var(--danger)" }}>{error}</p>}
     </div>
   );
 }
