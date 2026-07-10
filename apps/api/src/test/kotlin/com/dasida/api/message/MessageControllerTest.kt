@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
@@ -181,6 +182,63 @@ class MessageControllerTest(
             .andExpect { jsonPath("$.content[1].peer.name", Matchers.`is`("캐럴")) }
             .andExpect { jsonPath("$.content[1].lastMessage.content", Matchers.`is`("다섯")) }
             .andExpect { jsonPath("$.content[1].unreadCount", Matchers.`is`(0)) }
+    }
+
+    @Test
+    fun `본인 메시지만 삭제할 수 있고 삭제 후 본문이 마스킹된다`() {
+        val alice = users.save(
+            com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),
+        )
+        val bob = users.save(
+            com.dasida.api.auth.User(email = "b-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "밥"),
+        )
+        val aliceToken = jwt.issue(alice)
+        val bobToken = jwt.issue(bob)
+
+        val createdJson = mvc.post("/api/messages/conversations") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("peerUserId" to requireNotNull(bob.id)))
+        }.andReturn().response.contentAsString
+        val conversationId = mapper.readTree(createdJson).get("id").asString()
+
+        val sentJson = mvc.post("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("content" to "지울 메시지"))
+        }.andReturn().response.contentAsString
+        val messageId = mapper.readTree(sentJson).get("id").asString()
+
+        // 상대(밥)는 삭제 불가
+        mvc.delete("/api/messages/conversations/$conversationId/messages/$messageId") {
+            header("Authorization", "Bearer $bobToken")
+        }.andExpect { status { isForbidden() } }
+
+        // 본인(앨리스) 삭제 → 204
+        mvc.delete("/api/messages/conversations/$conversationId/messages/$messageId") {
+            header("Authorization", "Bearer $aliceToken")
+        }.andExpect { status { isNoContent() } }
+
+        // 재삭제는 404
+        mvc.delete("/api/messages/conversations/$conversationId/messages/$messageId") {
+            header("Authorization", "Bearer $aliceToken")
+        }.andExpect { status { isNotFound() } }
+
+        // 목록에서 본문 마스킹 + deleted 플래그
+        mvc.get("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.content[0].deleted", Matchers.`is`(true)) }
+            .andExpect { jsonPath("$.content[0].content", Matchers.`is`("")) }
+
+        // 대화 요약 미리보기도 마스킹
+        mvc.get("/api/messages/conversations/$conversationId") {
+            header("Authorization", "Bearer $bobToken")
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.lastMessage.deleted", Matchers.`is`(true)) }
+            .andExpect { jsonPath("$.lastMessage.content", Matchers.`is`("")) }
     }
 
     @Test

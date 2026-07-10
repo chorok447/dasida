@@ -1,10 +1,11 @@
-import { apiGet, apiPost } from "@/lib/api";
+import { apiDeleteVoid, apiGet, apiPost } from "@/lib/api";
 
 export type MessagePreview = {
   id: string;
   content: string;
   senderId: number;
   createdAt: string;
+  deleted?: boolean;
 };
 
 /** 대화 상대 요약. 백엔드 ConversationPeerResponse 와 1:1 — 카운트·팔로우 상태는 전체 프로필 API 로. */
@@ -41,6 +42,7 @@ export type MessageItem = {
   content: string;
   createdAt: string;
   mine: boolean;
+  deleted?: boolean;
 };
 
 export type MessagePageResponse = {
@@ -60,6 +62,13 @@ export type DmChangedDetail = {
 export function emitDmChanged(detail?: DmChangedDetail) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent<DmChangedDetail>(DM_EVENT, { detail }));
+}
+
+/** 본인 메시지 삭제(soft delete). 삭제 후 본문은 서버가 마스킹한다. */
+export function deleteMessage(conversationId: string, messageId: string): Promise<void> {
+  return apiDeleteVoid(
+    `/api/messages/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+  );
 }
 
 export function createConversation(peerUserId: number): Promise<ConversationSummary> {

@@ -24,4 +24,6 @@ class Message(
     @Column(nullable = false) val type: String,
     @Column(name = "created_at", nullable = false) val createdAt: Instant,
     @Column(nullable = false) val seq: Long,
+    // 발신자 삭제(soft delete). 본문은 보존하고 응답에서 마스킹한다(신고 대상 보존).
+    @Column(name = "deleted_at") var deletedAt: Instant? = null,
 )

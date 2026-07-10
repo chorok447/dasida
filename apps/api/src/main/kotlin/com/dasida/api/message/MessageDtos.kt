@@ -26,6 +26,7 @@ data class MessagePreview(
     val content: String,
     val senderId: Long,
     val createdAt: String,
+    val deleted: Boolean = false,
 )
 
 data class ConversationPageResponse(
@@ -46,6 +47,7 @@ data class MessageResponse(
     val content: String,
     val createdAt: String,
     val mine: Boolean,
+    val deleted: Boolean = false,
 )
 
 data class MessagePageResponse(

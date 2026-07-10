@@ -128,7 +128,7 @@ function ConversationListBody({
 }
 
 function ConversationRow({ item }: { item: ConversationSummary }) {
-  const preview = item.lastMessage?.content ?? "대화를 시작해 보세요";
+  const preview = item.lastMessage?.deleted ? "삭제된 메시지입니다" : (item.lastMessage?.content ?? "대화를 시작해 보세요");
   const time = item.lastMessage?.createdAt ?? item.updatedAt;
   return (
     <li>

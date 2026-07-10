@@ -41,6 +41,11 @@ test("프로필에서 메시지를 보내고 알림·답장·목록이 동작한
   await page.getByPlaceholder(/메시지 입력/).fill(replyText);
   await page.getByLabel("전송").click();
   await expect(page.getByText(replyText)).toBeVisible({ timeout: 10_000 });
+
+  // 본인 메시지 삭제 → 마스킹 표시로 대체
+  await page.getByRole("button", { name: "메시지 삭제" }).first().click();
+  await expect(page.getByText("삭제된 메시지입니다")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(replyText)).not.toBeVisible();
 });
 
 test("게시글 상세에서 작성자에게 메시지를 보낸다", async ({ page }) => {

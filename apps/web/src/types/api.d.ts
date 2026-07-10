@@ -1404,6 +1404,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/messages/conversations/{id}/messages/{messageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 메시지 삭제
+         * @description 본인이 보낸 메시지만. soft delete 후 응답에서 마스킹된다.
+         */
+        delete: operations["deleteMessage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{id}/participants/{participantId}": {
         parameters: {
             query?: never;
@@ -1766,6 +1786,7 @@ export interface components {
             /** Format: int64 */
             senderId?: number;
             createdAt?: string;
+            deleted?: boolean;
         };
         MarkReadResponse: {
             read?: boolean;
@@ -1780,6 +1801,7 @@ export interface components {
             content?: string;
             createdAt?: string;
             mine?: boolean;
+            deleted?: boolean;
         };
         MediaUploadResponse: {
             url?: string;
@@ -4659,6 +4681,27 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["NotificationDeleteReadResponse"];
                 };
+            };
+        };
+    };
+    deleteMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                messageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
