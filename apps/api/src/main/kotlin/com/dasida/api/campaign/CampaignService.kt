@@ -316,21 +316,24 @@ class CampaignService(
                 else -> throw ResponseStatusException(HttpStatus.CONFLICT, "invalid status transition")
             }
             val title = if (target == "open") "모집이 시작되었습니다" else "모집이 마감되었습니다"
-            participants.findByCampaignId(campaignId)
-                .asSequence()
-                .filter { it.userId != userId }
-                .forEach { participant ->
-                    val recipient = users.findById(participant.userId).orElse(null) ?: return@forEach
-                    if (!recipient.notifyCampaignUpdates) return@forEach
-                    notifications.notify(
-                        recipientUserId = participant.userId,
-                        actorUserId = userId,
-                        type = NotificationType.CAMPAIGN_STATUS_CHANGED,
-                        title = title,
-                        body = campaign.title,
-                        href = "/campaigns/$campaignId",
-                    )
-                }
+            val recipientIds = participants.findByCampaignId(campaignId)
+                .map { it.userId }
+                .filter { it != userId }
+                .distinct()
+            if (recipientIds.isNotEmpty()) {
+                users.findAllById(recipientIds)
+                    .filter { it.notifyCampaignUpdates }
+                    .forEach { recipient ->
+                        notifications.notify(
+                            recipientUserId = requireNotNull(recipient.id),
+                            actorUserId = userId,
+                            type = NotificationType.CAMPAIGN_STATUS_CHANGED,
+                            title = title,
+                            body = campaign.title,
+                            href = "/campaigns/$campaignId",
+                        )
+                    }
+            }
         }
 
         return campaign.toResponse(
