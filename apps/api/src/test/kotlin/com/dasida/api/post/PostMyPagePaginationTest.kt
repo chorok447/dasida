@@ -21,6 +21,7 @@ class PostMyPagePaginationTest(
     @param:Autowired val posts: PostRepository,
     @param:Autowired val likeRepo: PostLikeRepository,
     @param:Autowired val bookmarkRepo: PostBookmarkRepository,
+    @param:Autowired val commentRepo: PostCommentRepository,
 ) {
     private val me = 1L
     private val token = jwt.issue(User(id = me, email = "me@t.com", passwordHash = "x", name = "나", verified = false))
@@ -180,5 +181,47 @@ class PostMyPagePaginationTest(
                 jsonPath("$") { isArray() }
                 jsonPath("$.length()") { value(1) }
             }
+    }
+
+    private fun comment(postId: String, seq: Long, authorUserId: Long = me, deleted: Boolean = false): String {
+        val id = "pgc-${UUID.randomUUID()}"
+        commentRepo.saveAndFlush(
+            PostComment(
+                id = id, postId = postId, author = Author("나", false), text = "댓글", time = "방금",
+                seq = seq, authorUserId = authorUserId,
+                deletedAt = if (deleted) java.time.Instant.now() else null,
+                hiddenAt = if (deleted) java.time.Instant.now() else null,
+            ),
+        )
+        return id
+    }
+
+    // ---- 댓글 단 글 ----
+
+    @Test
+    fun `댓글 단 글은 최근 댓글 순으로 중복 없이 반환하고 삭제 댓글·숨김 글은 제외한다`() {
+        val other = 9L
+        val first = savePost(seq = 1, authorUserId = other)
+        val second = savePost(seq = 2, authorUserId = other)
+        val deletedOnly = savePost(seq = 3, authorUserId = other)
+        val hiddenPost = savePost(seq = 4, authorUserId = other)
+
+        comment(first, seq = 10)
+        comment(second, seq = 20)
+        comment(first, seq = 30) // 같은 글에 두 번 → 중복 없이, 최근 댓글 기준으로 앞에
+        comment(deletedOnly, seq = 40, deleted = true) // 삭제 댓글만 있는 글은 제외
+        comment(hiddenPost, seq = 50)
+        posts.findById(hiddenPost).orElseThrow().let { it.hiddenAt = java.time.Instant.now(); posts.saveAndFlush(it) }
+
+        mvc.get("/api/posts/commented/page") {
+            headers { add("Authorization", "Bearer $token") }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(1 + 1) } // first, second (hidden 은 content 에서 제외)
+            jsonPath("$.content[0].id") { value(first) }
+            jsonPath("$.content[1].id") { value(second) }
+        }
+
+        mvc.get("/api/posts/commented/page").andExpect { status { isUnauthorized() } }
     }
 }

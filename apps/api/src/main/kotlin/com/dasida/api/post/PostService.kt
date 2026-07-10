@@ -246,6 +246,29 @@ class PostService(
         )
     }
 
+    /**
+     * 내가 댓글 단 게시글 pagination. 최근 댓글 순으로 게시글을 중복 없이 페이지하고,
+     * 저장 목록과 같은 규칙으로 순서를 보존하며 삭제·숨김 게시글은 결과에서 제외한다.
+     */
+    @Transactional(readOnly = true)
+    fun getMyCommentedPostsPage(userId: Long, page: Int, size: Int): PostPageResponse {
+        validatePageParams(page, size)
+        val idPage = commentRepo.findCommentedPostIds(userId, PageRequest.of(page, size))
+        val postsById = if (idPage.content.isEmpty()) emptyMap() else repo.findAllById(idPage.content).associateBy { it.id }
+        val orderedPosts = idPage.content.mapNotNull { postsById[it] }.filter { it.hiddenAt == null && it.deletedAt == null }
+        val likedIds = likedByPage(userId, orderedPosts.map { it.id })
+        val bookmarkedIds = bookmarkedByPage(userId, orderedPosts.map { it.id })
+        return PostPageResponse(
+            content = orderedPosts.map {
+                it.toResponse(viewerId = userId, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
+            },
+            page = page,
+            size = size,
+            totalElements = idPage.totalElements,
+            totalPages = totalPages(idPage.totalElements, size),
+        )
+    }
+
     @Transactional(readOnly = true)
     fun getPost(id: String, currentUserId: Long?): PostResponse {
         val post = visibleDetailOrNotFound(id, currentUserId)

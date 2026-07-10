@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LogIn, RefreshCw } from "lucide-react";
 import { useCurrentUserProfile } from "@/lib/use-current-user-profile";
 import { ActivitySummary } from "./activity-summary";
-import { MyPostsGrid } from "./my-posts-grid";
+import { CommentedPostsGrid, MyPostsGrid } from "./my-posts-grid";
 import { SavedCampaignsGrid } from "./saved-campaigns-grid";
 import { SavedPostsGrid } from "./saved-posts-grid";
 import { UserCampaignsList } from "./joined-campaigns-list";
@@ -92,6 +92,11 @@ export default function MyPageClient() {
               {tab === "posts" ? (
                 <div role="tabpanel" id="mypage-panel-posts" aria-labelledby="mypage-tab-posts">
                   <MyPostsGrid page={page} onPageChange={onPageChange} />
+                </div>
+              ) : null}
+              {tab === "commented" ? (
+                <div role="tabpanel" id="mypage-panel-commented" aria-labelledby="mypage-tab-commented">
+                  <CommentedPostsGrid page={page} onPageChange={onPageChange} />
                 </div>
               ) : null}
               {tab === "campaigns" ? (

@@ -51,6 +51,7 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.GET, "/api/posts/mine/page").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/bookmarks").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/posts/bookmarks/page").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/posts/commented/page").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/auth/access-logs").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/campaigns/joined").authenticated()

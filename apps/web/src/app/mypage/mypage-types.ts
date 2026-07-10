@@ -1,10 +1,11 @@
-export type MypageTab = "posts" | "campaigns" | "created" | "saved" | "account" | "access" | "reports";
+export type MypageTab = "posts" | "commented" | "campaigns" | "created" | "saved" | "account" | "access" | "reports";
 
 export const MYPAGE_TAB_GROUPS: { label: string; tabs: { id: MypageTab; label: string }[] }[] = [
   {
     label: "활동",
     tabs: [
       { id: "posts", label: "내 게시글" },
+      { id: "commented", label: "댓글 단 글" },
       { id: "campaigns", label: "참여 캠페인" },
       { id: "created", label: "개설 캠페인" },
       { id: "saved", label: "저장됨" },

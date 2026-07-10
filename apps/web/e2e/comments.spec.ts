@@ -65,6 +65,10 @@ test("댓글 좋아요를 누르고 취소할 수 있다", async ({ page }) => {
 
   await page.getByRole("button", { name: "이 댓글 좋아요 취소", exact: true }).click();
   await expect(page.getByRole("button", { name: "이 댓글 좋아요", exact: true })).toHaveText(/0/);
+
+  // 댓글 단 글이 마이페이지 활동 탭에 나타난다
+  await page.goto("/mypage?tab=commented&page=0");
+  await expect(page.getByText(`E2E 댓글 좋아요 글 ${stamp}`).first()).toBeVisible();
 });
 
 test("캠페인 댓글을 작성·수정·삭제할 수 있다", async ({ page }) => {
