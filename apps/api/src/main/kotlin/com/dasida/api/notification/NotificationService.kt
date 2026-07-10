@@ -51,7 +51,8 @@ class NotificationService(
             size = result.size,
             totalElements = result.totalElements,
             totalPages = result.totalPages,
-            unreadCount = repo.countByUserIdAndReadAtIsNull(userId),
+            // 타입 필터 없는 unreadOnly 조회는 totalElements 가 곧 미읽음 수 — 별도 count 쿼리를 생략한다.
+            unreadCount = if (unreadOnly && types.isEmpty()) result.totalElements else repo.countByUserIdAndReadAtIsNull(userId),
         )
     }
 
