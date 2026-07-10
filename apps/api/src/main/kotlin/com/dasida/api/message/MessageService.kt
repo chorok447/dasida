@@ -210,6 +210,26 @@ class MessageService(
         return message.toResponse(userId)
     }
 
+    /**
+     * 본인 메시지 삭제(soft delete). 본문은 보존하고 이후 응답에서 마스킹한다(신고 대상 보존).
+     * 상대 화면의 실시간 반영은 후속(WS delete 이벤트) — 다음 조회부터 반영된다.
+     */
+    @Transactional
+    fun deleteMessage(userId: Long, conversationId: String, messageId: String) {
+        memberOrForbidden(userId, conversationId)
+        val message = messages.findById(messageId).orElse(null)
+        if (message == null || message.conversationId != conversationId || message.deletedAt != null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "message not found")
+        }
+        if (message.senderId != userId) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "not the message sender")
+        }
+        message.deletedAt = Instant.now(clock)
+        messages.save(message)
+        // 목록 미리보기도 즉시 마스킹되도록 inbox 요약을 갱신한다.
+        conversations.findById(conversationId).orElse(null)?.let { notifyInbox(it, conversationId) }
+    }
+
     @Transactional
     fun markRead(userId: Long, conversationId: String): MarkReadResponse {
         val member = memberOrForbidden(userId, conversationId)
@@ -270,9 +290,10 @@ class MessageService(
         lastMessage = lastMessage?.let {
             MessagePreview(
                 id = it.id,
-                content = it.content,
+                content = if (it.deletedAt != null) "" else it.content,
                 senderId = it.senderId,
                 createdAt = it.createdAt.toString(),
+                deleted = it.deletedAt != null,
             )
         },
         unreadCount = unread,
@@ -294,9 +315,11 @@ class MessageService(
     private fun Message.toResponse(viewerId: Long) = MessageResponse(
         id = id,
         senderId = senderId,
-        content = content,
+        // soft delete 된 메시지는 본문을 노출하지 않는다(마스킹 문구는 프론트가 붙인다).
+        content = if (deletedAt != null) "" else content,
         createdAt = createdAt.toString(),
         mine = senderId == viewerId,
+        deleted = deletedAt != null,
     )
 
     private companion object {

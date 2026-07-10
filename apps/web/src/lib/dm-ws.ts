@@ -164,7 +164,7 @@ function parseConversationSummary(payload: Record<string, unknown>): Conversatio
       typeof m.senderId === "number" &&
       typeof m.createdAt === "string"
     ) {
-      preview = { id: m.id, content: m.content, senderId: m.senderId, createdAt: m.createdAt };
+      preview = { id: m.id, content: m.content, senderId: m.senderId, createdAt: m.createdAt, deleted: m.deleted === true };
     }
   }
   return {

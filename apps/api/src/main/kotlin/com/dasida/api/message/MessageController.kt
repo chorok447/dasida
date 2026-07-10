@@ -6,12 +6,15 @@ import org.springframework.dao.DataIntegrityViolationException
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -73,6 +76,16 @@ class MessageController(private val messages: MessageService) {
         @RequestBody req: SendMessageRequest,
         @AuthenticationPrincipal user: AuthUser,
     ): MessageResponse = messages.sendMessage(user.id, id, req.content)
+
+    @Operation(summary = "메시지 삭제", description = "본인이 보낸 메시지만. soft delete 후 응답에서 마스킹된다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/conversations/{id}/messages/{messageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteMessage(
+        @PathVariable id: String,
+        @PathVariable messageId: String,
+        @AuthenticationPrincipal user: AuthUser,
+    ) = messages.deleteMessage(user.id, id, messageId)
 
     @Operation(summary = "대화 읽음 처리")
     @SecurityRequirement(name = "bearerAuth")

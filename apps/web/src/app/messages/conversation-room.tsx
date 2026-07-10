@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { AuthorHeader } from "@/components/author-header";
@@ -11,6 +11,7 @@ import { useAuthSession } from "@/lib/use-auth-session";
 import { ApiError } from "@/lib/api";
 import { beginAuthedRequest, clearSessionIfUnauthorized } from "@/lib/authed-request";
 import {
+  deleteMessage,
   fetchConversation,
   fetchMessages,
   markConversationRead,
@@ -39,6 +40,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
   const { profile } = useCurrentUserProfile();
   const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [peer, setPeer] = useState<ConversationPeer | null>(null);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -172,6 +174,24 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   // WS 에코가 profile 로드 전에 도착하면 mine=false 로 저장될 수 있어, 렌더 시점의 profile 로 재판정한다.
   const isMine = (msg: MessageItem) => (profile?.id != null ? msg.senderId === profile.id : msg.mine);
 
+  const removeMessage = async (messageId: string) => {
+    if (deletingIds.has(messageId)) return;
+    setDeletingIds((prev) => new Set(prev).add(messageId));
+    try {
+      await deleteMessage(conversationId, messageId);
+      // 서버가 본문을 마스킹하므로 로컬도 동일하게 표시만 바꾼다(WS 실시간 반영은 후속).
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, deleted: true, content: "" } : m)));
+    } catch {
+      toast.error("메시지 삭제에 실패했습니다.");
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(messageId);
+        return next;
+      });
+    }
+  };
+
   const lastMineIndex = messages.reduce<number | null>((acc, msg, idx) => (isMine(msg) ? idx : acc), null);
   const readThroughIndex = peerReadMessageId
     ? messages.findIndex((m) => m.id === peerReadMessageId)
@@ -243,17 +263,30 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
                 }
                 const mine = isMine(msg);
                 items.push(
-                  <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <li key={msg.id} className={`group flex items-center gap-1.5 ${mine ? "justify-end" : "justify-start"}`}>
+                    {mine && !msg.deleted ? (
+                      <button
+                        type="button"
+                        onClick={() => void removeMessage(msg.id)}
+                        disabled={deletingIds.has(msg.id)}
+                        aria-label="메시지 삭제"
+                        className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-60 hover:!opacity-100 disabled:opacity-30"
+                        style={{ color: "var(--foreground-muted)" }}
+                      >
+                        <Trash2 size={13} aria-hidden />
+                      </button>
+                    ) : null}
                     <div
                       className="max-w-[80%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap break-words"
                       style={{
                         background: mine
                           ? "rgba(125,211,163,0.35)"
                           : "rgba(var(--ink-rgb), 0.07)",
-                        color: "var(--foreground)",
+                        color: msg.deleted ? "var(--foreground-muted)" : "var(--foreground)",
+                        fontStyle: msg.deleted ? "italic" : undefined,
                       }}
                     >
-                      {msg.content}
+                      {msg.deleted ? "삭제된 메시지입니다" : msg.content}
                     </div>
                   </li>,
                 );
