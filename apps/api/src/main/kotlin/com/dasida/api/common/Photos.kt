@@ -26,21 +26,21 @@ object Photos {
         "photo-1778554986659-741bb4c610a8", "photo-1587088507715-c7705faa3d27",
         "photo-1588195415442-3ea1e61e1322", "photo-1587761383903-4ed7d428e746",
         "photo-1587797283885-9a123e3e88a0", "photo-1778512397881-51b00202ddde",
-        "photo-1750343293522-2f08b60a317a", "photo-1615292215322-84c7b9ec441b",
+        "photo-1750343293522-2f08b60a317a", "photo-1555529669-e69e7aa0ba9a",
     ).map { u(it) }
 
     val market = listOf(
         "photo-1640684666381-2e4a56056a0d", "photo-1726572330396-0947f571ac19",
         "photo-1780461475878-17d8c3108857", "photo-1685875018097-3a93223dfac8",
-        "photo-1761926783284-6de41a58736d", "photo-1685883518233-4b355cf80a08",
-        "photo-1780775119744-f493340e9f79", "photo-1781730441165-069bffd27f90",
+        "photo-1472851294608-062f824d29cc", "photo-1685883518233-4b355cf80a08",
+        "photo-1780775119744-f493340e9f79", "photo-1567401893414-76b7b1e5a7a5",
     ).map { u(it) }
 
     val people = listOf(
         "photo-1758599668299-beebedfabf7b", "photo-1624971035514-2bbbc81ea9fe",
-        "photo-1758599668356-c8c919e24dda", "photo-1758599668178-d9716bbda9d5",
+        "photo-1544027993-37dbfe43562a", "photo-1511632765486-a01980e01a18",
         "photo-1616680213875-8c6cbae0b933", "photo-1597700112072-fa3c1d930655",
-        "photo-1758599669199-a858720a9689", "photo-1758599667729-a6f0f8bd213b",
+        "photo-1469571486292-0ba58a3f068b", "photo-1758599667729-a6f0f8bd213b",
     ).map { u(it) }
 
     val obj = listOf(

@@ -31,7 +31,7 @@ export const fashionPhotos = [
   u("photo-1587797283885-9a123e3e88a0"),
   u("photo-1778512397881-51b00202ddde"),
   u("photo-1750343293522-2f08b60a317a"),
-  u("photo-1615292215322-84c7b9ec441b"),
+  u("photo-1555529669-e69e7aa0ba9a"),
 ];
 
 export const marketPhotos = [
@@ -39,20 +39,20 @@ export const marketPhotos = [
   u("photo-1726572330396-0947f571ac19"),
   u("photo-1780461475878-17d8c3108857"),
   u("photo-1685875018097-3a93223dfac8"),
-  u("photo-1761926783284-6de41a58736d"),
+  u("photo-1472851294608-062f824d29cc"),
   u("photo-1685883518233-4b355cf80a08"),
   u("photo-1780775119744-f493340e9f79"),
-  u("photo-1781730441165-069bffd27f90"),
+  u("photo-1567401893414-76b7b1e5a7a5"),
 ];
 
 export const peoplePhotos = [
   u("photo-1758599668299-beebedfabf7b"),
   u("photo-1624971035514-2bbbc81ea9fe"),
-  u("photo-1758599668356-c8c919e24dda"),
-  u("photo-1758599668178-d9716bbda9d5"),
+  u("photo-1544027993-37dbfe43562a"),
+  u("photo-1511632765486-a01980e01a18"),
   u("photo-1616680213875-8c6cbae0b933"),
   u("photo-1597700112072-fa3c1d930655"),
-  u("photo-1758599669199-a858720a9689"),
+  u("photo-1469571486292-0ba58a3f068b"),
   u("photo-1758599667729-a6f0f8bd213b"),
 ];
 
