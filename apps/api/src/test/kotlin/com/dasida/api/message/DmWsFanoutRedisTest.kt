@@ -1,6 +1,5 @@
 package com.dasida.api.message
 
-import com.dasida.api.auth.PublicUserResponse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.mockito.Mockito
@@ -57,7 +56,7 @@ class DmWsFanoutRedisTest(
             val inbox = DmInboxPayload(
                 summary = ConversationSummaryResponse(
                     id = "conv-redis",
-                    peer = PublicUserResponse(id = 1L, name = "Alice", verified = false, postCount = 0),
+                    peer = ConversationPeerResponse(id = 1L, name = "Alice", verified = false, profileImageUrl = null),
                     lastMessage = MessagePreview("msg-r", "ping", 1L, "2026-01-01T00:00:00Z"),
                     unreadCount = 1,
                     updatedAt = "2026-01-01T00:00:00Z",

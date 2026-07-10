@@ -1,12 +1,21 @@
 package com.dasida.api.message
 
-import com.dasida.api.auth.PublicUserResponse
-
 data class CreateConversationRequest(val peerUserId: Long)
+
+/**
+ * 대화 상대 요약. DM 목록/헤더는 이름·인증·아바타만 쓰므로 PublicUserResponse 의
+ * 카운트·팔로우 상태(사용자당 5쿼리)를 계산하지 않는다. 전체 프로필은 /api/users/{id} 로.
+ */
+data class ConversationPeerResponse(
+    val id: Long,
+    val name: String,
+    val verified: Boolean,
+    val profileImageUrl: String?,
+)
 
 data class ConversationSummaryResponse(
     val id: String,
-    val peer: PublicUserResponse,
+    val peer: ConversationPeerResponse,
     val lastMessage: MessagePreview?,
     val unreadCount: Int,
     val updatedAt: String,

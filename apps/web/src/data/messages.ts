@@ -1,5 +1,4 @@
 import { apiGet, apiPost } from "@/lib/api";
-import type { PublicUser } from "@/data/users";
 
 export type MessagePreview = {
   id: string;
@@ -8,9 +7,17 @@ export type MessagePreview = {
   createdAt: string;
 };
 
+/** 대화 상대 요약. 백엔드 ConversationPeerResponse 와 1:1 — 카운트·팔로우 상태는 전체 프로필 API 로. */
+export type ConversationPeer = {
+  id: number;
+  name: string;
+  verified: boolean;
+  profileImageUrl?: string | null;
+};
+
 export type ConversationSummary = {
   id: string;
-  peer: PublicUser;
+  peer: ConversationPeer;
   lastMessage: MessagePreview | null;
   unreadCount: number;
   updatedAt: string;
