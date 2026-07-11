@@ -1,5 +1,6 @@
 package com.dasida.api.admin
 
+import com.dasida.api.auth.User
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignCommentRepository
 import com.dasida.api.campaign.CampaignProofRepository
@@ -58,8 +59,11 @@ class AdminReportService(
             targetTypeFilter != null -> reports.findByTargetType(targetTypeFilter, pageable)
             else -> reports.findAll(pageable)
         }
+        // 신고자를 페이지 단위로 한 번에 로드해 행당 조회(N+1)를 없앤다.
+        val reportersById = users.findAllById(result.content.map { it.reporterUserId }.toSet())
+            .associateBy { it.id }
         return AdminReportsPageResponse(
-            content = result.content.map { it.toAdminResponse() },
+            content = result.content.map { it.toAdminResponse(reportersById[it.reporterUserId]) },
             page = result.number,
             size = result.size,
             totalElements = result.totalElements,
@@ -137,7 +141,10 @@ class AdminReportService(
         )
     }
 
-    private fun Report.toAdminResponse(): AdminReportResponse = AdminReportResponse(
+    // reporter 를 넘기지 않는 단건 경로(resolveReport)는 기존대로 개별 조회한다.
+    private fun Report.toAdminResponse(
+        reporter: User? = users.findById(reporterUserId).orElse(null),
+    ): AdminReportResponse = AdminReportResponse(
         id = id,
         targetType = targetType,
         targetId = targetId,
@@ -147,20 +154,18 @@ class AdminReportService(
         status = status,
         resolutionNote = resolutionNote,
         resolvedAt = resolvedAt?.toString(),
-        reporter = reporterOf(this),
+        reporter = reporterResponse(reporterUserId, reporter),
         target = targetPreview(this),
         targetReportCount = reports.countByTargetTypeAndTargetId(targetType, targetId),
     )
 
-    private fun reporterOf(report: Report): AdminReportUserResponse {
-        val user = users.findById(report.reporterUserId).orElse(null)
-        return AdminReportUserResponse(
-            id = report.reporterUserId,
+    private fun reporterResponse(reporterUserId: Long, user: User?): AdminReportUserResponse =
+        AdminReportUserResponse(
+            id = reporterUserId,
             name = user?.name ?: "알 수 없음",
             // 탈퇴 계정 이메일은 익명화된 placeholder 라 노출 의미가 없다.
             email = user?.takeIf { it.deletedAt == null }?.email,
         )
-    }
 
     /** 신고 대상 미리보기. 대상이 이미 삭제됐으면 null(프론트는 "삭제된 콘텐츠"로 표시). */
     private fun targetPreview(report: Report): AdminReportTargetResponse? {
