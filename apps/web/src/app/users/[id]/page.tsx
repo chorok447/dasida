@@ -15,9 +15,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const user = await getUser(id);
   if (!user) return {};
+  const title = `${user.name}님의 프로필`;
+  const description = `${user.name}님이 작성한 업사이클 게시글 ${user.postCount}개`;
   return {
-    title: `${user.name}님의 프로필`,
-    description: `${user.name}님이 작성한 업사이클 게시글 ${user.postCount}개`,
+    title,
+    description,
+    // 게시글·캠페인 상세와 동일하게 프로필 링크 공유 시 리치 카드(제목·설명·프로필 이미지)를 노출한다.
+    openGraph: {
+      title,
+      description,
+      images: user.profileImageUrl ? [user.profileImageUrl] : undefined,
+    },
   };
 }
 
