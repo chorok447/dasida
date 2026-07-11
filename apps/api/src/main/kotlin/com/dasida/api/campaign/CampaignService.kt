@@ -2,6 +2,7 @@ package com.dasida.api.campaign
 
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.common.checkPageParams
+import com.dasida.api.common.SeqGenerator
 import com.dasida.api.common.SitemapIdsResponse
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
@@ -477,7 +478,7 @@ class CampaignService(
                     users.findById(user.id).orElse(null)?.profileImageUrl,
                 ),
                 body = input.body,
-                seq = System.currentTimeMillis(),
+                seq = SeqGenerator.next(),
                 authorUserId = user.id,
             ),
         ).toResponse(viewerId = user.id, joinedByMe = false, bookmarkedByMe = false, today = LocalDate.now(clock))

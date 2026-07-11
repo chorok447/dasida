@@ -4,6 +4,7 @@ import com.dasida.api.auth.UserRepository
 import com.dasida.api.auth.findActiveOrThrow
 import com.dasida.api.auth.toAuthorSnapshot
 import com.dasida.api.common.CommentPageLocationResponse
+import com.dasida.api.common.SeqGenerator
 import com.dasida.api.common.checkPageParams
 import com.dasida.api.common.checkPageSize
 import com.dasida.api.notification.CommentMentionNotifier
@@ -139,7 +140,7 @@ class PostCommentService(
                 author = authorSnapshot,
                 text = text,
                 time = "방금 전",
-                seq = System.currentTimeMillis(),
+                seq = SeqGenerator.next(),
                 authorUserId = author.id,
                 parentId = parent?.id,
             ),

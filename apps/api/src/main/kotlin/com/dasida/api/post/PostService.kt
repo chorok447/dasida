@@ -4,6 +4,7 @@ import com.dasida.api.auth.UserFollowService
 import com.dasida.api.auth.UserRepository
 import com.dasida.api.campaign.CampaignRepository
 import com.dasida.api.common.checkPageParams
+import com.dasida.api.common.SeqGenerator
 import com.dasida.api.common.SitemapIdsResponse
 import com.dasida.api.notification.NotificationService
 import com.dasida.api.notification.NotificationType
@@ -397,7 +398,7 @@ class PostService(
                 likes = 0,
                 comments = 0,
                 campaignId = fields.campaignId,
-                seq = System.currentTimeMillis(),
+                seq = SeqGenerator.next(),
                 authorUserId = author.id,
                 createdAt = Instant.now(clock),
             ),
