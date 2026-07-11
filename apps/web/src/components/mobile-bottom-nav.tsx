@@ -48,7 +48,7 @@ export function MobileBottomNav() {
                 {showBadge && (
                   <span
                     className="absolute -top-1.5 -right-2.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-1 text-[9px] font-semibold leading-none"
-                    style={{ background: "#ed5c48", color: "#ffffff" }}
+                    style={{ background: "var(--danger-solid)", color: "#ffffff" }}
                     aria-hidden
                   >
                     {dmUnread > 99 ? "99+" : dmUnread}
