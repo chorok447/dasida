@@ -135,7 +135,7 @@ export function SearchFilters({
             <select
               value={state.sort}
               onChange={(event) => onUpdate({ sort: event.target.value as SearchSort, page: 0 })}
-              className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               style={{ color: "var(--foreground)", background: "var(--card)", borderColor: "var(--border)" }}
             >
               <option value="latest">최신순</option>
@@ -157,7 +157,7 @@ export function SearchFilters({
                   recruitState: event.target.value ? event.target.value as CampaignRecruitState : null,
                   page: 0,
                 })}
-                className="min-w-0 rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+                className="min-w-0 rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 style={{ color: "var(--foreground)", background: "var(--card)", borderColor: "var(--border)" }}
               >
                 <option value="">전체</option>

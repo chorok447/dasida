@@ -79,7 +79,7 @@ export function ActivitySummary({ onSelectTab }: { onSelectTab: (tab: SummaryTab
                 style={{
                   fontFamily: "var(--font-black-han), sans-serif",
                   fontSize: "clamp(26px, 3vw, 34px)",
-                  color: "#7dd3a3",
+                  color: "var(--accent)",
                   lineHeight: 1.1,
                 }}
               >

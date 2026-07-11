@@ -232,7 +232,7 @@ export function UserCampaignsList({
           <ListEmptyState
             title={meta.emptyTitle}
             action={
-              <Link href={meta.ctaHref} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
+              <Link href={meta.ctaHref} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
                 {meta.ctaLabel}
               </Link>
             }

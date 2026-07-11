@@ -14,7 +14,7 @@ type AuthResponse = { token: string; name: string; verified: boolean };
 
 function Rule({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-[12px]" style={{ color: ok ? "#7dd3a3" : "rgba(var(--ink-rgb), 0.4)" }}>
+    <div className="flex items-center gap-1.5 text-[12px]" style={{ color: ok ? "var(--accent)" : "rgba(var(--ink-rgb), 0.4)" }}>
       <Check size={14} />
       {label}
     </div>
@@ -56,7 +56,7 @@ export default function SignupPage() {
       footer={
         <p className="text-center text-[14px] mt-4" style={{ color: "rgba(var(--ink-rgb), 0.7)" }}>
           이미 계정이 있으신가요?{" "}
-          <Link href="/login" className="underline" style={{ color: "#7dd3a3" }}>
+          <Link href="/login" className="underline" style={{ color: "var(--accent)" }}>
             로그인
           </Link>
         </p>
@@ -94,7 +94,7 @@ export default function SignupPage() {
           type="submit"
           disabled={submitting || !canSubmit}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:opacity-40 motion-reduce:transform-none"
-          style={{ background: "#7dd3a3", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "#0f1f22" }}
         >
           {submitting ? "가입 중…" : "회원가입"} <ArrowRight size={16} aria-hidden="true" />
         </button>

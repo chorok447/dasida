@@ -260,7 +260,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
                 avatarSize={36}
               />
               {peerOnline ? (
-                <p className="mt-0.5 text-[11px] text-[#7dd3a3]">온라인</p>
+                <p className="mt-0.5 text-[11px] text-[var(--accent)]">온라인</p>
               ) : null}
             </div>
           ) : (
@@ -388,7 +388,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
               rows={1}
               maxLength={MAX_MESSAGE_LENGTH}
               placeholder="메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)"
-              className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border px-4 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-[#7dd3a3]/40"
+              className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border px-4 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-[rgba(var(--accent-rgb),0.4)]"
               style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
             />
             <button
@@ -396,7 +396,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
               onClick={() => void onSend()}
               disabled={sending || !draft.trim()}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-              style={{ background: "#7dd3a3", color: "#0f1f22" }}
+              style={{ background: "var(--accent)", color: "#0f1f22" }}
               aria-label="전송"
             >
               <Send size={18} />

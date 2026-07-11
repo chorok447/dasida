@@ -35,7 +35,7 @@ export default function NotFound() {
       }}
     >
       <div className="absolute inset-0 opacity-30 pointer-events-none">
-        <div className="absolute top-1/4 left-1/3 w-[600px] h-[600px] rounded-full bg-[#7dd3a3] blur-[140px]" />
+        <div className="absolute top-1/4 left-1/3 w-[600px] h-[600px] rounded-full bg-[var(--accent)] blur-[140px]" />
       </div>
 
       <motion.div
@@ -48,7 +48,7 @@ export default function NotFound() {
               fontFamily: "var(--font-black-han), sans-serif",
               fontSize: "clamp(160px, 22vw, 280px)",
               lineHeight: 1,
-              backgroundImage: "linear-gradient(180deg,#7dd3a3,#3a7a5a)",
+              backgroundImage: "linear-gradient(180deg,var(--accent),#3a7a5a)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -71,7 +71,7 @@ export default function NotFound() {
         </motion.p>
         <Link
           href="/"
-          style={{ transform: "translateZ(90px)", background: "#7dd3a3", color: "#0f1f22" }}
+          style={{ transform: "translateZ(90px)", background: "var(--accent)", color: "#0f1f22" }}
           className="mt-10 inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4)]"
         >
           <Home size={16} /> 메인페이지로 이동하기

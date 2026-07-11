@@ -144,7 +144,7 @@ export function CampaignComposeThumb({
           onClick={addThumbUrl}
           disabled={disabled || Boolean(thumb.trim())}
           className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-medium disabled:opacity-40"
-          style={{ background: "#7dd3a3", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "#0f1f22" }}
           aria-label="썸네일 URL 추가"
         >
           <Plus size={14} aria-hidden />
@@ -207,7 +207,7 @@ export function CampaignComposeThumb({
               }}
               disabled={disabled}
               className="aspect-square overflow-hidden rounded-lg border-2 disabled:opacity-60"
-              style={{ borderColor: thumb === src ? "#7dd3a3" : "transparent" }}
+              style={{ borderColor: thumb === src ? "var(--accent)" : "transparent" }}
               aria-label={thumb === src ? "선택된 썸네일" : "썸네일 이미지 선택"}
               aria-pressed={thumb === src}
             >

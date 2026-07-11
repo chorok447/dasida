@@ -297,14 +297,14 @@ export function deleteCampaignProof(campaignId: string, proofId: string): Promis
 }
 
 export const statusMeta: Record<CampaignStatus, { label: string; color: string; fg: string }> = {
-  open: { label: "모집중", color: "#7dd3a3", fg: "#0f1f22" },
+  open: { label: "모집중", color: "var(--accent)", fg: "#0f1f22" },
   upcoming: { label: "모집예정", color: "#148a90", fg: "#ffffff" },
   closed: { label: "모집마감", color: "rgba(120,120,130,0.7)", fg: "#ffffff" },
 };
 
 const recruitStateMeta: Record<CampaignRecruitState, { label: string; color: string; fg: string }> = {
   before_recruit: { label: "모집예정", color: "#148a90", fg: "#ffffff" },
-  recruiting: { label: "모집중", color: "#7dd3a3", fg: "#0f1f22" },
+  recruiting: { label: "모집중", color: "var(--accent)", fg: "#0f1f22" },
   ended: { label: "모집종료", color: "rgba(120,120,130,0.7)", fg: "#ffffff" },
   closed: { label: "모집마감", color: "rgba(120,120,130,0.7)", fg: "#ffffff" },
 };

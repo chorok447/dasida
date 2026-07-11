@@ -30,7 +30,7 @@ export function ActiveFilterChips({
           key={chip.id}
           type="button"
           onClick={chip.onRemove}
-          className="inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+          className="inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           style={{
             background: "var(--accent-soft)",
             color: "var(--accent-secondary)",
@@ -45,7 +45,7 @@ export function ActiveFilterChips({
         <button
           type="button"
           onClick={onClearAll}
-          className="rounded-full px-3 py-1.5 text-[12px] underline underline-offset-2 opacity-70 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+          className="rounded-full px-3 py-1.5 text-[12px] underline underline-offset-2 opacity-70 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           style={{ color: "var(--foreground)" }}
         >
           {clearLabel}

@@ -29,6 +29,8 @@
   --text-tile-gradient: linear-gradient(135deg, rgba(125, 211, 163, 0.3), rgba(231, 223, 203, 0.5));
   /* 본문 잉크 RGB 채널. rgba(var(--ink-rgb), a) 로 임의 투명도의 텍스트/틴트를 만든다. */
   --ink-rgb: 28, 64, 68;
+  /* 액센트 RGB 채널. rgba(var(--accent-rgb), a) 로 임의 투명도의 액센트 틴트/링/보더를 만든다(테마 불변). */
+  --accent-rgb: 125, 211, 163;
   /* 페이지 표면 RGB 채널. 반투명 고정 헤더 등 rgba(var(--surface-rgb), a) 용. */
   --surface-rgb: 249, 247, 242;
   /* 반투명 화이트 패널(입력·필터 바 등)과 그보다 불투명한 강조 패널. */

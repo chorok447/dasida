@@ -239,9 +239,9 @@ export function FeedPostCard({
               disabled={bookmarking || refreshing}
               aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
               className="transition-colors disabled:opacity-50"
-              style={{ color: bookmarked ? "#7dd3a3" : "var(--foreground-muted)" }}
+              style={{ color: bookmarked ? "var(--accent)" : "var(--foreground-muted)" }}
             >
-              <Bookmark size={14} fill={bookmarked ? "#7dd3a3" : "transparent"} />
+              <Bookmark size={14} fill={bookmarked ? "var(--accent)" : "transparent"} />
             </motion.button>
           </div>
 
@@ -280,7 +280,7 @@ export function FeedPostCard({
                     placeholder="댓글 달기…"
                     aria-label="댓글 내용"
                     maxLength={MAX_COMMENT_LENGTH}
-                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+                    className="flex-1 bg-transparent outline-none text-[13px] px-3 py-2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                     style={{ background: "var(--border)", color: "var(--foreground)" }}
                   />
                   <button
@@ -288,7 +288,7 @@ export function FeedPostCard({
                     disabled={busy || !commentText.trim()}
                     aria-label="댓글 등록"
                     className="p-2 rounded-full disabled:opacity-40"
-                    style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                    style={{ background: "var(--accent)", color: "#0f1f22" }}
                   >
                     <Send size={14} />
                   </button>
@@ -298,7 +298,7 @@ export function FeedPostCard({
                   <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
                     로그인해야 댓글을 작성할 수 있어요.
                   </p>
-                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[#7dd3a3] px-4 py-1.5 text-[12px] text-[#0f1f22]">
+                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-[12px] text-[#0f1f22]">
                     로그인하기
                   </button>
                 </div>

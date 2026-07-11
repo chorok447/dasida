@@ -69,7 +69,7 @@ export function LandingFlow() {
                 </span>
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
-                  style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                  style={{ background: "var(--accent)", color: "#0f1f22" }}
                 >
                   {step.icon}
                 </div>
@@ -108,7 +108,7 @@ export function LandingFlow() {
               <Link
                 href="/feed"
                 className="inline-flex items-center justify-center rounded-full px-8 py-4 text-[15px] font-medium shadow-[0_16px_40px_-16px_rgba(125,211,163,0.8)]"
-                style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                style={{ background: "var(--accent)", color: "#0f1f22" }}
               >
                 피드 둘러보기
               </Link>

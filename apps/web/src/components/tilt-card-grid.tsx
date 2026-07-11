@@ -14,9 +14,9 @@ type Card = {
 
 const cards: Card[] = [
   { icon: <Recycle size={28} />, title: "폐자원 재발견", desc: "버려진 자원에 새 가치를 부여합니다.", tone: "from-[#1c4044] to-[#2a5a4a]" },
-  { icon: <Shirt size={28} />, title: "패션 업사이클", desc: "런웨이에 오른 업사이클링 의류.", tone: "from-[#3a5a3a] to-[#7dd3a3]" },
+  { icon: <Shirt size={28} />, title: "패션 업사이클", desc: "런웨이에 오른 업사이클링 의류.", tone: "from-[#3a5a3a] to-[var(--accent)]" },
   { icon: <Coffee size={28} />, title: "푸드 업사이클", desc: "버려질 식재료로 만드는 새로운 맛.", tone: "from-[#6a6558] to-[#a08c6a]" },
-  { icon: <Sprout size={28} />, title: "도시 화분", desc: "플라스틱이 화분으로 다시 태어납니다.", tone: "from-[#2a5a4a] to-[#7dd3a3]" },
+  { icon: <Sprout size={28} />, title: "도시 화분", desc: "플라스틱이 화분으로 다시 태어납니다.", tone: "from-[#2a5a4a] to-[var(--accent)]" },
   { icon: <Package size={28} />, title: "패키지 순환", desc: "포장재를 줄이고 재사용 합니다.", tone: "from-[#1c4044] to-[#3a5a3a]" },
   { icon: <Leaf size={28} />, title: "그린 캠페인", desc: "함께 참여하고, 직접 개최하세요.", tone: "from-[#3a5a3a] to-[#1c4044]" },
 ];

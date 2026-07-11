@@ -123,7 +123,7 @@ export function PostResultCard({ post, query = "" }: { post: Post; query?: strin
           time={post.time}
           timeClassName="text-[11px] opacity-50"
         />
-        {post.bookmarkedByMe ? <Bookmark size={15} fill="#7dd3a3" className="shrink-0 text-[#7dd3a3]" /> : null}
+        {post.bookmarkedByMe ? <Bookmark size={15} fill="var(--accent)" className="shrink-0 text-[var(--accent)]" /> : null}
       </div>
       <Link href={`/posts/${post.id}`} className="block">
         {image ? (
@@ -153,7 +153,7 @@ export function PostResultCard({ post, query = "" }: { post: Post; query?: strin
           />
           <div className="flex flex-wrap gap-1.5">
             {post.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="rounded-full bg-[#7dd3a3]/15 px-2 py-0.5 text-[10px] text-[var(--accent-strong)]">
+              <span key={tag} className="rounded-full bg-[rgba(var(--accent-rgb),0.15)] px-2 py-0.5 text-[10px] text-[var(--accent-strong)]">
                 {tag}
               </span>
             ))}

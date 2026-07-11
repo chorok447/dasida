@@ -56,7 +56,7 @@ export function NotificationRow({
         </div>
         {!item.read && (
           <span
-            className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#7dd3a3] ring-2 ring-[#0f1f22]/10"
+            className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[var(--accent)] ring-2 ring-[#0f1f22]/10"
             aria-hidden
           />
         )}
@@ -111,7 +111,7 @@ export function NotificationRow({
               onOpen(item);
             }
           }}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-colors hover:bg-[#7dd3a3]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3] py-1"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-colors hover:bg-[rgba(var(--accent-rgb),0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] py-1"
           aria-label={`${item.title}, ${statusLabel}, ${timeLabel}`}
         >
           {content}
@@ -127,7 +127,7 @@ export function NotificationRow({
           onClick={() => onMarkRead(item.id)}
           disabled={pending || deleting}
           aria-busy={pending}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           style={{ background: "rgba(var(--ink-rgb), 0.06)", color: "var(--foreground)" }}
           aria-label="읽음으로 표시"
         >

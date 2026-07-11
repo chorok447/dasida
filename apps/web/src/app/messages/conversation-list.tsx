@@ -109,7 +109,7 @@ function ConversationListBody({
               </p>
               <Link
                 href="/feed"
-                className="mt-4 inline-block rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+                className="mt-4 inline-block rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]"
               >
                 피드로 이동
               </Link>
@@ -134,7 +134,7 @@ function ConversationRow({ item }: { item: ConversationSummary }) {
     <li>
       <Link
         href={`/messages/${item.id}`}
-        className="flex items-center gap-3 rounded-2xl border p-4 transition-colors hover:bg-[#7dd3a3]/8"
+        className="flex items-center gap-3 rounded-2xl border p-4 transition-colors hover:bg-[rgba(var(--accent-rgb),0.08)]"
         style={{ background: "var(--card)", borderColor: "var(--border)" }}
       >
         <Avatar

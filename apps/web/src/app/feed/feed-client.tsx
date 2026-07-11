@@ -186,7 +186,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
             <span className="flex-1 opacity-60" style={{ color: "var(--foreground)" }}>
               지금 어떤 업사이클을 하고 있나요?
             </span>
-            <span className="flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-full" style={{ background: "#7dd3a3", color: "#0f1f22" }}>
+            <span className="flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-full" style={{ background: "var(--accent)", color: "#0f1f22" }}>
               <ImageIcon size={14} /> 새 글
             </span>
           </button>
@@ -228,7 +228,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
               <button
                 type="button"
                 onClick={() => setRetryTick((tick) => tick + 1)}
-                className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+                className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]"
               >
                 다시 시도
               </button>
@@ -259,7 +259,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
                   <button
                     type="button"
                     onClick={() => updateUrl({ query: "", campaignOnly: false, followingOnly: false, sort: "latest", page: 0 })}
-                    className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                    className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
                   >
                     전체 게시글 보기
                   </button>
@@ -267,7 +267,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
                   <button
                     type="button"
                     onClick={goToNewPost}
-                    className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
+                    className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] font-medium text-[#0f1f22]"
                   >
                     새 글 작성
                   </button>

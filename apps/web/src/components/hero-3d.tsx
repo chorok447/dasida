@@ -114,7 +114,7 @@ export function Hero3D() {
 
         <motion.div
           style={{ transform: "translateZ(140px)" }}
-          className="hidden sm:flex absolute -right-10 -top-8 w-28 h-28 rounded-2xl bg-[#7dd3a3] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] items-center justify-center"
+          className="hidden sm:flex absolute -right-10 -top-8 w-28 h-28 rounded-2xl bg-[var(--accent)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] items-center justify-center"
         >
           <span style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 28, color: "#0f1f22" }}>
             다시,<br />다

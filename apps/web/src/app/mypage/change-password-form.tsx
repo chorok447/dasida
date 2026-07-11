@@ -110,7 +110,7 @@ export function ChangePasswordForm({ profileName, embedded = false }: { profileN
         style={{ background: "var(--card)", borderColor: "var(--border)" }}
       >
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7dd3a3]/15 text-[#7dd3a3]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--accent-rgb),0.15)] text-[var(--accent)]">
             <KeyRound size={19} />
           </div>
           <div>
@@ -166,7 +166,7 @@ export function ChangePasswordForm({ profileName, embedded = false }: { profileN
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7dd3a3] px-6 py-3 text-[13px] font-medium text-[#0f1f22] disabled:cursor-wait disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-6 py-3 text-[13px] font-medium text-[#0f1f22] disabled:cursor-wait disabled:opacity-50"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
               {submitting ? "변경 중…" : "비밀번호 변경"}
