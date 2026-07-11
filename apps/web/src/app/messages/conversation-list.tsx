@@ -160,6 +160,7 @@ function ConversationRow({ item }: { item: ConversationSummary }) {
           <span
             className="flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold"
             style={{ background: "var(--danger-solid)", color: "#fff" }}
+            aria-label={`읽지 않은 메시지 ${item.unreadCount}개`}
           >
             {item.unreadCount > 99 ? "99+" : item.unreadCount}
           </span>

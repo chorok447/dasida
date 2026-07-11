@@ -300,12 +300,22 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
           </ul>
         )}
         {peerTyping ? (
-          <p className="text-[12px] opacity-60" style={{ color: "var(--foreground-muted)" }}>
+          <p
+            className="text-[12px] opacity-60"
+            style={{ color: "var(--foreground-muted)" }}
+            role="status"
+            aria-label="상대방이 메시지를 입력 중입니다"
+          >
             입력 중…
           </p>
         ) : null}
         {showReadReceipt ? (
-          <p className="text-right text-[11px] opacity-50" style={{ color: "var(--foreground-muted)" }}>
+          <p
+            className="text-right text-[11px] opacity-50"
+            style={{ color: "var(--foreground-muted)" }}
+            role="status"
+            aria-label="상대방이 메시지를 읽었습니다"
+          >
             읽음
           </p>
         ) : null}
