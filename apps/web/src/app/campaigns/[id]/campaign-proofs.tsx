@@ -357,7 +357,7 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
         {status === "error" ? (
           <StatePanel compact role="alert">
             <p style={{ color: "var(--foreground-muted)" }}>참여 인증을 불러오지 못했습니다.</p>
-            <button type="button" onClick={reload} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
+            <button type="button" onClick={reload} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]">
               다시 시도
             </button>
           </StatePanel>

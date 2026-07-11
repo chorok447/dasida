@@ -19,7 +19,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only fixed left-4 top-4 z-50 rounded-full px-4 py-2 text-[13px] font-medium"
-          style={{ background: "var(--accent)", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
         >
           본문 바로가기
         </a>

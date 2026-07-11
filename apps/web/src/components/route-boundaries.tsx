@@ -39,7 +39,7 @@ export function RouteError({
           type="button"
           onClick={reset}
           className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-medium transition-transform hover:-translate-y-0.5"
-          style={{ background: "var(--accent)", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
         >
           <RefreshCw size={14} /> 다시 시도
         </button>

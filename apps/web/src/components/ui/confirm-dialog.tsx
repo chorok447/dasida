@@ -113,7 +113,7 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
           className="rounded-full px-4 py-2 text-[13px] font-medium"
           style={{
             background: state.destructive ? "var(--danger-solid)" : "var(--accent)",
-            color: state.destructive ? "#ffffff" : "#0f1f22",
+            color: state.destructive ? "#ffffff" : "var(--surface-dark)",
           }}
         >
           {state.confirmLabel ?? "확인"}

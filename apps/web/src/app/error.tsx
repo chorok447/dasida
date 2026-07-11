@@ -35,7 +35,7 @@ export default function RootError({
           type="button"
           onClick={reset}
           className="inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium transition-transform hover:-translate-y-0.5"
-          style={{ background: "var(--accent)", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
         >
           <RefreshCw size={16} /> 다시 시도
         </button>

@@ -396,7 +396,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
               onClick={() => void onSend()}
               disabled={sending || !draft.trim()}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-              style={{ background: "var(--accent)", color: "#0f1f22" }}
+              style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
               aria-label="전송"
             >
               <Send size={18} />

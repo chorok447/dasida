@@ -279,10 +279,10 @@ export function PostDetailHero({
               className="ml-auto w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-50"
               style={{
                 background: bookmarked ? "var(--accent)" : "var(--border)",
-                color: bookmarked ? "#0f1f22" : "var(--foreground)",
+                color: bookmarked ? "var(--surface-dark)" : "var(--foreground)",
               }}
             >
-              <Bookmark size={14} fill={bookmarked ? "#0f1f22" : "transparent"} />
+              <Bookmark size={14} fill={bookmarked ? "var(--surface-dark)" : "transparent"} />
             </motion.button>
           </div>
         </div>

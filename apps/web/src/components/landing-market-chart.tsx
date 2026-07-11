@@ -41,7 +41,7 @@ function ChartTooltip({
   return (
     <div
       className="rounded-lg border px-3 py-2 text-[12px]"
-      style={{ background: "#0f1f22", borderColor: "rgba(249,247,242,0.15)", color: INK }}
+      style={{ background: "var(--surface-dark)", borderColor: "rgba(249,247,242,0.15)", color: INK }}
     >
       <span style={{ color: MUTED }}>{label}년 </span>
       <span className="font-medium">{payload[0].value.toLocaleString()}억원</span>
@@ -76,7 +76,7 @@ export default function LandingMarketChart() {
           stroke={ACCENT}
           strokeWidth={2}
           fill="url(#landing-market-fill)"
-          activeDot={{ r: 5, fill: ACCENT, stroke: "#0f1f22", strokeWidth: 2 }}
+          activeDot={{ r: 5, fill: ACCENT, stroke: "var(--surface-dark)", strokeWidth: 2 }}
           isAnimationActive={!reduce}
         />
       </AreaChart>

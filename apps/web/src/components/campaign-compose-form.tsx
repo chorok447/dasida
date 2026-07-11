@@ -219,7 +219,7 @@ export function CampaignComposeSubmitButton({
       disabled={disabled || submitting}
       aria-busy={submitting}
       className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-medium disabled:opacity-40"
-      style={{ background: "var(--accent)", color: "#0f1f22" }}
+      style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
     >
       {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden /> : null}
       {submitting ? pendingLabel : idleLabel}

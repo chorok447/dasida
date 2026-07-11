@@ -189,7 +189,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
     return (
       <PageState>
         <p>캠페인을 찾을 수 없습니다.</p>
-        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           캠페인 목록
         </button>
       </PageState>
@@ -199,7 +199,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
     return (
       <PageState>
         <p>캠페인 수정 권한이 없습니다.</p>
-        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           캠페인으로 돌아가기
         </button>
       </PageState>
@@ -209,7 +209,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
     return (
       <PageState>
         <p>모집 시작 전 캠페인만 수정할 수 있습니다.</p>
-        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           캠페인으로 돌아가기
         </button>
       </PageState>
@@ -219,7 +219,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
     return (
       <PageState>
         <p>캠페인을 불러오지 못했습니다.</p>
-        <button type="button" onClick={() => setRetry((current) => current + 1)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => setRetry((current) => current + 1)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           다시 시도
         </button>
       </PageState>

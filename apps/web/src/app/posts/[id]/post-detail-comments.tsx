@@ -288,7 +288,7 @@ export function PostDetailComments({
                 <button
                   type="submit"
                   disabled={savingCommentId === c.id || !editText.trim()}
-                  className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-[12px] text-[#0f1f22] disabled:opacity-40"
+                  className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-[12px] text-[var(--surface-dark)] disabled:opacity-40"
                 >
                   {savingCommentId === c.id ? "저장 중…" : "저장"}
                 </button>
@@ -381,7 +381,7 @@ export function PostDetailComments({
               disabled={submitting || visibleCommentsLoading || !!listError || !composeText.trim()}
               aria-label="댓글 등록"
               className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
-              style={{ background: "var(--accent)", color: "#0f1f22" }}
+              style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
             >
               <Send size={14} />
             </button>
@@ -394,7 +394,7 @@ export function PostDetailComments({
             <button
               type="button"
               onClick={() => router.push("/login")}
-              className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]"
+              className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]"
             >
               로그인하기
             </button>
@@ -460,7 +460,7 @@ export function PostDetailComments({
                         disabled={submittingReply || !replyText.trim()}
                         aria-label="답글 등록"
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-                        style={{ background: "var(--accent)", color: "#0f1f22" }}
+                        style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
                       >
                         <Send size={13} />
                       </button>

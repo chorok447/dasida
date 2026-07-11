@@ -54,7 +54,7 @@ export function Pagination({
           onClick={() => onPageChange(page + 1)}
           disabled={disabled || page + 1 >= totalPages}
           className={buttonClass}
-          style={{ borderColor: "var(--accent)", background: "var(--accent)", color: "#0f1f22" }}
+          style={{ borderColor: "var(--accent)", background: "var(--accent)", color: "var(--surface-dark)" }}
           aria-label="다음 페이지"
         >
           다음 <ChevronRight size={14} aria-hidden="true" />

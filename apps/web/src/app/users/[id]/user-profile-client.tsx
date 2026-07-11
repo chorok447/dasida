@@ -184,7 +184,7 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
                       className="rounded-full px-5 py-2 text-[13px] font-medium disabled:opacity-50"
                       style={{
                         background: user.followedByMe ? "var(--accent-soft)" : "var(--accent)",
-                        color: user.followedByMe ? "var(--accent-secondary)" : "#0f1f22",
+                        color: user.followedByMe ? "var(--accent-secondary)" : "var(--surface-dark)",
                       }}
                     >
                       {user.followedByMe ? "팔로잉" : "팔로우"}

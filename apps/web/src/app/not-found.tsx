@@ -71,7 +71,7 @@ export default function NotFound() {
         </motion.p>
         <Link
           href="/"
-          style={{ transform: "translateZ(90px)", background: "var(--accent)", color: "#0f1f22" }}
+          style={{ transform: "translateZ(90px)", background: "var(--accent)", color: "var(--surface-dark)" }}
           className="mt-10 inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4)]"
         >
           <Home size={16} /> 메인페이지로 이동하기

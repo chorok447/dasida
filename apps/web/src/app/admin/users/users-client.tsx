@@ -125,7 +125,7 @@ export default function UsersClient() {
         <button
           type="submit"
           className="rounded-xl px-4 py-2.5 text-[13px]"
-          style={{ background: "var(--accent)", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
         >
           검색
         </button>
@@ -147,7 +147,7 @@ export default function UsersClient() {
               className="rounded-full border px-4 py-2 text-[13px]"
               style={
                 active
-                  ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#0f1f22" }
+                  ? { background: "var(--accent)", borderColor: "var(--accent)", color: "var(--surface-dark)" }
                   : { background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }
               }
             >

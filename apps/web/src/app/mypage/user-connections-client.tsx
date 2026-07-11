@@ -105,7 +105,7 @@ export function UserConnectionsClient({ mode }: { mode: ConnectionsMode }) {
             title="로그인이 필요해요."
             description={loginHint}
             action={
-              <Link href="/login" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
+              <Link href="/login" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]">
                 로그인
               </Link>
             }
