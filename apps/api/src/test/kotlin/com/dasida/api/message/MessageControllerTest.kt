@@ -344,4 +344,38 @@ class MessageControllerTest(
         val notis = notifications.findByUserId(bobId, org.springframework.data.domain.PageRequest.of(0, 10))
         assert(notis.content.none { it.type == NotificationType.MESSAGE_RECEIVED })
     }
+
+    @Test
+    fun `빈 내용·상한 초과 메시지는 400, 상한 경계 길이는 허용한다`() {
+        val alice = users.save(
+            com.dasida.api.auth.User(email = "a-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "앨리스"),
+        )
+        val bob = users.save(
+            com.dasida.api.auth.User(email = "b-${UUID.randomUUID()}@t.com", passwordHash = "x", name = "밥"),
+        )
+        val bobId = requireNotNull(bob.id)
+        val aliceToken = jwt.issue(alice)
+
+        val createdJson = mvc.post("/api/messages/conversations") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("peerUserId" to bobId))
+        }.andReturn().response.contentAsString
+        val conversationId = mapper.readTree(createdJson).get("id").asString()
+
+        fun send(text: String) = mvc.post("/api/messages/conversations/$conversationId/messages") {
+            header("Authorization", "Bearer $aliceToken")
+            contentType = MediaType.APPLICATION_JSON
+            content = mapper.writeValueAsString(mapOf("content" to text))
+        }
+
+        // 공백만 있는 내용은 trim 후 빈 값이라 거부한다.
+        send("   ").andExpect { status { isBadRequest() } }
+        // 상한(MAX_CONTENT=2000)을 넘으면 거부한다.
+        send("가".repeat(2001)).andExpect { status { isBadRequest() } }
+        // 상한 경계(정확히 2000자)는 허용한다.
+        send("나".repeat(2000))
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.content", Matchers.`is`("나".repeat(2000))) }
+    }
 }
