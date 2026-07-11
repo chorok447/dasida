@@ -58,6 +58,9 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   const [peerOnline, setPeerOnline] = useState(false);
   const [peerReadMessageId, setPeerReadMessageId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // 사용자가 바닥 근처를 보고 있는지(=새 메시지를 따라 스크롤해도 되는지)와 최초 로드 여부.
+  const nearBottomRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
   const generationRef = useRef(0);
   const socketRef = useRef<DmSocket | null>(null);
 
@@ -154,8 +157,27 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     };
   }, [draft, conversationId]);
 
+  // DM 은 페이지(창) 스크롤을 쓴다. 바닥 근처 여부를 추적해 자동 스크롤 여부를 정한다.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const update = () => {
+      nearBottomRef.current =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    // 최초 로드는 항상 최신 메시지로 즉시 이동. 이후에는 바닥 근처일 때만 따라간다
+    // — 옛 메시지를 읽는 중 새 메시지가 도착해도 강제로 끌어내리지 않는다.
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true;
+      bottomRef.current?.scrollIntoView();
+      return;
+    }
+    if (nearBottomRef.current) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
   const onSend = async () => {
@@ -165,6 +187,8 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     try {
       const sent = await sendMessage(conversationId, text);
       setDraft("");
+      // 내가 보낸 메시지는 스크롤 위치와 무관하게 항상 따라가 바로 보이게 한다.
+      nearBottomRef.current = true;
       setMessages((prev) => [...prev, sent]);
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
