@@ -119,6 +119,20 @@ class RefreshAuthTest(
             .andExpect { status { isUnauthorized() } }
     }
 
+    @Test
+    fun `자격증명 변경 이전에 발급된 refresh token 은 거절된다`() {
+        val user = saveUser("refresh-cred-change@dasida.com")
+        val refresh = jwt.issueRefresh(user)
+        // 토큰 발급 뒤 자격증명 변경 시각을 그 이후로 스탬프해 "변경 전 발급 토큰" 상황을 만든다.
+        // iat 은 초 단위라 여유 있게 미래로 둬 truncatedTo(SECONDS) 비교에서 확실히 앞서게 한다.
+        user.credentialsChangedAt = java.time.Instant.now().plusSeconds(10)
+        repo.saveAndFlush(user)
+
+        // 탈취된 refresh 가 rotation 으로 영구 연장되지 못하도록 비밀번호·이메일 변경이 옛 토큰을 무효화한다.
+        mvc.post("/api/auth/refresh") { cookie(refreshCookie(refresh)) }
+            .andExpect { status { isUnauthorized() } }
+    }
+
     // hasItem 은 Matcher<Iterable<in String>> 을 돌려줘 MockMvc DSL 시그니처와 안 맞으므로 캐스트로 좁힌다.
     @Suppress("UNCHECKED_CAST")
     private fun hasRefreshCookieAttrs(): Matcher<Iterable<String>> =
