@@ -37,6 +37,11 @@ function dmDateLabel(iso: string): string {
   return d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
+// 백엔드 MessageService.MAX_CONTENT 와 동일. 초과 입력은 전송 시 400 이 나므로 입력 단계에서 막는다.
+const MAX_MESSAGE_LENGTH = 2000;
+// 남은 글자수가 이보다 적어지면 카운터를 노출한다(평소엔 채팅 입력을 깔끔하게 유지).
+const MESSAGE_COUNTER_THRESHOLD = 200;
+
 export function ConversationRoomClient({ conversationId }: { conversationId: string }) {
   const router = useRouter();
   const { sessionId: token, isLoggedIn, hydrated } = useAuthSession();
@@ -353,26 +358,40 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        <div className="mx-auto flex max-w-2xl items-end gap-2 px-4 py-3">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={onKeyDown}
-            rows={1}
-            placeholder="메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)"
-            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border px-4 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-[#7dd3a3]/40"
-            style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-          />
-          <button
-            type="button"
-            onClick={() => void onSend()}
-            disabled={sending || !draft.trim()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-            style={{ background: "#7dd3a3", color: "#0f1f22" }}
-            aria-label="전송"
-          >
-            <Send size={18} />
-          </button>
+        <div className="mx-auto max-w-2xl px-4 py-3">
+          {draft.length > MAX_MESSAGE_LENGTH - MESSAGE_COUNTER_THRESHOLD ? (
+            <p
+              className="mb-1 pr-1 text-right text-[11px] tabular-nums"
+              style={{
+                color: draft.length >= MAX_MESSAGE_LENGTH ? "var(--warning)" : "var(--foreground-muted)",
+              }}
+              aria-live="polite"
+            >
+              {draft.length}/{MAX_MESSAGE_LENGTH}
+            </p>
+          ) : null}
+          <div className="flex items-end gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={1}
+              maxLength={MAX_MESSAGE_LENGTH}
+              placeholder="메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)"
+              className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border px-4 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-[#7dd3a3]/40"
+              style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+            />
+            <button
+              type="button"
+              onClick={() => void onSend()}
+              disabled={sending || !draft.trim()}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
+              style={{ background: "#7dd3a3", color: "#0f1f22" }}
+              aria-label="전송"
+            >
+              <Send size={18} />
+            </button>
+          </div>
         </div>
       </div>
     </PageShell>
