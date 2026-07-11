@@ -344,7 +344,7 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
           {composeHint}
         </p>
       ) : null}
-      {mutationError ? <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{mutationError}</p> : null}
+      {mutationError ? <p role="alert" className="mt-3 text-[12px] text-[var(--danger)]">{mutationError}</p> : null}
 
       <div className="mt-7 space-y-3">
         {status === "loading" ? (

@@ -204,7 +204,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
             />
             <div className="mt-1 flex items-start justify-between gap-2">
               {nameError ? (
-                <p role="alert" className="text-[12px] text-[#ed5c48]">{nameError}</p>
+                <p role="alert" className="text-[12px] text-[var(--danger)]">{nameError}</p>
               ) : <span />}
               <p className="text-right text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>
                 {name.length}/{MAX_NAME_LENGTH}
@@ -238,7 +238,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               />
             </div>
             {imageUrlError ? (
-              <p role="alert" className="mt-1 text-[12px] text-[#ed5c48]">{imageUrlError}</p>
+              <p role="alert" className="mt-1 text-[12px] text-[var(--danger)]">{imageUrlError}</p>
             ) : null}
             <p className="mt-1 text-[11px] opacity-50" style={{ color: "var(--foreground)" }}>
               URL 입력 또는 파일 업로드(jpeg/png/webp, 5MB 이하). 비우면 기본 아바타가 표시됩니다.
@@ -264,7 +264,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
           </div>
 
           {error ? (
-            <p role="alert" aria-live="polite" className="rounded-xl bg-[#ed5c48]/10 px-4 py-3 text-[13px] text-[#ed5c48]">
+            <p role="alert" aria-live="polite" className="rounded-xl bg-[rgba(var(--danger-rgb),0.1)] px-4 py-3 text-[13px] text-[var(--danger)]">
               {error}
             </p>
           ) : null}

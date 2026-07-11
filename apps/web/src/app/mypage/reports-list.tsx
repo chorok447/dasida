@@ -39,7 +39,7 @@ function ReportCard({ report }: { report: ReportItem }) {
           <span className="rounded-full bg-[#7dd3a3]/15 px-2.5 py-1 text-[11px] text-[#148a90]">
             {REPORT_TARGET_LABELS[report.targetType]}
           </span>
-          <span className="rounded-full bg-[#ed5c48]/10 px-2.5 py-1 text-[11px] text-[#b3402f]">
+          <span className="rounded-full bg-[rgba(var(--danger-rgb),0.1)] px-2.5 py-1 text-[11px] text-[var(--danger)]">
             {REPORT_REASON_LABELS[report.reason]}
           </span>
         </div>

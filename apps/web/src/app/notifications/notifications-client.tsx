@@ -317,7 +317,7 @@ export default function NotificationsClient() {
           </div>
         </div>
 
-        {actionError ? <p role="alert" className="mb-4 text-[13px] text-[#ed5c48]">{actionError}</p> : null}
+        {actionError ? <p role="alert" className="mb-4 text-[13px] text-[var(--danger)]">{actionError}</p> : null}
 
         {loading ? (
           <StatePanel compact>

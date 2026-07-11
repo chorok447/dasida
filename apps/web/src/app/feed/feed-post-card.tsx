@@ -248,7 +248,7 @@ export function FeedPostCard({
           {showComments && (
             <div className="pt-3 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
               {commentsError ? (
-                <p className="text-[12px]" style={{ color: "#ed5c48" }}>{commentsError}</p>
+                <p className="text-[12px]" style={{ color: "var(--danger)" }}>{commentsError}</p>
               ) : comments.length === 0 ? (
                 <p className="text-[12px] opacity-50" style={{ color: "var(--foreground)" }}>
                   {commentsLoaded ? "첫 댓글을 남겨보세요." : "댓글을 불러오는 중…"}

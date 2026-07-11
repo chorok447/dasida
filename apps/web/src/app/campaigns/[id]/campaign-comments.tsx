@@ -164,7 +164,7 @@ export function CampaignComments({
         onSubmit={submitComment}
       />
       {targetNotice ? (
-        <p role="alert" className="mt-3 text-[12px] text-[#ed5c48]">{targetNotice}</p>
+        <p role="alert" className="mt-3 text-[12px] text-[var(--danger)]">{targetNotice}</p>
       ) : null}
 
       <div className="mt-7 space-y-3">
