@@ -417,6 +417,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
               onKeyDown={onKeyDown}
               rows={1}
               maxLength={MAX_MESSAGE_LENGTH}
+              aria-label="메시지 입력"
               placeholder="메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)"
               className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border px-4 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-[rgba(var(--accent-rgb),0.4)]"
               style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
