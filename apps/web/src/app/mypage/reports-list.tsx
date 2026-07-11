@@ -36,7 +36,7 @@ function ReportCard({ report }: { report: ReportItem }) {
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[rgba(var(--accent-rgb),0.15)] px-2.5 py-1 text-[11px] text-[#148a90]">
+          <span className="rounded-full bg-[rgba(var(--accent-rgb),0.15)] px-2.5 py-1 text-[11px] text-[var(--accent-strong)]">
             {REPORT_TARGET_LABELS[report.targetType]}
           </span>
           <span className="rounded-full bg-[rgba(var(--danger-rgb),0.1)] px-2.5 py-1 text-[11px] text-[var(--danger)]">

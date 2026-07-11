@@ -174,7 +174,7 @@ export function CampaignListFilters({
               type="checkbox"
               checked={state.availableOnly}
               onChange={(event) => onAvailableOnly(event.target.checked)}
-              className="accent-[#148a90]"
+              className="accent-[var(--accent-strong)]"
             />
             참여 가능
           </label>

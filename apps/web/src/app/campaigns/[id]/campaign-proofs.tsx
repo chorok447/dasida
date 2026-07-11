@@ -67,7 +67,7 @@ function ProofItem({
               <span className="truncate text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
                 {proof.author.name}
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/20 px-2 py-0.5 text-[10px] text-[#148a90]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/20 px-2 py-0.5 text-[10px] text-[var(--accent-strong)]">
                 <BadgeCheck size={11} aria-hidden /> 참여 인증
               </span>
             </div>

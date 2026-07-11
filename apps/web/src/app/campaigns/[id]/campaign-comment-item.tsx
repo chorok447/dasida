@@ -128,7 +128,7 @@ export function CampaignCommentItem({
                 {comment.author.name}
               </span>
               {comment.author.verified ? (
-                <span className="rounded-full bg-[var(--accent)]/20 px-2 py-0.5 text-[10px] text-[#148a90]">인증</span>
+                <span className="rounded-full bg-[var(--accent)]/20 px-2 py-0.5 text-[10px] text-[var(--accent-strong)]">인증</span>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-1 text-[11px] opacity-55" style={{ color: "var(--foreground)" }}>

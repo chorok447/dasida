@@ -89,7 +89,7 @@ export function CampaignDateRangeFilterControls({
           type="button"
           onClick={onClear}
           disabled={disabled || !hasFilters}
-          className="text-[12px] text-[#148a90] disabled:cursor-not-allowed disabled:opacity-40"
+          className="text-[12px] text-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           필터 초기화
         </button>
