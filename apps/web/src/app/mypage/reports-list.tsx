@@ -36,7 +36,7 @@ function ReportCard({ report }: { report: ReportItem }) {
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#7dd3a3]/15 px-2.5 py-1 text-[11px] text-[#148a90]">
+          <span className="rounded-full bg-[rgba(var(--accent-rgb),0.15)] px-2.5 py-1 text-[11px] text-[#148a90]">
             {REPORT_TARGET_LABELS[report.targetType]}
           </span>
           <span className="rounded-full bg-[rgba(var(--danger-rgb),0.1)] px-2.5 py-1 text-[11px] text-[var(--danger)]">
@@ -50,7 +50,7 @@ function ReportCard({ report }: { report: ReportItem }) {
     </>
   );
 
-  const className = "block rounded-2xl border p-5 text-left shadow-[0_18px_42px_-28px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3]";
+  const className = "block rounded-2xl border p-5 text-left shadow-[0_18px_42px_-28px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
   const style = {
     background: "var(--card)",
     borderColor: "var(--border)",
@@ -82,7 +82,7 @@ export function ReportsList({ page, onPageChange }: { page: number; onPageChange
       errorLabel="신고 내역을 불러오지 못했습니다."
       empty={
         <StatePanel className="min-h-64 rounded-2xl">
-          <FileWarning size={28} className="text-[#7dd3a3]" />
+          <FileWarning size={28} className="text-[var(--accent)]" />
           <p>신고 내역이 없습니다.</p>
         </StatePanel>
       }

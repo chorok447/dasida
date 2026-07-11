@@ -133,7 +133,7 @@ export function Carousel3D() {
                       <span className="text-[10px] opacity-60">0{i + 1}</span>
                     </div>
                     <div>
-                      <div className="w-10 h-10 rounded-full bg-[#7dd3a3] text-[#0f1f22] flex items-center justify-center mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-[#0f1f22] flex items-center justify-center mb-4">
                         ◐
                       </div>
                       <h3

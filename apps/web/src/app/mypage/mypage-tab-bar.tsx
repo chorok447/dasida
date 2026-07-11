@@ -54,7 +54,7 @@ export function MypageTabBar({
                       <motion.div
                         layoutId="mypage-tab-underline"
                         className="absolute inset-x-2 -bottom-3 h-0.5 rounded-full sm:-bottom-3"
-                        style={{ background: "#7dd3a3" }}
+                        style={{ background: "var(--accent)" }}
                       />
                     ) : null}
                   </button>

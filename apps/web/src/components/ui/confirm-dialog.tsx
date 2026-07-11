@@ -112,7 +112,7 @@ function ConfirmDialogUI({ state, onClose }: { state: OpenState; onClose: (resul
           onClick={() => onClose(true)}
           className="rounded-full px-4 py-2 text-[13px] font-medium"
           style={{
-            background: state.destructive ? "var(--danger-solid)" : "#7dd3a3",
+            background: state.destructive ? "var(--danger-solid)" : "var(--accent)",
             color: state.destructive ? "#ffffff" : "#0f1f22",
           }}
         >

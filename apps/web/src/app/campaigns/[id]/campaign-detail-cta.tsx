@@ -84,7 +84,7 @@ export function CampaignCTABar({
           <button
             type="button"
             onClick={onLogin}
-            className="inline-flex items-center gap-2 rounded-full bg-[#7dd3a3] px-6 py-2.5 text-[14px] font-medium text-[#0f1f22]"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-2.5 text-[14px] font-medium text-[#0f1f22]"
           >
             <LogIn size={16} aria-hidden />
             로그인하고 참여하기
@@ -100,7 +100,7 @@ export function CampaignCTABar({
         aria-busy={action === "join"}
         aria-label={action === "join" ? "캠페인 참여 처리 중" : "캠페인 참여하기"}
         className="inline-flex w-full items-center justify-center gap-2 py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{ background: "#7dd3a3", color: "#0f1f22", fontSize: 17 }}
+        style={{ background: "var(--accent)", color: "#0f1f22", fontSize: 17 }}
       >
         {action === "join" ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}
         {action === "join" ? "참여 처리 중…" : "캠페인 참여하기"}

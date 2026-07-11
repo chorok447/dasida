@@ -72,7 +72,7 @@ export function SearchField({
         <button
           type="button"
           onClick={() => commitNow("")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           aria-label="검색어 지우기"
         >
           <X size={16} className="opacity-60" aria-hidden />
@@ -85,7 +85,7 @@ export function SearchField({
         aria-busy={loading}
         aria-label="검색"
         className="flex h-9 shrink-0 items-center justify-center rounded-full px-3 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f1f22]"
-        style={{ background: "#7dd3a3", color: "#0f1f22" }}
+        style={{ background: "var(--accent)", color: "#0f1f22" }}
       >
         {loading ? <Loader2 size={14} className="animate-spin" aria-hidden /> : "검색"}
       </button>

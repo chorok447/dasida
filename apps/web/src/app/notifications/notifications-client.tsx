@@ -268,7 +268,7 @@ export default function NotificationsClient() {
                     type="button"
                     onClick={() => changeFilter(f.id)}
                     aria-pressed={active}
-                    className="relative px-4 py-2 text-[13px] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+                    className="relative px-4 py-2 text-[13px] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                     style={{ color: active ? "var(--surface-dark)" : "var(--foreground-muted)" }}
                   >
                     {active && (
@@ -283,7 +283,7 @@ export default function NotificationsClient() {
               type="button"
               onClick={toggleUnreadOnly}
               aria-pressed={unreadOnly}
-              className="px-3.5 py-2 text-[13px] rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              className="px-3.5 py-2 text-[13px] rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               style={{
                 background: unreadOnly ? "var(--accent)" : "rgba(var(--ink-rgb), 0.06)",
                 color: unreadOnly ? "var(--surface-dark)" : "var(--foreground-muted)",
@@ -298,7 +298,7 @@ export default function NotificationsClient() {
               onClick={markAll}
               disabled={busy || cleaningRead || unreadCount === 0}
               aria-busy={busy}
-              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               style={{ background: "rgba(var(--ink-rgb), 0.06)", color: fg }}
             >
               {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <CheckCheck size={15} aria-hidden />}
@@ -309,7 +309,7 @@ export default function NotificationsClient() {
               onClick={removeRead}
               disabled={cleaningRead || busy || !hasReadNotifications}
               aria-busy={cleaningRead}
-              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              className="flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-full transition-colors disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               style={{ background: "rgba(var(--ink-rgb), 0.06)", color: fg }}
             >
               <Trash2 size={14} aria-hidden /> {cleaningRead ? "정리 중…" : "읽은 알림 정리"}

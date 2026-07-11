@@ -55,7 +55,7 @@ export function Avatar({ name, verified, size = 32, src }: AvatarProps) {
       )}
       {verified && (
         <div
-          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[#7dd3a3] ring-1 ring-white"
+          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[var(--accent)] ring-1 ring-white"
           style={{ width: Math.max(12, size * 0.42), height: Math.max(12, size * 0.42) }}
         >
           <Leaf size={Math.max(7, size * 0.24)} color="#0f1f22" />

@@ -76,7 +76,7 @@ export function CampaignHeaderCard({
             <div className="absolute top-4 left-4 flex items-center gap-2" style={{ transform: "translateZ(50px)" }}>
               <StatusBadge c={c} />
               {c.ownedByMe ? (
-                <span className="rounded-full bg-[#0f1f22]/80 px-3 py-1.5 text-[11px] text-[#7dd3a3]">
+                <span className="rounded-full bg-[#0f1f22]/80 px-3 py-1.5 text-[11px] text-[var(--accent)]">
                   내가 개설
                 </span>
               ) : null}
@@ -103,7 +103,7 @@ export function CampaignHeaderCard({
                     aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
                     className="flex h-9 w-9 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
                     style={{
-                      background: bookmarked ? "#7dd3a3" : "var(--border)",
+                      background: bookmarked ? "var(--accent)" : "var(--border)",
                       color: bookmarked ? "#0f1f22" : "var(--foreground)",
                     }}
                   >
@@ -250,7 +250,7 @@ export function CampaignStatusManagement({
           aria-label={label}
           className="rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
           style={{
-            background: target === "closed" ? "var(--danger-soft)" : "#7dd3a3",
+            background: target === "closed" ? "var(--danger-soft)" : "var(--accent)",
             color: target === "closed" ? "var(--danger)" : "#0f1f22",
           }}
         >

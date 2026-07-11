@@ -163,7 +163,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     return (
       <StateShell>
         <p>참가자 목록을 볼 권한이 없습니다.</p>
-        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
           캠페인으로 돌아가기
         </button>
       </StateShell>
@@ -173,7 +173,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     return (
       <StateShell>
         <p>캠페인을 찾을 수 없습니다.</p>
-        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
           캠페인 목록
         </button>
       </StateShell>
@@ -183,7 +183,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     return (
       <StateShell>
         <p>참가자 목록을 불러오지 못했습니다.</p>
-        <button type="button" onClick={refresh} className="rounded-xl bg-[#7dd3a3] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={refresh} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
           다시 시도
         </button>
       </StateShell>
@@ -262,7 +262,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
                     <span className="min-w-0 truncate text-[14px] font-medium">{participant.name}</span>
                     <div className="flex w-full shrink-0 flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
                       {participant.verified ? (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#7dd3a3]/20 px-2.5 py-1 text-[11px] text-[#2f9c68]">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(var(--accent-rgb),0.2)] px-2.5 py-1 text-[11px] text-[#2f9c68]">
                           <ShieldCheck size={12} /> 인증 사용자
                         </span>
                       ) : null}

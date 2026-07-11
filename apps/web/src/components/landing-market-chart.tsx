@@ -23,7 +23,7 @@ const marketGrowth = [
   { year: "2025", value: 210 },
 ];
 
-const ACCENT = "#7dd3a3";
+const ACCENT = "var(--accent)";
 const INK = "#f9f7f2";
 const MUTED = "rgba(249,247,242,0.6)";
 const HAIRLINE = "rgba(249,247,242,0.08)";

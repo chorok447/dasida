@@ -113,7 +113,7 @@ export function FeedControls({
           <select
             value={state.sort}
             onChange={(event) => onSort(event.target.value as PostSearchSort)}
-            className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+            className="rounded-full border px-4 py-2.5 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             style={{
               color: "var(--foreground)",
               background: "var(--panel)",

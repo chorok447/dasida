@@ -17,7 +17,7 @@ import { fetchAdminStats, type AdminDailyStat } from "@/data/admin";
 const RANGE_OPTIONS = [7, 30, 90] as const;
 
 const SERIES = [
-  { key: "signups", label: "가입", color: "#7dd3a3" },
+  { key: "signups", label: "가입", color: "var(--accent)" },
   { key: "posts", label: "게시글", color: "#148a90" },
   { key: "campaigns", label: "캠페인", color: "#d9a441" },
   { key: "reports", label: "신고", color: "#ed5c48" },

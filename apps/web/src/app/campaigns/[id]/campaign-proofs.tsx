@@ -349,7 +349,7 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
       <div className="mt-7 space-y-3">
         {status === "loading" ? (
           <StatePanel compact>
-            <Loader2 size={24} className="animate-spin text-[#7dd3a3]" />
+            <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
             <p style={{ color: "var(--foreground-muted)" }}>참여 인증을 불러오는 중입니다.</p>
           </StatePanel>
         ) : null}
@@ -357,7 +357,7 @@ export function CampaignProofs({ campaign }: { campaign: Campaign }) {
         {status === "error" ? (
           <StatePanel compact role="alert">
             <p style={{ color: "var(--foreground-muted)" }}>참여 인증을 불러오지 못했습니다.</p>
-            <button type="button" onClick={reload} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
+            <button type="button" onClick={reload} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
               다시 시도
             </button>
           </StatePanel>

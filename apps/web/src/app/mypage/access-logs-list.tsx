@@ -84,7 +84,7 @@ export function AccessLogsList({ page, onPageChange }: { page: number; onPageCha
         errorLabel="접속 기록을 불러오지 못했습니다."
         empty={
           <StatePanel className="min-h-48 rounded-2xl">
-            <Monitor size={28} className="text-[#7dd3a3]" />
+            <Monitor size={28} className="text-[var(--accent)]" />
             <p>아직 접속 기록이 없어요.</p>
           </StatePanel>
         }

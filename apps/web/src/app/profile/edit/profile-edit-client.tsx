@@ -280,7 +280,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
             <button
               type="submit"
               disabled={submitting || !!nameError || !!imageUrlError}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7dd3a3] px-8 py-3 text-[13px] font-medium text-[#0f1f22] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-8 py-3 text-[13px] font-medium text-[#0f1f22] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-50"
             >
               {submitting ? (
                 <>
@@ -307,21 +307,21 @@ export default function ProfileEditClient() {
         {/* loading을 먼저 확인: hydration 전(로그인 미확정)에 비로그인 패널이 깜빡이지 않도록. */}
         {loading ? (
           <StatePanel className="mx-auto min-h-72 max-w-2xl">
-            <RefreshCw size={28} className="animate-spin text-[#7dd3a3]" />
+            <RefreshCw size={28} className="animate-spin text-[var(--accent)]" />
             <p>사용자 정보를 불러오는 중입니다.</p>
           </StatePanel>
         ) : !isLoggedIn ? (
           <StatePanel className="mx-auto min-h-72 max-w-2xl">
-            <LogIn size={30} className="text-[#7dd3a3]" />
+            <LogIn size={30} className="text-[var(--accent)]" />
             <p>프로필을 수정하려면 로그인이 필요합니다.</p>
-            <Link href="/login" className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
+            <Link href="/login" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
               로그인 페이지로 이동
             </Link>
           </StatePanel>
         ) : error || !profile ? (
           <StatePanel className="mx-auto min-h-72 max-w-2xl" role="alert">
             <p>{error || "사용자 정보를 불러오지 못했습니다."}</p>
-            <button type="button" onClick={retry} className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]">
+            <button type="button" onClick={retry} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
               다시 시도
             </button>
           </StatePanel>

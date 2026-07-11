@@ -316,7 +316,7 @@ export default function CampaignDetailClient({ campaign }: { campaign: Campaign 
                   <motion.div
                     layoutId="detail-tab"
                     className="absolute left-0 right-0 -bottom-px h-0.5"
-                    style={{ background: "#7dd3a3" }}
+                    style={{ background: "var(--accent)" }}
                   />
                 )}
               </button>

@@ -65,7 +65,7 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
                 {profile.name}
               </h1>
               {profile.verified ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#7dd3a3]/15 px-2.5 py-1 text-[11px] text-[#7dd3a3]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(var(--accent-rgb),0.15)] px-2.5 py-1 text-[11px] text-[var(--accent)]">
                   <CheckCircle2 size={12} aria-hidden />
                   인증 사용자
                 </span>
@@ -94,7 +94,7 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
               <Link
                 href="/posts/new"
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-medium text-[#0f1f22]"
-                style={{ background: "#7dd3a3" }}
+                style={{ background: "var(--accent)" }}
               >
                 <PenLine size={13} aria-hidden />
                 글쓰기

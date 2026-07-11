@@ -159,7 +159,7 @@ export function ReportButton({
               onClick={close}
               disabled={submitting}
               aria-label="신고 창 닫기"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3] disabled:opacity-40"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-40"
             >
               <X size={17} />
             </button>
@@ -202,7 +202,7 @@ export function ReportButton({
               type="button"
               onClick={close}
               disabled={submitting}
-              className="rounded-full px-4 py-2.5 text-[13px] transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3a3] disabled:opacity-40"
+              className="rounded-full px-4 py-2.5 text-[13px] transition-colors hover:bg-[rgba(var(--ink-rgb),0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-40"
             >
               취소
             </button>

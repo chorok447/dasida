@@ -57,7 +57,7 @@ export function NotificationSettingsForm({ embedded = false }: { embedded?: bool
         style={{ background: "var(--card)", borderColor: "var(--border)" }}
       >
         <div className="mb-5 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7dd3a3]/15 text-[#7dd3a3]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--accent-rgb),0.15)] text-[var(--accent)]">
             <Bell size={19} aria-hidden="true" />
           </span>
           <div>

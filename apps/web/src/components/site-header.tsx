@@ -53,7 +53,7 @@ export function SiteHeader() {
               <motion.div
                 layoutId="navdot"
                 className="absolute left-1/2 -translate-x-1/2 bottom-1 w-1.5 h-1.5 rounded-full"
-                style={{ background: "#7dd3a3" }}
+                style={{ background: "var(--accent)" }}
               />
             );
             return (
@@ -166,7 +166,7 @@ export function SiteHeader() {
               <Link
                 href="/signup"
                 className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
-                style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                style={{ background: "var(--accent)", color: "#0f1f22" }}
               >
                 회원가입
               </Link>

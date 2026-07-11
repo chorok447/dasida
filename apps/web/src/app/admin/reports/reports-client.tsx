@@ -346,7 +346,7 @@ function ReportRow({
                 type="checkbox"
                 checked={hideContent}
                 onChange={(e) => setHideContent(e.target.checked)}
-                className="h-4 w-4 accent-[#7dd3a3]"
+                className="h-4 w-4 accent-[var(--accent)]"
               />
               조치 완료 시 대상 콘텐츠 함께 숨김 (작성자에게 알림 발송)
             </label>

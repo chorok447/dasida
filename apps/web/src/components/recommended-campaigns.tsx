@@ -45,7 +45,7 @@ export function RecommendedCampaigns({ heading = "지금 모집 중인 캠페인
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <TrendingUp size={14} style={{ color: "#7dd3a3" }} aria-hidden />
+          <TrendingUp size={14} style={{ color: "var(--accent)" }} aria-hidden />
           <h3 className="text-[14px] font-medium" style={{ color: "var(--foreground)" }}>
             {heading}
           </h3>

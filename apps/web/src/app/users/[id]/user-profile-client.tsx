@@ -150,7 +150,7 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
                     {user.name}
                   </h1>
                   {user.verified ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#7dd3a3]/15 px-2.5 py-1 text-[11px] text-[#7dd3a3]">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(var(--accent-rgb),0.15)] px-2.5 py-1 text-[11px] text-[var(--accent)]">
                       <CheckCircle2 size={12} aria-hidden />
                       인증 사용자
                     </span>

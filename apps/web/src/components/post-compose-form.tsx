@@ -231,7 +231,7 @@ export function PostComposeForm({
             onClick={addImage}
             disabled={values.images.length >= POST_MAX_IMAGES}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-medium disabled:opacity-40"
-            style={{ background: "#7dd3a3", color: "#0f1f22" }}
+            style={{ background: "var(--accent)", color: "#0f1f22" }}
             aria-label="이미지 URL 추가"
           >
             <Plus size={14} aria-hidden />
@@ -368,7 +368,7 @@ export function PostComposeForm({
             placeholder="태그 입력 후 Enter"
             disabled={values.tags.length >= POST_MAX_TAGS}
             aria-invalid={Boolean(fieldErrors.tags)}
-            className="min-w-[120px] flex-1 bg-transparent px-2 text-[13px] outline-none placeholder:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+            className="min-w-[120px] flex-1 bg-transparent px-2 text-[13px] outline-none placeholder:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             style={{ color: "var(--foreground)" }}
           />
         </div>
@@ -455,7 +455,7 @@ export function PostComposeSubmitButton({
       disabled={disabled || submitting}
       aria-busy={submitting}
       className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-medium disabled:opacity-40"
-      style={{ background: "#7dd3a3", color: "#0f1f22" }}
+      style={{ background: "var(--accent)", color: "#0f1f22" }}
     >
       {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden /> : null}
       {submitting ? pendingLabel : idleLabel}

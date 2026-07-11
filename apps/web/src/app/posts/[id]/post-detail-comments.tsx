@@ -288,7 +288,7 @@ export function PostDetailComments({
                 <button
                   type="submit"
                   disabled={savingCommentId === c.id || !editText.trim()}
-                  className="rounded-full bg-[#7dd3a3] px-3 py-1.5 text-[12px] text-[#0f1f22] disabled:opacity-40"
+                  className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-[12px] text-[#0f1f22] disabled:opacity-40"
                 >
                   {savingCommentId === c.id ? "저장 중…" : "저장"}
                 </button>
@@ -372,7 +372,7 @@ export function PostDetailComments({
               placeholder="댓글 달기..."
               maxLength={MAX_COMMENT_LENGTH}
               disabled={submitting || visibleCommentsLoading || !!listError}
-              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+              className="flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
               style={{ color: "var(--foreground)" }}
             />
             <button
@@ -381,7 +381,7 @@ export function PostDetailComments({
               disabled={submitting || visibleCommentsLoading || !!listError || !composeText.trim()}
               aria-label="댓글 등록"
               className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
-              style={{ background: "#7dd3a3", color: "#0f1f22" }}
+              style={{ background: "var(--accent)", color: "#0f1f22" }}
             >
               <Send size={14} />
             </button>
@@ -394,7 +394,7 @@ export function PostDetailComments({
             <button
               type="button"
               onClick={() => router.push("/login")}
-              className="rounded-full bg-[#7dd3a3] px-5 py-2 text-[13px] text-[#0f1f22]"
+              className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]"
             >
               로그인하기
             </button>
@@ -451,7 +451,7 @@ export function PostDetailComments({
                         placeholder={`${c.author.name}님에게 답글 달기...`}
                         maxLength={MAX_COMMENT_LENGTH}
                         disabled={submittingReply}
-                        className="min-w-0 flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7dd3a3]"
+                        className="min-w-0 flex-1 bg-transparent outline-none placeholder:opacity-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                         style={{ color: "var(--foreground)" }}
                       />
                       <button
@@ -460,7 +460,7 @@ export function PostDetailComments({
                         disabled={submittingReply || !replyText.trim()}
                         aria-label="답글 등록"
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-                        style={{ background: "#7dd3a3", color: "#0f1f22" }}
+                        style={{ background: "var(--accent)", color: "#0f1f22" }}
                       >
                         <Send size={13} />
                       </button>
