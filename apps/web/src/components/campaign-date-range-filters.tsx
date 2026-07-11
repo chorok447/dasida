@@ -114,7 +114,7 @@ export function CampaignDateRangeFilterControls({
           onChange={onChange}
         />
       </div>
-      {validationError ? <p className="text-[12px] text-[#ed5c48]">{validationError}</p> : null}
+      {validationError ? <p className="text-[12px] text-[var(--danger)]">{validationError}</p> : null}
     </div>
   );
 }

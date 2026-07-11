@@ -236,7 +236,7 @@ export default function FeedClient({ campaigns }: { campaigns: Campaign[] }) {
           ) : null}
 
           {requestStatus === "error" && response ? (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#ed5c48]/25 px-4 py-3 text-[12px] text-[#ed5c48]">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(var(--danger-rgb),0.25)] px-4 py-3 text-[12px] text-[var(--danger)]">
               <span>최신 게시글을 불러오지 못해 이전 결과를 표시합니다.</span>
               <button type="button" onClick={() => setRetryTick((tick) => tick + 1)} className="underline underline-offset-4">
                 다시 시도

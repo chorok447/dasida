@@ -123,7 +123,7 @@ export function ReportButton({
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 ${className}`}
         style={{
           background: "rgba(var(--ink-rgb), 0.06)",
-          color: "#b3402f",
+          color: "var(--danger)",
         }}
       >
         <Flag size={13} /> 신고
@@ -195,7 +195,7 @@ export function ReportButton({
             <span className="block text-right text-[11px] opacity-55">{detail.length} / 500</span>
           </label>
 
-          {error ? <p role="alert" className="rounded-xl bg-[#ed5c48]/10 px-3 py-2 text-[13px] text-[#b3402f]">{error}</p> : null}
+          {error ? <p role="alert" className="rounded-xl bg-[rgba(var(--danger-rgb),0.1)] px-3 py-2 text-[13px] text-[var(--danger)]">{error}</p> : null}
 
           <div className="flex justify-end gap-2">
             <button

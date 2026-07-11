@@ -214,7 +214,7 @@ export function CampaignCommentItem({
               </button>
             </div>
           </div>
-          {editError ? <p role="alert" className="text-[12px] text-[#ed5c48]">{editError}</p> : null}
+          {editError ? <p role="alert" className="text-[12px] text-[var(--danger)]">{editError}</p> : null}
         </form>
       ) : (
         <>
