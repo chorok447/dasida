@@ -124,7 +124,7 @@ export function Carousel3D() {
                     className="object-cover"
                     draggable={false}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/90 via-[#0f1f22]/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--surface-dark-rgb),0.9)] via-[rgba(var(--surface-dark-rgb),0.4)] to-transparent" />
                   <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] tracking-[0.3em] px-2 py-1 rounded bg-white/20 backdrop-blur">

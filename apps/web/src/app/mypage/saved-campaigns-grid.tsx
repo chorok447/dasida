@@ -49,7 +49,7 @@ function SavedCampaignCard({
             thumbnail
             className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/70 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--surface-dark-rgb),0.7)] via-transparent to-transparent" />
           <div className="absolute right-3 top-3">
             <span className="rounded-full px-2.5 py-1 text-[11px] tracking-[0.2em]" style={{ background: meta.color, color: meta.fg }}>
               {meta.label}

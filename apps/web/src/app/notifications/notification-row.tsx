@@ -56,7 +56,7 @@ export function NotificationRow({
         </div>
         {!item.read && (
           <span
-            className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[var(--accent)] ring-2 ring-[#0f1f22]/10"
+            className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[var(--accent)] ring-2 ring-[rgba(var(--surface-dark-rgb),0.1)]"
             aria-hidden
           />
         )}

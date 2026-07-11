@@ -139,7 +139,7 @@ export function ReportButton({
         onClick={(event) => {
           if (event.target === event.currentTarget) close();
         }}
-        className="m-auto w-[min(92vw,30rem)] rounded-3xl border p-0 shadow-2xl backdrop:bg-[#0f1f22]/55"
+        className="m-auto w-[min(92vw,30rem)] rounded-3xl border p-0 shadow-2xl backdrop:bg-[rgba(var(--surface-dark-rgb),0.55)]"
         style={{
           background: "var(--panel)",
           borderColor: "rgba(var(--ink-rgb), 0.12)",
