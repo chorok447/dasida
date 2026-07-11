@@ -158,6 +158,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
   }, [draft, conversationId]);
 
   // DM 은 페이지(창) 스크롤을 쓴다. 바닥 근처 여부를 추적해 자동 스크롤 여부를 정한다.
+  // 모바일 소프트 키보드 등 스크롤 이벤트 없는 레이아웃 변화(resize)도 반영한다.
   useEffect(() => {
     const update = () => {
       nearBottomRef.current =
@@ -165,20 +166,25 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   useEffect(() => {
-    if (messages.length === 0) return;
-    // 최초 로드는 항상 최신 메시지로 즉시 이동. 이후에는 바닥 근처일 때만 따라간다
-    // — 옛 메시지를 읽는 중 새 메시지가 도착해도 강제로 끌어내리지 않는다.
+    // 최초 로드가 끝나면(빈 대화 포함) 한 번 최신 위치로 즉시 이동한 뒤 증분 처리로 넘어간다.
+    // loading 을 기준 삼아, 빈 대화방의 첫 라이브 메시지도 초기 점프가 아니라 부드럽게 따라가게 한다.
+    if (loading) return;
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
       bottomRef.current?.scrollIntoView();
       return;
     }
+    // 이후 메시지는 바닥 근처일 때만 부드럽게 따라간다(위로 올려 옛 메시지 읽는 중엔 위치 유지).
     if (nearBottomRef.current) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messages.length, loading]);
 
   const onSend = async () => {
     const text = draft.trim();
