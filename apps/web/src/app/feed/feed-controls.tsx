@@ -90,7 +90,7 @@ export function FeedControls({
             type="checkbox"
             checked={state.campaignOnly}
             onChange={(event) => onCampaignOnly(event.target.checked)}
-            className="accent-[#148a90]"
+            className="accent-[var(--accent-strong)]"
           />
           캠페인 게시글만
         </label>
@@ -103,7 +103,7 @@ export function FeedControls({
               type="checkbox"
               checked={state.followingOnly}
               onChange={(event) => onFollowingOnly(event.target.checked)}
-              className="accent-[#148a90]"
+              className="accent-[var(--accent-strong)]"
             />
             팔로잉만
           </label>
