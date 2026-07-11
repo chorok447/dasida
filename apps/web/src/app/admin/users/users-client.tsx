@@ -362,6 +362,7 @@ function UserRow({ user, onUpdated }: { user: AdminUserItem; onUpdated: (updated
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={500}
+                aria-label="정지 사유"
                 placeholder="정지 사유 (선택)"
                 className="min-w-40 flex-1 rounded-xl border px-3 py-2 text-[13px]"
                 style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--foreground)" }}
