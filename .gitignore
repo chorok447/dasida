@@ -39,3 +39,6 @@ apps/api/build-*.log
 
 # Local uploaded media (API disk store)
 uploads/
+
+# Playwright MCP session artifacts (local browser automation traces)
+.playwright-mcp/
