@@ -312,7 +312,7 @@ export default function CampaignEditClient({ id }: { id: string }) {
                     style={{ background: "rgba(var(--ink-rgb), 0.04)" }}
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0f1f22]/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--surface-dark-rgb),0.6)] via-transparent to-transparent" />
                 <span className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] tracking-[0.2em]" style={{ background: statusMeta.upcoming.color, color: "#fff" }}>
                   모집예정
                 </span>

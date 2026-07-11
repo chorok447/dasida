@@ -72,11 +72,11 @@ export function CampaignHeaderCard({
         <div className="grid grid-cols-1 md:grid-cols-[400px_1fr]">
           <div className="relative aspect-square md:aspect-auto overflow-hidden">
             <FallbackImage src={c.thumb} alt={`${c.title} 캠페인 이미지`} className="w-full h-full object-cover" priority />
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#0f1f22]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-[rgba(var(--surface-dark-rgb),0.4)] to-transparent" />
             <div className="absolute top-4 left-4 flex items-center gap-2" style={{ transform: "translateZ(50px)" }}>
               <StatusBadge c={c} />
               {c.ownedByMe ? (
-                <span className="rounded-full bg-[#0f1f22]/80 px-3 py-1.5 text-[11px] text-[var(--accent)]">
+                <span className="rounded-full bg-[rgba(var(--surface-dark-rgb),0.8)] px-3 py-1.5 text-[11px] text-[var(--accent)]">
                   내가 개설
                 </span>
               ) : null}
