@@ -93,7 +93,7 @@ export function MypageProfileHeader({ profile }: { profile: UserProfile }) {
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
                 href="/posts/new"
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-medium text-[#0f1f22]"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-medium text-[var(--surface-dark)]"
                 style={{ background: "var(--accent)" }}
               >
                 <PenLine size={13} aria-hidden />

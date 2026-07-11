@@ -166,7 +166,7 @@ export function ChangeEmailForm({
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-6 py-3 text-[13px] font-medium text-[#0f1f22] disabled:cursor-wait disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-6 py-3 text-[13px] font-medium text-[var(--surface-dark)] disabled:cursor-wait disabled:opacity-50"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
               {submitting ? "변경 중…" : "이메일 변경"}

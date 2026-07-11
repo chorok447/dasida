@@ -178,7 +178,7 @@ export function CampaignComments({
         {comments.status === "error" ? (
           <StatePanel compact role="alert">
             <p style={{ color: "var(--foreground-muted)" }}>{comments.listError}</p>
-            <button type="button" onClick={reload} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
+            <button type="button" onClick={reload} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]">
               다시 시도
             </button>
           </StatePanel>
@@ -258,7 +258,7 @@ export function CampaignComments({
                       disabled={submittingReply || !replyText.trim()}
                       aria-label="답글 등록"
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-                      style={{ background: "var(--accent)", color: "#0f1f22" }}
+                      style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
                     >
                       {submittingReply ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                     </button>

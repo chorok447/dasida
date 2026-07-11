@@ -79,7 +79,7 @@ function RecommendRow({
         className="shrink-0 rounded-full px-3 py-1 text-[12px] disabled:opacity-50"
         style={{
           background: followed ? "var(--accent-soft)" : "var(--accent)",
-          color: followed ? "var(--accent-secondary)" : "#0f1f22",
+          color: followed ? "var(--accent-secondary)" : "var(--surface-dark)",
         }}
       >
         {followed ? "팔로잉" : "팔로우"}

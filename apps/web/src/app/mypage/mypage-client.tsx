@@ -69,7 +69,7 @@ export default function MyPageClient() {
             <StatePanel className="mx-auto min-h-72 max-w-3xl">
               <LogIn size={30} className="text-[var(--accent)]" />
               <p>마이페이지를 보려면 로그인이 필요합니다.</p>
-              <Link href="/login" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
+              <Link href="/login" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]">
                 로그인 페이지로 이동
               </Link>
             </StatePanel>
@@ -78,7 +78,7 @@ export default function MyPageClient() {
           <div className="px-6 pt-32">
             <StatePanel className="mx-auto min-h-72 max-w-3xl" role="alert">
               <p>{error || "사용자 정보를 불러오지 못했습니다."}</p>
-              <button type="button" onClick={retry} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]">
+              <button type="button" onClick={retry} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]">
                 다시 시도
               </button>
             </StatePanel>

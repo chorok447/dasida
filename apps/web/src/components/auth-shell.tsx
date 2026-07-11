@@ -95,7 +95,7 @@ export function AuthShell({
           <div className="absolute inset-0 rounded-2xl bg-[var(--accent)]" />
           <span
             className="relative"
-            style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 22, color: "#0f1f22" }}
+            style={{ fontFamily: "var(--font-black-han), sans-serif", fontSize: 22, color: "var(--surface-dark)" }}
           >
             다시,
             <br />다

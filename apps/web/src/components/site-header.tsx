@@ -166,7 +166,7 @@ export function SiteHeader() {
               <Link
                 href="/signup"
                 className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
-                style={{ background: "var(--accent)", color: "#0f1f22" }}
+                style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
               >
                 회원가입
               </Link>

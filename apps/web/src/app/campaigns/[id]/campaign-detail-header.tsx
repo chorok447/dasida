@@ -104,10 +104,10 @@ export function CampaignHeaderCard({
                     className="flex h-9 w-9 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
                     style={{
                       background: bookmarked ? "var(--accent)" : "var(--border)",
-                      color: bookmarked ? "#0f1f22" : "var(--foreground)",
+                      color: bookmarked ? "var(--surface-dark)" : "var(--foreground)",
                     }}
                   >
-                    <Bookmark size={14} fill={bookmarked ? "#0f1f22" : "transparent"} />
+                    <Bookmark size={14} fill={bookmarked ? "var(--surface-dark)" : "transparent"} />
                   </button>
                 ) : null}
                 <AdminModerationButton targetType="CAMPAIGN" targetId={c.id} />
@@ -251,7 +251,7 @@ export function CampaignStatusManagement({
           className="rounded-full px-5 py-2 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-45"
           style={{
             background: target === "closed" ? "var(--danger-soft)" : "var(--accent)",
-            color: target === "closed" ? "var(--danger)" : "#0f1f22",
+            color: target === "closed" ? "var(--danger)" : "var(--surface-dark)",
           }}
         >
           {updating ? "처리 중…" : label}

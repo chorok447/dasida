@@ -288,7 +288,7 @@ export function FeedPostCard({
                     disabled={busy || !commentText.trim()}
                     aria-label="댓글 등록"
                     className="p-2 rounded-full disabled:opacity-40"
-                    style={{ background: "var(--accent)", color: "#0f1f22" }}
+                    style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
                   >
                     <Send size={14} />
                   </button>
@@ -298,7 +298,7 @@ export function FeedPostCard({
                   <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
                     로그인해야 댓글을 작성할 수 있어요.
                   </p>
-                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-[12px] text-[#0f1f22]">
+                  <button type="button" onClick={() => router.push("/login")} className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-[12px] text-[var(--surface-dark)]">
                     로그인하기
                   </button>
                 </div>

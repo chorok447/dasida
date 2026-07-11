@@ -143,7 +143,7 @@ export function SavedCampaignsGrid({ page, onPageChange }: { page: number; onPag
         <ListEmptyState
           title="저장한 캠페인이 없어요."
           action={
-            <Link href="/campaigns" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] font-medium text-[#0f1f22]">
+            <Link href="/campaigns" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] font-medium text-[var(--surface-dark)]">
               캠페인 둘러보기
             </Link>
           }

@@ -94,7 +94,7 @@ export default function SignupPage() {
           type="submit"
           disabled={submitting || !canSubmit}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-medium transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:opacity-40 motion-reduce:transform-none"
-          style={{ background: "var(--accent)", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
         >
           {submitting ? "가입 중…" : "회원가입"} <ArrowRight size={16} aria-hidden="true" />
         </button>

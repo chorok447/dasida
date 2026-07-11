@@ -109,7 +109,7 @@ function ConversationListBody({
               </p>
               <Link
                 href="/feed"
-                className="mt-4 inline-block rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[#0f1f22]"
+                className="mt-4 inline-block rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] text-[var(--surface-dark)]"
               >
                 피드로 이동
               </Link>

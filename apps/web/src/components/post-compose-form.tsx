@@ -231,7 +231,7 @@ export function PostComposeForm({
             onClick={addImage}
             disabled={values.images.length >= POST_MAX_IMAGES}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-medium disabled:opacity-40"
-            style={{ background: "var(--accent)", color: "#0f1f22" }}
+            style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
             aria-label="이미지 URL 추가"
           >
             <Plus size={14} aria-hidden />
@@ -455,7 +455,7 @@ export function PostComposeSubmitButton({
       disabled={disabled || submitting}
       aria-busy={submitting}
       className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-medium disabled:opacity-40"
-      style={{ background: "var(--accent)", color: "#0f1f22" }}
+      style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
     >
       {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden /> : null}
       {submitting ? pendingLabel : idleLabel}

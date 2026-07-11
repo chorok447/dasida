@@ -163,7 +163,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     return (
       <StateShell>
         <p>참가자 목록을 볼 권한이 없습니다.</p>
-        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push(`/campaigns/${id}`)} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           캠페인으로 돌아가기
         </button>
       </StateShell>
@@ -173,7 +173,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     return (
       <StateShell>
         <p>캠페인을 찾을 수 없습니다.</p>
-        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={() => router.push("/campaigns")} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           캠페인 목록
         </button>
       </StateShell>
@@ -183,7 +183,7 @@ export default function ParticipantsClient({ id }: { id: string }) {
     return (
       <StateShell>
         <p>참가자 목록을 불러오지 못했습니다.</p>
-        <button type="button" onClick={refresh} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[#0f1f22]">
+        <button type="button" onClick={refresh} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] text-[var(--surface-dark)]">
           다시 시도
         </button>
       </StateShell>

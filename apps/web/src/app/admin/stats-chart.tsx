@@ -75,7 +75,7 @@ export function StatsChartSection() {
               className="rounded-full border px-3 py-1 text-[12px]"
               style={
                 days === option
-                  ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#0f1f22" }
+                  ? { background: "var(--accent)", borderColor: "var(--accent)", color: "var(--surface-dark)" }
                   : { background: "transparent", borderColor: "var(--border)", color: "var(--foreground-muted)" }
               }
             >

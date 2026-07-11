@@ -144,7 +144,7 @@ export function CampaignComposeThumb({
           onClick={addThumbUrl}
           disabled={disabled || Boolean(thumb.trim())}
           className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-medium disabled:opacity-40"
-          style={{ background: "var(--accent)", color: "#0f1f22" }}
+          style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
           aria-label="썸네일 URL 추가"
         >
           <Plus size={14} aria-hidden />
