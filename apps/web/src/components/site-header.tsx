@@ -70,7 +70,7 @@ export function SiteHeader() {
               href="/admin"
               className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
               style={{
-                background: pathname.startsWith("/admin") ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
+                background: pathname.startsWith("/admin") ? "rgba(var(--accent-rgb),0.18)" : "rgba(var(--ink-rgb), 0.07)",
                 color: pathname.startsWith("/admin") ? "var(--accent-strong)" : "var(--heading)",
               }}
               aria-label="관리자 페이지로 이동"
@@ -84,7 +84,7 @@ export function SiteHeader() {
             href="/search"
             className="flex h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
             style={{
-              background: pathname === "/search" ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
+              background: pathname === "/search" ? "rgba(var(--accent-rgb),0.18)" : "rgba(var(--ink-rgb), 0.07)",
               color: pathname === "/search" ? "var(--accent-strong)" : "var(--heading)",
             }}
             aria-label="검색 페이지로 이동"
@@ -96,7 +96,7 @@ export function SiteHeader() {
             href="/messages"
             className="relative hidden h-9 items-center justify-center gap-2 rounded-full px-3 transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none sm:flex"
             style={{
-              background: onMessages ? "rgba(125,211,163,0.18)" : "rgba(var(--ink-rgb), 0.07)",
+              background: onMessages ? "rgba(var(--accent-rgb),0.18)" : "rgba(var(--ink-rgb), 0.07)",
               color: onMessages ? "var(--accent-strong)" : "var(--heading)",
             }}
             aria-label={dmUnread > 0 ? `DM, 읽지 않음 ${dmUnread > 99 ? "99+" : dmUnread}개` : "DM"}
@@ -119,7 +119,7 @@ export function SiteHeader() {
             className="relative flex h-10 w-10 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 motion-reduce:transform-none"
             style={{
               background: onNotifications
-                ? "rgba(125,211,163,0.18)"
+                ? "rgba(var(--accent-rgb),0.18)"
                 : "rgba(var(--ink-rgb), 0.07)",
               color: onNotifications ? "var(--accent-strong)" : "var(--heading)",
             }}

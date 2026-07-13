@@ -246,7 +246,7 @@ export function UserCampaignsList({
             <div
               className="rounded-xl px-4 py-3 text-[13px]"
               role="alert"
-              style={{ background: "rgba(237,92,72,0.12)", color: "var(--danger)" }}
+              style={{ background: "rgba(var(--danger-rgb),0.12)", color: "var(--danger)" }}
             >
               {actionError}
             </div>

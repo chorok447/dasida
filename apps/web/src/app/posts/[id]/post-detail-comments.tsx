@@ -202,7 +202,7 @@ export function PostDetailComments({
         background: c.id === targetCommentId
           ? "var(--accent-soft)"
           : "transparent",
-        outline: c.id === targetCommentId ? "1px solid rgba(125,211,163,0.55)" : "none",
+        outline: c.id === targetCommentId ? "1px solid rgba(var(--accent-rgb),0.55)" : "none",
       }}
     >
       <Avatar
@@ -226,7 +226,7 @@ export function PostDetailComments({
                   disabled={savingCommentId !== null || deletingIds.has(c.id)}
                   aria-label={isReply ? "답글 수정" : "댓글 수정"}
                   className="flex h-8 w-8 items-center justify-center rounded-full disabled:cursor-wait disabled:opacity-40"
-                  style={{ background: "rgba(125,211,163,0.14)", color: "var(--accent-strong)" }}
+                  style={{ background: "rgba(var(--accent-rgb),0.14)", color: "var(--accent-strong)" }}
                 >
                   <Pencil size={14} />
                 </button>
@@ -313,11 +313,11 @@ export function PostDetailComments({
                     aria-pressed={likedByMe}
                     className="inline-flex items-center gap-1 text-[12px] hover:opacity-100 disabled:opacity-40"
                     style={{
-                      color: likedByMe ? "#ed5c48" : "var(--foreground)",
+                      color: likedByMe ? "var(--danger-solid)" : "var(--foreground)",
                       opacity: likedByMe ? 1 : 0.55,
                     }}
                   >
-                    <Heart size={12} fill={likedByMe ? "#ed5c48" : "transparent"} aria-hidden />
+                    <Heart size={12} fill={likedByMe ? "var(--danger-solid)" : "transparent"} aria-hidden />
                     {likes}
                   </button>
                 );

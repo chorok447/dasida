@@ -25,7 +25,7 @@ export function CampaignCTABar({
     borderColor: "var(--border)",
     color: "var(--foreground)",
   };
-  const joinedStyle = { background: "rgba(125,211,163,0.18)", color: "var(--accent-secondary)", fontSize: 16 };
+  const joinedStyle = { background: "rgba(var(--accent-rgb),0.18)", color: "var(--accent-secondary)", fontSize: 16 };
   const pending = action !== null;
 
   if (c.joinedByMe) {
@@ -99,7 +99,7 @@ export function CampaignCTABar({
         disabled={disabled || pending}
         aria-busy={action === "join"}
         aria-label={action === "join" ? "캠페인 참여 처리 중" : "캠페인 참여하기"}
-        className="inline-flex w-full items-center justify-center gap-2 py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(125,211,163,0.6)] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex w-full items-center justify-center gap-2 py-5 rounded-2xl font-medium hover:-translate-y-0.5 transition-transform shadow-[0_30px_60px_-20px_rgba(var(--accent-rgb),0.6)] disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ background: "var(--accent)", color: "var(--surface-dark)", fontSize: 17 }}
       >
         {action === "join" ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}

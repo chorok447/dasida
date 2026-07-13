@@ -120,7 +120,7 @@ export function ReportButton({
         type="button"
         onClick={open}
         aria-label="콘텐츠 신고"
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger-solid)]/60 ${className}`}
         style={{
           background: "rgba(var(--ink-rgb), 0.06)",
           color: "var(--danger)",
@@ -211,7 +211,7 @@ export function ReportButton({
               disabled={submitting || !reason}
               aria-busy={submitting}
               aria-label={submitting ? "신고 접수 중" : "신고하기"}
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--danger-solid)] px-5 py-2.5 text-[13px] text-white transition-colors hover:bg-[var(--danger-solid-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ed5c48]/60 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--danger-solid)] px-5 py-2.5 text-[13px] text-white transition-colors hover:bg-[var(--danger-solid-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger-solid)]/60 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />}
               {submitting ? "접수 중…" : "신고하기"}

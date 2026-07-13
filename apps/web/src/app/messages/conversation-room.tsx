@@ -352,7 +352,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
                       className="max-w-[80%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap break-words"
                       style={{
                         background: mine
-                          ? "rgba(125,211,163,0.35)"
+                          ? "rgba(var(--accent-rgb),0.35)"
                           : "rgba(var(--ink-rgb), 0.07)",
                         color: msg.deleted ? "var(--foreground-muted)" : "var(--foreground)",
                         fontStyle: msg.deleted ? "italic" : undefined,
