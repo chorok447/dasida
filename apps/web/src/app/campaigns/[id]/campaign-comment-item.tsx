@@ -110,7 +110,7 @@ export function CampaignCommentItem({
       style={{
         background: highlighted ? "var(--accent-soft)" : "var(--glass)",
         borderColor: highlighted
-          ? "rgba(125,211,163,0.65)"
+          ? "rgba(var(--accent-rgb),0.65)"
           : "var(--border)",
       }}
     >
@@ -146,7 +146,7 @@ export function CampaignCommentItem({
                 onClick={() => onEdit(comment)}
                 disabled={deleting || saving}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
-                style={{ background: "rgba(125,211,163,0.14)", color: "var(--accent-strong)" }}
+                style={{ background: "rgba(var(--accent-rgb),0.14)", color: "var(--accent-strong)" }}
               >
                 <Pencil size={15} />
               </button>
@@ -233,11 +233,11 @@ export function CampaignCommentItem({
               aria-pressed={likedByMe}
               className="inline-flex items-center gap-1 text-[12px] hover:opacity-100 disabled:opacity-40"
               style={{
-                color: likedByMe ? "#ed5c48" : "var(--foreground)",
+                color: likedByMe ? "var(--danger-solid)" : "var(--foreground)",
                 opacity: likedByMe ? 1 : 0.55,
               }}
             >
-              <Heart size={12} fill={likedByMe ? "#ed5c48" : "transparent"} aria-hidden />
+              <Heart size={12} fill={likedByMe ? "var(--danger-solid)" : "transparent"} aria-hidden />
               {likes}
             </button>
             {!isReply && onToggleReply ? (

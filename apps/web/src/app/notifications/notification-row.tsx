@@ -74,7 +74,7 @@ export function NotificationRow({
             style={{
               background: item.read
                 ? "rgba(var(--ink-rgb), 0.06)"
-                : "rgba(125,211,163,0.22)",
+                : "rgba(var(--accent-rgb),0.22)",
               color: item.read ? ("rgba(var(--ink-rgb), 0.55)") : "var(--accent-secondary)",
             }}
           >
@@ -138,7 +138,7 @@ export function NotificationRow({
         type="button"
         onClick={() => onDelete(item.id)}
         disabled={deleting || pending}
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ed5c48]"
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--danger-solid)]"
         style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
         aria-label="알림 삭제"
       >

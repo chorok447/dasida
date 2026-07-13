@@ -107,7 +107,7 @@ export function LandingFlow() {
             <motion.div whileHover={reduce ? undefined : { y: -3 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href="/feed"
-                className="inline-flex items-center justify-center rounded-full px-8 py-4 text-[15px] font-medium shadow-[0_16px_40px_-16px_rgba(125,211,163,0.8)]"
+                className="inline-flex items-center justify-center rounded-full px-8 py-4 text-[15px] font-medium shadow-[0_16px_40px_-16px_rgba(var(--accent-rgb),0.8)]"
                 style={{ background: "var(--accent)", color: "var(--surface-dark)" }}
               >
                 피드 둘러보기

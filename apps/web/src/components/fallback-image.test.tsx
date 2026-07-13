@@ -17,6 +17,19 @@ describe("FallbackImage", () => {
     expect(document.querySelector("img")).toBeNull();
   });
 
+  it("src가 비어 있으면 로드 시도 없이 바로 대체 요소를 보여준다", () => {
+    // 썸네일이 선택인 캠페인 등 src=""가 넘어오면 <img src="">는 브라우저가 onError를
+    // 발생시키지 않아 빈 박스만 남는다. 빈 src는 실패와 동일하게 대체 요소로 처리해야 한다.
+    render(<FallbackImage src="" alt="캠페인 이미지" />);
+    expect(document.querySelector("img")).toBeNull();
+    expect(screen.queryByRole("img", { name: "캠페인 이미지" })).toBeTruthy();
+  });
+
+  it("src가 공백뿐이어도 대체 요소를 보여준다", () => {
+    render(<FallbackImage src="   " alt="캠페인 이미지" />);
+    expect(document.querySelector("img")).toBeNull();
+  });
+
   it("errorText가 있으면 실패 시 안내 문구를 보여준다", () => {
     render(
       <FallbackImage src="https://example.com/broken.jpg" alt="첨부 이미지" errorText="이미지를 불러올 수 없어요" />,

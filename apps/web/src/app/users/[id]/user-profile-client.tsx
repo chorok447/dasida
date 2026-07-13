@@ -210,8 +210,8 @@ export function UserProfileClient({ user: initialUser }: { user: PublicUser }) {
                       onClick={() => void toggleBlock()}
                       className="rounded-full border px-5 py-2 text-[13px] font-medium disabled:opacity-50"
                       style={{
-                        borderColor: blockedByMe ? "var(--border)" : "rgba(237,92,72,0.35)",
-                        color: blockedByMe ? "var(--foreground-muted)" : "#ed5c48",
+                        borderColor: blockedByMe ? "var(--border)" : "rgba(var(--danger-rgb),0.35)",
+                        color: blockedByMe ? "var(--foreground-muted)" : "var(--danger-solid)",
                         background: "var(--card)",
                       }}
                     >

@@ -198,7 +198,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
               className="ui-control"
               style={{
                 background: "var(--card)",
-                borderColor: nameError ? "rgba(237,92,72,0.55)" : "var(--border)",
+                borderColor: nameError ? "rgba(var(--danger-rgb),0.55)" : "var(--border)",
                 color: "var(--foreground)",
               }}
             />
@@ -228,7 +228,7 @@ function ProfileEditForm({ profile }: { profile: UserProfile }) {
                 className="ui-control min-w-0 flex-1"
                 style={{
                   background: "var(--card)",
-                  borderColor: imageUrlError ? "rgba(237,92,72,0.55)" : "var(--border)",
+                  borderColor: imageUrlError ? "rgba(var(--danger-rgb),0.55)" : "var(--border)",
                   color: "var(--foreground)",
                 }}
               />

@@ -159,8 +159,8 @@ export function PostResultCard({ post, query = "" }: { post: Post; query?: strin
             ))}
           </div>
           <div className="flex items-center gap-4 border-t pt-3 text-[12px] opacity-65" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
-            <span className="flex items-center gap-1" style={post.likedByMe ? { color: "#ed5c48" } : undefined}>
-              <Heart size={13} fill={post.likedByMe ? "#ed5c48" : "none"} /> {post.likes}
+            <span className="flex items-center gap-1" style={post.likedByMe ? { color: "var(--danger-solid)" } : undefined}>
+              <Heart size={13} fill={post.likedByMe ? "var(--danger-solid)" : "none"} /> {post.likes}
             </span>
             <span className="flex items-center gap-1"><MessageCircle size={13} /> {post.comments}</span>
           </div>

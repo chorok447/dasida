@@ -218,7 +218,7 @@ export function PostDetailHero({
               className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer text-left w-full"
               style={{
                 background: "var(--accent-soft)",
-                border: "1px solid rgba(125,211,163,0.25)",
+                border: "1px solid rgba(var(--accent-rgb),0.25)",
               }}
             >
               <FallbackImage
@@ -243,11 +243,11 @@ export function PostDetailHero({
               aria-pressed={liked}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] disabled:opacity-50"
               style={{
-                background: liked ? "rgba(237,92,72,0.15)" : "var(--border)",
-                color: liked ? "#ed5c48" : "var(--foreground)",
+                background: liked ? "rgba(var(--danger-rgb),0.15)" : "var(--border)",
+                color: liked ? "var(--danger-solid)" : "var(--foreground)",
               }}
             >
-              <Heart size={14} fill={liked ? "#ed5c48" : "transparent"} aria-hidden /> {likes}
+              <Heart size={14} fill={liked ? "var(--danger-solid)" : "transparent"} aria-hidden /> {likes}
             </motion.button>
             <button
               type="button"

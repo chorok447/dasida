@@ -184,13 +184,13 @@ export function FeedPostCard({
           <button type="button" className="block aspect-[4/3] w-full overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             <FallbackImage src={p.images[0]} alt="" decorative thumbnail className="w-full h-full object-cover" />
           </button>
-        ) : (
+        ) : p.images.length > 1 ? (
           <button type="button" className="grid aspect-[4/3] w-full grid-cols-2 gap-0.5 overflow-hidden" onClick={onOpen} aria-label="게시글 상세 보기">
             {p.images.map((src, i) => (
               <FallbackImage key={i} src={src} alt="" decorative thumbnail className="w-full h-full object-cover" />
             ))}
           </button>
-        )}
+        ) : null}
 
         <div className="p-4 space-y-3">
           <PostPreview text={p.text} style={{ color: "var(--foreground)", fontSize: 14, lineHeight: 1.6 }} maxLength={320} />
@@ -208,10 +208,10 @@ export function FeedPostCard({
                 disabled={liking || refreshing}
                 aria-label={liked ? "게시글 좋아요 취소" : "게시글 좋아요"}
                 aria-pressed={liked}
-                className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors disabled:opacity-50"
-                style={liked ? { color: "#ed5c48" } : undefined}
+                className="flex items-center gap-1 hover:text-[var(--danger-solid)] transition-colors disabled:opacity-50"
+                style={liked ? { color: "var(--danger-solid)" } : undefined}
               >
-                <Heart size={14} fill={liked ? "#ed5c48" : "none"} aria-hidden /> {likes}
+                <Heart size={14} fill={liked ? "var(--danger-solid)" : "none"} aria-hidden /> {likes}
               </motion.button>
               <button
                 type="button"
@@ -229,7 +229,7 @@ export function FeedPostCard({
               </span>
               <ShareButton
                 title={p.text.slice(0, 80)}
-                className="flex items-center gap-1 hover:text-[#ed5c48] transition-colors"
+                className="flex items-center gap-1 hover:text-[var(--danger-solid)] transition-colors"
               />
               <ReportButton targetType="POST" targetId={p.id} ownedByMe={p.ownedByMe} className="!px-2 !py-1" />
             </div>
