@@ -29,11 +29,15 @@ export function FallbackImage({
   const [failed, setFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
 
+  // 빈/누락 src 는 <img src=""> 가 되어 브라우저가 onError 를 발생시키지 않아(문서 URL 로 해석)
+  // aspect 박스만 남고 placeholder 가 뜨지 않는다. 선택형 이미지(예: 썸네일 없는 캠페인)를
+  // 위해 빈 src 를 실패와 동일하게 취급한다.
+  const hasSrc = typeof src === "string" && src.trim().length > 0;
   const thumbSrc = thumbnail ? uploadThumbUrl(src) : src;
   const useThumb = thumbnail && !thumbFailed && thumbSrc !== src;
   const currentSrc = useThumb ? thumbSrc : src;
 
-  if (failed) {
+  if (failed || !hasSrc) {
     const label = errorText ?? alt;
     return (
       <div
