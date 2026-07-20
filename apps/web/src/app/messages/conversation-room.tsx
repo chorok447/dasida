@@ -319,7 +319,7 @@ export function ConversationRoomClient({ conversationId }: { conversationId: str
             첫 메시지를 보내 보세요.
           </p>
         ) : (
-          <ul className="flex flex-1 flex-col gap-2">
+          <ul className="flex flex-1 flex-col gap-2" aria-live="polite" aria-relevant="additions">
             {(() => {
               let lastDate = "";
               return messages.flatMap((msg) => {
