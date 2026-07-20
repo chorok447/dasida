@@ -4,8 +4,8 @@
 
 ## 주요 기능
 
-- **피드/게시글**: 작성·수정·삭제, 이미지 업로드, 좋아요·북마크·댓글, 태그
-- **캠페인**: 개설·모집 시작·참여/취소, 캠페인 댓글, 참여자 목록
+- **피드/게시글**: 작성·수정·삭제, 이미지 업로드, 좋아요·북마크·댓글(댓글 좋아요·대댓글), 태그, 조회수
+- **캠페인**: 개설·모집 시작·참여/취소, 참여 인증(증빙), 캠페인 댓글(좋아요), 참여자 목록, 북마크
 - **알림**: 타입별 필터 탭(좋아요·댓글/캠페인/팔로우/메시지) + 안읽음 필터를 AND로 조합 조회
 - **DM**: 1:1 대화, WebSocket 실시간 갱신, 차단
 - **팔로우**: 팔로우/언팔로우, 팔로잉·팔로워 목록, 추천, 팔로잉 피드 필터
@@ -53,7 +53,7 @@ design-reference/  # Figma Make 익스포트(디자인 참고용, 실행 대상 
 ```
 
 - **프론트엔드**: `apps/web` — Next.js, 인증은 httpOnly 쿠키 기반(JWT 를 JS 에서 접근 불가).
-- **백엔드**: `apps/api` — Kotlin/Spring Boot 4.1, JWT(jjwt) + Spring Security(stateless), MySQL 8(JPA/Hibernate). 테스트는 H2 인메모리(MySQL 모드)라 Docker 불필요.
+- **백엔드**: `apps/api` — Kotlin/Spring Boot 4.1, JWT(jjwt) + Spring Security(stateless), MySQL 8(JPA/Hibernate). 스키마는 **Flyway** 마이그레이션(`apps/api/src/main/resources/db/migration/`, 현재 V28)으로 관리하고 `ddl-auto=validate` 로 검증한다. 테스트는 H2 인메모리(MySQL 모드)라 Docker 불필요(Flyway 스모크 테스트만 Testcontainers, Docker 없으면 자동 skip).
 
 ## 로컬 실행
 
@@ -88,9 +88,11 @@ docker compose -f compose.local.yml up --build
 
 | 이벤트 | 동작 |
 |--------|------|
-| `develop` 대상 PR | CI(web/api/e2e) 통과 시 **auto-merge** |
+| `develop` 대상 PR | CI(web/api/e2e) 통과 시 **auto-merge**. Docker 관련 파일 변경 시 [`image-verify-develop.yml`](.github/workflows/image-verify-develop.yml) 이 image build 도 검증(push 없음) |
 | `main` 대상 PR | **develop → main 만 허용** (`main PR source gate`). image build 검증. **수동 merge** |
-| `main` push | **CI 성공 후에만** `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` push (`sha-<shortsha>`, `main` tag) |
+| `main` push | **CI 성공 후에만** `docker.io/<DOCKERHUB_USERNAME>/dasida-api`, `dasida-web` 에 `sha-<shortsha>` push → 별도 job(`:main 태그 승격`)이 `docker buildx imagetools create` 로 `main` tag 를 registry-side **원자 승격** |
+
+CI([`ci.yml`](.github/workflows/ci.yml)) job 구성: `web`(lint·vitest·build), `api`(빌드 전 **Flyway 버전 중복 검사** `scripts/check-flyway-versions.mjs`), `e2e`(Playwright 스모크 + **OpenAPI 타입 드리프트 게이트** — API 를 8081 로 띄워 `apps/web/src/types/api.d.ts` 재생성 후 diff 시 실패), `security`(`pnpm audit --audit-level=high`, **비차단**), `main PR source gate`, `auto-merge`. 모든 job 은 한국어 요약을 남기고, 액션은 commit SHA 로 pin 되어 있다.
 
 **브랜치 흐름**: 기능 브랜치 → `develop` PR (CI 통과 시 auto-merge) → 릴리스 시 `develop` → `main` PR (수동 merge). `feat/*` 등을 `main` 으로 직접 PR 하면 CI 가 거부한다.
 

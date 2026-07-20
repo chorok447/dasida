@@ -56,7 +56,7 @@
 | `SPRING_DATA_REDIS_PORT` | 서버 전용 | no | **yes** (Redis 사용 시) | 숫자 포트(기본 6379). 비표준 포트면 방화벽 규칙 확인 | 인프라 |
 | `SPRING_DATA_REDIS_PASSWORD` | 서버 전용 | no | **yes** (single VM·Redis auth 시) | Valkey `requirepass` 와 **동일 값**. [`compose.single-vm.example.yml`](../../../../deploy/compose.single-vm.example.yml) | Redis ACL/TLS 정책 |
 
-prod Redis store(`app.rate-limit.store=redis`, `app.auth.denylist.store=redis`)는 **별도 구현 PR** 전제. 단일 API 인스턴스·in-memory 허용 시 deploy 직전 필수는 아님.
+prod Redis store 는 `application-prod.yml` 에서 **redis 로 고정 완료**(`app.rate-limit.store=redis`, `app.auth.denylist.store=redis`) — `SPRING_DATA_REDIS_HOST` 미주입 시 prod 기동이 실패한다(fail-fast). deploy 전 Redis/Valkey 접속 값 주입이 **필수**다.
 
 ### Deploy automation (향후 CD)
 
@@ -96,7 +96,7 @@ main merge **후** main push 가 Docker Hub 에 image 를 올리므로, **첫 ma
 | 운영 인프라·도메인 결정 | 권장(보류 사유 해소) |
 | `NEXT_PUBLIC_API_URL` Variable | merge 전 필수 아님; **운영 Web image 빌드·deploy 전 필수** |
 
-[PR #149](https://github.com/chorok447/dasida/pull/149) 는 기술 gate + [main-release-readiness.md](./main-release-readiness.md) 운영 준비가 충족된 뒤 **수동 merge**.
+[PR #149](https://github.com/chorok446/dasida/pull/149) 는 기술 gate + [main-release-readiness.md](./main-release-readiness.md) 운영 준비가 충족된 뒤 **수동 merge**.
 
 ---
 

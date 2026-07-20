@@ -207,8 +207,8 @@ curl -fsS https://api.example.com/actuator/health
 | **VM snapshot revert** | 불확실 — MySQL consistency 보장 어려움 |
 
 - 단순 image rollback **만으로** schema/data 는 되돌아가지 **않는다**.
-- Flyway/Liquibase 등 **DB migration 도입 후** 배포 전 backup **필수**.
-- 현재 repo: JPA `ddl-auto` 정책 — migration 도구 **없음** (이번 PR 범위 아님).
+- **Flyway migration 이 도입되어 있으므로**(기동 시 자동 적용, `ddl-auto=validate`) 배포 전 backup **필수**.
+- 현재 repo: Flyway (`apps/api/src/main/resources/db/migration/`, V28 까지).
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 상태: **구현 완료**. logout access token denylist 가 도입되어 있다(hash 기반, 아래 후보 A 계열). 실제 현재 동작·API 계약은 [apps/api/README.md 의 "로그아웃과 토큰 무효화(denylist)"](../../README.md#로그아웃과-토큰-무효화denylist) 와 [Redis 보안 store 운영 정책](./redis-security-store-policy.md) 을 참조한다.
 >
-> 아래 4~9절은 도입 검토 시점의 **설계 기록**이다(원본 토큰 대신 SHA-256 hash 를 key 로 쓰는 방식으로 구현됐다). refresh token 은 지금도 도입하지 않았다.
+> 아래 4~9절은 도입 검토 시점의 **설계 기록**이다(원본 토큰 대신 SHA-256 hash 를 key 로 쓰는 방식으로 구현됐다). refresh token 은 이 검토 시점에는 없었으나 **이후 도입됐다** — httpOnly 쿠키 `dasida_refresh`(rotation, `Path=/api/auth`) + `POST /api/auth/refresh`, access TTL 기본 30분. 1~2절의 "현재"(24시간 TTL, `localStorage` 보관 등)는 **검토 시점 기준**이며, 현재 토큰은 httpOnly 쿠키로 전달된다. 최신 동작은 루트 [README](../../../../README.md)·CLAUDE.md 참조.
 
 ## 1. 현재 인증 구조 요약
 
@@ -28,7 +28,7 @@ Dasida API 는 **stateless JWT 단일 access token** 방식이다. 서버는 세
 
 ## 2. refresh token 존재 여부
 
-**없다(현재도).** 소스에 refresh token 개념·엔드포인트·claim·저장소가 없다. access token 하나만 발급·사용하며, 재발급은 재로그인으로 한다.
+**없었다(검토 시점).** 당시 소스에 refresh token 개념·엔드포인트·claim·저장소가 없었다. **이후 도입됨** — `POST /api/auth/refresh` + `dasida_refresh` httpOnly 쿠키(rotation).
 
 ## 3. logout 엔드포인트 (구현됨)
 

@@ -7,7 +7,7 @@
 
 | 구분 | 상태 |
 |------|------|
-| develop → main release PR | [PR #149](https://github.com/chorok447/dasida/pull/149) — **merge 완료** (2026-07-03, `af5082c`) |
+| develop → main release PR | [PR #149](https://github.com/chorok446/dasida/pull/149) — **merge 완료** (2026-07-03, `af5082c`) |
 | main PR auto-merge | **비활성화** (수동 승인 후 merge) |
 | Production Docker image (Docker Hub) | **push 완료** — `chorok446/dasida-api|web` (`main`, `sha-af5082c`) |
 | Docker Hub pull/smoke (로컬) | **검증 완료** — 상세 [container-images.md](./container-images.md#docker-hub-검증-main-push-2026-07-03) |
@@ -167,7 +167,7 @@ main merge **전** GitHub에서 확인:
 |------|------|------|
 | Image tag | 이전 `sha-<shortsha>` 또는 특정 digest로 redeploy | [ ] |
 | `main` tag | 최신 main push가 가리키는 image; rollback 시 **고정 sha tag** 사용 권장 | [ ] |
-| DB migration | 현재 **Flyway/Liquibase 없음** — schema는 JPA `ddl-auto` 정책 확인 필요 | [ ] |
+| DB migration | **Flyway 사용 중** (`db/migration/` V1~V28, 기동 시 자동 적용 + `ddl-auto=validate`) — migration 은 forward-only 라 image rollback 전 스키마 호환 확인 필요 | [ ] |
 | Redis 데이터 | rate limit/denylist key는 TTL 기반 — rollback 시 영구 데이터 영향 제한적 | [ ] |
 | Web rebuild | `NEXT_PUBLIC_API_URL` 변경 시 **image 재빌드** 필요 | [ ] |
 
