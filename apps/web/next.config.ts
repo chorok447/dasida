@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // HTTPS 강제. 브라우저는 평문 HTTP 응답의 HSTS 를 무시하므로 로컬(http) 개발에는 영향 없다.
+          // preload 는 되돌리기 어려운 약속이라 붙이지 않는다.
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
           {
             key: "Content-Security-Policy",
             // Next 인라인 스크립트/스타일과 무관하게 안전한 지시어만 강제한다.

@@ -33,5 +33,3 @@ export function mergeRichBodyForEditor(text: string, images: string[]): string {
 export function mergeCampaignBodyForEditor(paragraphs: string[], images: string[]): string {
   return mergeRichBodyForEditor(paragraphs.join("\n\n"), images);
 }
-
-export const splitCampaignBodyHtml = splitRichBodyHtml;

@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional
 
 interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun findByPostIdOrderBySeqAsc(postId: String): List<PostComment>
-    fun findByPostId(postId: String, pageable: Pageable): Page<PostComment>
     fun findByIdAndPostId(id: String, postId: String): PostComment?
 
     /** 댓글 좋아요/취소 동시성 방어용 write lock 조회 — 같은 댓글에 대한 요청을 직렬화한다. */

@@ -52,7 +52,6 @@ export function SearchField({
       }}
     >
       <Search size={18} className="shrink-0 opacity-50" aria-hidden />
-      <label className="sr-only">{label}</label>
       <input
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

@@ -66,5 +66,3 @@ export const objectPhotos = [
   u("photo-1721190601155-1b98d316bbe2"),
   u("photo-1728551040634-db461e235b1f"),
 ];
-
-export const pickPhoto = (pool: string[], i: number) => pool[i % pool.length];

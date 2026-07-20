@@ -15,20 +15,6 @@ export type CampaignDateRangeFilters = {
   runStartTo: string;
 };
 
-export type CampaignSearchParams = {
-  q?: string;
-  status?: CampaignStatus;
-  recruitState?: CampaignRecruitState;
-  availableOnly?: boolean;
-  sort?: CampaignSearchSort;
-  page?: number;
-  size?: number;
-  recruitEndFrom?: string;
-  recruitEndTo?: string;
-  runStartFrom?: string;
-  runStartTo?: string;
-};
-
 export type CampaignDateRangeField = keyof CampaignDateRangeFilters;
 
 export const EMPTY_CAMPAIGN_DATE_RANGE_FILTERS: CampaignDateRangeFilters = {

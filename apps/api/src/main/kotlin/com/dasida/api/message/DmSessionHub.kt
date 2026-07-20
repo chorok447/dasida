@@ -16,7 +16,9 @@ class DmSessionHub(
     private data class Conn(
         val session: WebSocketSession,
         val userId: Long,
-        val conversationIds: MutableSet<String> = mutableSetOf(),
+        // 소유 세션 스레드가 subscribe/unsubscribe 로 변형하는 동안 다른 사용자의
+        // 발신 스레드가 peersIn/unregister 에서 순회하므로 동시성 안전 집합을 쓴다.
+        val conversationIds: MutableSet<String> = ConcurrentHashMap.newKeySet(),
     )
 
     private val conns = ConcurrentHashMap<String, Conn>()
