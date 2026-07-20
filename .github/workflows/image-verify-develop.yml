@@ -1,18 +1,29 @@
-name: Image Verify
+name: Image Verify (develop)
 
-# main 대상 PR: Docker image build 검증만(push=false). Docker Hub login 없음.
-# production secret 을 사용하지 않는다. 실제 push 는 cd.yml(main push CI 성공 후).
+# develop 대상 PR 중 이미지 빌드에 영향 주는 경로가 바뀐 경우에만 Docker 빌드를 검증한다.
+# 배경: 프로덕션 이미지 빌드 결함은 main PR 전용 image-verify 만으로는 릴리스 직전에야 발견된다.
+# main 대상 PR 은 기존 image-verify.yml 이 경로 무관 전체 검증한다(릴리스 게이트).
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop]
     types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "apps/api/Dockerfile*"
+      - "apps/web/Dockerfile*"
+      - "apps/web/next.config.ts"
+      - "apps/web/package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "apps/api/build.gradle.kts"
+      - "apps/api/settings.gradle.kts"
+      - ".github/workflows/image-verify-develop.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: image-verify-${{ github.ref }}
+  group: image-verify-develop-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
