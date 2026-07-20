@@ -30,9 +30,6 @@ interface PostRepository : JpaRepository<Post, String> {
 
     fun countByAuthorUserId(authorUserId: Long): Long
 
-    /** 공개 프로필 카운트용 — 숨김·삭제(hiddenAt 세팅됨)를 제외해 공개 목록과 수치가 일치하게 한다. */
-    fun countByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long): Long
-
     /** 사용자 목록 매핑용 bulk 집계 — 작성자별 공개 게시글 수. */
     @Query(
         """
