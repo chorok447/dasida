@@ -26,9 +26,9 @@ class DmHandshakeInterceptor(
         attributes: MutableMap<String, Any>,
     ): Boolean {
         val servlet = (request as? ServletServerHttpRequest)?.servletRequest ?: return false
-        val token = servlet.authCookieToken()
-            ?: servlet.getParameter("token")?.takeIf { it.isNotBlank() }
-            ?: return false
+        // 토큰은 httpOnly 쿠키로만 받는다. URL 쿼리파라미터(?token=)는 접근/프록시 로그·
+        // 브라우저 히스토리·Referer 로 새므로 폴백을 두지 않는다(프런트도 쿠키만 사용).
+        val token = servlet.authCookieToken() ?: return false
         return try {
             if (denylist.isDenied(hashToken(token))) return false
             val user = jwt.parse(token)
