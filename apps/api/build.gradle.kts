@@ -63,8 +63,8 @@ dependencies {
 	// Boot 4.1 BOM 이 testcontainers 버전을 관리하지 않아 BOM 을 직접 고정한다.
 	testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
-	testImplementation("org.testcontainers:junit-jupiter")
-	testImplementation("org.testcontainers:mysql")
+	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+	testImplementation("org.testcontainers:testcontainers-mysql")
 }
 
 kotlin {
