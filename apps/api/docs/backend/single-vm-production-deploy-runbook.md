@@ -337,7 +337,7 @@ docker compose -f compose.prod.yml -f compose.single-vm.yml --env-file .env.prod
 |------|------|
 | `main` tag | rollback pin 으로 쓰지 않음 |
 | Web URL 변경 | 해당 시점 **Web image sha** 도 함께 되돌림 |
-| DB schema | 현재 migration 도구 **없음** — rollback 은 **application image** 수준. schema 변경 도입 후 rollback 위험 증가 |
+| DB schema | **Flyway** 마이그레이션 사용(기동 시 자동 적용 + `ddl-auto=validate`) — migration 은 forward-only 라 rollback 은 **application image** 수준. 이전 `sha-*` image 가 새 스키마와 호환되는지 확인 후 되돌린다 |
 
 ---
 

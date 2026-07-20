@@ -6,7 +6,7 @@
 ## 목적
 
 `develop` → `main` merge 및 Docker Hub image push **이후**, 운영 서버에 어떻게 배포할지 1차 전략을 고정한다.
-[PR #149](https://github.com/chorok447/dasida/pull/149)는 **2026-07-03 merge 완료** — main push 로 Docker Hub image push 까지 확인됨. **서버 deploy 는 아직 미구현.**
+[PR #149](https://github.com/chorok446/dasida/pull/149)는 **2026-07-03 merge 완료** — main push 로 Docker Hub image push 까지 확인됨. **서버 deploy 는 아직 미구현.**
 
 ---
 
@@ -133,7 +133,7 @@ main push image 에 대해 로컬에서 pull/smoke 를 수행했다. 상세: [co
 
 ## Rollback
 
-절차·주의사항은 [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md#rollback) 를 따른다. 핵심: 배포는 `sha-<shortsha>` pin, `main` tag 는 rollback pin 으로 쓰지 않는다, rollback 은 application image 수준(DB migration 도구 없음).
+절차·주의사항은 [single-vm-production-deploy-runbook.md](./single-vm-production-deploy-runbook.md#rollback) 를 따른다. 핵심: 배포는 `sha-<shortsha>` pin, `main` tag 는 rollback pin 으로 쓰지 않는다, rollback 은 application image 수준(DB 는 Flyway forward-only migration — 이전 image 와의 스키마 호환 확인 필요).
 
 ---
 

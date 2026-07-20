@@ -2,6 +2,8 @@
 
 > 목적: PR #121 merge 이후 **Boot 4.1 + springdoc 3.0.3 + Jackson 3** 상태의 `/v3/api-docs`가
 > API 계약 또는 프론트 codegen 에 영향을 주는지 검증한다. **문서/분석 only** — DTO·endpoint·정책 변경 없음.
+>
+> **후기(검증 완료 후 변경)**: 본문의 "apps/web 에 codegen 없음"은 검증 시점 기준이다. 이후 `openapi-typescript` 기반 타입 생성이 도입됐다 — `pnpm --filter web openapi:types` 가 `apps/web/src/types/api.d.ts` 를 재생성(커밋 대상)하고, CI(`ci.yml` e2e job)의 OpenAPI 타입 드리프트 게이트가 스냅샷이 낡으면 실패한다.
 
 ## 검증 기준
 

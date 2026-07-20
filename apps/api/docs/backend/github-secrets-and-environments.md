@@ -171,7 +171,7 @@ flowchart TB
 
 ### GitHub UI 경로
 
-저장소: `chorok447/dasida`
+저장소: `chorok446/dasida`
 
 | 대상 | UI 경로 |
 |------|---------|
@@ -187,7 +187,7 @@ flowchart TB
 ```bash
 gh secret list        # 이름만 출력 (값 없음)
 gh variable list      # 이름 + 비밀 아닌 값
-gh api repos/chorok447/dasida/environments --jq '.environments[].name'
+gh api repos/chorok446/dasida/environments --jq '.environments[].name'
 
 # 생성 — 값은 터미널에서만 입력 (셸 history 주의)
 gh secret set JWT_SECRET < /path/to/local-only-secret-file
@@ -208,7 +208,7 @@ gh secret set JWT_SECRET < /path/to/local-only-secret-file
 ### 생성 후 검증
 
 1. `gh secret list` / `gh variable list` 로 **이름만** 확인 (값은 확인하지 않는다)
-2. Environment: `gh api repos/chorok447/dasida/environments --jq '.environments[].name'` 에 `production` 포함 여부
+2. Environment: `gh api repos/chorok446/dasida/environments --jq '.environments[].name'` 에 `production` 포함 여부
 3. main merge **전** CD(main push CI 성공 후 `workflow_run`) 실행 없음 → Docker Hub prod push **없음** (정상): `gh run list --workflow=cd.yml --event workflow_run --limit 3`
 4. (선택) `NEXT_PUBLIC_API_URL` 설정 후 main 대상 PR 에서 Web image build 가 placeholder 대신 Variable 을 쓰는지 Actions 로그에서 **변수 이름**만 확인
 5. 서버 `.env.prod` 사용 시: `deploy/.env.prod` 가 Git 에 없는지 확인, compose config 로컬 검증만 수행 (**커밋 금지**)
