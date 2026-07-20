@@ -158,6 +158,23 @@ class PostMyPagePaginationTest(
     }
 
     @Test
+    fun `숨김된 북마크 글은 content와 totalElements 모두에서 제외된다`() {
+        val visible = savePost(seq = 1, authorUserId = 2L)
+        val hidden = savePost(seq = 2, authorUserId = 2L)
+        bookmark(visible)
+        bookmark(hidden)
+        posts.findById(hidden).orElseThrow().let { it.hiddenAt = java.time.Instant.now(); posts.saveAndFlush(it) }
+
+        mvc.get("/api/posts/bookmarks/page") { headers { add("Authorization", "Bearer $token") } }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.totalElements") { value(1) }
+                jsonPath("$.content.length()") { value(1) }
+                jsonPath("$.content[0].id") { value(visible) }
+            }
+    }
+
+    @Test
     fun `저장 해제 후 page 결과에서 제외된다`() {
         val id = savePost(seq = 1, authorUserId = 2L)
         val bid = bookmark(id)
@@ -218,6 +235,7 @@ class PostMyPagePaginationTest(
         }.andExpect {
             status { isOk() }
             jsonPath("$.content.length()") { value(1 + 1) } // first, second (hidden 은 content 에서 제외)
+            jsonPath("$.totalElements") { value(2) } // 숨김 글은 total 에서도 제외(슬라이스와 정합)
             jsonPath("$.content[0].id") { value(first) }
             jsonPath("$.content[1].id") { value(second) }
         }

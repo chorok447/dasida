@@ -169,37 +169,21 @@ class PostService(
         )
     }
 
-    /** 현재 사용자가 저장한 게시글. 북마크/게시글/좋아요를 각각 bulk 조회해 N+1을 피한다. */
+    /**
+     * 현재 사용자가 저장한 게시글(레거시 비페이지 배열). 무제한 직렬화를 막기 위해 페이지 버전의
+     * 첫 page(최대 MAX_SEARCH_PAGE_SIZE)로 상한을 둔다 — 전체가 필요하면 /bookmarks/page 를 쓴다.
+     */
     @Transactional(readOnly = true)
-    fun getMyBookmarks(userId: Long): List<PostResponse> {
-        val postIds = bookmarkRepo.findByUserId(userId).map { it.postId }.distinct()
-        if (postIds.isEmpty()) return emptyList()
+    fun getMyBookmarks(userId: Long): List<PostResponse> =
+        getMyBookmarksPage(userId, 0, MAX_SEARCH_PAGE_SIZE).content
 
-        val posts = repo.findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(postIds)
-        if (posts.isEmpty()) return emptyList()
-
-        val likedIds = likeRepo.findByUserIdAndPostIdIn(userId, posts.map { it.id })
-            .map { it.postId }
-            .toSet()
-        return posts.map {
-            it.toResponse(viewerId = userId, likedByMe = it.id in likedIds, bookmarkedByMe = true)
-        }
-    }
-
-    /** 현재 사용자가 작성한 게시글. 소유권은 author.name 이 아니라 authorUserId 로 판단한다. */
+    /**
+     * 현재 사용자가 작성한 게시글(레거시 비페이지 배열). 무제한 직렬화를 막기 위해 페이지 버전의
+     * 첫 page(최대 MAX_SEARCH_PAGE_SIZE)로 상한을 둔다 — 전체가 필요하면 /mine/page 를 쓴다.
+     */
     @Transactional(readOnly = true)
-    fun getMyPosts(userId: Long): List<PostResponse> {
-        val posts = repo.findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(userId)
-        if (posts.isEmpty()) return emptyList()
-
-        val postIds = posts.map { it.id }
-        // N+1 회피: 좋아요/북마크를 각각 한 번씩 bulk 조회.
-        val likedIds = likeRepo.findByUserIdAndPostIdIn(userId, postIds).map { it.postId }.toSet()
-        val bookmarkedIds = bookmarkRepo.findByUserIdAndPostIdIn(userId, postIds).map { it.postId }.toSet()
-        return posts.map {
-            it.toResponse(viewerId = userId, likedByMe = it.id in likedIds, bookmarkedByMe = it.id in bookmarkedIds)
-        }
-    }
+    fun getMyPosts(userId: Long): List<PostResponse> =
+        getMyPostsPage(userId, 0, MAX_SEARCH_PAGE_SIZE).content
 
     /** 내 게시글 pagination. 최신순(seq DESC, id). 현재 page 의 id 만 대상으로 좋아요/북마크 bulk 조회. */
     @Transactional(readOnly = true)
@@ -224,39 +208,37 @@ class PostService(
     }
 
     /**
-     * 저장한 게시글 pagination. bookmark row 를 id ASC(deterministic, createdAt 없음)로 page 한 뒤
-     * 해당 page 의 postId 만 bulk 조회하고 bookmark page 순서를 보존한다. 삭제된 게시글의 orphan bookmark 는 제외.
+     * 저장한 게시글 pagination. 공개(숨김·삭제 아님) 게시글만 JOIN 쿼리로 page·count 해 total 과 슬라이스를
+     * 함께 필터한다(숨김·orphan bookmark 가 있어도 마지막 page 가 비어 보이지 않는다). 순서는
+     * 레거시 비페이지 배열과 동일한 게시글 최신순(seq DESC, id).
      */
     @Transactional(readOnly = true)
     fun getMyBookmarksPage(userId: Long, page: Int, size: Int): PostPageResponse {
         validatePageParams(page, size)
-        val bookmarkPage = bookmarkRepo.findByUserId(userId, PageRequest.of(page, size, Sort.by("id").ascending()))
-        val postIds = bookmarkPage.content.map { it.postId }
-        val postsById = if (postIds.isEmpty()) emptyMap() else repo.findAllById(postIds).associateBy { it.id }
-        // bookmark page 순서 보존, orphan·숨김 게시글 제외
-        val orderedPosts = postIds.mapNotNull { postsById[it] }.filter { it.hiddenAt == null }
-        val likedIds = likedByPage(userId, orderedPosts.map { it.id })
+        val postPage = repo.findVisibleBookmarkedByUser(userId, PageRequest.of(page, size))
+        val likedIds = likedByPage(userId, postPage.content.map { it.id })
         return PostPageResponse(
-            content = orderedPosts.map {
+            content = postPage.content.map {
                 it.toResponse(viewerId = userId, likedByMe = it.id in likedIds, bookmarkedByMe = true)
             },
             page = page,
             size = size,
-            totalElements = bookmarkPage.totalElements,
-            totalPages = totalPages(bookmarkPage.totalElements, size),
+            totalElements = postPage.totalElements,
+            totalPages = totalPages(postPage.totalElements, size),
         )
     }
 
     /**
-     * 내가 댓글 단 게시글 pagination. 최근 댓글 순으로 게시글을 중복 없이 페이지하고,
-     * 저장 목록과 같은 규칙으로 순서를 보존하며 삭제·숨김 게시글은 결과에서 제외한다.
+     * 내가 댓글 단 게시글 pagination. 최근 댓글 순으로 게시글을 중복 없이 페이지한다.
+     * 삭제·숨김 게시글은 id 쿼리에서 이미 제외되므로 total 과 슬라이스가 함께 정합하다.
      */
     @Transactional(readOnly = true)
     fun getMyCommentedPostsPage(userId: Long, page: Int, size: Int): PostPageResponse {
         validatePageParams(page, size)
         val idPage = commentRepo.findCommentedPostIds(userId, PageRequest.of(page, size))
         val postsById = if (idPage.content.isEmpty()) emptyMap() else repo.findAllById(idPage.content).associateBy { it.id }
-        val orderedPosts = idPage.content.mapNotNull { postsById[it] }.filter { it.hiddenAt == null && it.deletedAt == null }
+        // id page 순서 보존. 가시성 필터는 쿼리에서 처리됐다.
+        val orderedPosts = idPage.content.mapNotNull { postsById[it] }
         val likedIds = likedByPage(userId, orderedPosts.map { it.id })
         val bookmarkedIds = bookmarkedByPage(userId, orderedPosts.map { it.id })
         return PostPageResponse(

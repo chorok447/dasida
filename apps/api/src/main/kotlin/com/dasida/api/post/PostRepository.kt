@@ -15,6 +15,18 @@ data class AuthorPostCount(val authorUserId: Long?, val count: Long)
 interface PostRepository : JpaRepository<Post, String> {
     fun findAllByIdInOrderBySeqDesc(ids: Collection<String>): List<Post>
 
+    /**
+     * 사용자가 저장(북마크)한 게시글 중 공개(숨김·삭제 아님)만 페이지네이션한다.
+     * bookmark row 를 그대로 페이지한 뒤 메모리에서 숨김을 거르면 total 은 필터 전 수라 슬라이스와
+     * 어긋난다(마지막 page 가 비어 보이고 카운트 과대). JOIN 으로 공개 글만 페이지·카운트해 정합을 맞춘다.
+     * order by p.seq desc, p.id — 게시글 최신순(레거시 비페이지 배열과 동일 정렬), id 는 seq 동률 tiebreak.
+     */
+    @Query(
+        "select p from Post p, PostBookmark b " +
+            "where b.postId = p.id and b.userId = :userId and p.hiddenAt is null order by p.seq desc, p.id asc",
+    )
+    fun findVisibleBookmarkedByUser(@Param("userId") userId: Long, pageable: Pageable): Page<Post>
+
     // 관리자 통계용. seq 는 작성 시각(epoch millis)이므로 기간 내 값만 가져와 일 단위로 집계한다.
     @Query("select p.seq from Post p where p.seq >= :since")
     fun creationSeqSince(@Param("since") since: Long): List<Long>
@@ -24,8 +36,6 @@ interface PostRepository : JpaRepository<Post, String> {
     fun findByAuthorUserId(authorUserId: Long, pageable: Pageable): Page<Post>
 
     // 작성자 본인 목록(mine)용. 숨김은 보이지만 삭제(soft delete)는 제외한다.
-    fun findByAuthorUserIdAndDeletedAtIsNullOrderBySeqDesc(authorUserId: Long): List<Post>
-
     fun findByAuthorUserIdAndDeletedAtIsNull(authorUserId: Long, pageable: Pageable): Page<Post>
 
     fun countByAuthorUserId(authorUserId: Long): Long
@@ -45,8 +55,6 @@ interface PostRepository : JpaRepository<Post, String> {
     fun findByHiddenAtIsNull(pageable: Pageable): org.springframework.data.domain.Page<Post>
 
     fun findByAuthorUserIdAndHiddenAtIsNull(authorUserId: Long, pageable: Pageable): Page<Post>
-
-    fun findAllByIdInAndHiddenAtIsNullOrderBySeqDesc(ids: Collection<String>): List<Post>
 
     /** 상호작용 동시성 방어용 write lock 조회. like/bookmark/comment 트랜잭션을 게시글별로 직렬화. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

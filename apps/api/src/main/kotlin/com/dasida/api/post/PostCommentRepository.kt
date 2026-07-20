@@ -44,17 +44,23 @@ interface PostCommentRepository : JpaRepository<PostComment, String> {
     fun countByPostId(postId: String): Long
     fun countByPostIdAndHiddenAtIsNull(postId: String): Long
 
-    /** 내가 댓글 단 게시글 id 페이지(최근 댓글 순, 삭제 댓글 제외). group by 라 count 쿼리를 명시한다. */
+    /**
+     * 내가 댓글 단 게시글 id 페이지(최근 댓글 순, 삭제 댓글 제외). group by 라 count 쿼리를 명시한다.
+     * 숨김·삭제(hiddenAt 세팅) 게시글은 쿼리에서 제외해 total 과 슬라이스가 함께 필터된다 —
+     * id 만 페이지한 뒤 메모리에서 거르면 total 이 과대해 마지막 page 가 비어 보인다.
+     */
     @Query(
         """
-        select c.postId from PostComment c
-        where c.authorUserId = :userId and c.deletedAt is null
+        select c.postId from PostComment c, Post p
+        where p.id = c.postId and p.hiddenAt is null
+          and c.authorUserId = :userId and c.deletedAt is null
         group by c.postId
         order by max(c.seq) desc
         """,
         countQuery = """
-        select count(distinct c.postId) from PostComment c
-        where c.authorUserId = :userId and c.deletedAt is null
+        select count(distinct c.postId) from PostComment c, Post p
+        where p.id = c.postId and p.hiddenAt is null
+          and c.authorUserId = :userId and c.deletedAt is null
         """,
     )
     fun findCommentedPostIds(@Param("userId") userId: Long, pageable: Pageable): Page<String>
