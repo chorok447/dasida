@@ -239,9 +239,10 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
         run: |
           if [ "$HEAD_REF" != "develop" ]; then
-            echo "::error::main 대상 PR은 develop 브랜치에서만 열 수 있습니다 (head: $HEAD_REF)."
-            # 요약은 마크다운으로 렌더링되므로 포크가 지은 브랜치명을 그대로 싣지 않는다(마크다운 인젝션 방지).
+            # 요약/에러 모두 포크가 지은 브랜치명을 그대로 싣지 않는다(마크다운·커맨드 인젝션 방지).
+            # SAFE_REF 를 먼저 계산해 ::error:: echo 와 마크다운 요약 양쪽에 사용한다.
             SAFE_REF=$(printf '%s' "$HEAD_REF" | tr -cd 'A-Za-z0-9._/-' | cut -c1-100)
+            echo "::error::main 대상 PR은 develop 브랜치에서만 열 수 있습니다 (head: $SAFE_REF)."
             {
               echo "## 🚧 main 브랜치 보호 게이트"
               echo ""
