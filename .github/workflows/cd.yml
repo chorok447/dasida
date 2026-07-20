@@ -1,9 +1,11 @@
 name: CD
 
 # main merge push: CI workflow 성공 후에만 Docker Hub push (workflow_run 게이트).
+# 2단계: (1) image-push 가 api·web 을 각각 빌드해 sha 태그만 푸시 → (2) promote-main 이 둘 다 성공한
+#   뒤에만 :main 을 sha 로 승격(원자 승격 — 부분 실패로 앱별 :main 이 갈라지지 않게 한다).
 # main 대상 PR 의 image build 검증은 image-verify.yml 이 담당한다.
-# 실제 서버 배포 step 은 provider 확정 후 image push 뒤에 추가한다.
-# DOCKERHUB_USERNAME(Variable), DOCKERHUB_TOKEN(Secret) — push job 에서만 사용.
+# 실제 서버 배포 step 은 provider 확정 후 :main 승격 뒤에 추가한다.
+# DOCKERHUB_USERNAME(Variable), DOCKERHUB_TOKEN(Secret) — push·promote job 에서만 사용.
 
 on:
   workflow_run:
@@ -26,6 +28,7 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         include:
@@ -40,14 +43,14 @@ jobs:
     env:
       DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           # CI 를 통과한 바로 그 커밋을 빌드한다(트리거 시점의 main HEAD 와의 race 방지).
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -57,14 +60,98 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: echo "sha=sha-${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           push: true
-          tags: |
-            docker.io/${{ env.DOCKERHUB_USERNAME }}/dasida-${{ matrix.app }}:${{ steps.tag.outputs.sha }}
-            docker.io/${{ env.DOCKERHUB_USERNAME }}/dasida-${{ matrix.app }}:main
+          # 여기서는 sha 태그만 푸시한다. :main 승격은 api·web 두 빌드가 모두 성공한 뒤
+          # promote-main 잡에서 한꺼번에 한다(부분 실패로 :main 이 앱별로 갈라지는 것 방지).
+          tags: docker.io/${{ env.DOCKERHUB_USERNAME }}/dasida-${{ matrix.app }}:${{ steps.tag.outputs.sha }}
           build-args: ${{ matrix.build-args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          APP: ${{ matrix.app }}
+          RESULT: ${{ job.status }}
+          SHA_TAG: ${{ steps.tag.outputs.sha }}
+        run: |
+          {
+            echo "## 🚢 ${APP} 이미지 빌드"
+            echo ""
+            if [ "$RESULT" = "success" ]; then
+              echo "✅ Docker Hub 에 sha 태그 푸시 완료: \`dasida-${APP}:${SHA_TAG}\` (:main 승격은 양쪽 앱 성공 후 promote-main 잡에서)"
+            elif [ "$RESULT" = "cancelled" ]; then
+              echo "🚫 취소됨 — 새 실행으로 대체되었거나 타임아웃입니다. 빌드 오류가 아닙니다."
+            else
+              echo "❌ 이미지 빌드/푸시 실패 — 위 build-push 스텝 로그를 확인하세요. CI 를 통과한 커밋만 트리거되므로 대부분 Dockerfile·레지스트리 인증 문제입니다."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # api·web sha 이미지가 모두 성공한 뒤에만(needs: image-push) :main 을 sha 로 승격한다(manifest 복사, 재빌드 없음).
+  # 빌드 실패는 needs 가 이 잡을 건너뛰어 :main 을 앞 버전에 유지한다(주된 비원자 케이스 제거).
+  # 남은 한계(도커허브 두 태그를 완전 원자적으로는 못 옮긴다): 승격 스텝 중간(api 성공·web 실패)이나 mid-cancel 시
+  # :main 이 잠깐 갈라질 수 있다 — 일시 오류는 재시도로 흡수하고, imagetools create 는 멱등이라 재실행으로 자가치유된다.
+  # 실제 배포 스텝을 붙일 땐 :main 을 실시간 소비하지 말고 sha 태그를 핀해 배포할 것(승격 중간 상태 회피).
+  promote-main:
+    name: :main 태그 승격
+    needs: image-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - id: tag
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: echo "sha=sha-${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: sha 이미지를 :main 으로 승격
+        env:
+          SHA_TAG: ${{ steps.tag.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # imagetools create: 재빌드 없는 registry-side manifest 복사 + 멱등. 일시 오류(5xx·push 직후
+          # read-after-write 지연)는 재시도로 흡수해 부분 승격 창을 줄인다.
+          promote() {
+            local repo="$1" attempt
+            for attempt in 1 2 3; do
+              if docker buildx imagetools create --tag "${repo}:main" "${repo}:${SHA_TAG}"; then
+                return 0
+              fi
+              [ "$attempt" -lt 3 ] && { echo "재시도 ${attempt}/3 실패 — $((attempt * 10))초 후"; sleep "$((attempt * 10))"; }
+            done
+            return 1
+          }
+          for app in api web; do
+            repo="docker.io/${DOCKERHUB_USERNAME}/dasida-${app}"
+            echo "승격: ${repo}:${SHA_TAG} → ${repo}:main"
+            promote "$repo"
+          done
+
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+          SHA_TAG: ${{ steps.tag.outputs.sha }}
+        run: |
+          {
+            echo "## 🏷️ :main 태그 승격"
+            echo ""
+            if [ "$RESULT" = "success" ]; then
+              echo "✅ api·web 모두 \`:${SHA_TAG}\` 를 \`:main\` 으로 승격 완료(양쪽 빌드 성공 후 한꺼번에)."
+            elif [ "$RESULT" = "cancelled" ]; then
+              echo "🚫 취소됨 — 새 실행으로 대체되었거나 타임아웃입니다. api 만 승격된 채 :main 이 갈라졌을 수 있으니 이 잡을 재실행하세요."
+            else
+              echo "❌ :main 승격 실패(재시도 포함) — api 는 승격됐는데 web 이 실패하면 :main 이 잠시 갈라집니다."
+              echo "sha 이미지는 이미 푸시됐고 imagetools create 는 멱등이니, 이 잡만 재실행하면 api·web 모두 \`:${SHA_TAG}\` 로 맞춰집니다."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

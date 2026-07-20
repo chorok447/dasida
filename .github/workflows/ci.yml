@@ -7,6 +7,10 @@ on:
     branches: [develop, main]
     types: [opened, synchronize, reopened, ready_for_review]
 
+# 기본 토큰은 읽기 전용 — automerge 잡만 자체 permissions 로 쓰기 권한을 올린다.
+permissions:
+  contents: read
+
 # 같은 브랜치/PR에서 새 푸시가 오면 진행 중 실행을 취소한다.
 concurrency:
   group: ci-${{ github.ref }}
@@ -16,29 +20,48 @@ jobs:
   web:
     name: web (Next.js)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Next.js 빌드 캐시: 소스가 바뀌면 갱신, 아니면 복원해 재빌드 단축.
-      - uses: actions/cache@v6
-        with:
-          path: apps/web/.next/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
-      - run: pnpm --filter web lint
-      - run: pnpm --filter web test
-      - run: pnpm --filter web build
+      # Next.js 캐시 스텝은 제거했다 — Turbopack 빌드에서 .next/cache 는 fetch-cache(ISR 응답)
+      # 뿐이라 빌드 가속이 전혀 없는데, src 해시 키 때문에 커밋마다 캐시 엔트리만 쌓였다.
+      - id: lint
+        run: pnpm --filter web lint
+      - id: test
+        run: pnpm --filter web test
+      - id: build
+        run: pnpm --filter web build
+      # 실행 페이지(Actions run)에 한국어 요약을 남긴다 — 어떤 단계에서 멈췄는지 한눈에.
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          LINT: ${{ steps.lint.outcome }}
+          TEST: ${{ steps.test.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        run: |
+          icon() { case "$1" in success) echo "✅ 성공";; failure) echo "❌ 실패";; cancelled) echo "🚫 취소";; *) echo "⏭️ 건너뜀";; esac; }
+          {
+            echo "## 🌐 웹 (Next.js)"
+            echo ""
+            echo "| 단계 | 결과 |"
+            echo "| --- | --- |"
+            echo "| ESLint 검사 | $(icon "$LINT") |"
+            echo "| 단위 테스트 (vitest) | $(icon "$TEST") |"
+            echo "| 프로덕션 빌드 | $(icon "$BUILD") |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # 회원가입→글 작성→피드 핵심 경로 스모크. web 프로덕션 빌드 + api bootRun 을 Playwright webServer 가 띄운다.
   e2e:
     name: e2e (smoke)
     runs-on: ubuntu-latest
+    # 워밍 캐시 기준보다 콜드 캐시(pnpm·브라우저·gradle 전부 미스) 여유를 두고 40분.
+    timeout-minutes: 40
     services:
       mysql:
         image: mysql:8.4
@@ -55,24 +78,25 @@ jobs:
           --health-timeout=5s
           --health-retries=20
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: pnpm
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web build
       - run: pnpm --filter web exec playwright install --with-deps chromium
-      - run: pnpm --filter web e2e
+      - id: e2e
+        run: pnpm --filter web e2e
       - name: Upload Playwright traces on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-traces
           path: apps/web/test-results/
@@ -81,6 +105,7 @@ jobs:
       # `pnpm --filter web openapi:types` 재생성 커밋을 요구한다(CLAUDE.md 참고).
       # e2e 가 쓰던 MySQL service 를 재사용해 API 를 잠깐 다시 띄운다(gradle 캐시가 따뜻해 빠름).
       - name: OpenAPI 타입 드리프트 검사
+        id: openapi
         run: |
           (cd apps/api && ./gradlew bootRun --args='--server.port=8081 --server.address=127.0.0.1' > /tmp/openapi-boot.log 2>&1 &)
           for i in $(seq 1 60); do
@@ -93,20 +118,111 @@ jobs:
             echo "::error::OpenAPI 타입 스냅샷이 오래됐습니다 — 'pnpm --filter web openapi:types' 재생성 후 커밋하세요."
             exit 1
           fi
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          E2E: ${{ steps.e2e.outcome }}
+          OPENAPI: ${{ steps.openapi.outcome }}
+        run: |
+          {
+            echo "## 🧪 브라우저 스모크 테스트 (Playwright)"
+            echo ""
+            if [ "$E2E" = "success" ]; then
+              echo "✅ 전체 시나리오 통과 — 회원가입·글 작성·피드 핵심 경로 정상."
+            elif [ "$E2E" = "failure" ]; then
+              echo "❌ 실패 — 아래 Artifacts 의 **playwright-traces** 를 내려받아 실패 시점 트레이스를 확인하세요."
+              echo ""
+              echo "> 로컬 재현: \`docker compose up -d\` 후 \`pnpm --filter web e2e\`"
+            else
+              echo "⏭️ 실행되지 않았습니다 ($E2E)."
+            fi
+            echo ""
+            echo "### 📄 OpenAPI 타입 드리프트 게이트"
+            echo ""
+            if [ "$OPENAPI" = "success" ]; then
+              echo "✅ 타입 스냅샷 최신 — 백엔드 DTO 와 드리프트 없음."
+            elif [ "$OPENAPI" = "failure" ]; then
+              echo "❌ 타입 스냅샷이 오래됐습니다 — \`pnpm --filter web openapi:types\` 재생성 후 커밋하세요."
+            else
+              echo "⏭️ 실행되지 않았습니다 ($OPENAPI) — 앞 단계(e2e) 실패 여부를 확인하세요."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # 의존성/파일시스템 취약점 스캔. 초기에는 비차단(continue-on-error)으로 리포트만 남긴다.
+  security:
+    name: security (deps scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # pnpm audit runs over the whole JS workspace (web + packages); it has no --filter form.
+      # 비차단(continue-on-error): 취약점을 리포트만 하고 빌드는 막지 않는다.
+      # (컨테이너 이미지 스캔은 외부 액션 버전 드리프트로 잡이 통째로 실패할 수 있어 후속 과제로 분리)
+      - name: pnpm audit (JS workspace, high+)
+        id: audit
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          AUDIT: ${{ steps.audit.outcome }}
+        run: |
+          {
+            echo "## 🔒 의존성 보안 스캔"
+            echo ""
+            if [ "$AUDIT" = "success" ]; then
+              echo "✅ high 이상 알려진 취약점 없음."
+            elif [ "$AUDIT" = "failure" ]; then
+              echo "⚠️ audit 이 비정상 종료했습니다(비차단 — 빌드는 계속됩니다). 위 로그에서 **취약점 리포트**인지 **레지스트리/네트워크 오류**인지 확인하세요."
+            else
+              echo "⏭️ audit 이 실행되지 않았습니다 ($AUDIT) — 앞 단계(checkout/install) 실패 여부를 확인하세요."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   api:
     name: api (Spring Boot)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+      # Flyway 버전 중복 가드 — 빌드 전에 값싸게 fail-fast (ubuntu runner 기본 node 사용).
+      - name: Flyway 버전 중복 검사
+        id: flyway
+        run: node scripts/check-flyway-versions.mjs
       - name: Build
+        id: build
         working-directory: apps/api
         run: ./gradlew build --no-daemon
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          FLYWAY: ${{ steps.flyway.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        run: |
+          {
+            echo "## ⚙️ 백엔드 (Spring Boot)"
+            echo ""
+            if [ "$FLYWAY" = "failure" ]; then
+              echo "❌ Flyway 마이그레이션 버전이 중복됩니다 — 위 **Flyway 버전 중복 검사** 로그에서 겹치는 버전·파일을 확인하고 하나를 리네임하세요."
+            elif [ "$BUILD" = "success" ]; then
+              echo "✅ 컴파일·단위 테스트(H2)·패키징 전부 통과."
+            elif [ "$BUILD" = "failure" ]; then
+              echo "❌ 실패 — 위 Build 스텝 로그에서 컴파일 오류 또는 실패한 테스트를 확인하세요."
+            else
+              echo "⏭️ 실행되지 않았습니다 ($BUILD)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # develop 대상 Ready PR은 web/api/e2e 검사 통과 후 자동 머지한다.
   # main 대상 PR은 release/deploy gate 이므로 자동 머지하지 않는다(CI + image build 검증만).
@@ -116,6 +232,7 @@ jobs:
     name: main PR source gate
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Only develop may target main
         env:
@@ -123,6 +240,13 @@ jobs:
         run: |
           if [ "$HEAD_REF" != "develop" ]; then
             echo "::error::main 대상 PR은 develop 브랜치에서만 열 수 있습니다 (head: $HEAD_REF)."
+            # 요약은 마크다운으로 렌더링되므로 포크가 지은 브랜치명을 그대로 싣지 않는다(마크다운 인젝션 방지).
+            SAFE_REF=$(printf '%s' "$HEAD_REF" | tr -cd 'A-Za-z0-9._/-' | cut -c1-100)
+            {
+              echo "## 🚧 main 브랜치 보호 게이트"
+              echo ""
+              echo "❌ main 대상 PR 은 develop 브랜치에서만 열 수 있습니다 (현재 head: ${SAFE_REF})."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -135,13 +259,30 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.base_ref == 'develop'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: Merge PR
+        id: merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
         run: gh pr merge "$PR" --merge --delete-branch
+      - name: 한국어 잡 요약
+        if: always()
+        env:
+          MERGE: ${{ steps.merge.outcome }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "## 🔀 자동 머지"
+            echo ""
+            if [ "$MERGE" = "success" ]; then
+              echo "✅ web·api·e2e 전부 통과 — PR #$PR 을 develop 에 머지하고 브랜치를 정리했습니다."
+            else
+              echo "❌ 머지 실패 ($MERGE) — 브랜치 보호 규칙·머지 충돌·동시 머지 경합 여부를 확인하세요. CI 는 통과했으므로 해결 후 수동 머지하면 됩니다."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
