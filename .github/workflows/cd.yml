@@ -43,7 +43,7 @@ jobs:
     env:
       DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # CI 를 통과한 바로 그 커밋을 빌드한다(트리거 시점의 main HEAD 와의 race 방지).
           ref: ${{ github.event.workflow_run.head_sha }}
